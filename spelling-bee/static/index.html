@@ -1644,6 +1644,7 @@
 
 			<!-- Bottom CTA controls -->
 			<div class="lobby-actions">
+				<button class="btn-lobby-secondary" id="btn-ready-toggle" style="display:none">Ready ✓</button>
 				<button class="btn-lobby-primary" id="btn-start-match">Start Match ⚔️</button>
 			</div>
 		</div>
@@ -1769,12 +1770,21 @@ const LS_NICK_KEY = "spellingBee_nickname";
 const LS_PID_KEY = "spellingBee_playerId";
 
 function getOrCreatePlayerId() {
-	let pid = localStorage.getItem(LS_PID_KEY);
+	let pid = sessionStorage.getItem("spellingBee_sessionId");
 	if (!pid) {
 		pid = "usr_" + Math.random().toString(36).substring(2, 10);
-		localStorage.setItem(LS_PID_KEY, pid);
+		sessionStorage.setItem("spellingBee_sessionId", pid);
 	}
 	return pid;
+}
+
+function getPlayerNickname() {
+	let nick = sessionStorage.getItem("spellingBee_nickname");
+	if (!nick) {
+		nick = "Player_" + Math.floor(Math.random() * 900 + 100);
+		sessionStorage.setItem("spellingBee_nickname", nick);
+	}
+	return nick;
 }
 
 function getBasePath() {
@@ -1784,7 +1794,7 @@ function getBasePath() {
 }
 
 const myPlayerId = getOrCreatePlayerId();
-let myNickname = localStorage.getItem(LS_NICK_KEY) || ("BeePlayer" + Math.floor(Math.random() * 900 + 100));
+let myNickname = getPlayerNickname();
 
 const state = {
 	mode: "solo",        // "solo" | "multi"
@@ -1969,6 +1979,7 @@ const duelP2Status         = $("duel-p2-status");
 const duelP2Badge          = $("duel-p2-badge");
 const slotsTeamA           = $("slots-team-a");
 const slotsTeamB           = $("slots-team-b");
+const btnReadyToggle       = $("btn-ready-toggle");
 const btnStartMatch        = $("btn-start-match");
 const gameOverModal        = $("game-over-modal");
 const goResultTitle        = $("go-result-title");
@@ -2508,6 +2519,7 @@ $("btn-new-game").addEventListener("click", startNewSoloGame);
 /* ── Multiplayer Connection & Lobby Handling ───────────────────── */
 
 function openLobbyModal() {
+	inputNickname.value = myNickname;
 	lobbyModal.classList.add("open");
 	lobbyModal.setAttribute("aria-hidden", "false");
 }
@@ -2652,6 +2664,10 @@ function renderLobbyState(snapshot) {
 	state.isHost = me ? me.is_host : false;
 	state.isReady = me ? me.is_ready : false;
 
+	if (document.activeElement !== inputNickname && me) {
+		inputNickname.value = me.nickname;
+	}
+
 	// Host settings controls enable/disable
 	const isHostInLobby = state.isHost && snapshot.status === "lobby";
 	selectMode.disabled = !isHostInLobby;
@@ -2672,14 +2688,18 @@ function renderLobbyState(snapshot) {
 		teamMatchupWrap.style.display = "none";
 
 		const hostPlayer = snapshot.players.find(p => p.is_host) || snapshot.players[0];
-		duelP1Name.textContent = hostPlayer ? (hostPlayer.nickname + (hostPlayer.id === myPlayerId ? " (You)" : "")) : "Host";
+		if (hostPlayer) {
+			duelP1Name.textContent = hostPlayer.nickname + (hostPlayer.id === myPlayerId ? " (You)" : "");
+			$("duel-p1-status").textContent = hostPlayer.is_ready ? "Ready ✓" : "Not Ready";
+			$("duel-p1-status").className = hostPlayer.is_ready ? "tag-ready" : "tag-not-ready";
+		}
 
 		const rivalPlayer = snapshot.players.find(p => p.id !== (hostPlayer ? hostPlayer.id : ""));
 		if (rivalPlayer) {
 			cardP2.classList.remove("waiting");
 			duelP2Name.textContent = rivalPlayer.nickname + (rivalPlayer.id === myPlayerId ? " (You)" : "");
-			duelP2Status.textContent = "Ready ✓";
-			duelP2Status.className = "tag-ready";
+			duelP2Status.textContent = rivalPlayer.is_ready ? "Ready ✓" : "Not Ready";
+			duelP2Status.className = rivalPlayer.is_ready ? "tag-ready" : "tag-not-ready";
 			duelP2Badge.innerHTML = '<span class="tag-host" style="background:var(--team-b);color:#fff">RIVAL</span>';
 		} else {
 			cardP2.classList.add("waiting");
@@ -2701,7 +2721,7 @@ function renderLobbyState(snapshot) {
 					${p.nickname} ${p.id === myPlayerId ? "(You)" : ""}
 					${p.is_host ? '<span class="tag-host">HOST</span>' : ""}
 				</span>
-				<span class="tag-ready">Ready ✓</span>
+				<span class="${p.is_ready ? 'tag-ready' : 'tag-not-ready'}">${p.is_ready ? 'Ready ✓' : 'Not Ready'}</span>
 			</div>
 		`).join("") || '<span style="font-size:.78rem;color:var(--text-muted)">Empty slot</span>';
 
@@ -2711,20 +2731,47 @@ function renderLobbyState(snapshot) {
 					${p.nickname} ${p.id === myPlayerId ? "(You)" : ""}
 					${p.is_host ? '<span class="tag-host">HOST</span>' : ""}
 				</span>
-				<span class="tag-ready">Ready ✓</span>
+				<span class="${p.is_ready ? 'tag-ready' : 'tag-not-ready'}">${p.is_ready ? 'Ready ✓' : 'Not Ready'}</span>
 			</div>
 		`).join("") || '<span style="font-size:.78rem;color:var(--text-muted)">Empty slot</span>';
 	}
 
-	// Start Match button logic
+	// Action buttons logic
 	if (state.isHost) {
+		btnReadyToggle.style.display = "none";
+		btnStartMatch.style.display = "block";
 		btnStartMatch.disabled = snapshot.status !== "lobby";
 		btnStartMatch.textContent = "Start Match ⚔️";
 	} else {
+		btnReadyToggle.style.display = "block";
+		btnReadyToggle.textContent = state.isReady ? "Ready ✓" : "Set Ready";
+		btnReadyToggle.style.background = state.isReady ? "var(--green-light)" : "var(--surface)";
+		btnReadyToggle.style.color = state.isReady ? "var(--green)" : "var(--text)";
+
+		btnStartMatch.style.display = "block";
 		btnStartMatch.disabled = true;
 		btnStartMatch.textContent = "Waiting for Host to Start…";
 	}
 }
+
+// Nickname editing broadcasts immediately
+inputNickname.addEventListener("input", () => {
+	const val = inputNickname.value.trim();
+	if (val) {
+		myNickname = val;
+		sessionStorage.setItem("spellingBee_nickname", myNickname);
+		localStorage.setItem(LS_NICK_KEY, myNickname);
+		if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+			state.ws.send(JSON.stringify({ type: "join", payload: { nickname: myNickname } }));
+		}
+	}
+});
+
+btnReadyToggle.addEventListener("click", () => {
+	if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+		state.ws.send(JSON.stringify({ type: "set_ready", payload: { is_ready: !state.isReady } }));
+	}
+});
 
 // Host setting change listeners
 [selectMode, selectDuration, selectVariant, selectClaimMode].forEach(el => {
