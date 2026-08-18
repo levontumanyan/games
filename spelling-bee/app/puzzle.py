@@ -105,8 +105,13 @@ def _score(word: str, letters: set[str]) -> int:
 	return pts
 
 
+def generate_puzzle() -> dict:
+	"""Generate a brand-new standalone puzzle dictionary."""
+	return _build_puzzle()
+
+
 def get_puzzle() -> dict:
-	"""Return the current in-memory puzzle, generating one if needed."""
+	"""Return the current in-memory solo puzzle, generating one if needed."""
 	global _current_puzzle
 	if _current_puzzle is None:
 		_current_puzzle = _build_puzzle()
@@ -114,7 +119,7 @@ def get_puzzle() -> dict:
 
 
 def new_puzzle() -> dict:
-	"""Discard the current puzzle and generate a brand-new random one."""
+	"""Discard the current solo puzzle and generate a brand-new random one."""
 	global _current_puzzle
 	_current_puzzle = _build_puzzle()
 	return _current_puzzle

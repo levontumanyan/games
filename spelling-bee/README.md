@@ -1,12 +1,27 @@
 # Spelling Bee
 
-A real-time, dynamic variation of the classic Spelling Bee word puzzle featuring live letter mutations, penalty lockouts, and achievement tracking.
+A real-time, dynamic variation of the classic Spelling Bee word puzzle featuring solo daily puzzles and real-time 1v1 and 2v2 multiplayer duels with synchronized letter mutations, penalty lockouts, and achievement tracking.
 
 # Overview
 
-The objective is to find words of 4 or more letters constructed from the 7 letters in the honeycomb, with the center letter mandatory for every word. Unlike traditional static word puzzles, the honeycomb dynamically shifts over time to challenge the player.
+The objective is to find words of 4 or more letters constructed from the 7 letters in the honeycomb, with the center letter mandatory for every word. The game supports both Solo play and competitive live Multiplayer with customizable rule sets.
 
-# Game Mechanics
+# Game Modes & Multiplayer
+
+## 1v1 Duel Mode
+- Real-time head-to-head competition over WebSockets.
+- Match countdown timer (2m, 3m, 5m, or untimed).
+- Real-time opponent scoreboard and activity feed showing rival finds and penalties.
+- Post-match victory podium and instant rematch flow.
+
+## Scalable Team Architecture (2v2 / FFA)
+- Configurable team slots (`Team Gold` and `Team Blue`) with aggregated team scoring.
+- Pluggable rule variations:
+	- **Dynamic Duel**: Live letter mutations (every 20s) and penalty lockouts (every ~25s) synchronized across all players.
+	- **Classic Mode**: Traditional static NYT honeycomb with no mutations.
+	- **Word Claim Rules**: Independent score race (both players can find the same word) or Snatch mode (first to claim removes word from pool).
+
+# Core Mechanics
 
 ## Letter Mutation
 - The 6 outer letters periodically mutate every 20 seconds.
@@ -28,34 +43,36 @@ The objective is to find words of 4 or more letters constructed from the 7 lette
 - Pangrams (using all 7 letters) earn a 7-point bonus.
 - Ranks progress from Beginner to Queen Bee (100% of maximum possible score).
 
-# Lexicon & Word List
-
-- **Source**: Based on **SCOWL** (Spell Checker Oriented Word Lists), specifically curated down from size 70 to a core ~32,000 common English word lexicon in [words.txt](file:///Users/levontumanyan/repos/cloud-lab/games/spelling-bee/app/words.txt).
-- **Invariants**: Excludes rare/puzzle-unfriendly letters (Q, Z) from base generator pangrams, enforces 4+ letter length, and filters out non-alpha characters.
-- **Validation**: Performed server-side via [app/words.py](file:///Users/levontumanyan/repos/cloud-lab/games/spelling-bee/app/words.py) against live client letter states.
-
 # Architecture & Stack
 
 ## Backend
-- **Framework**: FastAPI ([app/main.py](file:///Users/levontumanyan/repos/cloud-lab/games/spelling-bee/app/main.py))
-- **Puzzle Generator**: Pangram-first sampler with vowel equilibrium ([app/puzzle.py](file:///Users/levontumanyan/repos/cloud-lab/games/spelling-bee/app/puzzle.py))
-- **Validation Engine**: [app/words.py](file:///Users/levontumanyan/repos/cloud-lab/games/spelling-bee/app/words.py)
+- **Framework**: FastAPI ([app/main.py](file:///Users/levontumanyan/repos/games/spelling-bee/app/main.py))
+- **Room & Match Engine**: In-memory room manager ([app/engine/room_manager.py](file:///Users/levontumanyan/repos/games/spelling-bee/app/engine/room_manager.py)) and authoritative session loop ([app/engine/game_session.py](file:///Users/levontumanyan/repos/games/spelling-bee/app/engine/game_session.py))
+- **Rule Strategy Engine**: Pluggable variants ([app/engine/rules_engine.py](file:///Users/levontumanyan/repos/games/spelling-bee/app/engine/rules_engine.py))
+- **Puzzle Generator**: Pangram-first sampler with vowel equilibrium ([app/puzzle.py](file:///Users/levontumanyan/repos/games/spelling-bee/app/puzzle.py))
+- **Validation Engine**: [app/words.py](file:///Users/levontumanyan/repos/games/spelling-bee/app/words.py)
 
 ## Frontend
-- **UI**: Standalone responsive single-page application in [static/index.html](file:///Users/levontumanyan/repos/cloud-lab/games/spelling-bee/static/index.html)
-- **State & Timers**: Client-side countdowns for letter mutations, lockout state machine, and localStorage achievements.
+- **UI**: Standalone responsive interface with integrated lobby overlay, multiplayer HUD, and theme engine in [static/index.html](file:///Users/levontumanyan/repos/games/spelling-bee/static/index.html).
+- **Networking**: Resilient WebSocket client synchronizing state, letter mutations, and rival events.
 
 # Running Locally
 
 ```bash
 uv sync
-uv run python main.py
+uv run uvicorn app.main:app --reload --host 127.0.0.1 --port 8765
+```
+
+# Running Tests
+
+```bash
+uv run pytest
+uv run ruff check .
 ```
 
 # Production Deployment
 
-- **Live URL**: `https://levon.ajwest.ca/spelling/` (and root `https://levon.ajwest.ca` redirect)
+- **Live URL**: `https://levon.ajwest.ca/spelling/`
 - **Host**: `levon-box` (Proxmox CT124 Debian 13 container)
 - **Service**: systemd unit `spelling.service` running uvicorn on port `8765`
 - **Reverse Proxy**: Nginx at `/etc/nginx/levon-apps/spelling.conf`
-- **Auto-deployment**: `git push origin main` pushes simultaneously to GitHub and `levon-box`, automatically syncing dependencies with `uv` and restarting `spelling.service`.

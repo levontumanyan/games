@@ -3,11 +3,11 @@
 <head>
 	<meta charset="UTF-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-	<title>Spelling Bee · Daily Puzzle</title>
-	<meta name="description" content="A daily Spelling Bee word puzzle. Find words using the given letters before they mutate every 20 seconds!" />
+	<title>Spelling Bee · 1v1 Multiplayer & Daily Puzzle</title>
+	<meta name="description" content="Play Spelling Bee Solo or 1v1 real-time multiplayer with dynamic letter mutations, lockouts, and customizable game variations." />
 	<link rel="preconnect" href="https://fonts.googleapis.com" />
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-	<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+	<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 	<style>
 		/* ── Design tokens ─────────────────────────────────────────────── */
 		:root {
@@ -20,6 +20,10 @@
 			--accent:        hsl(44, 95%, 50%);
 			--accent-dark:   hsl(44, 95%, 38%);
 			--accent-light:  hsl(44, 95%, 90%);
+			--team-a:        hsl(38, 95%, 50%);
+			--team-a-light:  hsl(38, 95%, 92%);
+			--team-b:        hsl(210, 90%, 55%);
+			--team-b-light:  hsl(210, 90%, 92%);
 			--green:         hsl(145, 60%, 40%);
 			--green-light:   hsl(145, 60%, 92%);
 			--red:           hsl(4, 75%, 52%);
@@ -29,9 +33,12 @@
 
 			--radius-sm:   6px;
 			--radius-md:   12px;
+			--radius-lg:   16px;
 			--radius-pill: 999px;
 
+			--shadow-sm: 0 2px 8px hsl(220 15% 12% / .06);
 			--shadow-md: 0 4px 16px hsl(220 15% 12% / .10);
+			--shadow-lg: 0 12px 32px hsl(220 15% 12% / .15);
 
 			--ease-spring: cubic-bezier(.34, 1.56, .64, 1);
 			--ease-out:    cubic-bezier(.4, 0, .2, 1);
@@ -47,11 +54,14 @@
 			--text:          hsl(48, 18%, 90%);
 			--text-muted:    hsl(220, 8%, 52%);
 			--accent-light:  hsl(44, 50%, 18%);
+			--team-a-light:  hsl(38, 50%, 18%);
+			--team-b-light:  hsl(210, 50%, 18%);
 			--green:         hsl(145, 55%, 50%);
 			--green-light:   hsl(145, 35%, 13%);
 			--pangram:       hsl(270, 65%, 68%);
 			--pangram-light: hsl(270, 35%, 16%);
 			--shadow-md:     0 4px 20px hsl(0 0% 0% / .35);
+			--shadow-lg:     0 12px 36px hsl(0 0% 0% / .50);
 		}
 
 		/* Smooth colour transition when theme switches */
@@ -64,7 +74,6 @@
 
 		/* ── Reset ─────────────────────────────────────────────────────── */
 		*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
 
 		body {
 			font-family: 'Inter', sans-serif;
@@ -86,27 +95,82 @@
 			display: flex;
 			align-items: center;
 			justify-content: space-between;
-			height: 60px;
+			height: 64px;
 			position: sticky;
 			top: 0;
 			z-index: 100;
 		}
 
+		.header-left {
+			display: flex;
+			align-items: center;
+			gap: 16px;
+		}
+
 		.logo {
 			font-family: 'DM Serif Display', serif;
-			font-size: 1.4rem;
+			font-size: 1.45rem;
 			letter-spacing: -.02em;
 			display: flex;
 			align-items: center;
-			gap: 8px;
+			gap: 9px;
+			cursor: pointer;
+			text-decoration: none;
+			color: inherit;
 		}
 
 		.logo-hex {
-			width: 26px;
-			height: 26px;
+			width: 28px;
+			height: 28px;
 			background: var(--accent);
 			clip-path: polygon(50% 0%,93% 25%,93% 75%,50% 100%,7% 75%,7% 25%);
 			flex-shrink: 0;
+		}
+
+		/* Mode switch tabs */
+		.mode-tabs {
+			display: flex;
+			background: var(--surface);
+			padding: 3px;
+			border-radius: var(--radius-pill);
+			border: 1px solid var(--border);
+			gap: 2px;
+		}
+
+		.mode-tab {
+			padding: 4px 12px;
+			border-radius: var(--radius-pill);
+			border: none;
+			background: transparent;
+			color: var(--text-muted);
+			font-family: 'Inter', sans-serif;
+			font-size: .78rem;
+			font-weight: 600;
+			cursor: pointer;
+			display: flex;
+			align-items: center;
+			gap: 6px;
+			transition: all var(--t);
+		}
+
+		.mode-tab.active {
+			background: var(--text);
+			color: var(--bg);
+			box-shadow: var(--shadow-sm);
+		}
+
+		.mode-tab .badge {
+			font-size: .65rem;
+			padding: 1px 5px;
+			border-radius: var(--radius-pill);
+			background: var(--accent);
+			color: hsl(44, 90%, 15%);
+			font-weight: 700;
+		}
+
+		.mode-tab.active .badge {
+			background: var(--accent);
+			color: hsl(44, 90%, 15%);
 		}
 
 		.header-right {
@@ -120,17 +184,17 @@
 
 		.score-badge {
 			background: var(--accent);
-			color: var(--text);
+			color: hsl(44, 90%, 15%);
 			font-weight: 700;
 			font-size: .88rem;
 			padding: 3px 12px;
 			border-radius: var(--radius-pill);
-			min-width: 36px;
+			min-width: 38px;
 			text-align: center;
 		}
 
-		.btn-new-game {
-			padding: 5px 14px;
+		.btn-header {
+			padding: 6px 14px;
 			border-radius: var(--radius-pill);
 			border: 1.5px solid var(--border);
 			background: transparent;
@@ -139,18 +203,26 @@
 			font-size: .78rem;
 			font-weight: 600;
 			cursor: pointer;
+			display: inline-flex;
+			align-items: center;
+			gap: 6px;
 			letter-spacing: .02em;
 			transition: background var(--t), border-color var(--t), color var(--t);
 		}
 
-		.btn-new-game:hover {
+		.btn-header:hover {
 			background: var(--surface);
 			border-color: var(--text-muted);
 			color: var(--text);
 		}
 
-		.theme-toggle {
+		.btn-header.accent {
+			background: var(--accent-light);
+			border-color: var(--accent);
+			color: var(--accent-dark);
+		}
 
+		.theme-toggle {
 			width: 36px;
 			height: 36px;
 			border-radius: 50%;
@@ -162,7 +234,6 @@
 			justify-content: center;
 			color: var(--text-muted);
 			flex-shrink: 0;
-			/* Override the global colour transition for this element's transform */
 			transition:
 				background-color 220ms var(--ease-out),
 				border-color     220ms var(--ease-out),
@@ -184,7 +255,6 @@
 			stroke-width: 2;
 			stroke-linecap: round;
 			stroke-linejoin: round;
-			transition: opacity 150ms ease, transform 300ms var(--ease-spring);
 		}
 
 		.theme-toggle .icon-sun  { display: block; }
@@ -193,19 +263,152 @@
 		[data-theme="dark"] .theme-toggle .icon-sun  { display: none;  }
 		[data-theme="dark"] .theme-toggle .icon-moon { display: block; }
 
+		/* ── Multiplayer Match Bar (Active Match HUD) ──────────────────── */
+		.match-hud {
+			width: 100%;
+			background: var(--surface);
+			border-bottom: 1px solid var(--border);
+			padding: 10px clamp(16px, 4vw, 40px);
+			display: none;
+			flex-direction: column;
+			gap: 8px;
+			animation: slideDown 220ms var(--ease-out);
+		}
+
+		.match-hud.active { display: flex; }
+
+		@keyframes slideDown {
+			from { opacity: 0; transform: translateY(-8px); }
+			to   { opacity: 1; transform: translateY(0); }
+		}
+
+		.match-hud-main {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			flex-wrap: wrap;
+			gap: 12px;
+		}
+
+		.duel-scorecard {
+			display: flex;
+			align-items: center;
+			gap: 16px;
+			flex: 1;
+			min-width: 260px;
+		}
+
+		.duel-side {
+			display: flex;
+			align-items: center;
+			gap: 8px;
+			flex: 1;
+		}
+
+		.duel-side.right {
+			justify-content: flex-end;
+			text-align: right;
+		}
+
+		.duel-side.team-a .duel-badge { background: var(--team-a); color: hsl(38, 90%, 15%); }
+		.duel-side.team-b .duel-badge { background: var(--team-b); color: #fff; }
+
+		.duel-badge {
+			padding: 3px 10px;
+			border-radius: var(--radius-pill);
+			font-size: .75rem;
+			font-weight: 700;
+		}
+
+		.duel-name {
+			font-size: .88rem;
+			font-weight: 600;
+			white-space: nowrap;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			max-width: 140px;
+		}
+
+		.duel-pts {
+			font-family: 'DM Serif Display', serif;
+			font-size: 1.4rem;
+		}
+
+		.duel-vs {
+			font-size: .75rem;
+			font-weight: 800;
+			color: var(--text-muted);
+			padding: 2px 8px;
+			border-radius: var(--radius-pill);
+			background: var(--surface-2);
+		}
+
+		.match-timer-box {
+			display: flex;
+			align-items: center;
+			gap: 8px;
+			font-size: .85rem;
+			font-weight: 700;
+			font-variant-numeric: tabular-nums;
+			background: var(--surface-2);
+			padding: 5px 14px;
+			border-radius: var(--radius-pill);
+			border: 1px solid var(--border);
+		}
+
+		.match-timer-box.urgent {
+			background: hsl(4, 75%, 52% / .15);
+			color: var(--red);
+			border-color: var(--red);
+			animation: pulse 1s infinite;
+		}
+
+		@keyframes pulse {
+			0%, 100% { opacity: 1; }
+			50% { opacity: .7; }
+		}
+
+		/* Multiplayer Live Event Feed */
+		.match-feed {
+			font-size: .75rem;
+			color: var(--text-muted);
+			font-weight: 500;
+			display: flex;
+			align-items: center;
+			gap: 8px;
+			min-height: 18px;
+		}
+
+		.feed-pill {
+			background: var(--surface-2);
+			padding: 2px 8px;
+			border-radius: var(--radius-pill);
+			color: var(--text);
+			font-weight: 600;
+			animation: fadeIn 200ms ease;
+		}
+
+		@keyframes fadeIn {
+			from { opacity: 0; }
+			to   { opacity: 1; }
+		}
+
 		/* ── Layout ────────────────────────────────────────────────────── */
 		main {
 			width: 100%;
-			max-width: 860px;
-			padding: clamp(20px, 4vw, 48px) clamp(16px, 4vw, 40px);
+			max-width: 880px;
+			padding: clamp(20px, 4vw, 44px) clamp(16px, 4vw, 40px);
 			display: grid;
-			grid-template-columns: 1fr 280px;
+			grid-template-columns: 1fr 290px;
 			gap: 36px;
 			align-items: start;
 		}
 
-		@media (max-width: 680px) {
+		@media (max-width: 720px) {
 			main { grid-template-columns: 1fr; }
+			.mode-tabs { order: 2; margin-top: 6px; }
+			.header-left { flex-direction: column; align-items: flex-start; gap: 4px; }
+			header { height: auto; padding: 10px 16px; }
 		}
 
 		/* ── Left column ────────────────────────────────────────────────── */
@@ -213,10 +416,10 @@
 			display: flex;
 			flex-direction: column;
 			align-items: center;
-			gap: 24px;
+			gap: 22px;
 		}
 
-		/* ── Rank bar ───────────────────────────────────────────────────── */
+		/* ── Rank bar (Solo Mode) ───────────────────────────────────────── */
 		.rank-row {
 			width: 100%;
 			display: flex;
@@ -277,7 +480,6 @@
 			overflow: hidden;
 		}
 
-		/* fill drains left-to-right: starts full, empties to zero */
 		.mutate-fill {
 			height: 100%;
 			background: var(--mutate-color);
@@ -312,7 +514,6 @@
 			border: none;
 			border-bottom: 2.5px solid var(--border);
 			outline: none;
-			/* Text is invisible — the overlay renders styled spans instead */
 			color: transparent;
 			caret-color: var(--accent);
 			transition: border-color var(--t) var(--ease-out);
@@ -320,7 +521,6 @@
 
 		.word-input:focus { border-color: var(--accent); }
 
-		/* Overlay: renders per-character colored spans on top of the input */
 		.word-display-overlay {
 			position: absolute;
 			inset: 0;
@@ -389,18 +589,16 @@
 
 		.hex-btn.center:hover { background: hsl(44, 95%, 44%); }
 
-		/* Letter-swap animation — hex flips over and comes back with new letter */
 		@keyframes hexMutateOut {
-			0%   { transform: scale(1)    rotateY(0deg);   }
-			50%  { transform: scale(.6)   rotateY(90deg);  opacity: .3; }
-			100% { transform: scale(1)    rotateY(0deg);   }
+			0%   { transform: scale(1) rotateY(0deg); }
+			50%  { transform: scale(.6) rotateY(90deg); opacity: .3; }
+			100% { transform: scale(1) rotateY(0deg); }
 		}
 
 		.hex-btn.mutating {
 			animation: hexMutateOut 440ms var(--ease-spring) both;
 		}
 
-		/* ── Letter lockout: warning phase ───────────────── */
 		@keyframes hexWarnPulse {
 			0%, 100% { box-shadow: 0 0 0 0 hsl(4, 75%, 52% / .0); }
 			50%      { box-shadow: 0 0 18px 4px hsl(4, 75%, 52% / .55); }
@@ -410,7 +608,6 @@
 			animation: hexWarnPulse 0.7s ease-in-out infinite;
 		}
 
-		/* ── Letter lockout: locked phase ────────────────── */
 		.hex-btn.lockout-locked {
 			background: var(--red) !important;
 			color: hsl(0, 0%, 100% / .35) !important;
@@ -420,7 +617,6 @@
 			animation: none;
 		}
 
-		/* ── Letter lockout: unlock bounce ───────────────── */
 		@keyframes hexUnlock {
 			0%   { transform: scale(.85); }
 			50%  { transform: scale(1.12); }
@@ -431,7 +627,6 @@
 			animation: hexUnlock 350ms var(--ease-spring) both;
 		}
 
-		/* Word display: locked letter appears red/struck */
 		.word-display-overlay .ll {
 			color: var(--red);
 			text-decoration: line-through;
@@ -497,11 +692,6 @@
 			background: hsl(44, 95%, 38% / .15);
 			padding: 1px 6px;
 			border-radius: var(--radius-pill);
-			letter-spacing: .02em;
-		}
-
-		.btn-center:not(:disabled) .cost-badge {
-			background: hsl(44, 95%, 38% / .2);
 		}
 
 		/* ── Toast ──────────────────────────────────────────────────────── */
@@ -529,11 +719,12 @@
 			transform: translateX(-50%) translateY(0);
 		}
 
-		#toast.good    { background: var(--green); }
-		#toast.great   { background: var(--pangram); }
+		#toast.good    { background: var(--green); color: #fff; }
+		#toast.great   { background: var(--pangram); color: #fff; }
 		#toast.mutated { background: var(--mutate-color); color: #fff; }
+		#toast.danger  { background: var(--red); color: #fff; }
 
-		/* ── Right col ──────────────────────────────────────────────────── */
+		/* ── Right column (Stats / Words) ───────────────────────────────── */
 		.words-col {
 			display: flex;
 			flex-direction: column;
@@ -583,7 +774,7 @@
 			list-style: none;
 			display: flex;
 			flex-direction: column;
-			gap: 2px;
+			gap: 4px;
 			max-height: 460px;
 			overflow-y: auto;
 			padding-right: 4px;
@@ -595,11 +786,11 @@
 		.word-item {
 			padding: 7px 12px;
 			border-radius: var(--radius-sm);
-			font-size: .9rem;
+			font-size: .88rem;
 			font-weight: 500;
 			display: flex;
 			align-items: center;
-			gap: 8px;
+			justify-content: space-between;
 			animation: slideIn 280ms var(--ease-spring) both;
 		}
 
@@ -611,46 +802,20 @@
 		.word-item.pangram { background: var(--pangram-light); color: var(--pangram); font-weight: 700; }
 		.word-item.normal  { background: var(--green-light); color: var(--green); }
 
-		.word-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
-
-		/* ── Achievements button & modal ─────────────────────────────── */
-		.btn-achievements {
-			padding: 5px 12px;
-			border-radius: var(--radius-pill);
-			border: 1.5px solid var(--border);
-			background: transparent;
-			color: var(--text-muted);
-			font-family: 'Inter', sans-serif;
-			font-size: .78rem;
-			font-weight: 600;
-			cursor: pointer;
+		.word-item .word-meta {
 			display: flex;
 			align-items: center;
 			gap: 6px;
-			letter-spacing: .02em;
-			transition: background var(--t), border-color var(--t), color var(--t);
+			font-size: .75rem;
+			font-weight: 700;
+			opacity: .85;
 		}
 
-		.btn-achievements svg {
-			width: 14px;
-			height: 14px;
-			stroke: currentColor;
-			fill: none;
-			stroke-width: 2;
-			stroke-linecap: round;
-			stroke-linejoin: round;
-		}
-
-		.btn-achievements:hover {
-			background: var(--surface);
-			border-color: var(--text-muted);
-			color: var(--text);
-		}
-
+		/* ── Modal Common Styles ────────────────────────────────────────── */
 		.modal-backdrop {
 			position: fixed;
 			inset: 0;
-			background: hsl(220 15% 12% / .50);
+			background: hsl(220 15% 12% / .55);
 			backdrop-filter: blur(4px);
 			-webkit-backdrop-filter: blur(4px);
 			z-index: 1000;
@@ -671,13 +836,13 @@
 		.modal-dialog {
 			background: var(--bg);
 			border: 1px solid var(--border);
-			border-radius: var(--radius-md);
+			border-radius: var(--radius-lg);
 			width: 100%;
-			max-width: 480px;
-			max-height: 85vh;
+			max-width: 520px;
+			max-height: 88vh;
 			display: flex;
 			flex-direction: column;
-			box-shadow: var(--shadow-md);
+			box-shadow: var(--shadow-lg);
 			transform: scale(.95);
 			transition: transform 200ms var(--ease-spring);
 			overflow: hidden;
@@ -717,7 +882,6 @@
 			display: flex;
 			align-items: center;
 			justify-content: center;
-			transition: background var(--t), color var(--t);
 		}
 
 		.modal-close:hover {
@@ -733,15 +897,265 @@
 			gap: 20px;
 		}
 
-		.achieve-section-title {
-			font-size: .75rem;
-			text-transform: uppercase;
-			letter-spacing: .05em;
-			color: var(--text-muted);
-			font-weight: 700;
-			margin-bottom: 10px;
+		/* ── Multiplayer Lobby Modal UI ────────────────────────────────── */
+		.lobby-code-box {
+			background: var(--surface);
+			border: 2px dashed var(--border);
+			border-radius: var(--radius-md);
+			padding: 16px;
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: 12px;
 		}
 
+		.lobby-code-val {
+			font-family: 'DM Serif Display', serif;
+			font-size: 1.8rem;
+			letter-spacing: .08em;
+			color: var(--text);
+		}
+
+		.btn-copy {
+			padding: 7px 14px;
+			border-radius: var(--radius-pill);
+			background: var(--accent);
+			border: none;
+			color: hsl(44, 90%, 15%);
+			font-weight: 700;
+			font-size: .8rem;
+			cursor: pointer;
+			display: flex;
+			align-items: center;
+			gap: 5px;
+			transition: opacity var(--t);
+		}
+
+		.btn-copy:hover { opacity: .9; }
+
+		.input-group {
+			display: flex;
+			flex-direction: column;
+			gap: 6px;
+		}
+
+		.input-label {
+			font-size: .75rem;
+			font-weight: 700;
+			text-transform: uppercase;
+			color: var(--text-muted);
+			letter-spacing: .04em;
+		}
+
+		.text-input, .select-input {
+			padding: 9px 12px;
+			border-radius: var(--radius-sm);
+			border: 1.5px solid var(--border);
+			background: var(--surface);
+			color: var(--text);
+			font-family: 'Inter', sans-serif;
+			font-size: .9rem;
+			outline: none;
+		}
+
+		.text-input:focus, .select-input:focus {
+			border-color: var(--accent);
+		}
+
+		.lobby-grid-2 {
+			display: grid;
+			grid-template-columns: 1fr 1fr;
+			gap: 12px;
+		}
+
+		.lobby-teams-wrap {
+			display: flex;
+			flex-direction: column;
+			gap: 10px;
+		}
+
+		.team-card {
+			background: var(--surface);
+			border: 1px solid var(--border);
+			border-radius: var(--radius-md);
+			padding: 12px 14px;
+			display: flex;
+			flex-direction: column;
+			gap: 8px;
+		}
+
+		.team-card.team-a { border-left: 4px solid var(--team-a); }
+		.team-card.team-b { border-left: 4px solid var(--team-b); }
+
+		.team-header {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			font-size: .82rem;
+			font-weight: 700;
+		}
+
+		.player-slots {
+			display: flex;
+			flex-direction: column;
+			gap: 6px;
+		}
+
+		.player-slot-item {
+			background: var(--bg);
+			border: 1px solid var(--border);
+			border-radius: var(--radius-sm);
+			padding: 6px 10px;
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			font-size: .84rem;
+		}
+
+		.player-slot-item .slot-name {
+			font-weight: 600;
+			display: flex;
+			align-items: center;
+			gap: 6px;
+		}
+
+		.tag-host {
+			background: var(--accent);
+			color: hsl(44, 90%, 15%);
+			font-size: .65rem;
+			font-weight: 800;
+			padding: 1px 5px;
+			border-radius: var(--radius-pill);
+		}
+
+		.tag-ready {
+			font-size: .72rem;
+			font-weight: 700;
+			color: var(--green);
+		}
+
+		.tag-not-ready {
+			font-size: .72rem;
+			font-weight: 700;
+			color: var(--text-muted);
+		}
+
+		.btn-switch-team {
+			padding: 3px 8px;
+			border-radius: var(--radius-pill);
+			border: 1px solid var(--border);
+			background: transparent;
+			font-size: .72rem;
+			font-weight: 600;
+			color: var(--text-muted);
+			cursor: pointer;
+		}
+
+		.btn-switch-team:hover {
+			background: var(--surface-2);
+			color: var(--text);
+		}
+
+		.lobby-actions {
+			display: flex;
+			gap: 10px;
+			margin-top: 8px;
+		}
+
+		.btn-lobby-primary {
+			flex: 1;
+			padding: 12px 20px;
+			border-radius: var(--radius-pill);
+			background: var(--text);
+			color: var(--bg);
+			border: none;
+			font-family: 'Inter', sans-serif;
+			font-size: .92rem;
+			font-weight: 700;
+			cursor: pointer;
+			transition: background var(--t);
+		}
+
+		.btn-lobby-primary:hover:not(:disabled) {
+			background: hsl(220, 15%, 25%);
+		}
+
+		.btn-lobby-primary:disabled {
+			opacity: .4;
+			cursor: not-allowed;
+		}
+
+		.btn-lobby-secondary {
+			padding: 12px 20px;
+			border-radius: var(--radius-pill);
+			background: var(--surface);
+			border: 1.5px solid var(--border);
+			color: var(--text);
+			font-family: 'Inter', sans-serif;
+			font-size: .92rem;
+			font-weight: 600;
+			cursor: pointer;
+		}
+
+		.btn-lobby-secondary:hover {
+			background: var(--surface-2);
+		}
+
+		/* Join Room Bar in Modal */
+		.join-code-row {
+			display: flex;
+			gap: 8px;
+			align-items: center;
+		}
+
+		/* ── Game Over Modal ────────────────────────────────────────────── */
+		.game-over-banner {
+			text-align: center;
+			padding: 16px 0;
+		}
+
+		.game-over-title {
+			font-family: 'DM Serif Display', serif;
+			font-size: 2.2rem;
+			line-height: 1.1;
+		}
+
+		.game-over-sub {
+			font-size: .9rem;
+			color: var(--text-muted);
+			margin-top: 4px;
+		}
+
+		.podium-scores {
+			display: grid;
+			grid-template-columns: 1fr 1fr;
+			gap: 12px;
+			background: var(--surface);
+			border-radius: var(--radius-md);
+			padding: 16px;
+			border: 1px solid var(--border);
+		}
+
+		.podium-item {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			gap: 4px;
+		}
+
+		.podium-val {
+			font-family: 'DM Serif Display', serif;
+			font-size: 2rem;
+		}
+
+		.podium-label {
+			font-size: .75rem;
+			font-weight: 700;
+			text-transform: uppercase;
+			color: var(--text-muted);
+		}
+
+		/* ── Achievements Modal ─────────────────────────────────────────── */
 		.records-grid {
 			display: grid;
 			grid-template-columns: repeat(2, 1fr);
@@ -758,9 +1172,7 @@
 			gap: 4px;
 		}
 
-		.record-card.full-width {
-			grid-column: span 2;
-		}
+		.record-card.full-width { grid-column: span 2; }
 
 		.record-label {
 			font-size: .72rem;
@@ -817,9 +1229,7 @@
 			flex-shrink: 0;
 		}
 
-		.badge-item.unlocked .badge-icon {
-			background: var(--accent-light);
-		}
+		.badge-item.unlocked .badge-icon { background: var(--accent-light); }
 
 		.badge-info {
 			flex: 1;
@@ -852,37 +1262,36 @@
 			background: var(--green-light);
 			color: var(--green);
 		}
-
-		@media (max-width: 680px) {
-			.words-col { order: -1; }
-			.records-grid { grid-template-columns: 1fr; }
-			.record-card.full-width { grid-column: span 1; }
-		}
 	</style>
 </head>
 <body>
 
 <header>
-	<div class="logo">
-		<div class="logo-hex"></div>
-		Spelling Bee
+	<div class="header-left">
+		<a class="logo" id="logo-btn" href="#">
+			<div class="logo-hex"></div>
+			Spelling Bee
+		</a>
+		<div class="mode-tabs">
+			<button class="mode-tab active" id="tab-solo">Solo</button>
+			<button class="mode-tab" id="tab-multi">
+				1v1 Duel
+				<span class="badge">Live</span>
+			</button>
+		</div>
 	</div>
+
 	<div class="header-right">
-		<button class="btn-achievements" id="btn-achievements" title="View your achievements and records" aria-label="Achievements">
-			<svg viewBox="0 0 24 24">
-				<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/>
-				<path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
-				<path d="M4 22h16"/>
-				<path d="M10 14.66V17c0 .55-.45 1-1 1H7v4h10v-4h-2c-.55 0-1-.45-1-1v-2.34"/>
-				<path d="M6 4h12v7a6 6 0 0 1-12 0V4z"/>
-			</svg>
-			<span>Achievements</span>
+		<button class="btn-header" id="btn-achievements" title="View achievements & records">
+			🏆 <span>Records</span>
 		</button>
-		<button class="btn-new-game" id="btn-new-game" title="Start a new random puzzle">New Game</button>
+		<button class="btn-header accent" id="btn-room-action" style="display:none">
+			⚔️ <span id="room-btn-text">Room Lobby</span>
+		</button>
+		<button class="btn-header" id="btn-new-game" title="Start a fresh random puzzle">New Game</button>
 		Score
 		<span class="score-badge" id="header-score">0</span>
 		<button class="theme-toggle" id="btn-theme" aria-label="Toggle dark mode" title="Toggle dark mode">
-			<!-- Sun icon (shown in light mode) -->
 			<svg class="icon-sun" viewBox="0 0 24 24">
 				<circle cx="12" cy="12" r="5"/>
 				<line x1="12" y1="1"  x2="12" y2="3"/>
@@ -894,7 +1303,6 @@
 				<line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
 				<line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
 			</svg>
-			<!-- Moon icon (shown in dark mode) -->
 			<svg class="icon-moon" viewBox="0 0 24 24">
 				<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
 			</svg>
@@ -902,12 +1310,46 @@
 	</div>
 </header>
 
+<!-- Multiplayer Live Match HUD -->
+<div class="match-hud" id="match-hud">
+	<div class="match-hud-main">
+		<div class="duel-scorecard">
+			<!-- Side A: You or Team A -->
+			<div class="duel-side team-a">
+				<span class="duel-badge" id="hud-p1-badge">YOU</span>
+				<span class="duel-name" id="hud-p1-name">Player 1</span>
+				<span class="duel-pts" id="hud-p1-pts">0</span>
+			</div>
+
+			<div class="duel-vs">VS</div>
+
+			<!-- Side B: Opponent or Team B -->
+			<div class="duel-side team-b right">
+				<span class="duel-pts" id="hud-p2-pts">0</span>
+				<span class="duel-name" id="hud-p2-name">Waiting…</span>
+				<span class="duel-badge" id="hud-p2-badge">RIVAL</span>
+			</div>
+		</div>
+
+		<!-- Match Countdown Timer -->
+		<div class="match-timer-box" id="match-timer-box">
+			<span>⏱️</span>
+			<span id="match-timer-val">3:00</span>
+		</div>
+	</div>
+
+	<!-- Activity feed -->
+	<div class="match-feed" id="match-feed">
+		<span class="feed-pill" id="feed-text">1v1 Duel Match Started! Find words before time runs out.</span>
+	</div>
+</div>
+
 <main>
-	<!-- Left: game -->
+	<!-- Left: Game honeycomb & input -->
 	<div class="game-col">
 
-		<!-- Rank progress -->
-		<div class="rank-row" style="width:100%">
+		<!-- Solo Rank progress (hidden in multiplayer) -->
+		<div class="rank-row" id="rank-row" style="width:100%">
 			<div class="rank-meta">
 				<span class="rank-name" id="rank-name">Beginner</span>
 				<span class="rank-pct" id="rank-pct">0%</span>
@@ -917,8 +1359,8 @@
 			</div>
 		</div>
 
-		<!-- Letter-mutate countdown -->
-		<div class="mutate-row" style="width:100%">
+		<!-- Letter-mutate countdown (Synchronized in MP) -->
+		<div class="mutate-row" id="mutate-row" style="width:100%">
 			<span>Letter changes in</span>
 			<div class="mutate-track">
 				<div class="mutate-fill" id="mutate-fill"></div>
@@ -984,7 +1426,7 @@
 		</div>
 
 		<div class="words-header">
-			<span class="words-title">Found words</span>
+			<span class="words-title" id="words-header-title">Found words</span>
 			<span class="words-count" id="words-count">0 words</span>
 		</div>
 
@@ -993,18 +1435,151 @@
 	</div>
 </main>
 
+<!-- Multiplayer Room Lobby Modal -->
+<div class="modal-backdrop" id="lobby-modal" aria-hidden="true">
+	<div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="lobby-title">
+		<div class="modal-header">
+			<div class="modal-title" id="lobby-title">
+				⚔️ Multiplayer Lobby
+			</div>
+			<button class="modal-close" id="btn-close-lobby" aria-label="Close lobby">&times;</button>
+		</div>
+		<div class="modal-body">
+			<!-- Room Code & Copy Link -->
+			<div class="lobby-code-box">
+				<div>
+					<div class="input-label">Room Code</div>
+					<div class="lobby-code-val" id="lobby-code-display">BEE-777</div>
+				</div>
+				<button class="btn-copy" id="btn-copy-link">
+					📋 <span>Copy Link</span>
+				</button>
+			</div>
+
+			<!-- Nickname input -->
+			<div class="input-group">
+				<label class="input-label" for="input-nickname">Your Nickname</label>
+				<input class="text-input" id="input-nickname" type="text" maxlength="16" placeholder="Enter nickname…" />
+			</div>
+
+			<!-- Host Room Settings -->
+			<div id="host-settings-section" class="lobby-grid-2">
+				<div class="input-group">
+					<label class="input-label" for="select-mode">Format</label>
+					<select class="select-input" id="select-mode">
+						<option value="1v1">1v1 Duel</option>
+						<option value="2v2">2v2 Team Battle</option>
+						<option value="ffa">Free For All</option>
+					</select>
+				</div>
+				<div class="input-group">
+					<label class="input-label" for="select-duration">Match Timer</label>
+					<select class="select-input" id="select-duration">
+						<option value="120">2 Minutes</option>
+						<option value="180" selected>3 Minutes</option>
+						<option value="300">5 Minutes</option>
+						<option value="0">Untimed</option>
+					</select>
+				</div>
+				<div class="input-group">
+					<label class="input-label" for="select-variant">Game Variant</label>
+					<select class="select-input" id="select-variant">
+						<option value="dynamic" selected>Dynamic (Mutations + Lockouts)</option>
+						<option value="classic">Classic (Static Hive)</option>
+					</select>
+				</div>
+				<div class="input-group">
+					<label class="input-label" for="select-claim-mode">Word Claims</label>
+					<select class="select-input" id="select-claim-mode">
+						<option value="independent" selected>Independent (Score Race)</option>
+						<option value="snatch">Snatch (Exclusive Claim)</option>
+					</select>
+				</div>
+			</div>
+
+			<!-- Teams & Player Slots -->
+			<div class="lobby-teams-wrap">
+				<div class="team-card team-a">
+					<div class="team-header">
+						<span style="color:var(--team-a)">Team Gold (Side A)</span>
+						<button class="btn-switch-team" data-team="team_a">Join Team A</button>
+					</div>
+					<div class="player-slots" id="slots-team-a"></div>
+				</div>
+
+				<div class="team-card team-b">
+					<div class="team-header">
+						<span style="color:var(--team-b)">Team Blue (Side B)</span>
+						<button class="btn-switch-team" data-team="team_b">Join Team B</button>
+					</div>
+					<div class="player-slots" id="slots-team-b"></div>
+				</div>
+			</div>
+
+			<!-- Join another room -->
+			<div class="input-group" style="margin-top:4px">
+				<label class="input-label">Join Another Room by Code</label>
+				<div class="join-code-row">
+					<input class="text-input" id="input-join-code" type="text" placeholder="e.g. BEE-123" style="text-transform:uppercase" />
+					<button class="btn-lobby-secondary" id="btn-join-code">Join</button>
+				</div>
+			</div>
+
+			<!-- Bottom CTA controls -->
+			<div class="lobby-actions">
+				<button class="btn-lobby-secondary" id="btn-toggle-ready">Toggle Ready</button>
+				<button class="btn-lobby-primary" id="btn-start-match" disabled>Start Match</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- Match Over / Victory Modal -->
+<div class="modal-backdrop" id="game-over-modal" aria-hidden="true">
+	<div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="game-over-title">
+		<div class="modal-header">
+			<div class="modal-title">🏆 Match Results</div>
+			<button class="modal-close" id="btn-close-game-over">&times;</button>
+		</div>
+		<div class="modal-body">
+			<div class="game-over-banner">
+				<div class="game-over-title" id="go-result-title">Victory! 🌟</div>
+				<div class="game-over-sub" id="go-result-sub">Time expired</div>
+			</div>
+
+			<div class="podium-scores">
+				<div class="podium-item">
+					<span class="podium-label" id="go-p1-label">You</span>
+					<span class="podium-val" id="go-p1-score" style="color:var(--team-a)">0</span>
+					<span class="record-sub" id="go-p1-words">0 words</span>
+				</div>
+				<div class="podium-item">
+					<span class="podium-label" id="go-p2-label">Opponent</span>
+					<span class="podium-val" id="go-p2-score" style="color:var(--team-b)">0</span>
+					<span class="record-sub" id="go-p2-words">0 words</span>
+				</div>
+			</div>
+
+			<div class="lobby-actions">
+				<button class="btn-lobby-secondary" id="btn-go-lobby">Back to Lobby</button>
+				<button class="btn-lobby-primary" id="btn-go-rematch">Rematch ⚔️</button>
+			</div>
+		</div>
+	</div>
+</div>
+
 <!-- Achievements Modal -->
 <div class="modal-backdrop" id="achievements-modal" aria-hidden="true">
 	<div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="modal-title">
 		<div class="modal-header">
 			<div class="modal-title" id="modal-title">
-				🏆 Achievements & Records
+				🏆 Lifetime Records & Milestones
 			</div>
 			<button class="modal-close" id="btn-close-achievements" aria-label="Close achievements modal">&times;</button>
 		</div>
 		<div class="modal-body">
 			<div>
-				<div class="achieve-section-title">Lifetime Records</div>
+				<div class="record-label" style="margin-bottom:10px">Lifetime Stats</div>
 				<div class="records-grid">
 					<div class="record-card full-width">
 						<span class="record-label">Longest Word Guessed</span>
@@ -1035,7 +1610,7 @@
 			</div>
 
 			<div>
-				<div class="achieve-section-title">Milestones</div>
+				<div class="record-label" style="margin-bottom:10px">Milestones</div>
 				<div class="badges-list" id="badges-list"></div>
 			</div>
 		</div>
@@ -1046,18 +1621,15 @@
 
 <script>
 /* ═════════════════════════════════════════════════════════════════
-   Spelling Bee — Game Logic
+   Spelling Bee — Scalable Multiplayer & Solo Engine
    ═════════════════════════════════════════════════════════════════ */
 
-const MUTATE_INTERVAL  = 20;   // seconds between letter mutations
+const MUTATE_INTERVAL = 20;
+const LOCKOUT_INTERVAL_BASE = 25;
+const LOCKOUT_INTERVAL_JITTER = 3;
+const LOCKOUT_WARN_DURATION = 2;
+const LOCKOUT_LOCK_DURATION = 10;
 
-// Letter lockout configuration
-const LOCKOUT_INTERVAL_BASE   = 25;  // seconds between lockout events
-const LOCKOUT_INTERVAL_JITTER = 3;   // ±3s randomness
-const LOCKOUT_WARN_DURATION   = 2;   // seconds of warning animation
-const LOCKOUT_LOCK_DURATION   = 10;  // seconds letter is unusable
-
-// Letters excluded from random picks (rare / puzzle-unfriendly)
 const EXCLUDED = new Set(["q", "x", "z"]);
 const VOWELS = new Set(["a", "e", "i", "o", "u"]);
 const ALL_LETTERS = "abcdefghijklmnopqrstuvwxyz".split("").filter(l => !EXCLUDED.has(l));
@@ -1075,25 +1647,47 @@ const RANKS = [
 	{ name: "Queen Bee",  pct: 1.00 },
 ];
 
-/* ── State ─────────────────────────────────────────────────────── */
+/* ── App State ─────────────────────────────────────────────────── */
 const LS_MAX_KEY = "spellingBee_maxScore";
+const LS_NICK_KEY = "spellingBee_nickname";
+const LS_PID_KEY = "spellingBee_playerId";
+
+function getOrCreatePlayerId() {
+	let pid = localStorage.getItem(LS_PID_KEY);
+	if (!pid) {
+		pid = "usr_" + Math.random().toString(36).substring(2, 10);
+		localStorage.setItem(LS_PID_KEY, pid);
+	}
+	return pid;
+}
+
+const myPlayerId = getOrCreatePlayerId();
+let myNickname = localStorage.getItem(LS_NICK_KEY) || ("BeePlayer" + Math.floor(Math.random() * 900 + 100));
 
 const state = {
+	mode: "solo",        // "solo" | "multi"
 	center: "",
-	outer: [],        // 6 outer letters (live — mutate over time)
-	graceLetter: null,// 1-time grace for single most recently mutated letter
-	maxScore: 0,      // total possible score for this puzzle (for rank calc)
+	outer: [],
+	graceLetter: null,
+	maxScore: 0,
 	score: 0,
 	words: [],
 	pangrams: 0,
 	mutateSecsLeft: MUTATE_INTERVAL,
 	allTimeMax: parseInt(localStorage.getItem(LS_MAX_KEY) || "0", 10),
-	// Letter lockout state
+	// Lockout state
 	lockedLetter: null,
 	lockoutWarningLetter: null,
 	lockoutSecsUntilNext: LOCKOUT_INTERVAL_BASE,
 	lockoutPhaseSecsLeft: 0,
-	lockoutPhase: "idle",       // "idle" | "warning" | "locked"
+	lockoutPhase: "idle",
+	// Multiplayer state
+	roomCode: null,
+	isHost: false,
+	isReady: false,
+	ws: null,
+	roomSnapshot: null,
+	matchTimerLeft: 0,
 };
 
 /* ── Achievements & Records ────────────────────────────────────── */
@@ -1112,8 +1706,8 @@ const BADGES = [
 function loadAchievements() {
 	const defaultAchieve = {
 		highScore: parseInt(localStorage.getItem(LS_MAX_KEY) || "0", 10),
-		longestWord: null, // { word: "...", length: 0 }
-		bestWord: null,    // { word: "...", score: 0 }
+		longestWord: null,
+		bestWord: null,
 		totalWords: 0,
 		totalPangrams: 0,
 		gamesPlayed: 1,
@@ -1121,10 +1715,7 @@ function loadAchievements() {
 	};
 	try {
 		const raw = localStorage.getItem(LS_ACHIEVE_KEY);
-		if (raw) {
-			const parsed = JSON.parse(raw);
-			return { ...defaultAchieve, ...parsed };
-		}
+		if (raw) return { ...defaultAchieve, ...JSON.parse(raw) };
 	} catch {}
 	return defaultAchieve;
 }
@@ -1142,9 +1733,7 @@ function unlockBadge(id) {
 		achievements.unlocked.push(id);
 		saveAchievements();
 		const badge = BADGES.find(b => b.id === id);
-		if (badge) {
-			showToast(`Unlocked: ${badge.icon} ${badge.name}!`, "great");
-		}
+		if (badge) showToast(`Unlocked: ${badge.icon} ${badge.name}!`, "great");
 	}
 }
 
@@ -1205,7 +1794,7 @@ function updateAchievementsUI() {
 	}).join("");
 }
 
-/* ── DOM ───────────────────────────────────────────────────────── */
+/* ── DOM Cache ─────────────────────────────────────────────────── */
 const $ = id => document.getElementById(id);
 const hive                 = $("hive");
 const wordInput            = $("word-input");
@@ -1216,6 +1805,8 @@ const btnShuffle           = $("btn-shuffle");
 const btnCenter            = $("btn-center");
 const mutateFill           = $("mutate-fill");
 const mutateSecs           = $("mutate-secs");
+const mutateRow            = $("mutate-row");
+const rankRow              = $("rank-row");
 const rankNameEl           = $("rank-name");
 const rankFillEl           = $("rank-fill");
 const rankPctEl            = $("rank-pct");
@@ -1227,27 +1818,48 @@ const statScore            = $("stat-score");
 const statWords            = $("stat-words");
 const statMax              = $("stat-max");
 const statPangrams         = $("stat-pangrams");
+const tabSolo              = $("tab-solo");
+const tabMulti             = $("tab-multi");
+const btnRoomAction        = $("btn-room-action");
+const roomBtnText          = $("room-btn-text");
+const matchHud             = $("match-hud");
+const hudP1Name            = $("hud-p1-name");
+const hudP1Pts             = $("hud-p1-pts");
+const hudP2Name            = $("hud-p2-name");
+const hudP2Pts             = $("hud-p2-pts");
+const matchTimerVal        = $("match-timer-val");
+const matchTimerBox        = $("match-timer-box");
+const feedText             = $("feed-text");
+const lobbyModal           = $("lobby-modal");
+const lobbyCodeDisplay     = $("lobby-code-display");
+const btnCopyLink          = $("btn-copy-link");
+const inputNickname        = $("input-nickname");
+const selectMode           = $("select-mode");
+const selectDuration       = $("select-duration");
+const selectVariant        = $("select-variant");
+const selectClaimMode      = $("select-claim-mode");
+const slotsTeamA           = $("slots-team-a");
+const slotsTeamB           = $("slots-team-b");
+const btnToggleReady       = $("btn-toggle-ready");
+const btnStartMatch        = $("btn-start-match");
+const gameOverModal        = $("game-over-modal");
+const goResultTitle        = $("go-result-title");
+const goResultSub          = $("go-result-sub");
+const goP1Score            = $("go-p1-score");
+const goP2Score            = $("go-p2-score");
+const goP1Words            = $("go-p1-words");
+const goP2Words            = $("go-p2-words");
+const btnGoRematch         = $("btn-go-rematch");
 const achievementsModal    = $("achievements-modal");
 const btnAchievements      = $("btn-achievements");
 const btnCloseAchievements = $("btn-close-achievements");
 
-function openAchievementsModal() {
-	updateAchievementsUI();
-	achievementsModal.classList.add("open");
-	achievementsModal.setAttribute("aria-hidden", "false");
-}
-
-function closeAchievementsModal() {
-	achievementsModal.classList.remove("open");
-	achievementsModal.setAttribute("aria-hidden", "true");
-	wordInput.focus();
-}
-
-btnAchievements.addEventListener("click", openAchievementsModal);
-btnCloseAchievements.addEventListener("click", closeAchievementsModal);
-achievementsModal.addEventListener("click", e => {
-	if (e.target === achievementsModal) {
-		closeAchievementsModal();
+inputNickname.value = myNickname;
+inputNickname.addEventListener("change", () => {
+	myNickname = inputNickname.value.trim() || myNickname;
+	localStorage.setItem(LS_NICK_KEY, myNickname);
+	if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+		state.ws.send(JSON.stringify({ type: "join", payload: { nickname: myNickname } }));
 	}
 });
 
@@ -1276,7 +1888,7 @@ function renderWordDisplay() {
 		.join("");
 }
 
-/* ── Hex geometry ──────────────────────────────────────────────── */
+/* ── Hex geometry & rendering ──────────────────────────────────── */
 function hexPositions(W) {
 	const cx = .5, cy = .5, r = .34;
 	const angles = [270, 330, 30, 90, 150, 210];
@@ -1291,25 +1903,26 @@ function hexPositions(W) {
 
 function hexSize(W) { return W * 0.295; }
 
-/* ── Render full hive ──────────────────────────────────────────── */
 function renderHive() {
 	const wrap = $("hive-wrap");
-	const W    = wrap.clientWidth;
+	const W    = wrap.clientWidth || 280;
 	const pos  = hexPositions(W);
 	const size = hexSize(W);
 	const letters = [state.center, ...state.outer];
 
 	hive.innerHTML = "";
-	letters.forEach((letter, i) => renderHex(letter, i, pos[i], size));
+	letters.forEach((letter, i) => {
+		if (letter) renderHex(letter, i, pos[i], size);
+	});
 }
 
 function renderHex(letter, i, pos, size) {
-	const W   = $("hive-wrap").clientWidth;
+	const W   = $("hive-wrap").clientWidth || 280;
 	const btn = document.createElement("button");
 	btn.className   = "hex-btn" + (i === 0 ? " center" : "");
 	btn.id          = "hex-" + i;
 	btn.textContent = letter.toUpperCase();
-	btn.dataset.letter = letter;   // source of truth — updated by mutations
+	btn.dataset.letter = letter;
 	btn.dataset.index  = i;
 	btn.setAttribute("aria-label", letter.toUpperCase());
 	btn.style.cssText = `
@@ -1318,7 +1931,13 @@ function renderHex(letter, i, pos, size) {
 		left:   ${pos.x * W - size / 2}px;
 		top:    ${pos.y * W - size / 2}px;
 	`;
-	// Read dataset.letter at click time — not the closed-over render-time value
+
+	if (state.lockedLetter && letter === state.lockedLetter) {
+		btn.classList.add("lockout-locked");
+	} else if (state.lockoutWarningLetter && letter === state.lockoutWarningLetter) {
+		btn.classList.add("lockout-warning");
+	}
+
 	btn.addEventListener("click", () => {
 		appendLetter(btn.dataset.letter);
 		btn.style.transform = "scale(.88)";
@@ -1327,28 +1946,23 @@ function renderHex(letter, i, pos, size) {
 	hive.appendChild(btn);
 }
 
-/* ── Update a single hex label (for mutation) ──────────────────── */
 function mutateSingleHex(outerIdx, newLetter) {
-	// outerIdx: 0-5 (index into state.outer)
-	// hive button index = outerIdx + 1 (index 0 is center)
 	const hiveIdx = outerIdx + 1;
 	const btn = document.getElementById("hex-" + hiveIdx);
 	if (!btn) return;
 
-	// Animate flip
 	btn.classList.add("mutating");
 	setTimeout(() => {
 		btn.textContent = newLetter.toUpperCase();
 		btn.dataset.letter = newLetter;
-	}, 220); // swap label at mid-point of animation
+	}, 220);
 	setTimeout(() => btn.classList.remove("mutating"), 440);
 }
 
-/* ── Letter mutation ───────────────────────────────────────────── */
-function pickNewLetter(slotIdx) {
+/* ── Solo Mutations & Lockout Logic ────────────────────────────── */
+function pickNewLetterSolo(slotIdx) {
 	const current = new Set([state.center, ...state.outer]);
 	const currentLetters = [state.center, ...state.outer];
-	// Count vowels in hive excluding the letter being replaced (outer slotIdx maps to index slotIdx + 1)
 	const remainingVowels = currentLetters.filter((l, idx) => idx !== (slotIdx + 1) && VOWELS.has(l)).length;
 
 	let available = ALL_LETTERS.filter(l => !current.has(l));
@@ -1363,47 +1977,107 @@ function pickNewLetter(slotIdx) {
 	return available[Math.floor(Math.random() * available.length)];
 }
 
-function triggerMutation() {
-	// Pick a random outer slot to replace
+function triggerMutationSolo() {
 	const slotIdx = Math.floor(Math.random() * state.outer.length);
 	const oldLetter = state.outer[slotIdx];
-	// If the mutating letter is currently locked/warning, cancel lockout
 	if (state.lockedLetter === oldLetter || state.lockoutWarningLetter === oldLetter) {
 		const btn = document.getElementById("hex-" + (slotIdx + 1));
 		if (btn) btn.classList.remove("lockout-warning", "lockout-locked");
 		state.lockedLetter = null;
 		state.lockoutWarningLetter = null;
 		state.lockoutPhase = "idle";
-		state.lockoutSecsUntilNext = getNextLockoutDelay();
+		state.lockoutSecsUntilNext = LOCKOUT_INTERVAL_BASE;
 	}
-	const newLetter = pickNewLetter(slotIdx);
+	const newLetter = pickNewLetterSolo(slotIdx);
 
 	state.outer[slotIdx] = newLetter;
 	state.graceLetter = oldLetter;
 	mutateSingleHex(slotIdx, newLetter);
-
-	// Re-render the overlay — grace letter remains active in amber for next submission
 	renderWordDisplay();
-
 	showToast(`${oldLetter.toUpperCase()} → ${newLetter.toUpperCase()}`, "mutated");
 }
 
-/* ── Shuffle (rearrange, no letter changes) ────────────────────── */
-function shuffleOuter() {
-	const arr = [...state.outer];
-	for (let i = arr.length - 1; i > 0; i--) {
-		const j = Math.floor(Math.random() * (i + 1));
-		[arr[i], arr[j]] = [arr[j], arr[i]];
+function tickMutateSolo() {
+	state.mutateSecsLeft -= 1;
+	const pct = (state.mutateSecsLeft / MUTATE_INTERVAL) * 100;
+	mutateFill.style.width = pct + "%";
+	mutateSecs.textContent = state.mutateSecsLeft + "s";
+	mutateFill.classList.toggle("urgent", state.mutateSecsLeft <= 5);
+
+	if (state.mutateSecsLeft <= 0) {
+		triggerMutationSolo();
+		state.mutateSecsLeft = MUTATE_INTERVAL;
+		mutateFill.style.width = "100%";
+		mutateFill.classList.remove("urgent");
 	}
-	state.outer = arr;
-	renderHive();
 }
 
-/* ── Change center letter (costs 5 pts) ────────────────────────── */
-function changeCenterLetter() {
+function tickLockoutSolo() {
+	if (state.lockoutPhase === "idle") {
+		state.lockoutSecsUntilNext -= 1;
+		if (state.lockoutSecsUntilNext <= 0) {
+			const slotIdx = Math.floor(Math.random() * state.outer.length);
+			const letter = state.outer[slotIdx];
+			state.lockoutWarningLetter = letter;
+			state.lockoutPhase = "warning";
+			state.lockoutPhaseSecsLeft = LOCKOUT_WARN_DURATION;
+
+			const btn = document.getElementById("hex-" + (slotIdx + 1));
+			if (btn) btn.classList.add("lockout-warning");
+			showToast(`⚠️ ${letter.toUpperCase()} locking soon!`);
+		}
+	} else if (state.lockoutPhase === "warning") {
+		state.lockoutPhaseSecsLeft -= 1;
+		if (state.lockoutPhaseSecsLeft <= 0) {
+			const letter = state.lockoutWarningLetter;
+			state.lockedLetter = letter;
+			state.lockoutWarningLetter = null;
+			state.lockoutPhase = "locked";
+			state.lockoutPhaseSecsLeft = LOCKOUT_LOCK_DURATION;
+
+			const slotIdx = state.outer.indexOf(letter);
+			if (slotIdx !== -1) {
+				const btn = document.getElementById("hex-" + (slotIdx + 1));
+				if (btn) {
+					btn.classList.remove("lockout-warning");
+					btn.classList.add("lockout-locked");
+				}
+			}
+			renderWordDisplay();
+		}
+	} else if (state.lockoutPhase === "locked") {
+		state.lockoutPhaseSecsLeft -= 1;
+		if (state.lockoutPhaseSecsLeft <= 0) {
+			const letter = state.lockedLetter;
+			const slotIdx = state.outer.indexOf(letter);
+			if (slotIdx !== -1) {
+				const btn = document.getElementById("hex-" + (slotIdx + 1));
+				if (btn) {
+					btn.classList.remove("lockout-locked");
+					btn.classList.add("lockout-unlock");
+					setTimeout(() => btn.classList.remove("lockout-unlock"), 350);
+				}
+			}
+			state.lockedLetter = null;
+			state.lockoutPhase = "idle";
+			state.lockoutSecsUntilNext = LOCKOUT_INTERVAL_BASE;
+			renderWordDisplay();
+			showToast(`🔓 ${letter.toUpperCase()} unlocked!`, "good");
+		}
+	}
+}
+
+/* ── Center letter change ──────────────────────────────────────── */
+async function changeCenterLetter() {
+	if (state.mode === "multi") {
+		if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+			state.ws.send(JSON.stringify({ type: "change_center" }));
+		}
+		return;
+	}
+
 	if (state.score < 5) return;
 
-	// Pick a new center maintaining 2-3 vowels
 	const current = new Set([state.center, ...state.outer]);
 	const outerVowels = state.outer.filter(l => VOWELS.has(l)).length;
 	let available = ALL_LETTERS.filter(l => !current.has(l));
@@ -1417,29 +2091,27 @@ function changeCenterLetter() {
 	}
 
 	const newCenter = available[Math.floor(Math.random() * available.length)];
-
 	const oldCenter = state.center;
 	state.center = newCenter;
 	state.score  = Math.max(0, state.score - 5);
 
-	// Animate the center hex
 	const btn = document.getElementById("hex-0");
 	if (btn) {
 		btn.classList.add("mutating");
 		setTimeout(() => {
 			btn.textContent    = newCenter.toUpperCase();
-			btn.dataset.letter = newCenter;  // keep dataset in sync so clicks work
+			btn.dataset.letter = newCenter;
 		}, 220);
 		setTimeout(() => btn.classList.remove("mutating"), 440);
 	}
 
-	renderWordDisplay(); // re-colour any typed letters with new center
+	renderWordDisplay();
 	updateStats();
 	updateRank();
 	showToast(`${oldCenter.toUpperCase()} → ${newCenter.toUpperCase()} (−5 pts)`, "mutated");
 }
 
-/* ── Append / delete ───────────────────────────────────────────── */
+/* ── Actions: Append, Delete, Shuffle ──────────────────────────── */
 function appendLetter(letter) {
 	if (state.lockedLetter && letter.toLowerCase() === state.lockedLetter) {
 		showToast(`${letter.toUpperCase()} is locked! 🔒`);
@@ -1456,89 +2128,14 @@ function deleteLetter() {
 	wordInput.focus();
 }
 
-/* ── Mutate countdown tick (called every second) ───────────────── */
-function tickMutate() {
-	state.mutateSecsLeft -= 1;
-
-	const pct = (state.mutateSecsLeft / MUTATE_INTERVAL) * 100;
-	mutateFill.style.width = pct + "%";
-	mutateSecs.textContent = state.mutateSecsLeft + "s";
-	mutateFill.classList.toggle("urgent", state.mutateSecsLeft <= 5);
-
-	if (state.mutateSecsLeft <= 0) {
-		triggerMutation();
-		state.mutateSecsLeft = MUTATE_INTERVAL;
-		mutateFill.style.width = "100%";
-		mutateFill.classList.remove("urgent");
+function shuffleOuter() {
+	const arr = [...state.outer];
+	for (let i = arr.length - 1; i > 0; i--) {
+		const j = Math.floor(Math.random() * (i + 1));
+		[arr[i], arr[j]] = [arr[j], arr[i]];
 	}
-}
-
-/* ── Letter lockout tick (called every second) ─────────────────── */
-function getNextLockoutDelay() {
-	return LOCKOUT_INTERVAL_BASE +
-		Math.floor(Math.random() * (LOCKOUT_INTERVAL_JITTER * 2 + 1)) -
-		LOCKOUT_INTERVAL_JITTER;
-}
-
-function tickLockout() {
-	if (state.lockoutPhase === "idle") {
-		state.lockoutSecsUntilNext -= 1;
-		if (state.lockoutSecsUntilNext <= 0) {
-			// Start warning phase on a random outer letter
-			const slotIdx = Math.floor(Math.random() * state.outer.length);
-			const letter = state.outer[slotIdx];
-			state.lockoutWarningLetter = letter;
-			state.lockoutPhase = "warning";
-			state.lockoutPhaseSecsLeft = LOCKOUT_WARN_DURATION;
-
-			// Apply warning CSS
-			const btn = document.getElementById("hex-" + (slotIdx + 1));
-			if (btn) btn.classList.add("lockout-warning");
-
-			showToast(`⚠️ ${letter.toUpperCase()} locking soon!`, "");
-		}
-	} else if (state.lockoutPhase === "warning") {
-		state.lockoutPhaseSecsLeft -= 1;
-		if (state.lockoutPhaseSecsLeft <= 0) {
-			// Transition: warning → locked
-			const letter = state.lockoutWarningLetter;
-			state.lockedLetter = letter;
-			state.lockoutWarningLetter = null;
-			state.lockoutPhase = "locked";
-			state.lockoutPhaseSecsLeft = LOCKOUT_LOCK_DURATION;
-
-			// Swap CSS classes on the hex
-			const slotIdx = state.outer.indexOf(letter);
-			if (slotIdx !== -1) {
-				const btn = document.getElementById("hex-" + (slotIdx + 1));
-				if (btn) {
-					btn.classList.remove("lockout-warning");
-					btn.classList.add("lockout-locked");
-				}
-			}
-			renderWordDisplay(); // re-colour any typed letters
-		}
-	} else if (state.lockoutPhase === "locked") {
-		state.lockoutPhaseSecsLeft -= 1;
-		if (state.lockoutPhaseSecsLeft <= 0) {
-			// Unlock the letter
-			const letter = state.lockedLetter;
-			const slotIdx = state.outer.indexOf(letter);
-			if (slotIdx !== -1) {
-				const btn = document.getElementById("hex-" + (slotIdx + 1));
-				if (btn) {
-					btn.classList.remove("lockout-locked");
-					btn.classList.add("lockout-unlock");
-					setTimeout(() => btn.classList.remove("lockout-unlock"), 350);
-				}
-			}
-			state.lockedLetter = null;
-			state.lockoutPhase = "idle";
-			state.lockoutSecsUntilNext = getNextLockoutDelay();
-			renderWordDisplay();
-			showToast(`🔓 ${letter.toUpperCase()} unlocked!`, "good");
-		}
-	}
+	state.outer = arr;
+	renderHive();
 }
 
 /* ── Toast ─────────────────────────────────────────────────────── */
@@ -1550,8 +2147,9 @@ function showToast(msg, type = "") {
 	toastTimer = setTimeout(() => { toast.className = ""; }, 1900);
 }
 
-/* ── Rank ──────────────────────────────────────────────────────── */
+/* ── Ranks & Stats ─────────────────────────────────────────────── */
 function updateRank() {
+	if (state.mode === "multi") return;
 	if (!state.maxScore) return;
 	const ratio = state.score / state.maxScore;
 	let rank = RANKS[0];
@@ -1561,7 +2159,6 @@ function updateRank() {
 	rankPctEl.textContent  = Math.round(ratio * 100) + "%";
 }
 
-/* ── Stats panel ───────────────────────────────────────────────── */
 function updateStats() {
 	headerScore.textContent  = state.score;
 	statScore.textContent    = state.score;
@@ -1572,25 +2169,44 @@ function updateStats() {
 	btnCenter.disabled       = state.score < 5;
 }
 
-/* ── Word list ─────────────────────────────────────────────────── */
 function addWordToList(wordObj) {
 	const li = document.createElement("li");
 	li.className = "word-item " + (wordObj.pangram ? "pangram" : "normal");
-	li.innerHTML = `<span class="word-dot"></span>${wordObj.word.toUpperCase()}${wordObj.pangram ? " ✦" : ""}`;
+	li.innerHTML = `
+		<span>${wordObj.word.toUpperCase()}${wordObj.pangram ? " ✦" : ""}</span>
+		<span class="word-meta">+${wordObj.score}</span>
+	`;
 	wordsList.prepend(li);
 }
 
-/* ── Submit ────────────────────────────────────────────────────── */
+/* ── Guess Submission ──────────────────────────────────────────── */
 async function submitGuess() {
 	const word = wordInput.value.trim().toLowerCase();
 	const grace = state.graceLetter;
-	// Consume the 1-time grace on submit
 	state.graceLetter = null;
-
 	wordInput.value = "";
 	renderWordDisplay();
 	if (!word) return;
 
+	if (state.mode === "multi") {
+		// Send over WebSocket to server game session
+		if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+			state.ws.send(JSON.stringify({
+				type: "submit_guess",
+				payload: {
+					word,
+					center_letter: state.center,
+					grace_letter: grace,
+				},
+			}));
+		} else {
+			showToast("Not connected to match room", "danger");
+		}
+		wordInput.focus();
+		return;
+	}
+
+	// Solo Submission
 	if (state.words.some(w => w.word === word)) {
 		showToast("Already found!");
 		return;
@@ -1603,8 +2219,7 @@ async function submitGuess() {
 			body: JSON.stringify({
 				word,
 				center_letter: state.center,
-				current_letters: [...state.outer, state.center]
-					.filter(l => l !== state.lockedLetter),
+				current_letters: [...state.outer, state.center].filter(l => l !== state.lockedLetter),
 				grace_letter: grace,
 			}),
 		});
@@ -1616,7 +2231,6 @@ async function submitGuess() {
 			state.score += data.score;
 			if (data.pangram) state.pangrams++;
 
-			// Update achievements & records
 			achievements.totalWords += 1;
 			if (data.pangram) achievements.totalPangrams += 1;
 			if (!achievements.longestWord || word.length > achievements.longestWord.length) {
@@ -1625,8 +2239,6 @@ async function submitGuess() {
 			if (!achievements.bestWord || data.score > achievements.bestWord.score) {
 				achievements.bestWord = { word: word.toUpperCase(), score: data.score };
 			}
-
-			// Persist all-time max score to localStorage
 			if (state.score > state.allTimeMax) {
 				state.allTimeMax = state.score;
 				localStorage.setItem(LS_MAX_KEY, state.allTimeMax);
@@ -1652,18 +2264,14 @@ async function submitGuess() {
 	wordInput.focus();
 }
 
-/* ── Input: allow any letter, render overlay with colour coding ─── */
+/* ── Input Event Listeners ─────────────────────────────────────── */
 wordInput.addEventListener("input", () => {
-	// Strip non-alpha characters only (allow all letters — invalid ones go grey)
 	wordInput.value = wordInput.value.replace(/[^a-zA-Z]/g, "").toUpperCase();
-	// Strip locked letter from input
 	if (state.lockedLetter) {
 		const locked = state.lockedLetter.toUpperCase();
 		const before = wordInput.value;
 		wordInput.value = wordInput.value.split("").filter(c => c !== locked).join("");
-		if (wordInput.value !== before) {
-			showToast(`${locked} is locked! 🔒`);
-		}
+		if (wordInput.value !== before) showToast(`${locked} is locked! 🔒`);
 	}
 	renderWordDisplay();
 });
@@ -1672,8 +2280,7 @@ wordInput.addEventListener("keydown", e => {
 	if (e.key === "Enter") { e.preventDefault(); submitGuess(); }
 });
 
-/* ── Button wiring ─────────────────────────────────────────────── */
-btnEnter.addEventListener("click",  submitGuess);
+btnEnter.addEventListener("click", submitGuess);
 btnDelete.addEventListener("click", () => deleteLetter());
 btnShuffle.addEventListener("click", () => {
 	shuffleOuter();
@@ -1681,76 +2288,17 @@ btnShuffle.addEventListener("click", () => {
 });
 btnCenter.addEventListener("click", changeCenterLetter);
 
-/* ── New game ──────────────────────────────────────────────────── */
-async function startNewGame() {
-	const btnNew = $("btn-new-game");
-	btnNew.textContent = "Loading…";
-	btnNew.disabled    = true;
-
-	try {
-		const res  = await fetch("api/new-game", { method: "POST" });
-		const data = await res.json();
-
-		achievements.gamesPlayed = (achievements.gamesPlayed || 0) + 1;
-		saveAchievements();
-
-		// Reset all session state
-		state.center         = data.center;
-		state.outer          = [...data.outer];
-		state.graceLetter    = null;
-		state.maxScore       = data.max_score;
-		state.score          = 0;
-		state.words          = [];
-		state.pangrams       = 0;
-		state.mutateSecsLeft = MUTATE_INTERVAL;
-
-		// Reset lockout state
-		state.lockedLetter         = null;
-		state.lockoutWarningLetter = null;
-		state.lockoutPhase         = "idle";
-		state.lockoutSecsUntilNext = getNextLockoutDelay();
-		state.lockoutPhaseSecsLeft = 0;
-
-		// Reset UI
-		wordInput.value = "";
-		wordsList.innerHTML = "";
-		mutateFill.style.width = "100%";
-		mutateFill.classList.remove("urgent");
-		// Clear any lockout CSS from hex buttons
-		document.querySelectorAll(".hex-btn").forEach(btn => {
-			btn.classList.remove("lockout-warning", "lockout-locked", "lockout-unlock");
-		});
-
-		renderHive();
-		renderWordDisplay();
-		updateStats();
-		updateRank();
-		showToast("New game! 🐝", "good");
-		wordInput.focus();
-	} catch {
-		showToast("Failed to load new puzzle", "");
-	} finally {
-		btnNew.textContent = "New Game";
-		btnNew.disabled    = false;
-	}
-}
-
-$("btn-new-game").addEventListener("click", startNewGame);
-
-/* ── Global keyboard capture ───────────────────────────────────── */
-// Type anywhere on the page — keystrokes route to the word input
+/* ── Global Key Capture ────────────────────────────────────────── */
 document.addEventListener("keydown", e => {
-	// If achievements modal is open, let Escape close it and prevent typing into game
-	if (achievementsModal.classList.contains("open")) {
+	if (lobbyModal.classList.contains("open") || achievementsModal.classList.contains("open") || gameOverModal.classList.contains("open")) {
 		if (e.key === "Escape") {
+			closeLobbyModal();
 			closeAchievementsModal();
+			closeGameOverModal();
 		}
 		return;
 	}
-
-	// Let the input handle its own events normally
-	if (document.activeElement === wordInput) return;
-	// Ignore modifier combos (Cmd+R, Ctrl+C, etc.)
+	if (document.activeElement === wordInput || document.activeElement.tagName === "INPUT" || document.activeElement.tagName === "SELECT") return;
 	if (e.ctrlKey || e.metaKey || e.altKey) return;
 
 	if (e.key === "Enter") {
@@ -1760,18 +2308,13 @@ document.addEventListener("keydown", e => {
 		e.preventDefault();
 		deleteLetter();
 	} else if (/^[a-zA-Z]$/.test(e.key)) {
-		// Append letter and trigger input processing
 		wordInput.value += e.key.toUpperCase();
 		renderWordDisplay();
 	}
 });
 
-/* ── Resize → re-render hive ───────────────────────────────────── */
-const ro = new ResizeObserver(() => renderHive());
-ro.observe($("hive-wrap"));
-
-/* ── Load puzzle ───────────────────────────────────────────────── */
-async function loadPuzzle() {
+/* ── Solo Load & New Game ──────────────────────────────────────── */
+async function loadSoloPuzzle() {
 	try {
 		const res  = await fetch("api/puzzle");
 		const data = await res.json();
@@ -1788,7 +2331,498 @@ async function loadPuzzle() {
 	}
 }
 
-/* ── Dark mode ─────────────────────────────────────────────────── */
+async function startNewSoloGame() {
+	const btnNew = $("btn-new-game");
+	btnNew.textContent = "Loading…";
+	btnNew.disabled = true;
+
+	try {
+		const res  = await fetch("api/new-game", { method: "POST" });
+		const data = await res.json();
+
+		achievements.gamesPlayed = (achievements.gamesPlayed || 0) + 1;
+		saveAchievements();
+
+		state.center         = data.center;
+		state.outer          = [...data.outer];
+		state.graceLetter    = null;
+		state.maxScore       = data.max_score;
+		state.score          = 0;
+		state.words          = [];
+		state.pangrams       = 0;
+		state.mutateSecsLeft = MUTATE_INTERVAL;
+		state.lockedLetter   = null;
+		state.lockoutWarningLetter = null;
+		state.lockoutPhase   = "idle";
+		state.lockoutSecsUntilNext = LOCKOUT_INTERVAL_BASE;
+
+		wordInput.value = "";
+		wordsList.innerHTML = "";
+		mutateFill.style.width = "100%";
+		mutateFill.classList.remove("urgent");
+
+		renderHive();
+		renderWordDisplay();
+		updateStats();
+		updateRank();
+		showToast("New game! 🐝", "good");
+		wordInput.focus();
+	} catch {
+		showToast("Failed to load new puzzle");
+	} finally {
+		btnNew.textContent = "New Game";
+		btnNew.disabled = false;
+	}
+}
+
+$("btn-new-game").addEventListener("click", startNewSoloGame);
+
+/* ── Multiplayer Connection & Lobby Handling ───────────────────── */
+
+function openLobbyModal() {
+	lobbyModal.classList.add("open");
+	lobbyModal.setAttribute("aria-hidden", "false");
+}
+
+function closeLobbyModal() {
+	lobbyModal.classList.remove("open");
+	lobbyModal.setAttribute("aria-hidden", "true");
+	wordInput.focus();
+}
+
+function closeGameOverModal() {
+	gameOverModal.classList.remove("open");
+	gameOverModal.setAttribute("aria-hidden", "true");
+	wordInput.focus();
+}
+
+$("btn-close-lobby").addEventListener("click", closeLobbyModal);
+$("btn-close-game-over").addEventListener("click", closeGameOverModal);
+
+function setMode(newMode) {
+	state.mode = newMode;
+	if (newMode === "solo") {
+		tabSolo.classList.add("active");
+		tabMulti.classList.remove("active");
+		rankRow.style.display = "flex";
+		matchHud.classList.remove("active");
+		btnRoomAction.style.display = "none";
+		$("btn-new-game").style.display = "inline-flex";
+		loadSoloPuzzle();
+	} else {
+		tabSolo.classList.remove("active");
+		tabMulti.classList.add("active");
+		rankRow.style.display = "none";
+		matchHud.classList.add("active");
+		btnRoomAction.style.display = "inline-flex";
+		roomBtnText.textContent = "Room Lobby";
+		$("btn-new-game").style.display = "none";
+		if (!state.roomCode) {
+			createOrOpenRoom();
+		} else {
+			openLobbyModal();
+		}
+	}
+}
+
+tabSolo.addEventListener("click", () => setMode("solo"));
+tabMulti.addEventListener("click", () => setMode("multi"));
+btnRoomAction.addEventListener("click", () => {
+	openLobbyModal();
+});
+
+async function createOrOpenRoom() {
+	try {
+		const res = await fetch("api/rooms", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({
+				host_id: myPlayerId,
+				host_name: myNickname,
+				config: {
+					mode: selectMode.value,
+					duration_seconds: parseInt(selectDuration.value, 10),
+					variant: selectVariant.value,
+					word_claim_mode: selectClaimMode.value,
+				},
+			}),
+		});
+		const data = await res.json();
+		connectToRoom(data.code);
+		openLobbyModal();
+	} catch (e) {
+		showToast("Failed to create room", "danger");
+	}
+}
+
+function connectToRoom(code) {
+	if (state.ws) {
+		try { state.ws.close(); } catch {}
+	}
+
+	state.roomCode = code;
+	lobbyCodeDisplay.textContent = code;
+	window.history.replaceState({}, "", `?room=${code}`);
+
+	const protocol = location.protocol === "https:" ? "wss:" : "ws:";
+	const wsUrl = `${protocol}//${location.host}/ws/room/${code}?player_id=${myPlayerId}`;
+	const ws = new WebSocket(wsUrl);
+	state.ws = ws;
+
+	ws.onopen = () => {
+		ws.send(JSON.stringify({
+			type: "join",
+			payload: { nickname: myNickname },
+		}));
+	};
+
+	ws.onmessage = (event) => {
+		try {
+			const msg = JSON.parse(event.data);
+			handleServerWSMessage(msg);
+		} catch (e) {
+			console.error("WS Parse error", e);
+		}
+	};
+
+	ws.onclose = () => {
+		console.log("WS closed");
+	};
+}
+
+function handleServerWSMessage(msg) {
+	const type = msg.type;
+	const payload = msg.payload;
+
+	if (type === "room_state") {
+		renderLobbyState(payload.snapshot);
+	} else if (type === "game_start") {
+		handleGameStart(payload);
+	} else if (type === "hive_mutation") {
+		handleHiveMutation(payload);
+	} else if (type === "hive_lockout") {
+		handleHiveLockout(payload);
+	} else if (type === "guess_result") {
+		handleGuessResult(payload);
+	} else if (type === "opponent_event") {
+		handleOpponentEvent(payload);
+	} else if (type === "score_update") {
+		handleScoreUpdate(payload);
+	} else if (type === "center_changed") {
+		handleCenterChanged(payload);
+	} else if (type === "game_over") {
+		handleGameOver(payload);
+	} else if (type === "error") {
+		showToast(payload.message, "danger");
+	}
+}
+
+function renderLobbyState(snapshot) {
+	state.roomSnapshot = snapshot;
+	const me = snapshot.players.find(p => p.id === myPlayerId);
+	state.isHost = me ? me.is_host : false;
+	state.isReady = me ? me.is_ready : false;
+
+	// Host settings controls enable/disable
+	const isHostInLobby = state.isHost && snapshot.status === "lobby";
+	selectMode.disabled = !isHostInLobby;
+	selectDuration.disabled = !isHostInLobby;
+	selectVariant.disabled = !isHostInLobby;
+	selectClaimMode.disabled = !isHostInLobby;
+
+	if (!state.isHost) {
+		selectMode.value = snapshot.config.mode;
+		selectDuration.value = snapshot.config.duration_seconds;
+		selectVariant.value = snapshot.config.variant;
+		selectClaimMode.value = snapshot.config.word_claim_mode;
+	}
+
+	btnToggleReady.textContent = state.isReady ? "Ready ✓" : "Set Ready";
+	btnToggleReady.style.background = state.isReady ? "var(--green-light)" : "var(--surface)";
+	btnToggleReady.style.color = state.isReady ? "var(--green)" : "var(--text)";
+
+	// Render Player Slots
+	const teamAPlayers = snapshot.players.filter(p => p.team === "team_a");
+	const teamBPlayers = snapshot.players.filter(p => p.team === "team_b");
+
+	slotsTeamA.innerHTML = teamAPlayers.map(p => `
+		<div class="player-slot-item">
+			<span class="slot-name">
+				${p.nickname} ${p.id === myPlayerId ? "(You)" : ""}
+				${p.is_host ? '<span class="tag-host">HOST</span>' : ""}
+			</span>
+			<span class="${p.is_ready ? 'tag-ready' : 'tag-not-ready'}">${p.is_ready ? 'Ready ✓' : 'Not Ready'}</span>
+		</div>
+	`).join("") || '<span style="font-size:.78rem;color:var(--text-muted)">Empty slot</span>';
+
+	slotsTeamB.innerHTML = teamBPlayers.map(p => `
+		<div class="player-slot-item">
+			<span class="slot-name">
+				${p.nickname} ${p.id === myPlayerId ? "(You)" : ""}
+				${p.is_host ? '<span class="tag-host">HOST</span>' : ""}
+			</span>
+			<span class="${p.is_ready ? 'tag-ready' : 'tag-not-ready'}">${p.is_ready ? 'Ready ✓' : 'Not Ready'}</span>
+		</div>
+	`).join("") || '<span style="font-size:.78rem;color:var(--text-muted)">Empty slot</span>';
+
+	// Enable start match button if host and all ready
+	const allReady = snapshot.players.length >= 1 && snapshot.players.every(p => p.is_ready);
+	btnStartMatch.disabled = !(state.isHost && allReady && snapshot.status === "lobby");
+}
+
+// Host setting change listeners
+[selectMode, selectDuration, selectVariant, selectClaimMode].forEach(el => {
+	el.addEventListener("change", () => {
+		if (state.isHost && state.ws && state.ws.readyState === WebSocket.OPEN) {
+			state.ws.send(JSON.stringify({
+				type: "update_config",
+				payload: {
+					config: {
+						mode: selectMode.value,
+						duration_seconds: parseInt(selectDuration.value, 10),
+						variant: selectVariant.value,
+						word_claim_mode: selectClaimMode.value,
+					}
+				}
+			}));
+		}
+	});
+});
+
+// Team switches
+document.querySelectorAll(".btn-switch-team").forEach(btn => {
+	btn.addEventListener("click", () => {
+		const team = btn.dataset.team;
+		if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+			state.ws.send(JSON.stringify({ type: "switch_team", payload: { team } }));
+		}
+	});
+});
+
+btnToggleReady.addEventListener("click", () => {
+	if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+		state.ws.send(JSON.stringify({ type: "set_ready", payload: { is_ready: !state.isReady } }));
+	}
+});
+
+btnStartMatch.addEventListener("click", () => {
+	if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+		state.ws.send(JSON.stringify({ type: "start_game" }));
+	}
+});
+
+btnCopyLink.addEventListener("click", () => {
+	const url = window.location.href;
+	navigator.clipboard.writeText(url).then(() => {
+		showToast("Room link copied to clipboard! 📋", "good");
+	});
+});
+
+$("btn-join-code").addEventListener("click", () => {
+	const code = $("input-join-code").value.trim().toUpperCase();
+	if (code) {
+		connectToRoom(code);
+		$("input-join-code").value = "";
+	}
+});
+
+/* ── Live Match In-Game Handlers ───────────────────────────────── */
+function handleGameStart(payload) {
+	closeLobbyModal();
+	closeGameOverModal();
+	setMode("multi");
+
+	state.center = payload.center;
+	state.outer = [...payload.outer];
+	state.maxScore = payload.max_score;
+	state.score = 0;
+	state.words = [];
+	state.pangrams = 0;
+	state.graceLetter = null;
+	state.lockedLetter = null;
+	state.lockoutWarningLetter = null;
+	state.matchTimerLeft = payload.duration;
+
+	wordInput.value = "";
+	wordsList.innerHTML = "";
+	mutateFill.style.width = "100%";
+	mutateFill.classList.remove("urgent");
+
+	renderHive();
+	renderWordDisplay();
+	updateStats();
+
+	hudP1Name.textContent = myNickname;
+	hudP1Pts.textContent = "0";
+
+	const rival = payload.snapshot.players.find(p => p.id !== myPlayerId);
+	hudP2Name.textContent = rival ? rival.nickname : "Rival";
+	hudP2Pts.textContent = "0";
+
+	feedText.textContent = "Match started! Let the duel begin!";
+	showToast("⚔️ Match Started!", "good");
+	wordInput.focus();
+}
+
+function handleHiveMutation(payload) {
+	state.outer = [...payload.outer];
+	state.graceLetter = payload.grace_letter;
+	mutateSingleHex(payload.slot_idx, payload.new_letter);
+	renderWordDisplay();
+	showToast(`${payload.old_letter.toUpperCase()} → ${payload.new_letter.toUpperCase()}`, "mutated");
+}
+
+function handleHiveLockout(payload) {
+	state.lockoutPhase = payload.phase;
+	if (payload.phase === "warning") {
+		state.lockoutWarningLetter = payload.letter;
+		const slotIdx = state.outer.indexOf(payload.letter);
+		if (slotIdx !== -1) {
+			const btn = document.getElementById("hex-" + (slotIdx + 1));
+			if (btn) btn.classList.add("lockout-warning");
+		}
+		showToast(`⚠️ ${payload.letter.toUpperCase()} locking soon!`);
+	} else if (payload.phase === "locked") {
+		state.lockedLetter = payload.letter;
+		state.lockoutWarningLetter = null;
+		const slotIdx = state.outer.indexOf(payload.letter);
+		if (slotIdx !== -1) {
+			const btn = document.getElementById("hex-" + (slotIdx + 1));
+			if (btn) {
+				btn.classList.remove("lockout-warning");
+				btn.classList.add("lockout-locked");
+			}
+		}
+		renderWordDisplay();
+	} else if (payload.phase === "idle") {
+		if (state.lockedLetter) {
+			const slotIdx = state.outer.indexOf(state.lockedLetter);
+			if (slotIdx !== -1) {
+				const btn = document.getElementById("hex-" + (slotIdx + 1));
+				if (btn) {
+					btn.classList.remove("lockout-locked");
+					btn.classList.add("lockout-unlock");
+					setTimeout(() => btn.classList.remove("lockout-unlock"), 350);
+				}
+			}
+			state.lockedLetter = null;
+			renderWordDisplay();
+		}
+	}
+}
+
+function handleGuessResult(payload) {
+	if (payload.valid) {
+		const wordObj = { word: payload.word, pangram: payload.pangram, score: payload.score };
+		state.words.push(wordObj);
+		state.score += payload.score;
+		if (payload.pangram) state.pangrams++;
+
+		addWordToList(wordObj);
+		updateStats();
+		showToast(payload.message, payload.pangram ? "great" : "good");
+	} else {
+		showToast(payload.message);
+	}
+}
+
+function handleOpponentEvent(payload) {
+	feedText.textContent = payload.message;
+	if (payload.score_diff > 0) {
+		showToast(payload.message, payload.pangram ? "great" : "");
+	}
+}
+
+function handleScoreUpdate(payload) {
+	const me = payload.players.find(p => p.id === myPlayerId);
+	if (me) {
+		state.score = me.score;
+		hudP1Pts.textContent = me.score;
+		updateStats();
+	}
+	const rival = payload.players.find(p => p.id !== myPlayerId);
+	if (rival) {
+		hudP2Name.textContent = rival.nickname;
+		hudP2Pts.textContent = rival.score;
+	}
+}
+
+function handleCenterChanged(payload) {
+	state.center = payload.center;
+	state.score = payload.score;
+	const btn = document.getElementById("hex-0");
+	if (btn) {
+		btn.classList.add("mutating");
+		setTimeout(() => {
+			btn.textContent = payload.center.toUpperCase();
+			btn.dataset.letter = payload.center;
+		}, 220);
+		setTimeout(() => btn.classList.remove("mutating"), 440);
+	}
+	renderWordDisplay();
+	updateStats();
+	showToast(`Center changed: ${payload.center.toUpperCase()} (−5 pts)`, "mutated");
+}
+
+function handleGameOver(payload) {
+	const me = payload.snapshot.players.find(p => p.id === myPlayerId);
+	const rival = payload.snapshot.players.find(p => p.id !== myPlayerId);
+
+	const myScore = me ? me.score : 0;
+	const rivalScore = rival ? rival.score : 0;
+
+	if (myScore > rivalScore) {
+		goResultTitle.textContent = "Victory! 🏆";
+		goResultTitle.style.color = "var(--green)";
+	} else if (rivalScore > myScore) {
+		goResultTitle.textContent = "Defeat 💔";
+		goResultTitle.style.color = "var(--red)";
+	} else {
+		goResultTitle.textContent = "Draw! 🤝";
+		goResultTitle.style.color = "var(--accent-dark)";
+	}
+
+	goResultSub.textContent = payload.reason;
+	goP1Score.textContent = myScore;
+	goP1Words.textContent = `${me ? me.words.length : 0} words`;
+
+	goP2Score.textContent = rivalScore;
+	goP2Words.textContent = `${rival ? rival.words.length : 0} words`;
+
+	gameOverModal.classList.add("open");
+	gameOverModal.setAttribute("aria-hidden", "false");
+}
+
+btnGoRematch.addEventListener("click", () => {
+	if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+		state.ws.send(JSON.stringify({ type: "rematch" }));
+		closeGameOverModal();
+		openLobbyModal();
+	}
+});
+
+$("btn-go-lobby").addEventListener("click", () => {
+	closeGameOverModal();
+	openLobbyModal();
+});
+
+/* ── Achievements Modal Wiring ─────────────────────────────────── */
+function openAchievementsModal() {
+	updateAchievementsUI();
+	achievementsModal.classList.add("open");
+	achievementsModal.setAttribute("aria-hidden", "false");
+}
+
+function closeAchievementsModal() {
+	achievementsModal.classList.remove("open");
+	achievementsModal.setAttribute("aria-hidden", "true");
+	wordInput.focus();
+}
+
+btnAchievements.addEventListener("click", openAchievementsModal);
+btnCloseAchievements.addEventListener("click", closeAchievementsModal);
+
+/* ── Theme Handling ────────────────────────────────────────────── */
 const LS_THEME_KEY = "spellingBee_theme";
 const htmlEl       = document.documentElement;
 
@@ -1800,7 +2834,6 @@ function applyTheme(theme) {
 	}
 }
 
-// Restore saved preference (or respect system preference as fallback)
 const savedTheme = localStorage.getItem(LS_THEME_KEY)
 	?? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
 applyTheme(savedTheme);
@@ -1812,11 +2845,36 @@ $("btn-theme").addEventListener("click", () => {
 	localStorage.setItem(LS_THEME_KEY, newTheme);
 });
 
+/* ── Resize Observer ───────────────────────────────────────────── */
+const ro = new ResizeObserver(() => renderHive());
+ro.observe($("hive-wrap"));
+
 /* ── Boot ──────────────────────────────────────────────────────── */
-loadPuzzle();
+const urlParams = new URLSearchParams(window.location.search);
+const roomParam = urlParams.get("room");
+
+if (roomParam) {
+	setMode("multi");
+	connectToRoom(roomParam.toUpperCase());
+	openLobbyModal();
+} else {
+	setMode("solo");
+}
+
+// 1-second master ticker
 setInterval(() => {
-	tickMutate();
-	tickLockout();
+	if (state.mode === "solo") {
+		tickMutateSolo();
+		tickLockoutSolo();
+	} else if (state.mode === "multi" && state.roomSnapshot && state.roomSnapshot.status === "in_progress") {
+		if (state.matchTimerLeft > 0) {
+			state.matchTimerLeft -= 1;
+			const mins = Math.floor(state.matchTimerLeft / 60);
+			const secs = state.matchTimerLeft % 60;
+			matchTimerVal.textContent = `${mins}:${secs < 10 ? "0" : ""}${secs}`;
+			matchTimerBox.classList.toggle("urgent", state.matchTimerLeft <= 10);
+		}
+	}
 }, 1000);
 </script>
 </body>
