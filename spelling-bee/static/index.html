@@ -1773,8 +1773,14 @@ const RANKS = [
 /* ── App State ─────────────────────────────────────────────────── */
 const LS_MAX_KEY = "spellingBee_maxScore";
 const LS_NICK_KEY = "spellingBee_nickname";
-// Unique player ID generated strictly in-memory per window instance to guarantee zero tab crosstalk
-const myPlayerId = "usr_" + Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
+function getOrCreatePlayerId() {
+	let pid = sessionStorage.getItem("spellingBee_tabId");
+	if (!pid) {
+		pid = "usr_" + Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
+		sessionStorage.setItem("spellingBee_tabId", pid);
+	}
+	return pid;
+}
 
 function getPlayerNickname() {
 	let nick = localStorage.getItem("spellingBee_nickname");
@@ -1791,6 +1797,7 @@ function getBasePath() {
 	return p;
 }
 
+const myPlayerId = getOrCreatePlayerId();
 let myNickname = getPlayerNickname();
 
 const state = {
@@ -2588,6 +2595,8 @@ async function createOrOpenRoom() {
 			}),
 		});
 		const data = await res.json();
+		state.isHost = true;
+		sessionStorage.setItem("host_room_" + data.code, myPlayerId);
 		connectToRoom(data.code);
 		openLobbyModal();
 	} catch (e) {
@@ -2661,7 +2670,8 @@ function handleServerWSMessage(msg) {
 function renderLobbyState(snapshot) {
 	state.roomSnapshot = snapshot;
 	const me = snapshot.players.find(p => p.id === myPlayerId);
-	state.isHost = snapshot.host_id === myPlayerId;
+	const isStoredHost = sessionStorage.getItem("host_room_" + snapshot.code) === myPlayerId;
+	state.isHost = (snapshot.host_id === myPlayerId) || (me ? me.is_host : false) || isStoredHost;
 	state.isReady = me ? me.is_ready : false;
 
 	if (document.activeElement !== inputNickname && me) {
