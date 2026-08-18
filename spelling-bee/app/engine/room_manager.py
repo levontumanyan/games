@@ -9,6 +9,7 @@ from app.engine.game_session import GameSession
 from app.engine.ws_manager import ws_manager
 from app.models.events import GameStartPayload, RoomStatePayload
 from app.models.room import (
+	GameVariant,
 	PlayerState,
 	RoomConfig,
 	RoomSnapshot,
@@ -102,6 +103,12 @@ class Room:
 
 	def update_config(self, new_config: RoomConfig) -> None:
 		self.touch()
+		if new_config.variant == GameVariant.CLASSIC:
+			new_config.mutations_enabled = False
+			new_config.lockouts_enabled = False
+		else:
+			new_config.mutations_enabled = True
+			new_config.lockouts_enabled = True
 		self.config = new_config
 
 	async def start_game(self) -> bool:
@@ -168,6 +175,7 @@ class Room:
 
 		return RoomSnapshot(
 			code=self.code,
+			host_id=self.host_id,
 			status=self.status,
 			config=self.config,
 			players=list(self.players.values()),

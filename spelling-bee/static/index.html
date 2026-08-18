@@ -1356,6 +1356,96 @@
 			background: var(--green-light);
 			color: var(--green);
 		}
+
+		/* ── Match Start Countdown Overlay ─────────────────────────────── */
+		.countdown-overlay {
+			position: fixed;
+			inset: 0;
+			z-index: 999;
+			background: hsl(220 15% 10% / .82);
+			backdrop-filter: blur(8px);
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			opacity: 0;
+			pointer-events: none;
+			transition: opacity 220ms ease;
+		}
+
+		.countdown-overlay.active {
+			opacity: 1;
+			pointer-events: auto;
+		}
+
+		.countdown-card {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			gap: 12px;
+			text-align: center;
+			user-select: none;
+		}
+
+		.countdown-sub {
+			font-size: 1.15rem;
+			font-weight: 800;
+			text-transform: uppercase;
+			letter-spacing: .18em;
+			color: var(--accent);
+		}
+
+		.countdown-number {
+			font-family: 'DM Serif Display', serif;
+			font-size: 7.5rem;
+			line-height: 1;
+			color: #ffffff;
+			text-shadow: 0 4px 32px hsl(44 95% 50% / .5);
+			display: inline-block;
+			transform-origin: center;
+		}
+
+		.countdown-number.pulse {
+			animation: countPulse 900ms cubic-bezier(.34, 1.56, .64, 1) forwards;
+		}
+
+		@keyframes countPulse {
+			0% {
+				opacity: 0;
+				transform: scale(0.35);
+			}
+			45% {
+				opacity: 1;
+				transform: scale(1.18);
+			}
+			75% {
+				transform: scale(1);
+			}
+			100% {
+				opacity: 0.95;
+				transform: scale(1);
+			}
+		}
+
+		.countdown-number.go {
+			font-size: 5rem;
+			color: var(--accent);
+			animation: countGo 850ms cubic-bezier(.34, 1.56, .64, 1) forwards;
+		}
+
+		@keyframes countGo {
+			0% {
+				opacity: 0;
+				transform: scale(0.3) rotate(-6deg);
+			}
+			45% {
+				opacity: 1;
+				transform: scale(1.22) rotate(0deg);
+			}
+			100% {
+				opacity: 1;
+				transform: scale(1);
+			}
+		}
 	</style>
 </head>
 <body>
@@ -1539,15 +1629,20 @@
 			<button class="modal-close" id="btn-close-lobby" aria-label="Close lobby">&times;</button>
 		</div>
 		<div class="modal-body">
-			<!-- Room Code & Copy Link -->
+			<!-- Room Code & Copy Link & New Room -->
 			<div class="lobby-code-box">
 				<div>
 					<div class="input-label">Room Code</div>
 					<div class="lobby-code-val" id="lobby-code-display">BEE-777</div>
 				</div>
-				<button class="btn-copy" id="btn-copy-link">
-					📋 <span>Copy Link</span>
-				</button>
+				<div style="display:flex; gap:8px; align-items:center;">
+					<button class="btn-copy" id="btn-copy-link">
+						📋 <span>Copy Link</span>
+					</button>
+					<button class="btn-copy" id="btn-create-fresh-room" style="background:var(--surface-2); color:var(--text);" title="Create a fresh room">
+						➕ <span>New Room</span>
+					</button>
+				</div>
 			</div>
 
 			<!-- Nickname input -->
@@ -1565,7 +1660,7 @@
 				<div id="host-settings-section" class="lobby-grid-2">
 					<div class="input-group">
 						<label class="input-label" for="select-mode">Format</label>
-						<select class="select-input" id="select-mode" disabled>
+						<select class="select-input" id="select-mode">
 							<option value="1v1">1v1 Duel</option>
 							<option value="2v2">2v2 Team Battle</option>
 							<option value="ffa">Free For All</option>
@@ -1573,7 +1668,7 @@
 					</div>
 					<div class="input-group">
 						<label class="input-label" for="select-duration">Match Timer</label>
-						<select class="select-input" id="select-duration" disabled>
+						<select class="select-input" id="select-duration">
 							<option value="300" selected>5 Minutes</option>
 							<option value="600">10 Minutes</option>
 							<option value="1200">20 Minutes</option>
@@ -1582,14 +1677,14 @@
 					</div>
 					<div class="input-group">
 						<label class="input-label" for="select-variant">Game Variant</label>
-						<select class="select-input" id="select-variant" disabled>
+						<select class="select-input" id="select-variant">
 							<option value="dynamic" selected>Dynamic (Mutations + Lockouts)</option>
 							<option value="classic">Classic (Static Hive)</option>
 						</select>
 					</div>
 					<div class="input-group">
 						<label class="input-label" for="select-claim-mode">Word Claims</label>
-						<select class="select-input" id="select-claim-mode" disabled>
+						<select class="select-input" id="select-claim-mode">
 							<option value="independent" selected>Independent (Score Race)</option>
 							<option value="snatch">Snatch (Exclusive Claim)</option>
 						</select>
@@ -1615,7 +1710,7 @@
 						<span style="color:var(--team-b)">Player 2 (Rival)</span>
 						<span id="duel-p2-badge"></span>
 					</div>
-					<div class="duel-matchup-name" id="duel-p2-name">Waiting…</div>
+					<div class="duel-matchup-name" id="duel-p2-name">Waiting for Opponent…</div>
 					<span class="tag-not-ready" id="duel-p2-status">Share link to invite</span>
 				</div>
 			</div>
@@ -1737,6 +1832,12 @@
 				<div class="badges-list" id="badges-list"></div>
 			</div>
 		</div>
+	</div>
+<!-- Match Start Countdown Overlay -->
+<div class="countdown-overlay" id="countdown-overlay" aria-hidden="true">
+	<div class="countdown-card">
+		<div class="countdown-sub" id="countdown-sub">Match Starting In</div>
+		<div class="countdown-number" id="countdown-number">3</div>
 	</div>
 </div>
 
@@ -2543,7 +2644,7 @@ function closeGameOverModal() {
 $("btn-close-lobby").addEventListener("click", closeLobbyModal);
 $("btn-close-game-over").addEventListener("click", closeGameOverModal);
 
-function setMode(newMode, targetRoomCode = null) {
+function setMode(newMode, targetRoomCode = null, openLobby = true) {
 	state.mode = newMode;
 	if (newMode === "solo") {
 		tabSolo.classList.add("active");
@@ -2552,6 +2653,7 @@ function setMode(newMode, targetRoomCode = null) {
 		matchHud.classList.remove("active");
 		btnRoomAction.style.display = "none";
 		$("btn-new-game").style.display = "inline-flex";
+		closeLobbyModal();
 		loadSoloPuzzle();
 	} else {
 		tabSolo.classList.remove("active");
@@ -2564,8 +2666,12 @@ function setMode(newMode, targetRoomCode = null) {
 
 		const codeToUse = targetRoomCode || state.roomCode;
 		if (codeToUse) {
-			connectToRoom(codeToUse);
-			openLobbyModal();
+			if (!state.ws || state.ws.readyState !== WebSocket.OPEN || state.roomCode !== codeToUse) {
+				connectToRoom(codeToUse);
+			}
+			if (openLobby) {
+				openLobbyModal();
+			}
 		} else {
 			createOrOpenRoom();
 		}
@@ -2573,7 +2679,7 @@ function setMode(newMode, targetRoomCode = null) {
 }
 
 tabSolo.addEventListener("click", () => setMode("solo"));
-tabMulti.addEventListener("click", () => setMode("multi"));
+tabMulti.addEventListener("click", () => setMode("multi", null, true));
 btnRoomAction.addEventListener("click", () => {
 	openLobbyModal();
 });
@@ -2635,8 +2741,12 @@ function connectToRoom(code) {
 		}
 	};
 
-	ws.onclose = () => {
-		console.log("WS closed");
+	ws.onclose = (event) => {
+		console.log("WS closed", event.code, event.reason);
+		if (event.code === 4004) {
+			showToast(`Room ${code} not found or expired. Creating a fresh room...`, "danger");
+			createOrOpenRoom();
+		}
 	};
 }
 
@@ -2678,7 +2788,7 @@ function renderLobbyState(snapshot) {
 		inputNickname.value = me.nickname;
 	}
 
-	// Host settings controls enable/disable
+	// Host settings controls: strictly editable for host, locked/read-only for guests
 	const isHostInLobby = state.isHost && snapshot.status === "lobby";
 	selectMode.disabled = !isHostInLobby;
 	selectDuration.disabled = !isHostInLobby;
@@ -2696,21 +2806,24 @@ function renderLobbyState(snapshot) {
 	}
 
 	const is1v1 = snapshot.config.mode === "1v1";
+	const hostPlayer = snapshot.players.find(p => p.id === snapshot.host_id) || snapshot.players.find(p => p.is_host) || snapshot.players[0];
+	const rivalPlayer = snapshot.players.find(p => p.id !== (hostPlayer ? hostPlayer.id : ""));
+
 	if (is1v1) {
 		duelMatchupWrap.style.display = "grid";
 		teamMatchupWrap.style.display = "none";
 
-		const hostPlayer = snapshot.players.find(p => p.is_host) || snapshot.players[0];
 		if (hostPlayer) {
-			duelP1Name.textContent = hostPlayer.nickname + (hostPlayer.id === myPlayerId ? " (You)" : "");
+			const isMeHost = hostPlayer.id === myPlayerId;
+			duelP1Name.textContent = hostPlayer.nickname + (isMeHost ? " (You)" : "");
 			$("duel-p1-status").textContent = hostPlayer.is_ready ? "Ready ✓" : "Not Ready";
 			$("duel-p1-status").className = hostPlayer.is_ready ? "tag-ready" : "tag-not-ready";
 		}
 
-		const rivalPlayer = snapshot.players.find(p => p.id !== (hostPlayer ? hostPlayer.id : ""));
 		if (rivalPlayer) {
+			const isMeRival = rivalPlayer.id === myPlayerId;
 			cardP2.classList.remove("waiting");
-			duelP2Name.textContent = rivalPlayer.nickname + (rivalPlayer.id === myPlayerId ? " (You)" : "");
+			duelP2Name.textContent = rivalPlayer.nickname + (isMeRival ? " (You)" : "");
 			duelP2Status.textContent = rivalPlayer.is_ready ? "Ready ✓" : "Not Ready";
 			duelP2Status.className = rivalPlayer.is_ready ? "tag-ready" : "tag-not-ready";
 			duelP2Badge.innerHTML = '<span class="tag-host" style="background:var(--team-b);color:#fff">RIVAL</span>';
@@ -2753,13 +2866,39 @@ function renderLobbyState(snapshot) {
 	if (state.isHost) {
 		btnReadyToggle.style.display = "none";
 		btnStartMatch.style.display = "block";
-		btnStartMatch.disabled = snapshot.status !== "lobby";
-		btnStartMatch.textContent = "Start Match ⚔️";
+
+		if (is1v1) {
+			if (!rivalPlayer) {
+				btnStartMatch.disabled = true;
+				btnStartMatch.textContent = "Waiting for Opponent to Join…";
+			} else if (!rivalPlayer.is_ready) {
+				btnStartMatch.disabled = true;
+				btnStartMatch.textContent = `Waiting for ${rivalPlayer.nickname} to be Ready…`;
+			} else {
+				btnStartMatch.disabled = snapshot.status !== "lobby";
+				btnStartMatch.textContent = "Start Match ⚔️";
+			}
+		} else {
+			const allGuestsReady = snapshot.players.filter(p => !p.is_host).every(p => p.is_ready);
+			const hasEnoughPlayers = snapshot.players.length >= 2;
+			if (!hasEnoughPlayers) {
+				btnStartMatch.disabled = true;
+				btnStartMatch.textContent = "Waiting for Players to Join…";
+			} else if (!allGuestsReady) {
+				btnStartMatch.disabled = true;
+				btnStartMatch.textContent = "Waiting for Players to be Ready…";
+			} else {
+				btnStartMatch.disabled = snapshot.status !== "lobby";
+				btnStartMatch.textContent = "Start Match ⚔️";
+			}
+		}
 	} else {
+		// Guest: Can only modify name and toggle ready
 		btnReadyToggle.style.display = "block";
 		btnReadyToggle.textContent = state.isReady ? "Ready ✓" : "Set Ready";
-		btnReadyToggle.style.background = state.isReady ? "var(--green-light)" : "var(--surface)";
+		btnReadyToggle.style.background = state.isReady ? "var(--green-light)" : "var(--surface-2)";
 		btnReadyToggle.style.color = state.isReady ? "var(--green)" : "var(--text)";
+		btnReadyToggle.style.borderColor = state.isReady ? "var(--green)" : "var(--border)";
 
 		btnStartMatch.style.display = "block";
 		btnStartMatch.disabled = true;
@@ -2767,10 +2906,26 @@ function renderLobbyState(snapshot) {
 	}
 }
 
-// Nickname editing broadcasts immediately
+// Nickname editing with debounce and immediate commit
+let nickDebounceTimer = null;
 inputNickname.addEventListener("input", () => {
+	clearTimeout(nickDebounceTimer);
+	nickDebounceTimer = setTimeout(() => {
+		const val = inputNickname.value.trim();
+		if (val && val !== myNickname) {
+			myNickname = val;
+			sessionStorage.setItem("spellingBee_nickname", myNickname);
+			localStorage.setItem(LS_NICK_KEY, myNickname);
+			if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+				state.ws.send(JSON.stringify({ type: "join", payload: { nickname: myNickname } }));
+			}
+		}
+	}, 300);
+});
+
+inputNickname.addEventListener("change", () => {
 	const val = inputNickname.value.trim();
-	if (val) {
+	if (val && val !== myNickname) {
 		myNickname = val;
 		sessionStorage.setItem("spellingBee_nickname", myNickname);
 		localStorage.setItem(LS_NICK_KEY, myNickname);
@@ -2782,7 +2937,8 @@ inputNickname.addEventListener("input", () => {
 
 btnReadyToggle.addEventListener("click", () => {
 	if (state.ws && state.ws.readyState === WebSocket.OPEN) {
-		state.ws.send(JSON.stringify({ type: "set_ready", payload: { is_ready: !state.isReady } }));
+		const nextReady = !state.isReady;
+		state.ws.send(JSON.stringify({ type: "set_ready", payload: { is_ready: nextReady } }));
 	}
 });
 
@@ -2816,7 +2972,8 @@ document.querySelectorAll(".btn-switch-team").forEach(btn => {
 });
 
 btnStartMatch.addEventListener("click", () => {
-	if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+	if (state.isHost && state.ws && state.ws.readyState === WebSocket.OPEN) {
+		closeLobbyModal();
 		state.ws.send(JSON.stringify({ type: "start_game" }));
 	}
 });
@@ -2829,6 +2986,13 @@ btnCopyLink.addEventListener("click", () => {
 	});
 });
 
+const btnCreateFreshRoom = $("btn-create-fresh-room");
+if (btnCreateFreshRoom) {
+	btnCreateFreshRoom.addEventListener("click", () => {
+		createOrOpenRoom();
+	});
+}
+
 $("btn-join-code").addEventListener("click", () => {
 	const code = $("input-join-code").value.trim().toUpperCase();
 	if (code) {
@@ -2838,10 +3002,51 @@ $("btn-join-code").addEventListener("click", () => {
 });
 
 /* ── Live Match In-Game Handlers ───────────────────────────────── */
+function runMatchCountdown(onComplete) {
+	const overlay = $("countdown-overlay");
+	const numEl = $("countdown-number");
+	const subEl = $("countdown-sub");
+
+	if (!overlay || !numEl) {
+		if (onComplete) onComplete();
+		return;
+	}
+
+	overlay.classList.add("active");
+	overlay.setAttribute("aria-hidden", "false");
+	subEl.textContent = "Match Starting In";
+
+	let count = 3;
+	function showCount() {
+		if (count > 0) {
+			numEl.textContent = count;
+			numEl.className = "countdown-number pulse";
+			numEl.style.animation = "none";
+			void numEl.offsetHeight; // trigger reflow
+			numEl.style.animation = "";
+			count--;
+			setTimeout(showCount, 950);
+		} else {
+			subEl.textContent = "Ready… Set…";
+			numEl.textContent = "⚔️ DUEL!";
+			numEl.className = "countdown-number go";
+			numEl.style.animation = "none";
+			void numEl.offsetHeight; // trigger reflow
+			numEl.style.animation = "";
+			setTimeout(() => {
+				overlay.classList.remove("active");
+				overlay.setAttribute("aria-hidden", "true");
+				if (onComplete) onComplete();
+			}, 750);
+		}
+	}
+	showCount();
+}
+
 function handleGameStart(payload) {
+	setMode("multi", null, false);
 	closeLobbyModal();
 	closeGameOverModal();
-	setMode("multi");
 
 	state.center = payload.center;
 	state.outer = [...payload.outer];
@@ -2863,6 +3068,7 @@ function handleGameStart(payload) {
 	matchTimerBox.classList.remove("urgent");
 
 	wordInput.value = "";
+	wordInput.disabled = true; // Lock typing during 3s countdown
 	wordsList.innerHTML = "";
 	mutateFill.style.width = "100%";
 	mutateFill.classList.remove("urgent");
@@ -2878,9 +3084,14 @@ function handleGameStart(payload) {
 	hudP2Name.textContent = rival ? rival.nickname : "Rival";
 	hudP2Pts.textContent = "0";
 
-	feedText.textContent = "Match started! Let the duel begin!";
-	showToast("⚔️ Match Started!", "good");
-	wordInput.focus();
+	feedText.textContent = "Get ready to duel!";
+
+	runMatchCountdown(() => {
+		wordInput.disabled = false;
+		wordInput.focus();
+		feedText.textContent = "Match started! Let the duel begin!";
+		showToast("⚔️ Duel Started!", "good");
+	});
 }
 
 function handleHiveMutation(payload) {

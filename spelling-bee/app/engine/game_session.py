@@ -376,6 +376,7 @@ class GameSession:
 		team_scores = self.rules.calculate_team_scores(self)
 		return RoomSnapshot(
 			code=self.room_code,
+			host_id=self.room.host_id,
 			status=self.room.status,
 			config=self.config,
 			players=list(self.players.values()),

@@ -35,12 +35,29 @@ def test_full_1v1_multiplayer_duel_lifecycle():
 	with client.websocket_connect(f"/ws/room/{code}?player_id=alice_id") as ws_alice:
 		alice_init = ws_alice.receive_json()
 		assert alice_init["type"] == "room_state"
+		assert alice_init["payload"]["snapshot"]["host_id"] == "alice_id"
 		assert alice_init["payload"]["snapshot"]["players"][0]["is_host"] is True
+
+		# Alice updates config
+		ws_alice.send_json({
+			"type": "update_config",
+			"payload": {
+				"config": {
+					"mode": GameMode.DUEL_1V1.value,
+					"duration_seconds": 180,
+					"variant": "classic",
+				}
+			}
+		})
+		cfg_update = ws_alice.receive_json()
+		assert cfg_update["type"] == "room_state"
+		assert cfg_update["payload"]["snapshot"]["config"]["duration_seconds"] == 180
 
 		# 3. Connect Bob (Guest) via WebSocket (testing /spelling/ subpath proxy route)
 		with client.websocket_connect(f"/spelling/ws/room/{code}?player_id=bob_id") as ws_bob:
 			bob_init = ws_bob.receive_json()
 			assert bob_init["type"] == "room_state"
+			assert bob_init["payload"]["snapshot"]["host_id"] == "alice_id"
 
 			# Bob sends join payload with his nickname
 			ws_bob.send_json({
@@ -66,6 +83,9 @@ def test_full_1v1_multiplayer_duel_lifecycle():
 			assert p_bob["is_host"] is False
 			assert p_bob["is_ready"] is False
 
+			# Guest attempts to start game (should be ignored)
+			ws_bob.send_json({"type": "start_game", "payload": {}})
+
 			# Bob toggles ready
 			ws_bob.send_json({"type": "set_ready", "payload": {"is_ready": True}})
 			alice_ready_update = ws_alice.receive_json()
@@ -87,7 +107,7 @@ def test_full_1v1_multiplayer_duel_lifecycle():
 			outer = start_alice["payload"]["outer"]
 			assert start_bob["payload"]["center"] == center
 			assert start_bob["payload"]["outer"] == outer
-			assert start_alice["payload"]["duration"] == 300
+			assert start_alice["payload"]["duration"] == 180
 
 			# 5. Word Guessing & Real-time Opponent Events
 			# Inject a known valid word for testing

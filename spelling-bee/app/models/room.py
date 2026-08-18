@@ -72,6 +72,7 @@ class RoomConfig(BaseModel):
 
 class RoomSnapshot(BaseModel):
 	code: str
+	host_id: str = ""
 	status: RoomStatus
 	config: RoomConfig
 	players: list[PlayerState]

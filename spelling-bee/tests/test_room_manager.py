@@ -61,3 +61,27 @@ def test_leave_room_and_cleanup(manager):
 	# P2 leaves -> room is deleted from manager
 	manager.leave_room(room.code, "p2")
 	assert manager.get_room(room.code) is None
+
+
+def test_room_snapshot_includes_host_id(manager):
+	room, host = manager.create_room("host_123", "Alice")
+	snapshot = room.get_snapshot()
+	assert snapshot.host_id == "host_123"
+	assert snapshot.code == room.code
+
+
+def test_update_config_variants(manager):
+	from app.models.room import GameVariant, RoomConfig
+	room, _ = manager.create_room("host_123", "Alice")
+	# Update to classic variant
+	classic_cfg = RoomConfig(variant=GameVariant.CLASSIC)
+	room.update_config(classic_cfg)
+	assert room.config.mutations_enabled is False
+	assert room.config.lockouts_enabled is False
+
+	# Update to dynamic variant
+	dynamic_cfg = RoomConfig(variant=GameVariant.DYNAMIC)
+	room.update_config(dynamic_cfg)
+	assert room.config.mutations_enabled is True
+	assert room.config.lockouts_enabled is True
+
