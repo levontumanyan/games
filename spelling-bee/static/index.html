@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 	<meta charset="UTF-8" />
-	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
 	<title>Spelling Bee · 1v1 Multiplayer & Daily Puzzle</title>
 	<meta name="description" content="Play Spelling Bee Solo or 1v1 real-time multiplayer with dynamic letter mutations, lockouts, and customizable game variations." />
 	<link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -84,6 +84,9 @@
 			flex-direction: column;
 			align-items: center;
 			overflow-x: hidden;
+			overscroll-behavior-y: none;
+			-webkit-user-select: none;
+			user-select: none;
 		}
 
 		/* ── Header ────────────────────────────────────────────────────── */
@@ -555,9 +558,17 @@
 			display: flex;
 			align-items: center;
 			justify-content: center;
+			touch-action: none;
+			-webkit-user-select: none;
+			user-select: none;
 		}
 
-		.hive { position: relative; width: 100%; height: 100%; }
+		.hive {
+			position: relative;
+			width: 100%;
+			height: 100%;
+			touch-action: none;
+		}
 
 		.hex-btn {
 			position: absolute;
@@ -575,11 +586,14 @@
 			background: var(--surface-2);
 			transition: background var(--t) var(--ease-out), transform var(--t) var(--ease-out);
 			user-select: none;
+			-webkit-user-select: none;
+			-webkit-touch-callout: none;
 			-webkit-tap-highlight-color: transparent;
+			touch-action: none;
 		}
 
 		.hex-btn:hover { background: hsl(48, 20%, 82%); }
-		.hex-btn:active { transform: scale(.90); }
+		.hex-btn:active, .hex-btn.touch-active { transform: scale(.88); }
 
 		.hex-btn.center {
 			background: var(--accent);
@@ -651,6 +665,8 @@
 			font-weight: 600;
 			cursor: pointer;
 			letter-spacing: .01em;
+			touch-action: manipulation;
+			-webkit-tap-highlight-color: transparent;
 			transition: background var(--t), border-color var(--t), transform var(--t);
 		}
 
@@ -2139,6 +2155,66 @@ function renderWordDisplay() {
 		.join("");
 }
 
+/* ── Touch & Swipe Gesture Handling ────────────────────────────── */
+let activeHexId = null;
+let isSwiping = false;
+let lastTouchTimestamp = 0;
+
+function focusWordInput() {
+	if (window.matchMedia("(pointer: fine)").matches) {
+		wordInput.focus();
+	}
+}
+
+function handleTouchPoint(touch) {
+	const el = document.elementFromPoint(touch.clientX, touch.clientY);
+	const hex = el ? el.closest(".hex-btn") : null;
+	if (hex && hex.id !== activeHexId) {
+		activeHexId = hex.id;
+		const letter = hex.dataset.letter;
+		if (letter) {
+			appendLetter(letter);
+			if (navigator.vibrate) {
+				try { navigator.vibrate(10); } catch (_) {}
+			}
+			hex.classList.add("touch-active");
+			setTimeout(() => {
+				if (hex) hex.classList.remove("touch-active");
+			}, 130);
+		}
+	}
+}
+
+function initSwipeGesture() {
+	const wrap = $("hive-wrap");
+	if (!wrap) return;
+
+	wrap.addEventListener("touchstart", (e) => {
+		if (!e.touches || e.touches.length === 0) return;
+		lastTouchTimestamp = Date.now();
+		isSwiping = true;
+		activeHexId = null;
+		handleTouchPoint(e.touches[0]);
+		e.preventDefault();
+	}, { passive: false });
+
+	wrap.addEventListener("touchmove", (e) => {
+		if (!isSwiping || !e.touches || e.touches.length === 0) return;
+		lastTouchTimestamp = Date.now();
+		e.preventDefault();
+		handleTouchPoint(e.touches[0]);
+	}, { passive: false });
+
+	const endSwipe = () => {
+		lastTouchTimestamp = Date.now();
+		isSwiping = false;
+		activeHexId = null;
+	};
+
+	wrap.addEventListener("touchend", endSwipe);
+	wrap.addEventListener("touchcancel", endSwipe);
+}
+
 /* ── Hex geometry & rendering ──────────────────────────────────── */
 function hexPositions(W) {
 	const cx = .5, cy = .5, r = .34;
@@ -2190,9 +2266,10 @@ function renderHex(letter, i, pos, size) {
 	}
 
 	btn.addEventListener("click", () => {
+		if (Date.now() - lastTouchTimestamp < 400) return;
 		appendLetter(btn.dataset.letter);
 		btn.style.transform = "scale(.88)";
-		setTimeout(() => btn.style.transform = "", 130);
+		setTimeout(() => { btn.style.transform = ""; }, 130);
 	});
 	hive.appendChild(btn);
 }
@@ -2370,13 +2447,13 @@ function appendLetter(letter) {
 	}
 	wordInput.value += letter.toUpperCase();
 	renderWordDisplay();
-	wordInput.focus();
+	focusWordInput();
 }
 
 function deleteLetter() {
 	wordInput.value = wordInput.value.slice(0, -1);
 	renderWordDisplay();
-	wordInput.focus();
+	focusWordInput();
 }
 
 function shuffleOuter() {
@@ -2453,7 +2530,7 @@ async function submitGuess() {
 		} else {
 			showToast("Not connected to match room", "danger");
 		}
-		wordInput.focus();
+		focusWordInput();
 		return;
 	}
 
@@ -2512,7 +2589,7 @@ async function submitGuess() {
 		showToast("Network error — try again");
 	}
 
-	wordInput.focus();
+	focusWordInput();
 }
 
 /* ── Input Event Listeners ─────────────────────────────────────── */
@@ -2576,7 +2653,7 @@ async function loadSoloPuzzle() {
 		renderWordDisplay();
 		updateStats();
 		updateRank();
-		wordInput.focus();
+		focusWordInput();
 	} catch {
 		showToast("Could not load puzzle — refresh to retry");
 	}
@@ -2617,7 +2694,7 @@ async function startNewSoloGame() {
 		updateStats();
 		updateRank();
 		showToast("New game! 🐝", "good");
-		wordInput.focus();
+		focusWordInput();
 	} catch {
 		showToast("Failed to load new puzzle");
 	} finally {
@@ -2639,13 +2716,13 @@ function openLobbyModal() {
 function closeLobbyModal() {
 	lobbyModal.classList.remove("open");
 	lobbyModal.setAttribute("aria-hidden", "true");
-	wordInput.focus();
+	focusWordInput();
 }
 
 function closeGameOverModal() {
 	gameOverModal.classList.remove("open");
 	gameOverModal.setAttribute("aria-hidden", "true");
-	wordInput.focus();
+	focusWordInput();
 }
 
 $("btn-close-lobby").addEventListener("click", closeLobbyModal);
@@ -3112,7 +3189,7 @@ function handleGameStart(payload) {
 
 	runMatchCountdown(() => {
 		wordInput.disabled = false;
-		wordInput.focus();
+		focusWordInput();
 		feedText.textContent = "Match started! Let the duel begin!";
 		showToast("⚔️ Duel Started!", "good");
 	});
@@ -3270,7 +3347,7 @@ function openAchievementsModal() {
 function closeAchievementsModal() {
 	achievementsModal.classList.remove("open");
 	achievementsModal.setAttribute("aria-hidden", "true");
-	wordInput.focus();
+	focusWordInput();
 }
 
 btnAchievements.addEventListener("click", openAchievementsModal);
@@ -3299,9 +3376,10 @@ $("btn-theme").addEventListener("click", () => {
 	localStorage.setItem(LS_THEME_KEY, newTheme);
 });
 
-/* ── Resize Observer ───────────────────────────────────────────── */
+/* ── Resize Observer & Swipe Init ─────────────────────────────── */
 const ro = new ResizeObserver(() => renderHive());
 ro.observe($("hive-wrap"));
+initSwipeGesture();
 
 /* ── Boot ──────────────────────────────────────────────────────── */
 const urlParams = new URLSearchParams(window.location.search);
