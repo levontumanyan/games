@@ -2654,6 +2654,19 @@ function setMode(newMode, targetRoomCode = null, openLobby = true) {
 		btnRoomAction.style.display = "none";
 		$("btn-new-game").style.display = "inline-flex";
 		closeLobbyModal();
+
+		// Clean URL query parameter so URL reflects Solo mode
+		const basePath = getBasePath();
+		window.history.replaceState({}, "", basePath);
+
+		// Disconnect from active multiplayer session
+		if (state.ws) {
+			try { state.ws.close(); } catch {}
+			state.ws = null;
+		}
+		state.roomCode = null;
+		state.roomSnapshot = null;
+
 		loadSoloPuzzle();
 	} else {
 		tabSolo.classList.remove("active");
@@ -2680,6 +2693,10 @@ function setMode(newMode, targetRoomCode = null, openLobby = true) {
 
 tabSolo.addEventListener("click", () => setMode("solo"));
 tabMulti.addEventListener("click", () => setMode("multi", null, true));
+$("logo-btn").addEventListener("click", (e) => {
+	e.preventDefault();
+	setMode("solo");
+});
 btnRoomAction.addEventListener("click", () => {
 	openLobbyModal();
 });
