@@ -1361,19 +1361,22 @@
 		.countdown-overlay {
 			position: fixed;
 			inset: 0;
-			z-index: 999;
-			background: hsl(220 15% 10% / .82);
-			backdrop-filter: blur(8px);
+			z-index: 10000;
+			background: rgba(10, 14, 23, 0.85);
+			backdrop-filter: blur(12px);
+			-webkit-backdrop-filter: blur(12px);
 			display: flex;
 			align-items: center;
 			justify-content: center;
 			opacity: 0;
+			visibility: hidden;
 			pointer-events: none;
-			transition: opacity 220ms ease;
+			transition: opacity 220ms ease, visibility 220ms ease;
 		}
 
 		.countdown-overlay.active {
 			opacity: 1;
+			visibility: visible;
 			pointer-events: auto;
 		}
 
@@ -1381,53 +1384,55 @@
 			display: flex;
 			flex-direction: column;
 			align-items: center;
-			gap: 12px;
+			justify-content: center;
+			gap: 16px;
 			text-align: center;
 			user-select: none;
 		}
 
 		.countdown-sub {
-			font-size: 1.15rem;
+			font-size: 1.25rem;
 			font-weight: 800;
 			text-transform: uppercase;
-			letter-spacing: .18em;
+			letter-spacing: .2em;
 			color: var(--accent);
+			text-shadow: 0 2px 12px rgba(255, 196, 0, 0.4);
 		}
 
 		.countdown-number {
-			font-family: 'DM Serif Display', serif;
-			font-size: 7.5rem;
+			font-family: 'DM Serif Display', Georgia, serif;
+			font-size: 8.5rem;
 			line-height: 1;
 			color: #ffffff;
-			text-shadow: 0 4px 32px hsl(44 95% 50% / .5);
+			text-shadow: 0 4px 40px rgba(255, 200, 0, 0.6), 0 0 80px rgba(255, 200, 0, 0.3);
 			display: inline-block;
-			transform-origin: center;
+			transform-origin: center center;
 		}
 
 		.countdown-number.pulse {
-			animation: countPulse 900ms cubic-bezier(.34, 1.56, .64, 1) forwards;
+			animation: countPulse 850ms cubic-bezier(.34, 1.56, .64, 1) forwards;
 		}
 
 		@keyframes countPulse {
 			0% {
 				opacity: 0;
-				transform: scale(0.35);
+				transform: scale(0.25);
 			}
-			45% {
+			40% {
 				opacity: 1;
-				transform: scale(1.18);
+				transform: scale(1.25);
 			}
-			75% {
-				transform: scale(1);
+			70% {
+				transform: scale(0.95);
 			}
 			100% {
-				opacity: 0.95;
+				opacity: 1;
 				transform: scale(1);
 			}
 		}
 
 		.countdown-number.go {
-			font-size: 5rem;
+			font-size: 5.5rem;
 			color: var(--accent);
 			animation: countGo 850ms cubic-bezier(.34, 1.56, .64, 1) forwards;
 		}
@@ -1435,11 +1440,11 @@
 		@keyframes countGo {
 			0% {
 				opacity: 0;
-				transform: scale(0.3) rotate(-6deg);
+				transform: scale(0.3) rotate(-8deg);
 			}
-			45% {
+			40% {
 				opacity: 1;
-				transform: scale(1.22) rotate(0deg);
+				transform: scale(1.25) rotate(0deg);
 			}
 			100% {
 				opacity: 1;
@@ -1833,6 +1838,8 @@
 			</div>
 		</div>
 	</div>
+</div>
+
 <!-- Match Start Countdown Overlay -->
 <div class="countdown-overlay" id="countdown-overlay" aria-hidden="true">
 	<div class="countdown-card">
