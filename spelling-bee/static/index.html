@@ -1334,7 +1334,7 @@
 		<!-- Match Countdown Timer -->
 		<div class="match-timer-box" id="match-timer-box">
 			<span>⏱️</span>
-			<span id="match-timer-val">3:00</span>
+			<span id="match-timer-val">5:00</span>
 		</div>
 	</div>
 
@@ -1475,10 +1475,10 @@
 				<div class="input-group">
 					<label class="input-label" for="select-duration">Match Timer</label>
 					<select class="select-input" id="select-duration">
-						<option value="120">2 Minutes</option>
-						<option value="180" selected>3 Minutes</option>
-						<option value="300">5 Minutes</option>
-						<option value="0">Untimed</option>
+						<option value="300" selected>5 Minutes</option>
+						<option value="600">10 Minutes</option>
+						<option value="1200">20 Minutes</option>
+						<option value="0">Unlimited</option>
 					</select>
 				</div>
 				<div class="input-group">
@@ -2640,8 +2640,16 @@ function handleGameStart(payload) {
 	state.pangrams = 0;
 	state.graceLetter = null;
 	state.lockedLetter = null;
-	state.lockoutWarningLetter = null;
 	state.matchTimerLeft = payload.duration;
+
+	if (payload.duration > 0) {
+		const mins = Math.floor(payload.duration / 60);
+		const secs = payload.duration % 60;
+		matchTimerVal.textContent = `${mins}:${secs < 10 ? "0" : ""}${secs}`;
+	} else {
+		matchTimerVal.textContent = "Unlimited";
+	}
+	matchTimerBox.classList.remove("urgent");
 
 	wordInput.value = "";
 	wordsList.innerHTML = "";
@@ -2873,6 +2881,9 @@ setInterval(() => {
 			const secs = state.matchTimerLeft % 60;
 			matchTimerVal.textContent = `${mins}:${secs < 10 ? "0" : ""}${secs}`;
 			matchTimerBox.classList.toggle("urgent", state.matchTimerLeft <= 10);
+		} else if (state.roomSnapshot.config && state.roomSnapshot.config.duration_seconds === 0) {
+			matchTimerVal.textContent = "Unlimited";
+			matchTimerBox.classList.remove("urgent");
 		}
 	}
 }, 1000);

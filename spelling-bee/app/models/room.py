@@ -63,7 +63,7 @@ class RoomConfig(BaseModel):
 	mode: GameMode = GameMode.DUEL_1V1
 	variant: GameVariant = GameVariant.DYNAMIC
 	word_claim_mode: WordClaimMode = WordClaimMode.INDEPENDENT
-	duration_seconds: int = 180
+	duration_seconds: int = 300
 	target_score: int = 0
 	mutations_enabled: bool = True
 	lockouts_enabled: bool = True
