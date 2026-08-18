@@ -968,6 +968,70 @@
 			gap: 12px;
 		}
 
+		/* ── 1v1 Duel Matchup Box ──────────────────────── */
+		.duel-matchup-wrap {
+			display: grid;
+			grid-template-columns: 1fr auto 1fr;
+			gap: 12px;
+			align-items: center;
+			background: var(--surface);
+			border: 1px solid var(--border);
+			border-radius: var(--radius-md);
+			padding: 16px;
+		}
+
+		.duel-matchup-card {
+			display: flex;
+			flex-direction: column;
+			gap: 6px;
+			background: var(--bg);
+			border: 1.5px solid var(--border);
+			border-radius: var(--radius-sm);
+			padding: 12px 14px;
+		}
+
+		.duel-matchup-card.host-side {
+			border-left: 4px solid var(--team-a);
+		}
+
+		.duel-matchup-card.rival-side {
+			border-left: 4px solid var(--team-b);
+		}
+
+		.duel-matchup-card.waiting {
+			border-style: dashed;
+			opacity: .75;
+		}
+
+		.duel-matchup-meta {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			font-size: .72rem;
+			font-weight: 700;
+			text-transform: uppercase;
+			color: var(--text-muted);
+			letter-spacing: .03em;
+		}
+
+		.duel-matchup-name {
+			font-family: 'DM Serif Display', serif;
+			font-size: 1.2rem;
+			color: var(--text);
+			white-space: nowrap;
+			overflow: hidden;
+			text-overflow: ellipsis;
+		}
+
+		.duel-matchup-vs {
+			font-size: .8rem;
+			font-weight: 800;
+			color: var(--text-muted);
+			background: var(--surface-2);
+			padding: 6px 10px;
+			border-radius: var(--radius-pill);
+		}
+
 		.lobby-teams-wrap {
 			display: flex;
 			flex-direction: column;
@@ -1497,8 +1561,31 @@
 				</div>
 			</div>
 
-			<!-- Teams & Player Slots -->
-			<div class="lobby-teams-wrap">
+			<!-- 1v1 Duel Matchup Box -->
+			<div class="duel-matchup-wrap" id="duel-matchup-wrap">
+				<div class="duel-matchup-card host-side" id="card-p1">
+					<div class="duel-matchup-meta">
+						<span style="color:var(--team-a)">Player 1 (Host)</span>
+						<span class="tag-host">HOST</span>
+					</div>
+					<div class="duel-matchup-name" id="duel-p1-name">Host</div>
+					<span class="tag-ready" id="duel-p1-status">Ready ✓</span>
+				</div>
+
+				<div class="duel-matchup-vs">VS</div>
+
+				<div class="duel-matchup-card rival-side waiting" id="card-p2">
+					<div class="duel-matchup-meta">
+						<span style="color:var(--team-b)">Player 2 (Rival)</span>
+						<span id="duel-p2-badge"></span>
+					</div>
+					<div class="duel-matchup-name" id="duel-p2-name">Waiting…</div>
+					<span class="tag-not-ready" id="duel-p2-status">Share link to invite</span>
+				</div>
+			</div>
+
+			<!-- 2v2 / FFA Teams & Player Slots (shown only in team modes) -->
+			<div class="lobby-teams-wrap" id="team-matchup-wrap" style="display:none">
 				<div class="team-card team-a">
 					<div class="team-header">
 						<span style="color:var(--team-a)">Team Gold (Side A)</span>
@@ -1527,8 +1614,7 @@
 
 			<!-- Bottom CTA controls -->
 			<div class="lobby-actions">
-				<button class="btn-lobby-secondary" id="btn-toggle-ready">Toggle Ready</button>
-				<button class="btn-lobby-primary" id="btn-start-match" disabled>Start Match</button>
+				<button class="btn-lobby-primary" id="btn-start-match">Start Match ⚔️</button>
 			</div>
 		</div>
 	</div>
@@ -1838,9 +1924,15 @@ const selectMode           = $("select-mode");
 const selectDuration       = $("select-duration");
 const selectVariant        = $("select-variant");
 const selectClaimMode      = $("select-claim-mode");
+const duelMatchupWrap      = $("duel-matchup-wrap");
+const teamMatchupWrap      = $("team-matchup-wrap");
+const duelP1Name           = $("duel-p1-name");
+const cardP2               = $("card-p2");
+const duelP2Name           = $("duel-p2-name");
+const duelP2Status         = $("duel-p2-status");
+const duelP2Badge          = $("duel-p2-badge");
 const slotsTeamA           = $("slots-team-a");
 const slotsTeamB           = $("slots-team-b");
-const btnToggleReady       = $("btn-toggle-ready");
 const btnStartMatch        = $("btn-start-match");
 const gameOverModal        = $("game-over-modal");
 const goResultTitle        = $("go-result-title");
@@ -2537,37 +2629,64 @@ function renderLobbyState(snapshot) {
 		selectClaimMode.value = snapshot.config.word_claim_mode;
 	}
 
-	btnToggleReady.textContent = state.isReady ? "Ready ✓" : "Set Ready";
-	btnToggleReady.style.background = state.isReady ? "var(--green-light)" : "var(--surface)";
-	btnToggleReady.style.color = state.isReady ? "var(--green)" : "var(--text)";
+	const is1v1 = snapshot.config.mode === "1v1";
+	if (is1v1) {
+		duelMatchupWrap.style.display = "grid";
+		teamMatchupWrap.style.display = "none";
 
-	// Render Player Slots
-	const teamAPlayers = snapshot.players.filter(p => p.team === "team_a");
-	const teamBPlayers = snapshot.players.filter(p => p.team === "team_b");
+		const hostPlayer = snapshot.players.find(p => p.is_host) || snapshot.players[0];
+		duelP1Name.textContent = hostPlayer ? (hostPlayer.nickname + (hostPlayer.id === myPlayerId ? " (You)" : "")) : "Host";
 
-	slotsTeamA.innerHTML = teamAPlayers.map(p => `
-		<div class="player-slot-item">
-			<span class="slot-name">
-				${p.nickname} ${p.id === myPlayerId ? "(You)" : ""}
-				${p.is_host ? '<span class="tag-host">HOST</span>' : ""}
-			</span>
-			<span class="${p.is_ready ? 'tag-ready' : 'tag-not-ready'}">${p.is_ready ? 'Ready ✓' : 'Not Ready'}</span>
-		</div>
-	`).join("") || '<span style="font-size:.78rem;color:var(--text-muted)">Empty slot</span>';
+		const rivalPlayer = snapshot.players.find(p => p.id !== (hostPlayer ? hostPlayer.id : ""));
+		if (rivalPlayer) {
+			cardP2.classList.remove("waiting");
+			duelP2Name.textContent = rivalPlayer.nickname + (rivalPlayer.id === myPlayerId ? " (You)" : "");
+			duelP2Status.textContent = "Ready ✓";
+			duelP2Status.className = "tag-ready";
+			duelP2Badge.innerHTML = '<span class="tag-host" style="background:var(--team-b);color:#fff">RIVAL</span>';
+		} else {
+			cardP2.classList.add("waiting");
+			duelP2Name.textContent = "Waiting for Opponent…";
+			duelP2Status.textContent = "Share link to invite";
+			duelP2Status.className = "tag-not-ready";
+			duelP2Badge.innerHTML = "";
+		}
+	} else {
+		duelMatchupWrap.style.display = "none";
+		teamMatchupWrap.style.display = "flex";
 
-	slotsTeamB.innerHTML = teamBPlayers.map(p => `
-		<div class="player-slot-item">
-			<span class="slot-name">
-				${p.nickname} ${p.id === myPlayerId ? "(You)" : ""}
-				${p.is_host ? '<span class="tag-host">HOST</span>' : ""}
-			</span>
-			<span class="${p.is_ready ? 'tag-ready' : 'tag-not-ready'}">${p.is_ready ? 'Ready ✓' : 'Not Ready'}</span>
-		</div>
-	`).join("") || '<span style="font-size:.78rem;color:var(--text-muted)">Empty slot</span>';
+		const teamAPlayers = snapshot.players.filter(p => p.team === "team_a");
+		const teamBPlayers = snapshot.players.filter(p => p.team === "team_b");
 
-	// Enable start match button if host and all ready
-	const allReady = snapshot.players.length >= 1 && snapshot.players.every(p => p.is_ready);
-	btnStartMatch.disabled = !(state.isHost && allReady && snapshot.status === "lobby");
+		slotsTeamA.innerHTML = teamAPlayers.map(p => `
+			<div class="player-slot-item">
+				<span class="slot-name">
+					${p.nickname} ${p.id === myPlayerId ? "(You)" : ""}
+					${p.is_host ? '<span class="tag-host">HOST</span>' : ""}
+				</span>
+				<span class="tag-ready">Ready ✓</span>
+			</div>
+		`).join("") || '<span style="font-size:.78rem;color:var(--text-muted)">Empty slot</span>';
+
+		slotsTeamB.innerHTML = teamBPlayers.map(p => `
+			<div class="player-slot-item">
+				<span class="slot-name">
+					${p.nickname} ${p.id === myPlayerId ? "(You)" : ""}
+					${p.is_host ? '<span class="tag-host">HOST</span>' : ""}
+				</span>
+				<span class="tag-ready">Ready ✓</span>
+			</div>
+		`).join("") || '<span style="font-size:.78rem;color:var(--text-muted)">Empty slot</span>';
+	}
+
+	// Start Match button logic
+	if (state.isHost) {
+		btnStartMatch.disabled = snapshot.status !== "lobby";
+		btnStartMatch.textContent = "Start Match ⚔️";
+	} else {
+		btnStartMatch.disabled = true;
+		btnStartMatch.textContent = "Waiting for Host to Start…";
+	}
 }
 
 // Host setting change listeners
@@ -2597,12 +2716,6 @@ document.querySelectorAll(".btn-switch-team").forEach(btn => {
 			state.ws.send(JSON.stringify({ type: "switch_team", payload: { team } }));
 		}
 	});
-});
-
-btnToggleReady.addEventListener("click", () => {
-	if (state.ws && state.ws.readyState === WebSocket.OPEN) {
-		state.ws.send(JSON.stringify({ type: "set_ready", payload: { is_ready: !state.isReady } }));
-	}
 });
 
 btnStartMatch.addEventListener("click", () => {
