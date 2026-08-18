@@ -72,8 +72,8 @@ class Room:
 			id=player_id,
 			nickname=nickname,
 			team=assigned_team,
-			is_host=False,
-			is_ready=True,
+			is_host=(player_id == self.host_id),
+			is_ready=False,
 			connected=True,
 		)
 		self.players[player_id] = player

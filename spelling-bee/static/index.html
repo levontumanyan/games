@@ -1557,37 +1557,43 @@
 			</div>
 
 			<!-- Host Room Settings -->
-			<div id="host-settings-section" class="lobby-grid-2">
-				<div class="input-group">
-					<label class="input-label" for="select-mode">Format</label>
-					<select class="select-input" id="select-mode">
-						<option value="1v1">1v1 Duel</option>
-						<option value="2v2">2v2 Team Battle</option>
-						<option value="ffa">Free For All</option>
-					</select>
+			<div class="input-group">
+				<div style="display:flex; align-items:center; justify-content:space-between">
+					<span class="input-label">Match Settings</span>
+					<span id="settings-lock-badge" class="tag-not-ready" style="display:none; font-size:.7rem">🔒 Controlled by Host</span>
 				</div>
-				<div class="input-group">
-					<label class="input-label" for="select-duration">Match Timer</label>
-					<select class="select-input" id="select-duration">
-						<option value="300" selected>5 Minutes</option>
-						<option value="600">10 Minutes</option>
-						<option value="1200">20 Minutes</option>
-						<option value="0">Unlimited</option>
-					</select>
-				</div>
-				<div class="input-group">
-					<label class="input-label" for="select-variant">Game Variant</label>
-					<select class="select-input" id="select-variant">
-						<option value="dynamic" selected>Dynamic (Mutations + Lockouts)</option>
-						<option value="classic">Classic (Static Hive)</option>
-					</select>
-				</div>
-				<div class="input-group">
-					<label class="input-label" for="select-claim-mode">Word Claims</label>
-					<select class="select-input" id="select-claim-mode">
-						<option value="independent" selected>Independent (Score Race)</option>
-						<option value="snatch">Snatch (Exclusive Claim)</option>
-					</select>
+				<div id="host-settings-section" class="lobby-grid-2">
+					<div class="input-group">
+						<label class="input-label" for="select-mode">Format</label>
+						<select class="select-input" id="select-mode" disabled>
+							<option value="1v1">1v1 Duel</option>
+							<option value="2v2">2v2 Team Battle</option>
+							<option value="ffa">Free For All</option>
+						</select>
+					</div>
+					<div class="input-group">
+						<label class="input-label" for="select-duration">Match Timer</label>
+						<select class="select-input" id="select-duration" disabled>
+							<option value="300" selected>5 Minutes</option>
+							<option value="600">10 Minutes</option>
+							<option value="1200">20 Minutes</option>
+							<option value="0">Unlimited</option>
+						</select>
+					</div>
+					<div class="input-group">
+						<label class="input-label" for="select-variant">Game Variant</label>
+						<select class="select-input" id="select-variant" disabled>
+							<option value="dynamic" selected>Dynamic (Mutations + Lockouts)</option>
+							<option value="classic">Classic (Static Hive)</option>
+						</select>
+					</div>
+					<div class="input-group">
+						<label class="input-label" for="select-claim-mode">Word Claims</label>
+						<select class="select-input" id="select-claim-mode" disabled>
+							<option value="independent" selected>Independent (Score Race)</option>
+							<option value="snatch">Snatch (Exclusive Claim)</option>
+						</select>
+					</div>
 				</div>
 			</div>
 
@@ -1767,22 +1773,14 @@ const RANKS = [
 /* ── App State ─────────────────────────────────────────────────── */
 const LS_MAX_KEY = "spellingBee_maxScore";
 const LS_NICK_KEY = "spellingBee_nickname";
-const LS_PID_KEY = "spellingBee_playerId";
-
-function getOrCreatePlayerId() {
-	let pid = sessionStorage.getItem("spellingBee_sessionId");
-	if (!pid) {
-		pid = "usr_" + Math.random().toString(36).substring(2, 10);
-		sessionStorage.setItem("spellingBee_sessionId", pid);
-	}
-	return pid;
-}
+// Unique player ID generated strictly in-memory per window instance to guarantee zero tab crosstalk
+const myPlayerId = "usr_" + Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
 
 function getPlayerNickname() {
-	let nick = sessionStorage.getItem("spellingBee_nickname");
+	let nick = localStorage.getItem("spellingBee_nickname");
 	if (!nick) {
 		nick = "Player_" + Math.floor(Math.random() * 900 + 100);
-		sessionStorage.setItem("spellingBee_nickname", nick);
+		localStorage.setItem("spellingBee_nickname", nick);
 	}
 	return nick;
 }
@@ -1793,7 +1791,6 @@ function getBasePath() {
 	return p;
 }
 
-const myPlayerId = getOrCreatePlayerId();
 let myNickname = getPlayerNickname();
 
 const state = {
@@ -2664,7 +2661,7 @@ function handleServerWSMessage(msg) {
 function renderLobbyState(snapshot) {
 	state.roomSnapshot = snapshot;
 	const me = snapshot.players.find(p => p.id === myPlayerId);
-	state.isHost = me ? me.is_host : false;
+	state.isHost = snapshot.host_id === myPlayerId;
 	state.isReady = me ? me.is_ready : false;
 
 	if (document.activeElement !== inputNickname && me) {
@@ -2678,11 +2675,14 @@ function renderLobbyState(snapshot) {
 	selectVariant.disabled = !isHostInLobby;
 	selectClaimMode.disabled = !isHostInLobby;
 
-	if (!state.isHost) {
-		selectMode.value = snapshot.config.mode;
-		selectDuration.value = snapshot.config.duration_seconds;
-		selectVariant.value = snapshot.config.variant;
-		selectClaimMode.value = snapshot.config.word_claim_mode;
+	selectMode.value = snapshot.config.mode;
+	selectDuration.value = snapshot.config.duration_seconds;
+	selectVariant.value = snapshot.config.variant;
+	selectClaimMode.value = snapshot.config.word_claim_mode;
+
+	const lockBadge = $("settings-lock-badge");
+	if (lockBadge) {
+		lockBadge.style.display = state.isHost ? "none" : "inline-flex";
 	}
 
 	const is1v1 = snapshot.config.mode === "1v1";

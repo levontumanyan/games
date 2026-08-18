@@ -64,7 +64,14 @@ def test_full_1v1_multiplayer_duel_lifecycle():
 			assert p_alice["is_host"] is True
 			assert p_bob["nickname"] == "Bob"
 			assert p_bob["is_host"] is False
-			assert p_bob["is_ready"] is True
+			assert p_bob["is_ready"] is False
+
+			# Bob toggles ready
+			ws_bob.send_json({"type": "set_ready", "payload": {"is_ready": True}})
+			alice_ready_update = ws_alice.receive_json()
+			bob_ready_update = ws_bob.receive_json()
+			assert alice_ready_update["payload"]["snapshot"]["players"][1]["is_ready"] is True
+			assert bob_ready_update["payload"]["snapshot"]["players"][1]["is_ready"] is True
 
 			# 4. Alice (Host) starts the match
 			ws_alice.send_json({"type": "start_game", "payload": {}})
