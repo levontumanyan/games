@@ -2539,7 +2539,7 @@ function closeGameOverModal() {
 $("btn-close-lobby").addEventListener("click", closeLobbyModal);
 $("btn-close-game-over").addEventListener("click", closeGameOverModal);
 
-function setMode(newMode) {
+function setMode(newMode, targetRoomCode = null) {
 	state.mode = newMode;
 	if (newMode === "solo") {
 		tabSolo.classList.add("active");
@@ -2557,10 +2557,13 @@ function setMode(newMode) {
 		btnRoomAction.style.display = "inline-flex";
 		roomBtnText.textContent = "Room Lobby";
 		$("btn-new-game").style.display = "none";
-		if (!state.roomCode) {
-			createOrOpenRoom();
-		} else {
+
+		const codeToUse = targetRoomCode || state.roomCode;
+		if (codeToUse) {
+			connectToRoom(codeToUse);
 			openLobbyModal();
+		} else {
+			createOrOpenRoom();
 		}
 	}
 }
@@ -3060,9 +3063,7 @@ const urlParams = new URLSearchParams(window.location.search);
 const roomParam = urlParams.get("room");
 
 if (roomParam) {
-	setMode("multi");
-	connectToRoom(roomParam.toUpperCase());
-	openLobbyModal();
+	setMode("multi", roomParam.toUpperCase().trim());
 } else {
 	setMode("solo");
 }
