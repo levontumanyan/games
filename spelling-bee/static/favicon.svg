@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+	<!-- Left wing -->
+	<ellipse cx="22" cy="20" rx="9" ry="15" transform="rotate(-30 22 20)" fill="#E0F2FE" stroke="#38BDF8" stroke-width="2" opacity="0.85"/>
+	<path d="M 20 12 Q 23 20 21 28" fill="none" stroke="#BAE6FD" stroke-width="1.5" stroke-linecap="round" opacity="0.8"/>
+	
+	<!-- Right wing -->
+	<ellipse cx="42" cy="20" rx="9" ry="15" transform="rotate(30 42 20)" fill="#E0F2FE" stroke="#38BDF8" stroke-width="2" opacity="0.85"/>
+	<path d="M 44 12 Q 41 20 43 28" fill="none" stroke="#BAE6FD" stroke-width="1.5" stroke-linecap="round" opacity="0.8"/>
+
+	<!-- Stinger -->
+	<polygon points="32,58 28.5,47 35.5,47" fill="#1E293B"/>
+
+	<!-- Bee body -->
+	<ellipse cx="32" cy="38" rx="16" ry="18" fill="#FACC15"/>
+
+	<!-- Stripes with clean clip -->
+	<g>
+		<clipPath id="body-clip">
+			<ellipse cx="32" cy="38" rx="16" ry="18"/>
+		</clipPath>
+		<g clip-path="url(#body-clip)">
+			<!-- Dark stripes with subtle curved styling -->
+			<path d="M 10 27 Q 32 33 54 27 L 54 34 Q 32 40 10 34 Z" fill="#1E293B"/>
+			<path d="M 10 40 Q 32 46 54 40 L 54 47 Q 32 53 10 47 Z" fill="#1E293B"/>
+		</g>
+	</g>
+
+	<!-- Body highlight/shine -->
+	<ellipse cx="23" cy="34" rx="3" ry="7" transform="rotate(-20 23 34)" fill="#FEF08A" opacity="0.6"/>
+
+	<!-- Head -->
+	<circle cx="32" cy="22" r="11" fill="#1E293B"/>
+
+	<!-- Eyes -->
+	<circle cx="28" cy="21" r="2.8" fill="#FFFFFF"/>
+	<circle cx="27.5" cy="21" r="1.5" fill="#0F172A"/>
+	<circle cx="27" cy="20.2" r="0.6" fill="#FFFFFF"/>
+
+	<circle cx="36" cy="21" r="2.8" fill="#FFFFFF"/>
+	<circle cx="36.5" cy="21" r="1.5" fill="#0F172A"/>
+	<circle cx="36" cy="20.2" r="0.6" fill="#FFFFFF"/>
+
+	<!-- Rosy cheeks -->
+	<circle cx="24.5" cy="26" r="1.6" fill="#FB7185" opacity="0.8"/>
+	<circle cx="39.5" cy="26" r="1.6" fill="#FB7185" opacity="0.8"/>
+
+	<!-- Smile -->
+	<path d="M 30 25.5 Q 32 27.5 34 25.5" fill="none" stroke="#FFFFFF" stroke-width="1.2" stroke-linecap="round"/>
+
+	<!-- Antennae -->
+	<path d="M 28 13 Q 24 5 18 8" fill="none" stroke="#1E293B" stroke-width="2.5" stroke-linecap="round"/>
+	<circle cx="17.5" cy="8" r="2.5" fill="#FACC15"/>
+
+	<path d="M 36 13 Q 40 5 46 8" fill="none" stroke="#1E293B" stroke-width="2.5" stroke-linecap="round"/>
+	<circle cx="46.5" cy="8" r="2.5" fill="#FACC15"/>
+</svg>

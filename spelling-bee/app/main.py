@@ -40,6 +40,14 @@ async def index():
 	return FileResponse(STATIC_DIR / "index.html")
 
 
+@app.get("/favicon.ico", include_in_schema=False)
+@app.get("/spelling/favicon.ico", include_in_schema=False)
+@app.get("/favicon.svg", include_in_schema=False)
+@app.get("/spelling/favicon.svg", include_in_schema=False)
+async def favicon():
+	return FileResponse(STATIC_DIR / "favicon.svg", media_type="image/svg+xml")
+
+
 # ── Solo Play API ─────────────────────────────────────────────────────────────
 
 @app.get("/api/puzzle")
