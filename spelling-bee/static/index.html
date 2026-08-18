@@ -837,9 +837,9 @@
 			background: var(--bg);
 			border: 1px solid var(--border);
 			border-radius: var(--radius-lg);
-			width: 100%;
-			max-width: 520px;
-			max-height: 88vh;
+			width: min(640px, 95vw);
+			max-width: 640px;
+			max-height: 90vh;
 			display: flex;
 			flex-direction: column;
 			box-shadow: var(--shadow-lg);
@@ -853,20 +853,21 @@
 		}
 
 		.modal-header {
-			padding: 16px 20px;
+			padding: 18px 24px;
 			border-bottom: 1px solid var(--border);
 			display: flex;
 			align-items: center;
 			justify-content: space-between;
 			background: var(--surface);
+			flex-shrink: 0;
 		}
 
 		.modal-title {
 			font-family: 'DM Serif Display', serif;
-			font-size: 1.25rem;
+			font-size: 1.35rem;
 			display: flex;
 			align-items: center;
-			gap: 8px;
+			gap: 10px;
 		}
 
 		.modal-close {
@@ -876,8 +877,8 @@
 			font-size: 1.4rem;
 			line-height: 1;
 			cursor: pointer;
-			width: 32px;
-			height: 32px;
+			width: 34px;
+			height: 34px;
 			border-radius: 50%;
 			display: flex;
 			align-items: center;
@@ -890,23 +891,28 @@
 		}
 
 		.modal-body {
-			padding: 20px;
+			padding: 24px;
 			overflow-y: auto;
+			overflow-x: hidden;
 			display: flex;
 			flex-direction: column;
-			gap: 20px;
+			gap: 18px;
 		}
+
+		.modal-body::-webkit-scrollbar { width: 5px; }
+		.modal-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
 		/* ── Multiplayer Lobby Modal UI ────────────────────────────────── */
 		.lobby-code-box {
 			background: var(--surface);
 			border: 2px dashed var(--border);
 			border-radius: var(--radius-md);
-			padding: 16px;
+			padding: 16px 20px;
 			display: flex;
 			align-items: center;
 			justify-content: space-between;
 			gap: 12px;
+			min-width: 0;
 		}
 
 		.lobby-code-val {
@@ -917,26 +923,28 @@
 		}
 
 		.btn-copy {
-			padding: 7px 14px;
+			padding: 8px 16px;
 			border-radius: var(--radius-pill);
 			background: var(--accent);
 			border: none;
 			color: hsl(44, 90%, 15%);
 			font-weight: 700;
-			font-size: .8rem;
+			font-size: .82rem;
 			cursor: pointer;
 			display: flex;
 			align-items: center;
-			gap: 5px;
-			transition: opacity var(--t);
+			gap: 6px;
+			transition: opacity var(--t), transform var(--t);
+			flex-shrink: 0;
 		}
 
-		.btn-copy:hover { opacity: .9; }
+		.btn-copy:hover { opacity: .9; transform: scale(1.02); }
 
 		.input-group {
 			display: flex;
 			flex-direction: column;
 			gap: 6px;
+			min-width: 0;
 		}
 
 		.input-label {
@@ -948,7 +956,7 @@
 		}
 
 		.text-input, .select-input {
-			padding: 9px 12px;
+			padding: 10px 14px;
 			border-radius: var(--radius-sm);
 			border: 1.5px solid var(--border);
 			background: var(--surface);
@@ -956,6 +964,8 @@
 			font-family: 'Inter', sans-serif;
 			font-size: .9rem;
 			outline: none;
+			width: 100%;
+			box-sizing: border-box;
 		}
 
 		.text-input:focus, .select-input:focus {
@@ -966,18 +976,24 @@
 			display: grid;
 			grid-template-columns: 1fr 1fr;
 			gap: 12px;
+			min-width: 0;
+		}
+
+		@media (max-width: 520px) {
+			.lobby-grid-2 { grid-template-columns: 1fr; }
 		}
 
 		/* ── 1v1 Duel Matchup Box ──────────────────────── */
 		.duel-matchup-wrap {
 			display: grid;
 			grid-template-columns: 1fr auto 1fr;
-			gap: 12px;
+			gap: 14px;
 			align-items: center;
 			background: var(--surface);
 			border: 1px solid var(--border);
 			border-radius: var(--radius-md);
-			padding: 16px;
+			padding: 18px;
+			min-width: 0;
 		}
 
 		.duel-matchup-card {
@@ -988,6 +1004,8 @@
 			border: 1.5px solid var(--border);
 			border-radius: var(--radius-sm);
 			padding: 12px 14px;
+			min-width: 0;
+			overflow: hidden;
 		}
 
 		.duel-matchup-card.host-side {
@@ -1170,6 +1188,18 @@
 			display: flex;
 			gap: 8px;
 			align-items: center;
+			min-width: 0;
+		}
+
+		.join-code-row .text-input {
+			flex: 1;
+			min-width: 0;
+		}
+
+		.join-code-row .btn-lobby-secondary {
+			flex-shrink: 0;
+			padding: 9px 18px;
+			font-size: .86rem;
 		}
 
 		/* ── Game Over Modal ────────────────────────────────────────────── */
