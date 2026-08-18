@@ -1,0 +1,1823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>Spelling Bee · Daily Puzzle</title>
+	<meta name="description" content="A daily Spelling Bee word puzzle. Find words using the given letters before they mutate every 20 seconds!" />
+	<link rel="preconnect" href="https://fonts.googleapis.com" />
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+	<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+	<style>
+		/* ── Design tokens ─────────────────────────────────────────────── */
+		:root {
+			--bg:            hsl(48, 30%, 97%);
+			--surface:       hsl(48, 25%, 93%);
+			--surface-2:     hsl(48, 20%, 88%);
+			--border:        hsl(48, 15%, 80%);
+			--text:          hsl(220, 15%, 12%);
+			--text-muted:    hsl(220, 8%, 48%);
+			--accent:        hsl(44, 95%, 50%);
+			--accent-dark:   hsl(44, 95%, 38%);
+			--accent-light:  hsl(44, 95%, 90%);
+			--green:         hsl(145, 60%, 40%);
+			--green-light:   hsl(145, 60%, 92%);
+			--red:           hsl(4, 75%, 52%);
+			--pangram:       hsl(270, 60%, 52%);
+			--pangram-light: hsl(270, 60%, 94%);
+			--mutate-color:  hsl(200, 80%, 50%);
+
+			--radius-sm:   6px;
+			--radius-md:   12px;
+			--radius-pill: 999px;
+
+			--shadow-md: 0 4px 16px hsl(220 15% 12% / .10);
+
+			--ease-spring: cubic-bezier(.34, 1.56, .64, 1);
+			--ease-out:    cubic-bezier(.4, 0, .2, 1);
+			--t:           160ms;
+		}
+
+		/* ── Dark mode tokens ───────────────────────────────────────────── */
+		[data-theme="dark"] {
+			--bg:            hsl(222, 16%, 10%);
+			--surface:       hsl(222, 15%, 14%);
+			--surface-2:     hsl(222, 14%, 19%);
+			--border:        hsl(222, 12%, 26%);
+			--text:          hsl(48, 18%, 90%);
+			--text-muted:    hsl(220, 8%, 52%);
+			--accent-light:  hsl(44, 50%, 18%);
+			--green:         hsl(145, 55%, 50%);
+			--green-light:   hsl(145, 35%, 13%);
+			--pangram:       hsl(270, 65%, 68%);
+			--pangram-light: hsl(270, 35%, 16%);
+			--shadow-md:     0 4px 20px hsl(0 0% 0% / .35);
+		}
+
+		/* Smooth colour transition when theme switches */
+		*, *::before, *::after {
+			transition:
+				background-color 220ms var(--ease-out),
+				border-color     220ms var(--ease-out),
+				color            120ms var(--ease-out);
+		}
+
+		/* ── Reset ─────────────────────────────────────────────────────── */
+		*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+
+		body {
+			font-family: 'Inter', sans-serif;
+			background: var(--bg);
+			color: var(--text);
+			min-height: 100dvh;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			overflow-x: hidden;
+		}
+
+		/* ── Header ────────────────────────────────────────────────────── */
+		header {
+			width: 100%;
+			border-bottom: 1px solid var(--border);
+			padding: 0 clamp(16px, 4vw, 40px);
+			background: var(--bg);
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			height: 60px;
+			position: sticky;
+			top: 0;
+			z-index: 100;
+		}
+
+		.logo {
+			font-family: 'DM Serif Display', serif;
+			font-size: 1.4rem;
+			letter-spacing: -.02em;
+			display: flex;
+			align-items: center;
+			gap: 8px;
+		}
+
+		.logo-hex {
+			width: 26px;
+			height: 26px;
+			background: var(--accent);
+			clip-path: polygon(50% 0%,93% 25%,93% 75%,50% 100%,7% 75%,7% 25%);
+			flex-shrink: 0;
+		}
+
+		.header-right {
+			display: flex;
+			align-items: center;
+			gap: 10px;
+			font-size: .83rem;
+			color: var(--text-muted);
+			font-weight: 500;
+		}
+
+		.score-badge {
+			background: var(--accent);
+			color: var(--text);
+			font-weight: 700;
+			font-size: .88rem;
+			padding: 3px 12px;
+			border-radius: var(--radius-pill);
+			min-width: 36px;
+			text-align: center;
+		}
+
+		.btn-new-game {
+			padding: 5px 14px;
+			border-radius: var(--radius-pill);
+			border: 1.5px solid var(--border);
+			background: transparent;
+			color: var(--text-muted);
+			font-family: 'Inter', sans-serif;
+			font-size: .78rem;
+			font-weight: 600;
+			cursor: pointer;
+			letter-spacing: .02em;
+			transition: background var(--t), border-color var(--t), color var(--t);
+		}
+
+		.btn-new-game:hover {
+			background: var(--surface);
+			border-color: var(--text-muted);
+			color: var(--text);
+		}
+
+		.theme-toggle {
+
+			width: 36px;
+			height: 36px;
+			border-radius: 50%;
+			border: 1.5px solid var(--border);
+			background: var(--surface);
+			cursor: pointer;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			color: var(--text-muted);
+			flex-shrink: 0;
+			/* Override the global colour transition for this element's transform */
+			transition:
+				background-color 220ms var(--ease-out),
+				border-color     220ms var(--ease-out),
+				color            120ms var(--ease-out),
+				transform        200ms var(--ease-spring);
+		}
+
+		.theme-toggle:hover {
+			background: var(--surface-2);
+			color: var(--text);
+			transform: rotate(20deg) scale(1.08);
+		}
+
+		.theme-toggle svg {
+			width: 16px;
+			height: 16px;
+			fill: none;
+			stroke: currentColor;
+			stroke-width: 2;
+			stroke-linecap: round;
+			stroke-linejoin: round;
+			transition: opacity 150ms ease, transform 300ms var(--ease-spring);
+		}
+
+		.theme-toggle .icon-sun  { display: block; }
+		.theme-toggle .icon-moon { display: none;  }
+
+		[data-theme="dark"] .theme-toggle .icon-sun  { display: none;  }
+		[data-theme="dark"] .theme-toggle .icon-moon { display: block; }
+
+		/* ── Layout ────────────────────────────────────────────────────── */
+		main {
+			width: 100%;
+			max-width: 860px;
+			padding: clamp(20px, 4vw, 48px) clamp(16px, 4vw, 40px);
+			display: grid;
+			grid-template-columns: 1fr 280px;
+			gap: 36px;
+			align-items: start;
+		}
+
+		@media (max-width: 680px) {
+			main { grid-template-columns: 1fr; }
+		}
+
+		/* ── Left column ────────────────────────────────────────────────── */
+		.game-col {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			gap: 24px;
+		}
+
+		/* ── Rank bar ───────────────────────────────────────────────────── */
+		.rank-row {
+			width: 100%;
+			display: flex;
+			flex-direction: column;
+			gap: 7px;
+		}
+
+		.rank-meta {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+		}
+
+		.rank-name {
+			font-family: 'DM Serif Display', serif;
+			font-size: 1.1rem;
+		}
+
+		.rank-pct {
+			font-size: .78rem;
+			color: var(--text-muted);
+			font-weight: 600;
+			letter-spacing: .04em;
+		}
+
+		.rank-track {
+			width: 100%;
+			height: 5px;
+			background: var(--surface-2);
+			border-radius: 3px;
+			overflow: hidden;
+		}
+
+		.rank-fill {
+			height: 100%;
+			background: var(--accent);
+			border-radius: 3px;
+			width: 0%;
+			transition: width 600ms var(--ease-spring);
+		}
+
+		/* ── Mutate countdown bar ───────────────────────────────────────── */
+		.mutate-row {
+			width: 100%;
+			display: flex;
+			align-items: center;
+			gap: 10px;
+			font-size: .76rem;
+			font-weight: 600;
+			color: var(--text-muted);
+		}
+
+		.mutate-track {
+			flex: 1;
+			height: 4px;
+			background: var(--surface-2);
+			border-radius: 2px;
+			overflow: hidden;
+		}
+
+		/* fill drains left-to-right: starts full, empties to zero */
+		.mutate-fill {
+			height: 100%;
+			background: var(--mutate-color);
+			border-radius: 2px;
+			width: 100%;
+			transform-origin: left;
+			transition: width 1s linear;
+		}
+
+		.mutate-fill.urgent { background: var(--red); }
+
+		.mutate-secs {
+			min-width: 28px;
+			text-align: right;
+			font-variant-numeric: tabular-nums;
+		}
+
+		/* ── Word input ─────────────────────────────────────────────────── */
+		.word-input-wrap {
+			position: relative;
+			width: 100%;
+		}
+
+		.word-input {
+			width: 100%;
+			font-family: 'DM Serif Display', serif;
+			font-size: clamp(1.6rem, 5vw, 2.4rem);
+			letter-spacing: .06em;
+			text-align: center;
+			padding: 10px 16px;
+			background: transparent;
+			border: none;
+			border-bottom: 2.5px solid var(--border);
+			outline: none;
+			/* Text is invisible — the overlay renders styled spans instead */
+			color: transparent;
+			caret-color: var(--accent);
+			transition: border-color var(--t) var(--ease-out);
+		}
+
+		.word-input:focus { border-color: var(--accent); }
+
+		/* Overlay: renders per-character colored spans on top of the input */
+		.word-display-overlay {
+			position: absolute;
+			inset: 0;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			pointer-events: none;
+			font-family: 'DM Serif Display', serif;
+			font-size: clamp(1.6rem, 5vw, 2.4rem);
+			letter-spacing: .06em;
+			text-transform: uppercase;
+			padding: 10px 16px;
+			overflow: hidden;
+			white-space: nowrap;
+			gap: 1px;
+		}
+
+		.word-display-overlay .lv { color: var(--text); }
+		.word-display-overlay .lv.lg { color: hsl(38, 92%, 50%); }
+		.word-display-overlay .li { color: var(--text-muted); opacity: .55; }
+		.word-display-overlay .placeholder-text {
+			color: var(--border);
+			font-size: clamp(.95rem, 2.8vw, 1.3rem);
+			letter-spacing: .02em;
+		}
+
+		/* ── Honeycomb ──────────────────────────────────────────────────── */
+		.hive-wrap {
+			position: relative;
+			width: clamp(240px, 55vw, 320px);
+			aspect-ratio: 1;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+		}
+
+		.hive { position: relative; width: 100%; height: 100%; }
+
+		.hex-btn {
+			position: absolute;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			clip-path: polygon(50% 0%,93% 25%,93% 75%,50% 100%,7% 75%,7% 25%);
+			cursor: pointer;
+			border: none;
+			outline: none;
+			font-family: 'DM Serif Display', serif;
+			font-size: clamp(1.1rem, 3.5vw, 1.45rem);
+			text-transform: uppercase;
+			color: var(--text);
+			background: var(--surface-2);
+			transition: background var(--t) var(--ease-out), transform var(--t) var(--ease-out);
+			user-select: none;
+			-webkit-tap-highlight-color: transparent;
+		}
+
+		.hex-btn:hover { background: hsl(48, 20%, 82%); }
+		.hex-btn:active { transform: scale(.90); }
+
+		.hex-btn.center {
+			background: var(--accent);
+			color: hsl(44, 80%, 12%);
+			z-index: 2;
+		}
+
+		.hex-btn.center:hover { background: hsl(44, 95%, 44%); }
+
+		/* Letter-swap animation — hex flips over and comes back with new letter */
+		@keyframes hexMutateOut {
+			0%   { transform: scale(1)    rotateY(0deg);   }
+			50%  { transform: scale(.6)   rotateY(90deg);  opacity: .3; }
+			100% { transform: scale(1)    rotateY(0deg);   }
+		}
+
+		.hex-btn.mutating {
+			animation: hexMutateOut 440ms var(--ease-spring) both;
+		}
+
+		/* ── Letter lockout: warning phase ───────────────── */
+		@keyframes hexWarnPulse {
+			0%, 100% { box-shadow: 0 0 0 0 hsl(4, 75%, 52% / .0); }
+			50%      { box-shadow: 0 0 18px 4px hsl(4, 75%, 52% / .55); }
+		}
+
+		.hex-btn.lockout-warning {
+			animation: hexWarnPulse 0.7s ease-in-out infinite;
+		}
+
+		/* ── Letter lockout: locked phase ────────────────── */
+		.hex-btn.lockout-locked {
+			background: var(--red) !important;
+			color: hsl(0, 0%, 100% / .35) !important;
+			pointer-events: none;
+			cursor: not-allowed;
+			text-decoration: line-through;
+			animation: none;
+		}
+
+		/* ── Letter lockout: unlock bounce ───────────────── */
+		@keyframes hexUnlock {
+			0%   { transform: scale(.85); }
+			50%  { transform: scale(1.12); }
+			100% { transform: scale(1); }
+		}
+
+		.hex-btn.lockout-unlock {
+			animation: hexUnlock 350ms var(--ease-spring) both;
+		}
+
+		/* Word display: locked letter appears red/struck */
+		.word-display-overlay .ll {
+			color: var(--red);
+			text-decoration: line-through;
+			opacity: .5;
+		}
+
+		/* ── Action buttons ─────────────────────────────────────────────── */
+		.actions {
+			display: flex;
+			gap: 10px;
+			align-items: center;
+		}
+
+		.btn {
+			padding: 10px 20px;
+			border-radius: var(--radius-pill);
+			border: 2px solid var(--border);
+			background: var(--bg);
+			color: var(--text);
+			font-family: 'Inter', sans-serif;
+			font-size: .84rem;
+			font-weight: 600;
+			cursor: pointer;
+			letter-spacing: .01em;
+			transition: background var(--t), border-color var(--t), transform var(--t);
+		}
+
+		.btn:hover { background: var(--surface); border-color: var(--text-muted); }
+		.btn:active { transform: scale(.95); }
+
+		.btn-submit {
+			background: var(--text);
+			color: var(--bg);
+			border-color: var(--text);
+		}
+
+		.btn-submit:hover { background: hsl(220, 15%, 22%); border-color: hsl(220, 15%, 22%); }
+		.btn-submit:disabled { opacity: .35; cursor: not-allowed; }
+
+		.btn-center {
+			background: var(--accent-light);
+			border-color: var(--accent);
+			color: var(--accent-dark);
+			display: flex;
+			align-items: center;
+			gap: 6px;
+		}
+
+		.btn-center:hover:not(:disabled) {
+			background: var(--accent);
+			border-color: var(--accent-dark);
+			color: hsl(44, 80%, 12%);
+		}
+
+		.btn-center:disabled {
+			opacity: .4;
+			cursor: not-allowed;
+		}
+
+		.cost-badge {
+			font-size: .72rem;
+			font-weight: 700;
+			background: hsl(44, 95%, 38% / .15);
+			padding: 1px 6px;
+			border-radius: var(--radius-pill);
+			letter-spacing: .02em;
+		}
+
+		.btn-center:not(:disabled) .cost-badge {
+			background: hsl(44, 95%, 38% / .2);
+		}
+
+		/* ── Toast ──────────────────────────────────────────────────────── */
+		#toast {
+			position: fixed;
+			top: 78px;
+			left: 50%;
+			transform: translateX(-50%) translateY(-10px);
+			background: var(--text);
+			color: var(--bg);
+			padding: 9px 22px;
+			border-radius: var(--radius-pill);
+			font-size: .86rem;
+			font-weight: 600;
+			opacity: 0;
+			pointer-events: none;
+			transition: opacity 180ms ease, transform 180ms ease;
+			z-index: 999;
+			white-space: nowrap;
+			box-shadow: var(--shadow-md);
+		}
+
+		#toast.show {
+			opacity: 1;
+			transform: translateX(-50%) translateY(0);
+		}
+
+		#toast.good    { background: var(--green); }
+		#toast.great   { background: var(--pangram); }
+		#toast.mutated { background: var(--mutate-color); color: #fff; }
+
+		/* ── Right col ──────────────────────────────────────────────────── */
+		.words-col {
+			display: flex;
+			flex-direction: column;
+			gap: 16px;
+		}
+
+		.stats-card {
+			background: var(--surface);
+			border: 1px solid var(--border);
+			border-radius: var(--radius-md);
+			padding: 16px;
+			display: grid;
+			grid-template-columns: 1fr 1fr;
+			gap: 12px;
+		}
+
+		.stat-item { display: flex; flex-direction: column; gap: 2px; }
+
+		.stat-value {
+			font-family: 'DM Serif Display', serif;
+			font-size: 1.5rem;
+			line-height: 1;
+		}
+
+		.stat-label {
+			font-size: .72rem;
+			color: var(--text-muted);
+			font-weight: 500;
+			letter-spacing: .03em;
+			text-transform: uppercase;
+		}
+
+		.words-header {
+			display: flex;
+			align-items: baseline;
+			justify-content: space-between;
+		}
+
+		.words-title {
+			font-family: 'DM Serif Display', serif;
+			font-size: 1.1rem;
+		}
+
+		.words-count { font-size: .8rem; color: var(--text-muted); font-weight: 500; }
+
+		.words-list {
+			list-style: none;
+			display: flex;
+			flex-direction: column;
+			gap: 2px;
+			max-height: 460px;
+			overflow-y: auto;
+			padding-right: 4px;
+		}
+
+		.words-list::-webkit-scrollbar { width: 4px; }
+		.words-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+		.word-item {
+			padding: 7px 12px;
+			border-radius: var(--radius-sm);
+			font-size: .9rem;
+			font-weight: 500;
+			display: flex;
+			align-items: center;
+			gap: 8px;
+			animation: slideIn 280ms var(--ease-spring) both;
+		}
+
+		@keyframes slideIn {
+			from { opacity: 0; transform: translateX(10px); }
+			to   { opacity: 1; transform: translateX(0); }
+		}
+
+		.word-item.pangram { background: var(--pangram-light); color: var(--pangram); font-weight: 700; }
+		.word-item.normal  { background: var(--green-light); color: var(--green); }
+
+		.word-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+
+		/* ── Achievements button & modal ─────────────────────────────── */
+		.btn-achievements {
+			padding: 5px 12px;
+			border-radius: var(--radius-pill);
+			border: 1.5px solid var(--border);
+			background: transparent;
+			color: var(--text-muted);
+			font-family: 'Inter', sans-serif;
+			font-size: .78rem;
+			font-weight: 600;
+			cursor: pointer;
+			display: flex;
+			align-items: center;
+			gap: 6px;
+			letter-spacing: .02em;
+			transition: background var(--t), border-color var(--t), color var(--t);
+		}
+
+		.btn-achievements svg {
+			width: 14px;
+			height: 14px;
+			stroke: currentColor;
+			fill: none;
+			stroke-width: 2;
+			stroke-linecap: round;
+			stroke-linejoin: round;
+		}
+
+		.btn-achievements:hover {
+			background: var(--surface);
+			border-color: var(--text-muted);
+			color: var(--text);
+		}
+
+		.modal-backdrop {
+			position: fixed;
+			inset: 0;
+			background: hsl(220 15% 12% / .50);
+			backdrop-filter: blur(4px);
+			-webkit-backdrop-filter: blur(4px);
+			z-index: 1000;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			padding: 20px;
+			opacity: 0;
+			visibility: hidden;
+			transition: opacity 200ms var(--ease-out), visibility 200ms var(--ease-out);
+		}
+
+		.modal-backdrop.open {
+			opacity: 1;
+			visibility: visible;
+		}
+
+		.modal-dialog {
+			background: var(--bg);
+			border: 1px solid var(--border);
+			border-radius: var(--radius-md);
+			width: 100%;
+			max-width: 480px;
+			max-height: 85vh;
+			display: flex;
+			flex-direction: column;
+			box-shadow: var(--shadow-md);
+			transform: scale(.95);
+			transition: transform 200ms var(--ease-spring);
+			overflow: hidden;
+		}
+
+		.modal-backdrop.open .modal-dialog {
+			transform: scale(1);
+		}
+
+		.modal-header {
+			padding: 16px 20px;
+			border-bottom: 1px solid var(--border);
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			background: var(--surface);
+		}
+
+		.modal-title {
+			font-family: 'DM Serif Display', serif;
+			font-size: 1.25rem;
+			display: flex;
+			align-items: center;
+			gap: 8px;
+		}
+
+		.modal-close {
+			background: transparent;
+			border: none;
+			color: var(--text-muted);
+			font-size: 1.4rem;
+			line-height: 1;
+			cursor: pointer;
+			width: 32px;
+			height: 32px;
+			border-radius: 50%;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			transition: background var(--t), color var(--t);
+		}
+
+		.modal-close:hover {
+			background: var(--surface-2);
+			color: var(--text);
+		}
+
+		.modal-body {
+			padding: 20px;
+			overflow-y: auto;
+			display: flex;
+			flex-direction: column;
+			gap: 20px;
+		}
+
+		.achieve-section-title {
+			font-size: .75rem;
+			text-transform: uppercase;
+			letter-spacing: .05em;
+			color: var(--text-muted);
+			font-weight: 700;
+			margin-bottom: 10px;
+		}
+
+		.records-grid {
+			display: grid;
+			grid-template-columns: repeat(2, 1fr);
+			gap: 10px;
+		}
+
+		.record-card {
+			background: var(--surface);
+			border: 1px solid var(--border);
+			border-radius: var(--radius-sm);
+			padding: 12px 14px;
+			display: flex;
+			flex-direction: column;
+			gap: 4px;
+		}
+
+		.record-card.full-width {
+			grid-column: span 2;
+		}
+
+		.record-label {
+			font-size: .72rem;
+			color: var(--text-muted);
+			font-weight: 500;
+			text-transform: uppercase;
+			letter-spacing: .03em;
+		}
+
+		.record-val {
+			font-family: 'DM Serif Display', serif;
+			font-size: 1.25rem;
+			color: var(--text);
+			word-break: break-all;
+		}
+
+		.record-sub {
+			font-size: .75rem;
+			color: var(--text-muted);
+			font-weight: 500;
+		}
+
+		.badges-list {
+			display: flex;
+			flex-direction: column;
+			gap: 8px;
+		}
+
+		.badge-item {
+			background: var(--surface);
+			border: 1px solid var(--border);
+			border-radius: var(--radius-sm);
+			padding: 10px 14px;
+			display: flex;
+			align-items: center;
+			gap: 12px;
+			transition: border-color var(--t), background var(--t);
+		}
+
+		.badge-item.unlocked {
+			border-color: var(--accent);
+			background: var(--surface-2);
+		}
+
+		.badge-icon {
+			font-size: 1.35rem;
+			width: 38px;
+			height: 38px;
+			border-radius: 50%;
+			background: var(--surface-2);
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			flex-shrink: 0;
+		}
+
+		.badge-item.unlocked .badge-icon {
+			background: var(--accent-light);
+		}
+
+		.badge-info {
+			flex: 1;
+			display: flex;
+			flex-direction: column;
+			gap: 2px;
+		}
+
+		.badge-name {
+			font-size: .88rem;
+			font-weight: 600;
+			color: var(--text);
+		}
+
+		.badge-desc {
+			font-size: .76rem;
+			color: var(--text-muted);
+		}
+
+		.badge-status {
+			font-size: .72rem;
+			font-weight: 600;
+			padding: 3px 8px;
+			border-radius: var(--radius-pill);
+			background: var(--surface-2);
+			color: var(--text-muted);
+		}
+
+		.badge-item.unlocked .badge-status {
+			background: var(--green-light);
+			color: var(--green);
+		}
+
+		@media (max-width: 680px) {
+			.words-col { order: -1; }
+			.records-grid { grid-template-columns: 1fr; }
+			.record-card.full-width { grid-column: span 1; }
+		}
+	</style>
+</head>
+<body>
+
+<header>
+	<div class="logo">
+		<div class="logo-hex"></div>
+		Spelling Bee
+	</div>
+	<div class="header-right">
+		<button class="btn-achievements" id="btn-achievements" title="View your achievements and records" aria-label="Achievements">
+			<svg viewBox="0 0 24 24">
+				<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/>
+				<path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
+				<path d="M4 22h16"/>
+				<path d="M10 14.66V17c0 .55-.45 1-1 1H7v4h10v-4h-2c-.55 0-1-.45-1-1v-2.34"/>
+				<path d="M6 4h12v7a6 6 0 0 1-12 0V4z"/>
+			</svg>
+			<span>Achievements</span>
+		</button>
+		<button class="btn-new-game" id="btn-new-game" title="Start a new random puzzle">New Game</button>
+		Score
+		<span class="score-badge" id="header-score">0</span>
+		<button class="theme-toggle" id="btn-theme" aria-label="Toggle dark mode" title="Toggle dark mode">
+			<!-- Sun icon (shown in light mode) -->
+			<svg class="icon-sun" viewBox="0 0 24 24">
+				<circle cx="12" cy="12" r="5"/>
+				<line x1="12" y1="1"  x2="12" y2="3"/>
+				<line x1="12" y1="21" x2="12" y2="23"/>
+				<line x1="4.22" y1="4.22"  x2="5.64" y2="5.64"/>
+				<line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+				<line x1="1"  y1="12" x2="3"  y2="12"/>
+				<line x1="21" y1="12" x2="23" y2="12"/>
+				<line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+				<line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+			</svg>
+			<!-- Moon icon (shown in dark mode) -->
+			<svg class="icon-moon" viewBox="0 0 24 24">
+				<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+			</svg>
+		</button>
+	</div>
+</header>
+
+<main>
+	<!-- Left: game -->
+	<div class="game-col">
+
+		<!-- Rank progress -->
+		<div class="rank-row" style="width:100%">
+			<div class="rank-meta">
+				<span class="rank-name" id="rank-name">Beginner</span>
+				<span class="rank-pct" id="rank-pct">0%</span>
+			</div>
+			<div class="rank-track">
+				<div class="rank-fill" id="rank-fill"></div>
+			</div>
+		</div>
+
+		<!-- Letter-mutate countdown -->
+		<div class="mutate-row" style="width:100%">
+			<span>Letter changes in</span>
+			<div class="mutate-track">
+				<div class="mutate-fill" id="mutate-fill"></div>
+			</div>
+			<span class="mutate-secs" id="mutate-secs">20s</span>
+		</div>
+
+		<!-- Word input -->
+		<div class="word-input-wrap">
+			<div id="word-display" class="word-display-overlay" aria-hidden="true">
+				<span class="placeholder-text">Type a word…</span>
+			</div>
+			<input
+				id="word-input"
+				class="word-input"
+				type="text"
+				autocomplete="off"
+				autocorrect="off"
+				autocapitalize="off"
+				spellcheck="false"
+				aria-label="Word input"
+			/>
+		</div>
+
+		<!-- Honeycomb -->
+		<div class="hive-wrap" id="hive-wrap">
+			<div class="hive" id="hive"></div>
+		</div>
+
+		<!-- Controls -->
+		<div class="actions">
+			<button class="btn" id="btn-delete">Delete</button>
+			<button class="btn" id="btn-shuffle">Shuffle</button>
+			<button class="btn btn-submit" id="btn-enter">Enter</button>
+		</div>
+
+		<button class="btn btn-center" id="btn-center" disabled>
+			Change Center <span class="cost-badge">−5 pts</span>
+		</button>
+
+	</div>
+
+	<!-- Right: stats + found words -->
+	<div class="words-col">
+
+		<div class="stats-card">
+			<div class="stat-item">
+				<span class="stat-value" id="stat-score">0</span>
+				<span class="stat-label">Score</span>
+			</div>
+			<div class="stat-item">
+				<span class="stat-value" id="stat-words">0</span>
+				<span class="stat-label">Words</span>
+			</div>
+			<div class="stat-item">
+				<span class="stat-value" id="stat-max">0</span>
+				<span class="stat-label">High score</span>
+			</div>
+			<div class="stat-item">
+				<span class="stat-value" id="stat-pangrams">0</span>
+				<span class="stat-label">Pangrams</span>
+			</div>
+		</div>
+
+		<div class="words-header">
+			<span class="words-title">Found words</span>
+			<span class="words-count" id="words-count">0 words</span>
+		</div>
+
+		<ul class="words-list" id="words-list" aria-live="polite"></ul>
+
+	</div>
+</main>
+
+<!-- Achievements Modal -->
+<div class="modal-backdrop" id="achievements-modal" aria-hidden="true">
+	<div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+		<div class="modal-header">
+			<div class="modal-title" id="modal-title">
+				🏆 Achievements & Records
+			</div>
+			<button class="modal-close" id="btn-close-achievements" aria-label="Close achievements modal">&times;</button>
+		</div>
+		<div class="modal-body">
+			<div>
+				<div class="achieve-section-title">Lifetime Records</div>
+				<div class="records-grid">
+					<div class="record-card full-width">
+						<span class="record-label">Longest Word Guessed</span>
+						<span class="record-val" id="rec-longest-word">—</span>
+						<span class="record-sub" id="rec-longest-sub">No words yet</span>
+					</div>
+					<div class="record-card">
+						<span class="record-label">Best Word Score</span>
+						<span class="record-val" id="rec-best-word">—</span>
+						<span class="record-sub" id="rec-best-sub">0 pts</span>
+					</div>
+					<div class="record-card">
+						<span class="record-label">All-Time High Score</span>
+						<span class="record-val" id="rec-high-score">0</span>
+						<span class="record-sub">Single game peak</span>
+					</div>
+					<div class="record-card">
+						<span class="record-label">Total Words Found</span>
+						<span class="record-val" id="rec-total-words">0</span>
+						<span class="record-sub">Across all games</span>
+					</div>
+					<div class="record-card">
+						<span class="record-label">Pangrams Found</span>
+						<span class="record-val" id="rec-total-pangrams">0</span>
+						<span class="record-sub">Across all games</span>
+					</div>
+				</div>
+			</div>
+
+			<div>
+				<div class="achieve-section-title">Milestones</div>
+				<div class="badges-list" id="badges-list"></div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<div id="toast" role="status" aria-live="assertive"></div>
+
+<script>
+/* ═════════════════════════════════════════════════════════════════
+   Spelling Bee — Game Logic
+   ═════════════════════════════════════════════════════════════════ */
+
+const MUTATE_INTERVAL  = 20;   // seconds between letter mutations
+
+// Letter lockout configuration
+const LOCKOUT_INTERVAL_BASE   = 25;  // seconds between lockout events
+const LOCKOUT_INTERVAL_JITTER = 3;   // ±3s randomness
+const LOCKOUT_WARN_DURATION   = 2;   // seconds of warning animation
+const LOCKOUT_LOCK_DURATION   = 10;  // seconds letter is unusable
+
+// Letters excluded from random picks (rare / puzzle-unfriendly)
+const EXCLUDED = new Set(["q", "x", "z"]);
+const VOWELS = new Set(["a", "e", "i", "o", "u"]);
+const ALL_LETTERS = "abcdefghijklmnopqrstuvwxyz".split("").filter(l => !EXCLUDED.has(l));
+
+const RANKS = [
+	{ name: "Beginner",   pct: 0    },
+	{ name: "Good Start", pct: 0.02 },
+	{ name: "Moving Up",  pct: 0.05 },
+	{ name: "Good",       pct: 0.08 },
+	{ name: "Solid",      pct: 0.15 },
+	{ name: "Nice",       pct: 0.25 },
+	{ name: "Great",      pct: 0.40 },
+	{ name: "Amazing",    pct: 0.55 },
+	{ name: "Genius",     pct: 0.70 },
+	{ name: "Queen Bee",  pct: 1.00 },
+];
+
+/* ── State ─────────────────────────────────────────────────────── */
+const LS_MAX_KEY = "spellingBee_maxScore";
+
+const state = {
+	center: "",
+	outer: [],        // 6 outer letters (live — mutate over time)
+	graceLetter: null,// 1-time grace for single most recently mutated letter
+	maxScore: 0,      // total possible score for this puzzle (for rank calc)
+	score: 0,
+	words: [],
+	pangrams: 0,
+	mutateSecsLeft: MUTATE_INTERVAL,
+	allTimeMax: parseInt(localStorage.getItem(LS_MAX_KEY) || "0", 10),
+	// Letter lockout state
+	lockedLetter: null,
+	lockoutWarningLetter: null,
+	lockoutSecsUntilNext: LOCKOUT_INTERVAL_BASE,
+	lockoutPhaseSecsLeft: 0,
+	lockoutPhase: "idle",       // "idle" | "warning" | "locked"
+};
+
+/* ── Achievements & Records ────────────────────────────────────── */
+const LS_ACHIEVE_KEY = "spellingBee_achievements";
+
+const BADGES = [
+	{ id: "first_word",      icon: "🌱", name: "First Step",      desc: "Find your first valid word" },
+	{ id: "first_pangram",   icon: "🌟", name: "Pangram Pioneer", desc: "Find your first pangram" },
+	{ id: "long_word_7",     icon: "📚", name: "Word Smith",      desc: "Guess a word with 7 or more letters" },
+	{ id: "long_word_9",     icon: "🧙‍♂️", name: "Lexicon Master",  desc: "Guess a word with 9 or more letters" },
+	{ id: "high_score_50",   icon: "🎯", name: "Half Century",    desc: "Score 50+ points in a single game" },
+	{ id: "high_score_100",  icon: "💎", name: "Century Club",    desc: "Score 100+ points in a single game" },
+	{ id: "queen_bee",       icon: "👑", name: "Queen Bee",       desc: "Reach Queen Bee rank (100% puzzle score)" },
+];
+
+function loadAchievements() {
+	const defaultAchieve = {
+		highScore: parseInt(localStorage.getItem(LS_MAX_KEY) || "0", 10),
+		longestWord: null, // { word: "...", length: 0 }
+		bestWord: null,    // { word: "...", score: 0 }
+		totalWords: 0,
+		totalPangrams: 0,
+		gamesPlayed: 1,
+		unlocked: [],
+	};
+	try {
+		const raw = localStorage.getItem(LS_ACHIEVE_KEY);
+		if (raw) {
+			const parsed = JSON.parse(raw);
+			return { ...defaultAchieve, ...parsed };
+		}
+	} catch {}
+	return defaultAchieve;
+}
+
+const achievements = loadAchievements();
+
+function saveAchievements() {
+	try {
+		localStorage.setItem(LS_ACHIEVE_KEY, JSON.stringify(achievements));
+	} catch {}
+}
+
+function unlockBadge(id) {
+	if (!achievements.unlocked.includes(id)) {
+		achievements.unlocked.push(id);
+		saveAchievements();
+		const badge = BADGES.find(b => b.id === id);
+		if (badge) {
+			showToast(`Unlocked: ${badge.icon} ${badge.name}!`, "great");
+		}
+	}
+}
+
+function checkBadges(currentScore, wordObj) {
+	if (wordObj) {
+		unlockBadge("first_word");
+		if (wordObj.pangram) unlockBadge("first_pangram");
+		if (wordObj.word.length >= 7) unlockBadge("long_word_7");
+		if (wordObj.word.length >= 9) unlockBadge("long_word_9");
+	}
+	if (currentScore >= 50) unlockBadge("high_score_50");
+	if (currentScore >= 100) unlockBadge("high_score_100");
+	if (state.maxScore > 0 && currentScore >= state.maxScore) unlockBadge("queen_bee");
+}
+
+function updateAchievementsUI() {
+	const recLongestWord = $("rec-longest-word");
+	const recLongestSub  = $("rec-longest-sub");
+	const recBestWord    = $("rec-best-word");
+	const recBestSub     = $("rec-best-sub");
+	const recHighScore   = $("rec-high-score");
+	const recTotalWords  = $("rec-total-words");
+	const recTotalPangs  = $("rec-total-pangrams");
+	const badgesList     = $("badges-list");
+
+	if (achievements.longestWord) {
+		recLongestWord.textContent = achievements.longestWord.word;
+		recLongestSub.textContent  = `${achievements.longestWord.length} letters`;
+	} else {
+		recLongestWord.textContent = "—";
+		recLongestSub.textContent  = "No words yet";
+	}
+
+	if (achievements.bestWord) {
+		recBestWord.textContent = achievements.bestWord.word;
+		recBestSub.textContent  = `+${achievements.bestWord.score} pts`;
+	} else {
+		recBestWord.textContent = "—";
+		recBestSub.textContent  = "0 pts";
+	}
+
+	recHighScore.textContent  = achievements.highScore;
+	recTotalWords.textContent = achievements.totalWords;
+	recTotalPangs.textContent = achievements.totalPangrams;
+
+	badgesList.innerHTML = BADGES.map(b => {
+		const isUnlocked = achievements.unlocked.includes(b.id);
+		return `
+			<div class="badge-item ${isUnlocked ? "unlocked" : ""}">
+				<div class="badge-icon">${b.icon}</div>
+				<div class="badge-info">
+					<span class="badge-name">${b.name}</span>
+					<span class="badge-desc">${b.desc}</span>
+				</div>
+				<span class="badge-status">${isUnlocked ? "Unlocked ✓" : "Locked 🔒"}</span>
+			</div>
+		`;
+	}).join("");
+}
+
+/* ── DOM ───────────────────────────────────────────────────────── */
+const $ = id => document.getElementById(id);
+const hive                 = $("hive");
+const wordInput            = $("word-input");
+const wordDisplay          = $("word-display");
+const btnEnter             = $("btn-enter");
+const btnDelete            = $("btn-delete");
+const btnShuffle           = $("btn-shuffle");
+const btnCenter            = $("btn-center");
+const mutateFill           = $("mutate-fill");
+const mutateSecs           = $("mutate-secs");
+const rankNameEl           = $("rank-name");
+const rankFillEl           = $("rank-fill");
+const rankPctEl            = $("rank-pct");
+const wordsList            = $("words-list");
+const wordsCount           = $("words-count");
+const toast                = $("toast");
+const headerScore          = $("header-score");
+const statScore            = $("stat-score");
+const statWords            = $("stat-words");
+const statMax              = $("stat-max");
+const statPangrams         = $("stat-pangrams");
+const achievementsModal    = $("achievements-modal");
+const btnAchievements      = $("btn-achievements");
+const btnCloseAchievements = $("btn-close-achievements");
+
+function openAchievementsModal() {
+	updateAchievementsUI();
+	achievementsModal.classList.add("open");
+	achievementsModal.setAttribute("aria-hidden", "false");
+}
+
+function closeAchievementsModal() {
+	achievementsModal.classList.remove("open");
+	achievementsModal.setAttribute("aria-hidden", "true");
+	wordInput.focus();
+}
+
+btnAchievements.addEventListener("click", openAchievementsModal);
+btnCloseAchievements.addEventListener("click", closeAchievementsModal);
+achievementsModal.addEventListener("click", e => {
+	if (e.target === achievementsModal) {
+		closeAchievementsModal();
+	}
+});
+
+/* ── Word display overlay ──────────────────────────────────────── */
+function renderWordDisplay() {
+	const val = wordInput.value;
+	if (!val) {
+		wordDisplay.innerHTML = '<span class="placeholder-text">Type a word…</span>';
+		return;
+	}
+	const liveSet = new Set([state.center, ...state.outer]);
+	wordDisplay.innerHTML = [...val.toUpperCase()]
+		.map(ch => {
+			const lower = ch.toLowerCase();
+			if (liveSet.has(lower)) {
+				if (state.lockedLetter && lower === state.lockedLetter) {
+					return `<span class="ll">${ch}</span>`;
+				}
+				return `<span class="lv">${ch}</span>`;
+			} else if (state.graceLetter && lower === state.graceLetter) {
+				return `<span class="lv lg" title="1-time grace letter">${ch}</span>`;
+			} else {
+				return `<span class="li">${ch}</span>`;
+			}
+		})
+		.join("");
+}
+
+/* ── Hex geometry ──────────────────────────────────────────────── */
+function hexPositions(W) {
+	const cx = .5, cy = .5, r = .34;
+	const angles = [270, 330, 30, 90, 150, 210];
+	return [
+		{ x: cx, y: cy },
+		...angles.map(a => ({
+			x: cx + r * Math.cos(a * Math.PI / 180),
+			y: cy + r * Math.sin(a * Math.PI / 180),
+		})),
+	];
+}
+
+function hexSize(W) { return W * 0.295; }
+
+/* ── Render full hive ──────────────────────────────────────────── */
+function renderHive() {
+	const wrap = $("hive-wrap");
+	const W    = wrap.clientWidth;
+	const pos  = hexPositions(W);
+	const size = hexSize(W);
+	const letters = [state.center, ...state.outer];
+
+	hive.innerHTML = "";
+	letters.forEach((letter, i) => renderHex(letter, i, pos[i], size));
+}
+
+function renderHex(letter, i, pos, size) {
+	const W   = $("hive-wrap").clientWidth;
+	const btn = document.createElement("button");
+	btn.className   = "hex-btn" + (i === 0 ? " center" : "");
+	btn.id          = "hex-" + i;
+	btn.textContent = letter.toUpperCase();
+	btn.dataset.letter = letter;   // source of truth — updated by mutations
+	btn.dataset.index  = i;
+	btn.setAttribute("aria-label", letter.toUpperCase());
+	btn.style.cssText = `
+		width:  ${size}px;
+		height: ${size}px;
+		left:   ${pos.x * W - size / 2}px;
+		top:    ${pos.y * W - size / 2}px;
+	`;
+	// Read dataset.letter at click time — not the closed-over render-time value
+	btn.addEventListener("click", () => {
+		appendLetter(btn.dataset.letter);
+		btn.style.transform = "scale(.88)";
+		setTimeout(() => btn.style.transform = "", 130);
+	});
+	hive.appendChild(btn);
+}
+
+/* ── Update a single hex label (for mutation) ──────────────────── */
+function mutateSingleHex(outerIdx, newLetter) {
+	// outerIdx: 0-5 (index into state.outer)
+	// hive button index = outerIdx + 1 (index 0 is center)
+	const hiveIdx = outerIdx + 1;
+	const btn = document.getElementById("hex-" + hiveIdx);
+	if (!btn) return;
+
+	// Animate flip
+	btn.classList.add("mutating");
+	setTimeout(() => {
+		btn.textContent = newLetter.toUpperCase();
+		btn.dataset.letter = newLetter;
+	}, 220); // swap label at mid-point of animation
+	setTimeout(() => btn.classList.remove("mutating"), 440);
+}
+
+/* ── Letter mutation ───────────────────────────────────────────── */
+function pickNewLetter(slotIdx) {
+	const current = new Set([state.center, ...state.outer]);
+	const currentLetters = [state.center, ...state.outer];
+	// Count vowels in hive excluding the letter being replaced (outer slotIdx maps to index slotIdx + 1)
+	const remainingVowels = currentLetters.filter((l, idx) => idx !== (slotIdx + 1) && VOWELS.has(l)).length;
+
+	let available = ALL_LETTERS.filter(l => !current.has(l));
+	if (remainingVowels < 2) {
+		const vowelCandidates = available.filter(l => VOWELS.has(l));
+		if (vowelCandidates.length > 0) available = vowelCandidates;
+	} else if (remainingVowels >= 3) {
+		const consonantCandidates = available.filter(l => !VOWELS.has(l));
+		if (consonantCandidates.length > 0) available = consonantCandidates;
+	}
+
+	return available[Math.floor(Math.random() * available.length)];
+}
+
+function triggerMutation() {
+	// Pick a random outer slot to replace
+	const slotIdx = Math.floor(Math.random() * state.outer.length);
+	const oldLetter = state.outer[slotIdx];
+	// If the mutating letter is currently locked/warning, cancel lockout
+	if (state.lockedLetter === oldLetter || state.lockoutWarningLetter === oldLetter) {
+		const btn = document.getElementById("hex-" + (slotIdx + 1));
+		if (btn) btn.classList.remove("lockout-warning", "lockout-locked");
+		state.lockedLetter = null;
+		state.lockoutWarningLetter = null;
+		state.lockoutPhase = "idle";
+		state.lockoutSecsUntilNext = getNextLockoutDelay();
+	}
+	const newLetter = pickNewLetter(slotIdx);
+
+	state.outer[slotIdx] = newLetter;
+	state.graceLetter = oldLetter;
+	mutateSingleHex(slotIdx, newLetter);
+
+	// Re-render the overlay — grace letter remains active in amber for next submission
+	renderWordDisplay();
+
+	showToast(`${oldLetter.toUpperCase()} → ${newLetter.toUpperCase()}`, "mutated");
+}
+
+/* ── Shuffle (rearrange, no letter changes) ────────────────────── */
+function shuffleOuter() {
+	const arr = [...state.outer];
+	for (let i = arr.length - 1; i > 0; i--) {
+		const j = Math.floor(Math.random() * (i + 1));
+		[arr[i], arr[j]] = [arr[j], arr[i]];
+	}
+	state.outer = arr;
+	renderHive();
+}
+
+/* ── Change center letter (costs 5 pts) ────────────────────────── */
+function changeCenterLetter() {
+	if (state.score < 5) return;
+
+	// Pick a new center maintaining 2-3 vowels
+	const current = new Set([state.center, ...state.outer]);
+	const outerVowels = state.outer.filter(l => VOWELS.has(l)).length;
+	let available = ALL_LETTERS.filter(l => !current.has(l));
+
+	if (outerVowels < 2) {
+		const vowelCandidates = available.filter(l => VOWELS.has(l));
+		if (vowelCandidates.length > 0) available = vowelCandidates;
+	} else if (outerVowels >= 3) {
+		const consonantCandidates = available.filter(l => !VOWELS.has(l));
+		if (consonantCandidates.length > 0) available = consonantCandidates;
+	}
+
+	const newCenter = available[Math.floor(Math.random() * available.length)];
+
+	const oldCenter = state.center;
+	state.center = newCenter;
+	state.score  = Math.max(0, state.score - 5);
+
+	// Animate the center hex
+	const btn = document.getElementById("hex-0");
+	if (btn) {
+		btn.classList.add("mutating");
+		setTimeout(() => {
+			btn.textContent    = newCenter.toUpperCase();
+			btn.dataset.letter = newCenter;  // keep dataset in sync so clicks work
+		}, 220);
+		setTimeout(() => btn.classList.remove("mutating"), 440);
+	}
+
+	renderWordDisplay(); // re-colour any typed letters with new center
+	updateStats();
+	updateRank();
+	showToast(`${oldCenter.toUpperCase()} → ${newCenter.toUpperCase()} (−5 pts)`, "mutated");
+}
+
+/* ── Append / delete ───────────────────────────────────────────── */
+function appendLetter(letter) {
+	if (state.lockedLetter && letter.toLowerCase() === state.lockedLetter) {
+		showToast(`${letter.toUpperCase()} is locked! 🔒`);
+		return;
+	}
+	wordInput.value += letter.toUpperCase();
+	renderWordDisplay();
+	wordInput.focus();
+}
+
+function deleteLetter() {
+	wordInput.value = wordInput.value.slice(0, -1);
+	renderWordDisplay();
+	wordInput.focus();
+}
+
+/* ── Mutate countdown tick (called every second) ───────────────── */
+function tickMutate() {
+	state.mutateSecsLeft -= 1;
+
+	const pct = (state.mutateSecsLeft / MUTATE_INTERVAL) * 100;
+	mutateFill.style.width = pct + "%";
+	mutateSecs.textContent = state.mutateSecsLeft + "s";
+	mutateFill.classList.toggle("urgent", state.mutateSecsLeft <= 5);
+
+	if (state.mutateSecsLeft <= 0) {
+		triggerMutation();
+		state.mutateSecsLeft = MUTATE_INTERVAL;
+		mutateFill.style.width = "100%";
+		mutateFill.classList.remove("urgent");
+	}
+}
+
+/* ── Letter lockout tick (called every second) ─────────────────── */
+function getNextLockoutDelay() {
+	return LOCKOUT_INTERVAL_BASE +
+		Math.floor(Math.random() * (LOCKOUT_INTERVAL_JITTER * 2 + 1)) -
+		LOCKOUT_INTERVAL_JITTER;
+}
+
+function tickLockout() {
+	if (state.lockoutPhase === "idle") {
+		state.lockoutSecsUntilNext -= 1;
+		if (state.lockoutSecsUntilNext <= 0) {
+			// Start warning phase on a random outer letter
+			const slotIdx = Math.floor(Math.random() * state.outer.length);
+			const letter = state.outer[slotIdx];
+			state.lockoutWarningLetter = letter;
+			state.lockoutPhase = "warning";
+			state.lockoutPhaseSecsLeft = LOCKOUT_WARN_DURATION;
+
+			// Apply warning CSS
+			const btn = document.getElementById("hex-" + (slotIdx + 1));
+			if (btn) btn.classList.add("lockout-warning");
+
+			showToast(`⚠️ ${letter.toUpperCase()} locking soon!`, "");
+		}
+	} else if (state.lockoutPhase === "warning") {
+		state.lockoutPhaseSecsLeft -= 1;
+		if (state.lockoutPhaseSecsLeft <= 0) {
+			// Transition: warning → locked
+			const letter = state.lockoutWarningLetter;
+			state.lockedLetter = letter;
+			state.lockoutWarningLetter = null;
+			state.lockoutPhase = "locked";
+			state.lockoutPhaseSecsLeft = LOCKOUT_LOCK_DURATION;
+
+			// Swap CSS classes on the hex
+			const slotIdx = state.outer.indexOf(letter);
+			if (slotIdx !== -1) {
+				const btn = document.getElementById("hex-" + (slotIdx + 1));
+				if (btn) {
+					btn.classList.remove("lockout-warning");
+					btn.classList.add("lockout-locked");
+				}
+			}
+			renderWordDisplay(); // re-colour any typed letters
+		}
+	} else if (state.lockoutPhase === "locked") {
+		state.lockoutPhaseSecsLeft -= 1;
+		if (state.lockoutPhaseSecsLeft <= 0) {
+			// Unlock the letter
+			const letter = state.lockedLetter;
+			const slotIdx = state.outer.indexOf(letter);
+			if (slotIdx !== -1) {
+				const btn = document.getElementById("hex-" + (slotIdx + 1));
+				if (btn) {
+					btn.classList.remove("lockout-locked");
+					btn.classList.add("lockout-unlock");
+					setTimeout(() => btn.classList.remove("lockout-unlock"), 350);
+				}
+			}
+			state.lockedLetter = null;
+			state.lockoutPhase = "idle";
+			state.lockoutSecsUntilNext = getNextLockoutDelay();
+			renderWordDisplay();
+			showToast(`🔓 ${letter.toUpperCase()} unlocked!`, "good");
+		}
+	}
+}
+
+/* ── Toast ─────────────────────────────────────────────────────── */
+let toastTimer;
+function showToast(msg, type = "") {
+	clearTimeout(toastTimer);
+	toast.textContent = msg;
+	toast.className = "show " + type;
+	toastTimer = setTimeout(() => { toast.className = ""; }, 1900);
+}
+
+/* ── Rank ──────────────────────────────────────────────────────── */
+function updateRank() {
+	if (!state.maxScore) return;
+	const ratio = state.score / state.maxScore;
+	let rank = RANKS[0];
+	for (const r of RANKS) { if (ratio >= r.pct) rank = r; }
+	rankNameEl.textContent = rank.name;
+	rankFillEl.style.width = Math.min(ratio * 100, 100) + "%";
+	rankPctEl.textContent  = Math.round(ratio * 100) + "%";
+}
+
+/* ── Stats panel ───────────────────────────────────────────────── */
+function updateStats() {
+	headerScore.textContent  = state.score;
+	statScore.textContent    = state.score;
+	statWords.textContent    = state.words.length;
+	statMax.textContent      = state.allTimeMax;
+	statPangrams.textContent = state.pangrams;
+	wordsCount.textContent   = `${state.words.length} word${state.words.length !== 1 ? "s" : ""}`;
+	btnCenter.disabled       = state.score < 5;
+}
+
+/* ── Word list ─────────────────────────────────────────────────── */
+function addWordToList(wordObj) {
+	const li = document.createElement("li");
+	li.className = "word-item " + (wordObj.pangram ? "pangram" : "normal");
+	li.innerHTML = `<span class="word-dot"></span>${wordObj.word.toUpperCase()}${wordObj.pangram ? " ✦" : ""}`;
+	wordsList.prepend(li);
+}
+
+/* ── Submit ────────────────────────────────────────────────────── */
+async function submitGuess() {
+	const word = wordInput.value.trim().toLowerCase();
+	const grace = state.graceLetter;
+	// Consume the 1-time grace on submit
+	state.graceLetter = null;
+
+	wordInput.value = "";
+	renderWordDisplay();
+	if (!word) return;
+
+	if (state.words.some(w => w.word === word)) {
+		showToast("Already found!");
+		return;
+	}
+
+	try {
+		const res = await fetch("api/guess", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({
+				word,
+				center_letter: state.center,
+				current_letters: [...state.outer, state.center]
+					.filter(l => l !== state.lockedLetter),
+				grace_letter: grace,
+			}),
+		});
+		const data = await res.json();
+
+		if (data.valid) {
+			const wordObj = { word, pangram: data.pangram, score: data.score };
+			state.words.push(wordObj);
+			state.score += data.score;
+			if (data.pangram) state.pangrams++;
+
+			// Update achievements & records
+			achievements.totalWords += 1;
+			if (data.pangram) achievements.totalPangrams += 1;
+			if (!achievements.longestWord || word.length > achievements.longestWord.length) {
+				achievements.longestWord = { word: word.toUpperCase(), length: word.length };
+			}
+			if (!achievements.bestWord || data.score > achievements.bestWord.score) {
+				achievements.bestWord = { word: word.toUpperCase(), score: data.score };
+			}
+
+			// Persist all-time max score to localStorage
+			if (state.score > state.allTimeMax) {
+				state.allTimeMax = state.score;
+				localStorage.setItem(LS_MAX_KEY, state.allTimeMax);
+			}
+			if (state.score > achievements.highScore) {
+				achievements.highScore = state.score;
+			}
+
+			checkBadges(state.score, wordObj);
+			saveAchievements();
+
+			addWordToList(wordObj);
+			updateStats();
+			updateRank();
+			showToast(data.message, data.pangram ? "great" : "good");
+		} else {
+			showToast(data.message);
+		}
+	} catch {
+		showToast("Network error — try again");
+	}
+
+	wordInput.focus();
+}
+
+/* ── Input: allow any letter, render overlay with colour coding ─── */
+wordInput.addEventListener("input", () => {
+	// Strip non-alpha characters only (allow all letters — invalid ones go grey)
+	wordInput.value = wordInput.value.replace(/[^a-zA-Z]/g, "").toUpperCase();
+	// Strip locked letter from input
+	if (state.lockedLetter) {
+		const locked = state.lockedLetter.toUpperCase();
+		const before = wordInput.value;
+		wordInput.value = wordInput.value.split("").filter(c => c !== locked).join("");
+		if (wordInput.value !== before) {
+			showToast(`${locked} is locked! 🔒`);
+		}
+	}
+	renderWordDisplay();
+});
+
+wordInput.addEventListener("keydown", e => {
+	if (e.key === "Enter") { e.preventDefault(); submitGuess(); }
+});
+
+/* ── Button wiring ─────────────────────────────────────────────── */
+btnEnter.addEventListener("click",  submitGuess);
+btnDelete.addEventListener("click", () => deleteLetter());
+btnShuffle.addEventListener("click", () => {
+	shuffleOuter();
+	showToast("Shuffled!");
+});
+btnCenter.addEventListener("click", changeCenterLetter);
+
+/* ── New game ──────────────────────────────────────────────────── */
+async function startNewGame() {
+	const btnNew = $("btn-new-game");
+	btnNew.textContent = "Loading…";
+	btnNew.disabled    = true;
+
+	try {
+		const res  = await fetch("api/new-game", { method: "POST" });
+		const data = await res.json();
+
+		achievements.gamesPlayed = (achievements.gamesPlayed || 0) + 1;
+		saveAchievements();
+
+		// Reset all session state
+		state.center         = data.center;
+		state.outer          = [...data.outer];
+		state.graceLetter    = null;
+		state.maxScore       = data.max_score;
+		state.score          = 0;
+		state.words          = [];
+		state.pangrams       = 0;
+		state.mutateSecsLeft = MUTATE_INTERVAL;
+
+		// Reset lockout state
+		state.lockedLetter         = null;
+		state.lockoutWarningLetter = null;
+		state.lockoutPhase         = "idle";
+		state.lockoutSecsUntilNext = getNextLockoutDelay();
+		state.lockoutPhaseSecsLeft = 0;
+
+		// Reset UI
+		wordInput.value = "";
+		wordsList.innerHTML = "";
+		mutateFill.style.width = "100%";
+		mutateFill.classList.remove("urgent");
+		// Clear any lockout CSS from hex buttons
+		document.querySelectorAll(".hex-btn").forEach(btn => {
+			btn.classList.remove("lockout-warning", "lockout-locked", "lockout-unlock");
+		});
+
+		renderHive();
+		renderWordDisplay();
+		updateStats();
+		updateRank();
+		showToast("New game! 🐝", "good");
+		wordInput.focus();
+	} catch {
+		showToast("Failed to load new puzzle", "");
+	} finally {
+		btnNew.textContent = "New Game";
+		btnNew.disabled    = false;
+	}
+}
+
+$("btn-new-game").addEventListener("click", startNewGame);
+
+/* ── Global keyboard capture ───────────────────────────────────── */
+// Type anywhere on the page — keystrokes route to the word input
+document.addEventListener("keydown", e => {
+	// If achievements modal is open, let Escape close it and prevent typing into game
+	if (achievementsModal.classList.contains("open")) {
+		if (e.key === "Escape") {
+			closeAchievementsModal();
+		}
+		return;
+	}
+
+	// Let the input handle its own events normally
+	if (document.activeElement === wordInput) return;
+	// Ignore modifier combos (Cmd+R, Ctrl+C, etc.)
+	if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+	if (e.key === "Enter") {
+		e.preventDefault();
+		submitGuess();
+	} else if (e.key === "Backspace") {
+		e.preventDefault();
+		deleteLetter();
+	} else if (/^[a-zA-Z]$/.test(e.key)) {
+		// Append letter and trigger input processing
+		wordInput.value += e.key.toUpperCase();
+		renderWordDisplay();
+	}
+});
+
+/* ── Resize → re-render hive ───────────────────────────────────── */
+const ro = new ResizeObserver(() => renderHive());
+ro.observe($("hive-wrap"));
+
+/* ── Load puzzle ───────────────────────────────────────────────── */
+async function loadPuzzle() {
+	try {
+		const res  = await fetch("api/puzzle");
+		const data = await res.json();
+		state.center   = data.center;
+		state.outer    = [...data.outer];
+		state.maxScore = data.max_score;
+		renderHive();
+		renderWordDisplay();
+		updateStats();
+		updateRank();
+		wordInput.focus();
+	} catch {
+		showToast("Could not load puzzle — refresh to retry");
+	}
+}
+
+/* ── Dark mode ─────────────────────────────────────────────────── */
+const LS_THEME_KEY = "spellingBee_theme";
+const htmlEl       = document.documentElement;
+
+function applyTheme(theme) {
+	if (theme === "dark") {
+		htmlEl.setAttribute("data-theme", "dark");
+	} else {
+		htmlEl.removeAttribute("data-theme");
+	}
+}
+
+// Restore saved preference (or respect system preference as fallback)
+const savedTheme = localStorage.getItem(LS_THEME_KEY)
+	?? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+applyTheme(savedTheme);
+
+$("btn-theme").addEventListener("click", () => {
+	const isDark  = htmlEl.getAttribute("data-theme") === "dark";
+	const newTheme = isDark ? "light" : "dark";
+	applyTheme(newTheme);
+	localStorage.setItem(LS_THEME_KEY, newTheme);
+});
+
+/* ── Boot ──────────────────────────────────────────────────────── */
+loadPuzzle();
+setInterval(() => {
+	tickMutate();
+	tickLockout();
+}, 1000);
+</script>
+</body>
+</html>
