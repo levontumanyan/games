@@ -1777,6 +1777,12 @@ function getOrCreatePlayerId() {
 	return pid;
 }
 
+function getBasePath() {
+	let p = window.location.pathname.replace(/\/index\.html$/, "");
+	if (!p.endsWith("/")) p += "/";
+	return p;
+}
+
 const myPlayerId = getOrCreatePlayerId();
 let myNickname = localStorage.getItem(LS_NICK_KEY) || ("BeePlayer" + Math.floor(Math.random() * 900 + 100));
 
@@ -2335,7 +2341,7 @@ async function submitGuess() {
 	}
 
 	try {
-		const res = await fetch("api/guess", {
+		const res = await fetch(`${getBasePath()}api/guess`, {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({
@@ -2438,7 +2444,7 @@ document.addEventListener("keydown", e => {
 /* ── Solo Load & New Game ──────────────────────────────────────── */
 async function loadSoloPuzzle() {
 	try {
-		const res  = await fetch("api/puzzle");
+		const res  = await fetch(`${getBasePath()}api/puzzle`);
 		const data = await res.json();
 		state.center   = data.center;
 		state.outer    = [...data.outer];
@@ -2459,7 +2465,7 @@ async function startNewSoloGame() {
 	btnNew.disabled = true;
 
 	try {
-		const res  = await fetch("api/new-game", { method: "POST" });
+		const res  = await fetch(`${getBasePath()}api/new-game`, { method: "POST" });
 		const data = await res.json();
 
 		achievements.gamesPlayed = (achievements.gamesPlayed || 0) + 1;
@@ -2555,7 +2561,7 @@ btnRoomAction.addEventListener("click", () => {
 
 async function createOrOpenRoom() {
 	try {
-		const res = await fetch("api/rooms", {
+		const res = await fetch(`${getBasePath()}api/rooms`, {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({
@@ -2584,10 +2590,11 @@ function connectToRoom(code) {
 
 	state.roomCode = code;
 	lobbyCodeDisplay.textContent = code;
-	window.history.replaceState({}, "", `?room=${code}`);
+	const basePath = getBasePath();
+	window.history.replaceState({}, "", `${basePath}?room=${code}`);
 
 	const protocol = location.protocol === "https:" ? "wss:" : "ws:";
-	const wsUrl = `${protocol}//${location.host}/ws/room/${code}?player_id=${myPlayerId}`;
+	const wsUrl = `${protocol}//${location.host}${basePath}ws/room/${code}?player_id=${myPlayerId}`;
 	const ws = new WebSocket(wsUrl);
 	state.ws = ws;
 
@@ -2755,8 +2762,9 @@ btnStartMatch.addEventListener("click", () => {
 });
 
 btnCopyLink.addEventListener("click", () => {
-	const url = window.location.href;
-	navigator.clipboard.writeText(url).then(() => {
+	const basePath = getBasePath();
+	const fullUrl = `${window.location.origin}${basePath}?room=${state.roomCode}`;
+	navigator.clipboard.writeText(fullUrl).then(() => {
 		showToast("Room link copied to clipboard! 📋", "good");
 	});
 });

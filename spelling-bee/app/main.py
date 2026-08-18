@@ -34,6 +34,8 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 # ── Static Routes ─────────────────────────────────────────────────────────────
 
 @app.get("/")
+@app.get("/spelling")
+@app.get("/spelling/")
 async def index():
 	return FileResponse(STATIC_DIR / "index.html")
 
@@ -41,6 +43,7 @@ async def index():
 # ── Solo Play API ─────────────────────────────────────────────────────────────
 
 @app.get("/api/puzzle")
+@app.get("/spelling/api/puzzle")
 async def api_get_puzzle():
 	"""Return current solo puzzle metadata."""
 	p = get_puzzle()
@@ -54,6 +57,7 @@ async def api_get_puzzle():
 
 
 @app.post("/api/new-game")
+@app.post("/spelling/api/new-game")
 async def api_new_game():
 	"""Discard the solo puzzle and generate a fresh random one."""
 	p = new_puzzle()
@@ -74,6 +78,7 @@ class GuessPayload(BaseModel):
 
 
 @app.post("/api/guess")
+@app.post("/spelling/api/guess")
 async def submit_guess(payload: GuessPayload):
 	"""Solo mode word validation."""
 	p = get_puzzle()
@@ -120,6 +125,7 @@ class CreateRoomRequest(BaseModel):
 
 
 @app.post("/api/rooms")
+@app.post("/spelling/api/rooms")
 async def create_room(req: CreateRoomRequest):
 	"""Create a new multiplayer room."""
 	room, host = room_manager.create_room(
@@ -133,6 +139,7 @@ async def create_room(req: CreateRoomRequest):
 
 
 @app.get("/api/rooms/{code}")
+@app.get("/spelling/api/rooms/{code}")
 async def get_room_info(code: str):
 	"""Get current snapshot for a room."""
 	room = room_manager.get_room(code)
@@ -144,6 +151,7 @@ async def get_room_info(code: str):
 # ── WebSocket Endpoint ────────────────────────────────────────────────────────
 
 @app.websocket("/ws/room/{code}")
+@app.websocket("/spelling/ws/room/{code}")
 async def websocket_room_endpoint(websocket: WebSocket, code: str):
 	code = code.upper().strip()
 	room = room_manager.get_room(code)
