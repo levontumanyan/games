@@ -19,7 +19,14 @@ from app.models.events import (
 	HiveMutationPayload,
 	OpponentEventPayload,
 )
-from app.models.room import FoundWord, RoomConfig, RoomSnapshot, RoomStatus, TeamId
+from app.models.room import (
+	FoundWord,
+	RoomConfig,
+	RoomSnapshot,
+	RoomStatus,
+	TeamId,
+	WordClaimMode,
+)
 from app.puzzle import generate_puzzle
 
 if TYPE_CHECKING:
@@ -266,13 +273,23 @@ class GameSession:
 			)
 
 			# 2. Broadcast opponent event to others
+			if self.config.word_claim_mode == WordClaimMode.SNATCH:
+				opp_msg = f"{player.nickname} snatched {found.word.upper()} (+{pts} pts)!"
+				opp_word = found.word
+			else:
+				if pangram:
+					opp_msg = f"{player.nickname} found a Pangram! 🌟 (+{pts} pts)"
+				else:
+					opp_msg = f"{player.nickname} found a {len(found.word)}-letter word (+{pts} pts)"
+				opp_word = None
+
 			opp_payload = OpponentEventPayload(
 				player_id=player.id,
 				player_name=player.nickname,
 				team_id=player.team,
-				message=f"{player.nickname} found {found.word.upper()} (+{pts} pts)!",
+				message=opp_msg,
 				score_diff=pts,
-				word=found.word,
+				word=opp_word,
 				pangram=pangram,
 			)
 			await ws_manager.broadcast(
@@ -340,12 +357,21 @@ class GameSession:
 
 	async def broadcast_score_update(self) -> None:
 		snapshot = self.get_snapshot()
+		is_snatch = self.config.word_claim_mode == WordClaimMode.SNATCH
+
+		player_data = []
+		for p in snapshot.players:
+			pd = p.model_dump()
+			if not is_snatch:
+				pd["words"] = []
+			player_data.append(pd)
+
 		await ws_manager.broadcast(
 			self.room_code,
 			{
 				"type": "score_update",
 				"payload": {
-					"players": [p.model_dump() for p in snapshot.players],
+					"players": player_data,
 					"team_scores": snapshot.team_scores,
 				},
 			},

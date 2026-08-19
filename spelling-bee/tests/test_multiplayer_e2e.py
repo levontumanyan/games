@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 
 from app.engine.room_manager import room_manager
 from app.main import app
-from app.models.room import GameMode
+from app.models.room import GameMode, WordClaimMode
 
 
 def test_full_1v1_multiplayer_duel_lifecycle():
@@ -135,12 +135,14 @@ def test_full_1v1_multiplayer_duel_lifecycle():
 			# Bob receives opponent_event & score_update
 			bob_opp_event = ws_bob.receive_json()
 			assert bob_opp_event["type"] == "opponent_event"
-			assert "Alice found BEAD" in bob_opp_event["payload"]["message"]
+			assert "Alice found a 4-letter word" in bob_opp_event["payload"]["message"]
+			assert bob_opp_event["payload"]["word"] is None
 
 			bob_score_update = ws_bob.receive_json()
 			alice_score_update = ws_alice.receive_json()
 			assert bob_score_update["type"] == "score_update"
 			assert alice_score_update["type"] == "score_update"
+			assert bob_score_update["payload"]["players"][0]["words"] == []
 
 			# 6. Center Swap Penalty
 			# Alice gives herself 10 points and swaps center
@@ -171,3 +173,69 @@ def test_full_1v1_multiplayer_duel_lifecycle():
 			assert alice_rematch_state["type"] == "room_state"
 			assert bob_rematch_state["type"] == "room_state"
 			assert alice_rematch_state["payload"]["snapshot"]["status"] == "lobby"
+
+
+def test_snatch_mode_reveals_word_in_opponent_event():
+	client = TestClient(app)
+
+	res = client.post(
+		"/api/rooms",
+		json={
+			"host_id": "alice_id",
+			"host_name": "Alice",
+			"config": {
+				"mode": GameMode.DUEL_1V1.value,
+				"word_claim_mode": WordClaimMode.SNATCH.value,
+				"duration_seconds": 180,
+			},
+		},
+	)
+	assert res.status_code == 200
+	code = res.json()["code"]
+
+	with client.websocket_connect(f"/ws/room/{code}?player_id=alice_id") as ws_alice:
+		ws_alice.receive_json()  # room_state
+
+		with client.websocket_connect(f"/ws/room/{code}?player_id=bob_id") as ws_bob:
+			ws_bob.receive_json()  # room_state
+			ws_bob.send_json({"type": "join", "payload": {"nickname": "Bob"}})
+			ws_alice.receive_json()
+			ws_bob.receive_json()
+
+			ws_bob.send_json({"type": "set_ready", "payload": {"is_ready": True}})
+			ws_alice.receive_json()
+			ws_bob.receive_json()
+
+			ws_alice.send_json({"type": "start_game", "payload": {}})
+			ws_alice.receive_json()  # game_start
+			ws_bob.receive_json()  # game_start
+
+			active_room = room_manager.get_room(code)
+			assert active_room is not None
+			assert active_room.session is not None
+			active_session = active_room.session
+			active_session.center = "a"
+			active_session.outer = ["b", "c", "d", "e", "f", "g"]
+			active_session.puzzle["valid_words"] = ["bead"]
+
+			# Alice submits valid word "bead" in snatch mode
+			ws_alice.send_json({
+				"type": "submit_guess",
+				"payload": {"word": "bead", "center_letter": "a"},
+			})
+
+			alice_guess_res = ws_alice.receive_json()
+			assert alice_guess_res["type"] == "guess_result"
+			assert alice_guess_res["payload"]["valid"] is True
+
+			# Bob receives opponent_event containing the snatched word
+			bob_opp_event = ws_bob.receive_json()
+			assert bob_opp_event["type"] == "opponent_event"
+			assert "Alice snatched BEAD" in bob_opp_event["payload"]["message"]
+			assert bob_opp_event["payload"]["word"] == "bead"
+
+			bob_score_update = ws_bob.receive_json()
+			alice_score_update = ws_alice.receive_json()
+			assert bob_score_update["type"] == "score_update"
+			assert alice_score_update["type"] == "score_update"
+			assert bob_score_update["payload"]["players"][0]["words"][0]["word"] == "bead"
