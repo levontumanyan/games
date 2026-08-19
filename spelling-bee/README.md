@@ -43,6 +43,27 @@ The objective is to find words of 4 or more letters constructed from the 7 lette
 - Pangrams (using all 7 letters) earn a 7-point bonus.
 - Ranks progress from Beginner to Queen Bee (100% of maximum possible score).
 
+# Puzzle Generation Pipeline
+
+The generator in [app/puzzle.py](file:///Users/levontumanyan/repos/games/spelling-bee/app/puzzle.py) derives playable honeycombs using a multi-stage filtering funnel:
+
+## 1. Dictionary Pangram Extraction
+- Scans [app/words.txt](file:///Users/levontumanyan/repos/games/spelling-bee/app/words.txt) for words containing exactly 7 unique characters.
+- Guarantees that every candidate letter set has at least one valid pangram solution.
+
+## 2. Dead-End Letter Pruning
+- Filters out sets containing high-friction letters (`q` and `z`).
+- Prevents unplayable dead ends where only 1 or 2 obscure words can be formed.
+
+## 3. Vowel Equilibrium
+- Restricts sets to exactly 2–3 vowels (`a`, `e`, `i`, `o`, `u`).
+- Ensures balanced consonant-to-vowel ratios for natural word construction.
+
+## 4. Center Letter Viability & Yield Threshold
+- Evaluates each letter in the 7-letter set as a candidate center letter.
+- Retains only center letters that yield at least 25 valid dictionary words.
+- Randomly samples from the viable center candidates to assemble the final comb.
+
 # Architecture & Stack
 
 ## Backend
