@@ -54,6 +54,14 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 		save_routines_to_disk(data)
 		return {"status": "ok", "count": len(data)}
 
+	@app.middleware("http")
+	async def add_cache_control_header(request: Request, call_next):
+		response = await call_next(request)
+		path = request.url.path
+		if path.endswith((".js", ".css", ".html")) or path in ("/", "/workout", "/workout/"):
+			response.headers["Cache-Control"] = "no-cache, must-revalidate"
+		return response
+
 	# Mount static directories (both root and subpath for reverse proxy flexibility)
 	app.mount("/workout/css", StaticFiles(directory=static_dir / "css"), name="workout_css")
 	app.mount("/workout/js", StaticFiles(directory=static_dir / "js"), name="workout_js")

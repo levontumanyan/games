@@ -62,7 +62,12 @@ export function loadRoutines() {
 		if (raw) {
 			const parsed = JSON.parse(raw);
 			if (Array.isArray(parsed)) {
-				return parsed;
+				// Strip legacy seed routine if previously saved in browser localStorage
+				const cleaned = parsed.filter(r => !(r.title === 'Quick Full Body Warmup' && r.steps?.some(s => s.videoId === 'JOhAdqQLEFI')));
+				if (cleaned.length !== parsed.length) {
+					saveRoutines(cleaned);
+				}
+				return cleaned;
 			}
 		}
 	} catch (e) {

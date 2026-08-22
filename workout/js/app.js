@@ -5,18 +5,18 @@
 import {
 	loadRoutines, saveRoutines, fetchServerRoutines,
 	saveServerRoutines, exportRoutines, importRoutines
-} from './storage.js';
-import { renderEditor, createClipStep, createTimerStep, createRoutine } from './editor.js';
+} from './storage.js?v=2';
+import { renderEditor, createClipStep, createTimerStep, createRoutine } from './editor.js?v=2';
 import {
 	initPlayer, startRoutine, stopPlayback,
 	togglePause, skipStep, previousStep, resetPlayback
-} from './player.js';
-import { initAudio } from './audio.js';
+} from './player.js?v=2';
+import { initAudio } from './audio.js?v=2';
 import {
 	initMusic, setVolume as setMusicVolume, nextTrack, prevTrack,
 	muteMusic, unmuteMusic, isMuted as isMusicMuted
-} from './music.js';
-import { formatTime } from './utils.js';
+} from './music.js?v=2';
+import { formatTime } from './utils.js?v=2';
 
 let routines = [];
 let selectedRoutineId = null;
