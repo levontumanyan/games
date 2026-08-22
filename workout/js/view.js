@@ -1,8 +1,6 @@
-/**
- * Routine View Module - Read-only overview with rich thumbnails, stats, and direct playback.
- */
-
 import { formatTime, formatFriendlyDuration } from './utils.js?v=5';
+import { isBreakStep } from './editor.js?v=5';
+import { getClipIcon, getTimerIcon, getBreakIcon, getStepsIcon } from './icons.js?v=5';
 
 /**
  * Render the read-only routine overview.
@@ -20,7 +18,8 @@ export function renderRoutineOverview(routine, container, actions = {}) {
 
 	const steps = routine.steps || [];
 	const clipCount = steps.filter(s => s.type === 'clip').length;
-	const timerCount = steps.filter(s => s.type === 'timer').length;
+	const breakCount = steps.filter(s => isBreakStep(s)).length;
+	const timerCount = steps.filter(s => s.type === 'timer' && !isBreakStep(s)).length;
 	const totalSeconds = steps.reduce((sum, s) => {
 		if (s.type === 'timer') return sum + (s.durationSeconds || 0);
 		if (s.type === 'clip') {
@@ -45,16 +44,20 @@ export function renderRoutineOverview(routine, container, actions = {}) {
 	statsRow.className = 'view-stats-row';
 
 	const stats = [
-		{ label: `${steps.length} Steps`, icon: '📋' },
-		{ label: `~${formatTime(totalSeconds)}`, icon: '⏱️' },
-		{ label: `${clipCount} Videos`, icon: '🎬' },
-		{ label: `${timerCount} Timers`, icon: '⏳' },
+		{ label: `${steps.length} Steps`, icon: getStepsIcon(14) },
+		{ label: `~${formatTime(totalSeconds)}`, icon: getTimerIcon(14) },
+		{ label: `${clipCount} Videos`, icon: getClipIcon(14) },
+		{ label: `${timerCount} Timers`, icon: getTimerIcon(14) },
 	];
+
+	if (breakCount > 0) {
+		stats.push({ label: `${breakCount} Breaks`, icon: getBreakIcon(14) });
+	}
 
 	stats.forEach(stat => {
 		const pill = document.createElement('span');
 		pill.className = 'view-stat-pill';
-		pill.textContent = `${stat.icon} ${stat.label}`;
+		pill.innerHTML = `${stat.icon} ${stat.label}`;
 		statsRow.appendChild(pill);
 	});
 
@@ -126,6 +129,46 @@ export function renderRoutineOverview(routine, container, actions = {}) {
  * Create a single step preview card for View Mode.
  */
 function createViewStepCard(step, index, actions) {
+	if (isBreakStep(step)) {
+		const card = document.createElement('div');
+		card.className = 'view-step-card view-step-break';
+		card.title = `Click to start workout from step #${index + 1}`;
+
+		const indexBadge = document.createElement('div');
+		indexBadge.className = 'view-step-index';
+		indexBadge.textContent = `#${index + 1}`;
+
+		const iconBox = document.createElement('div');
+		iconBox.className = 'view-break-icon-box';
+		iconBox.innerHTML = getBreakIcon(18);
+
+		const details = document.createElement('div');
+		details.className = 'view-step-details';
+
+		const title = document.createElement('h4');
+		title.className = 'view-step-title view-break-title';
+		title.textContent = step.label || 'Rest';
+
+		const tag = document.createElement('span');
+		tag.className = 'view-tag view-tag-break';
+		tag.innerHTML = `${getTimerIcon(11)} ${formatFriendlyDuration(step.durationSeconds || 30)}`;
+
+		details.append(title, tag);
+
+		const playAction = document.createElement('button');
+		playAction.className = 'view-step-play-btn';
+		playAction.innerHTML = '▶';
+		playAction.title = `Start from Step ${index + 1}`;
+
+		card.append(indexBadge, iconBox, details, playAction);
+
+		card.addEventListener('click', () => {
+			actions.onPlay?.(index);
+		});
+
+		return card;
+	}
+
 	const card = document.createElement('div');
 	card.className = `view-step-card view-step-${step.type}`;
 	card.title = `Click to start workout from step #${index + 1}`;
@@ -147,7 +190,7 @@ function createViewStepCard(step, index, actions) {
 			img.loading = 'lazy';
 			img.onerror = () => {
 				img.style.display = 'none';
-				mediaBox.innerHTML = '<div class="media-fallback">🎬</div>';
+				mediaBox.innerHTML = `<div class="media-fallback">${getClipIcon(26)}</div>`;
 			};
 			mediaBox.appendChild(img);
 
@@ -156,13 +199,13 @@ function createViewStepCard(step, index, actions) {
 			playOverlay.innerHTML = '▶';
 			mediaBox.appendChild(playOverlay);
 		} else {
-			mediaBox.innerHTML = '<div class="media-fallback">🎬</div>';
+			mediaBox.innerHTML = `<div class="media-fallback">${getClipIcon(26)}</div>`;
 		}
 	} else {
 		// Timer visual box
 		mediaBox.innerHTML = `
 			<div class="timer-visual-box">
-				<span class="timer-icon">⏱️</span>
+				<span class="timer-icon">${getTimerIcon(24)}</span>
 				<span class="timer-badge-sec">${formatTime(step.durationSeconds || 30)}</span>
 			</div>
 		`;
@@ -186,11 +229,11 @@ function createViewStepCard(step, index, actions) {
 
 		const typeTag = document.createElement('span');
 		typeTag.className = 'view-tag view-tag-clip';
-		typeTag.textContent = '🎬 Video';
+		typeTag.innerHTML = `${getClipIcon(11)} Video`;
 
 		const durationTag = document.createElement('span');
 		durationTag.className = 'view-tag view-tag-time';
-		durationTag.textContent = `⏱️ ${formatFriendlyDuration(dur)} (${formatTime(start)} → ${formatTime(end)})`;
+		durationTag.innerHTML = `${getTimerIcon(11)} ${formatFriendlyDuration(dur)} (${formatTime(start)} → ${formatTime(end)})`;
 
 		tagsRow.append(typeTag, durationTag);
 	} else {
@@ -198,11 +241,11 @@ function createViewStepCard(step, index, actions) {
 
 		const typeTag = document.createElement('span');
 		typeTag.className = 'view-tag view-tag-timer';
-		typeTag.textContent = '⏱️ Timer';
+		typeTag.innerHTML = `${getTimerIcon(11)} Timer`;
 
 		const durationTag = document.createElement('span');
 		durationTag.className = 'view-tag view-tag-time';
-		durationTag.textContent = `⏳ ${formatFriendlyDuration(dur)}`;
+		durationTag.innerHTML = `${getTimerIcon(11)} ${formatFriendlyDuration(dur)}`;
 
 		tagsRow.append(typeTag, durationTag);
 

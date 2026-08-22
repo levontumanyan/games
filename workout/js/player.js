@@ -3,7 +3,9 @@
  */
 
 import { formatTime } from './utils.js?v=5';
+import { isBreakStep } from './editor.js?v=5';
 import { playCountdownBeep } from './audio.js?v=5';
+import { getClipIcon, getTimerIcon, getBreakIcon } from './icons.js?v=5';
 import {
 	setPlaylist, startMusic, pauseMusic, resumeMusic,
 	stopMusic, muteMusic, unmuteMusic, hasMusic
@@ -179,7 +181,7 @@ function executeClipStep(step) {
 	}
 
 	dom.currentStepLabel.textContent = step.label || 'Video Clip';
-	dom.currentStepType.textContent = '🎬 Video';
+	dom.currentStepType.innerHTML = `${getClipIcon(14)} Video`;
 }
 
 /**
@@ -213,10 +215,10 @@ function executeTimerStep(step) {
 	}
 
 	timerRemaining = step.durationSeconds;
-	dom.timerLabel.textContent = step.label || 'Timer';
+	dom.timerLabel.textContent = step.label || (isBreakStep(step) ? 'Rest' : 'Timer');
 	dom.timerDisplay.textContent = formatTime(timerRemaining);
-	dom.currentStepLabel.textContent = step.label || 'Timer';
-	dom.currentStepType.textContent = '⏱️ Timer';
+	dom.currentStepLabel.textContent = step.label || (isBreakStep(step) ? 'Rest' : 'Timer');
+	dom.currentStepType.innerHTML = isBreakStep(step) ? `${getBreakIcon(14)} Rest` : `${getTimerIcon(14)} Timer`;
 
 	// Update progress ring
 	updateTimerProgress(step.durationSeconds, timerRemaining);

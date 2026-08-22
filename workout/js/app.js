@@ -6,7 +6,7 @@ import {
 	loadRoutines, saveRoutines, fetchServerRoutines,
 	saveServerRoutines, exportRoutines, importRoutines
 } from './storage.js?v=5';
-import { renderEditor, createClipStep, createTimerStep, createRoutine } from './editor.js?v=5';
+import { renderEditor, createClipStep, createTimerStep, createBreakStep, createRoutine } from './editor.js?v=5';
 import { renderRoutineOverview } from './view.js?v=5';
 import {
 	initPlayer, startRoutine, stopPlayback,
@@ -110,6 +110,7 @@ function cacheDom() {
 	dom.stepList = document.getElementById('step-list');
 	dom.addClipBtn = document.getElementById('add-clip-btn');
 	dom.addTimerBtn = document.getElementById('add-timer-btn');
+	dom.addBreakBtn = document.getElementById('add-break-btn');
 	dom.doneEditingBtn = document.getElementById('done-editing-btn');
 	dom.deleteRoutineBtn = document.getElementById('delete-routine-btn');
 
@@ -208,6 +209,7 @@ function bindEvents() {
 	dom.importBtn.addEventListener('click', handleImport);
 	dom.addClipBtn.addEventListener('click', handleAddClip);
 	dom.addTimerBtn.addEventListener('click', handleAddTimer);
+	if (dom.addBreakBtn) dom.addBreakBtn.addEventListener('click', handleAddBreak);
 	dom.doneEditingBtn.addEventListener('click', () => {
 		currentMode = 'view';
 		renderSelectedRoutine();
@@ -410,6 +412,14 @@ function handleAddTimer() {
 	const routine = getSelectedRoutine();
 	if (!routine) return;
 	routine.steps.push(createTimerStep());
+	persist(true);
+	renderSelectedRoutine();
+}
+
+function handleAddBreak() {
+	const routine = getSelectedRoutine();
+	if (!routine) return;
+	routine.steps.push(createBreakStep());
 	persist(true);
 	renderSelectedRoutine();
 }

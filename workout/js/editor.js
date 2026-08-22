@@ -5,6 +5,7 @@
 import { generateId, parseYouTubeId, parseYouTubeInfo, parseTime, formatTime, formatFriendlyDuration } from './utils.js?v=5';
 import { saveAudioFile, deleteAudioFile } from './musicdb.js?v=5';
 import { showPrompt, showAlert } from './modal.js?v=5';
+import { getClipIcon, getTimerIcon, getBreakIcon } from './icons.js?v=5';
 
 /**
  * Render the routine editor for a given routine.
@@ -33,8 +34,9 @@ export function renderEditor(routine, container, onUpdate) {
  * Create a DOM element for a single step.
  */
 function createStepElement(step, index, routine, onUpdate) {
+	const isBreak = isBreakStep(step);
 	const el = document.createElement('div');
-	el.className = `step-card step-${step.type}`;
+	el.className = `step-card step-${step.type}` + (isBreak ? ' step-break step-card-compact' : '');
 	el.dataset.index = index;
 	el.draggable = true;
 
@@ -52,7 +54,13 @@ function createStepElement(step, index, routine, onUpdate) {
 
 	const stepType = document.createElement('span');
 	stepType.className = 'step-type-badge';
-	stepType.textContent = step.type === 'clip' ? '🎬 Clip' : '⏱️ Timer';
+	if (step.type === 'clip') {
+		stepType.innerHTML = `${getClipIcon(13)} Clip`;
+	} else if (isBreak) {
+		stepType.innerHTML = `${getBreakIcon(13)} Break`;
+	} else {
+		stepType.innerHTML = `${getTimerIcon(13)} Timer`;
+	}
 
 	const removeBtn = document.createElement('button');
 	removeBtn.className = 'btn btn-danger btn-sm';
@@ -71,6 +79,8 @@ function createStepElement(step, index, routine, onUpdate) {
 
 	if (step.type === 'clip') {
 		body.appendChild(createClipFields(step, onUpdate));
+	} else if (isBreak) {
+		body.appendChild(createBreakFields(step, onUpdate));
 	} else {
 		body.appendChild(createTimerFields(step, onUpdate));
 	}
@@ -352,6 +362,122 @@ function createVideoRangeTrimmer(step, onUpdate) {
 	endInput.addEventListener('change', commitEnd);
 	endInput.addEventListener('blur', commitEnd);
 	endInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') endInput.blur(); });
+
+	return container;
+}
+
+/**
+ * Check if a step is a break/rest interval.
+ * @param {Object} step
+ * @returns {boolean}
+ */
+export function isBreakStep(step) {
+	if (!step) return false;
+	if (step.subtype === 'break' || step.isBreak) return true;
+	if (step.type === 'timer' && step.label) {
+		const l = step.label.trim().toLowerCase();
+		if (l === 'rest' || l === 'break' || l === 'quick break') return true;
+	}
+	return false;
+}
+
+/**
+ * Create compact input fields for a break/rest step.
+ */
+function createBreakFields(step, onUpdate) {
+	const container = document.createElement('div');
+	container.className = 'break-fields-container';
+
+	const row = document.createElement('div');
+	row.className = 'break-controls-row';
+
+	// Compact Label Field
+	const labelGroup = document.createElement('div');
+	labelGroup.className = 'field-group break-label-group';
+	const labelInput = document.createElement('input');
+	labelInput.type = 'text';
+	labelInput.className = 'input break-label-input';
+	labelInput.placeholder = 'Rest';
+	labelInput.value = step.label || 'Rest';
+	labelInput.addEventListener('change', (e) => {
+		step.label = e.target.value.trim() || 'Rest';
+		onUpdate();
+	});
+	labelGroup.appendChild(labelInput);
+
+	// Quick Duration Presets: 30s, 1min, 2mins
+	const presetsGroup = document.createElement('div');
+	presetsGroup.className = 'break-presets-group';
+
+	const breakPresets = [
+		{ label: '30s', sec: 30 },
+		{ label: '1m', sec: 60 },
+		{ label: '2m', sec: 120 },
+	];
+
+	const curSec = step.durationSeconds || 30;
+
+	// Custom duration field
+	const customGroup = document.createElement('div');
+	customGroup.className = 'break-custom-group';
+	const customInput = document.createElement('input');
+	customInput.type = 'text';
+	customInput.className = 'input break-custom-input';
+	customInput.placeholder = '0:30';
+	customInput.value = formatTime(curSec);
+	customInput.title = 'Custom duration (MM:SS or sec)';
+
+	customInput.addEventListener('focus', () => {
+		customInput.select();
+	});
+
+	const presetButtons = [];
+
+	function updateActivePreset(sec) {
+		presetButtons.forEach(({ btn, sec: pSec }) => {
+			if (sec === pSec) {
+				btn.classList.add('active');
+			} else {
+				btn.classList.remove('active');
+			}
+		});
+	}
+
+	breakPresets.forEach(p => {
+		const btn = document.createElement('button');
+		btn.type = 'button';
+		btn.className = 'preset-chip break-preset-chip';
+		if (curSec === p.sec) btn.classList.add('active');
+		btn.textContent = p.label;
+		btn.addEventListener('click', () => {
+			step.durationSeconds = p.sec;
+			customInput.value = formatTime(p.sec);
+			updateActivePreset(p.sec);
+			onUpdate();
+		});
+		presetsGroup.appendChild(btn);
+		presetButtons.push({ btn, sec: p.sec });
+	});
+
+	const commitCustom = () => {
+		const parsed = parseTime(customInput.value);
+		const newSec = Math.max(1, parsed || 30);
+		step.durationSeconds = newSec;
+		customInput.value = formatTime(newSec);
+		updateActivePreset(newSec);
+		onUpdate();
+	};
+
+	customInput.addEventListener('change', commitCustom);
+	customInput.addEventListener('blur', commitCustom);
+	customInput.addEventListener('keydown', (e) => {
+		if (e.key === 'Enter') customInput.blur();
+	});
+
+	customGroup.appendChild(customInput);
+
+	row.append(labelGroup, presetsGroup, customGroup);
+	container.appendChild(row);
 
 	return container;
 }
@@ -708,6 +834,22 @@ export function createTimerStep() {
 		type: 'timer',
 		durationSeconds: 30,
 		label: 'Exercise',
+		musicTracks: [],
+	};
+}
+
+/**
+ * Create a new break/rest timer step with defaults.
+ * @param {number} [durationSeconds=30]
+ * @returns {Object} Step object
+ */
+export function createBreakStep(durationSeconds = 30) {
+	return {
+		id: generateId(),
+		type: 'timer',
+		subtype: 'break',
+		durationSeconds: durationSeconds,
+		label: 'Rest',
 		musicTracks: [],
 	};
 }

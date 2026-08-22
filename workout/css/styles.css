@@ -38,6 +38,10 @@
 	--timer-glow: rgba(245, 158, 11, 0.3);
 	--timer-subtle: rgba(245, 158, 11, 0.1);
 
+	--break-color: #10b981;
+	--break-glow: rgba(16, 185, 129, 0.3);
+	--break-subtle: rgba(16, 185, 129, 0.1);
+
 	--danger: #ef4444;
 	--danger-hover: #dc2626;
 	--danger-subtle: rgba(239, 68, 68, 0.12);
@@ -410,6 +414,37 @@ html, body {
 	border-left: 4px solid var(--timer-color);
 }
 
+.view-step-break {
+	border-left: 4px solid var(--break-color);
+	background: rgba(16, 185, 129, 0.03);
+	padding: 8px 16px;
+	gap: 14px;
+}
+
+.view-step-break:hover {
+	background: rgba(16, 185, 129, 0.07);
+	border-color: rgba(16, 185, 129, 0.35);
+}
+
+.view-break-icon-box {
+	width: 36px;
+	height: 36px;
+	border-radius: var(--radius-sm);
+	background: var(--break-subtle);
+	border: 1px solid rgba(16, 185, 129, 0.25);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 1.15rem;
+	flex-shrink: 0;
+}
+
+.view-break-title {
+	font-size: 0.92rem;
+	font-weight: 600;
+	color: var(--text-primary);
+}
+
 .view-step-index {
 	font-size: 0.8rem;
 	font-weight: 800;
@@ -508,6 +543,9 @@ html, body {
 }
 
 .view-tag {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
 	font-size: 0.72rem;
 	font-weight: 600;
 	padding: 2px 8px;
@@ -525,6 +563,12 @@ html, body {
 	background: var(--timer-subtle);
 	color: #fbbf24;
 	border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.view-tag-break {
+	background: var(--break-subtle);
+	color: #34d399;
+	border: 1px solid rgba(16, 185, 129, 0.25);
 }
 
 .view-tag-time {
@@ -616,6 +660,12 @@ html, body {
 	flex-wrap: wrap;
 }
 
+.step-actions .btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+}
+
 #add-clip-btn {
 	background: var(--clip-subtle);
 	border: 1px solid rgba(6, 182, 212, 0.3);
@@ -639,6 +689,19 @@ html, body {
 	background: rgba(245, 158, 11, 0.2);
 	border-color: var(--timer-color);
 	box-shadow: 0 0 16px var(--timer-glow);
+	transform: translateY(-1px);
+}
+
+#add-break-btn {
+	background: var(--break-subtle);
+	border: 1px solid rgba(16, 185, 129, 0.3);
+	color: #34d399;
+}
+
+#add-break-btn:hover {
+	background: rgba(16, 185, 129, 0.2);
+	border-color: var(--break-color);
+	box-shadow: 0 0 16px var(--break-glow);
 	transform: translateY(-1px);
 }
 
@@ -680,6 +743,22 @@ html, body {
 	border-left: 4px solid var(--timer-color);
 }
 
+.step-break {
+	border-left: 4px solid var(--break-color);
+}
+
+.step-card-compact {
+	background: rgba(22, 24, 36, 0.7);
+}
+
+.step-card-compact .step-header {
+	padding: 8px 14px;
+}
+
+.step-card-compact .step-body {
+	padding: 10px 14px;
+}
+
 .step-header {
 	display: flex;
 	align-items: center;
@@ -711,6 +790,9 @@ html, body {
 }
 
 .step-type-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
 	font-size: 0.75rem;
 	font-weight: 700;
 	padding: 3px 10px;
@@ -728,6 +810,12 @@ html, body {
 	background: var(--timer-subtle);
 	color: var(--timer-color);
 	border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.step-break .step-type-badge {
+	background: var(--break-subtle);
+	color: #34d399;
+	border: 1px solid rgba(16, 185, 129, 0.25);
 }
 
 .step-header .btn-danger {
@@ -765,6 +853,75 @@ html, body {
 
 .field-row .field-group {
 	flex: 1;
+}
+
+/* ── Break Step Compact Controls ─────────────────────────────────────────── */
+
+.break-fields-container {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.break-controls-row {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	flex-wrap: wrap;
+}
+
+.break-label-group {
+	flex: 1;
+	min-width: 140px;
+	margin-bottom: 0;
+}
+
+.break-label-input {
+	padding: 6px 12px;
+	font-size: 0.88rem;
+}
+
+.break-presets-group {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.break-preset-chip {
+	padding: 5px 12px;
+	font-size: 0.82rem;
+	font-weight: 700;
+	border-radius: 20px;
+	background: var(--bg-hover);
+	color: var(--text-secondary);
+	border: 1px solid var(--border);
+	cursor: pointer;
+	transition: all var(--transition-fast);
+}
+
+.break-preset-chip:hover {
+	background: var(--bg-active);
+	color: var(--text-primary);
+	border-color: var(--border-hover);
+}
+
+.break-preset-chip.active {
+	background: var(--break-subtle);
+	color: #34d399;
+	border-color: var(--break-color);
+	box-shadow: 0 0 12px var(--break-glow);
+}
+
+.break-custom-group {
+	width: 75px;
+	margin-bottom: 0;
+}
+
+.break-custom-input {
+	padding: 6px 8px;
+	font-size: 0.88rem;
+	font-weight: 700;
+	text-align: center;
 }
 
 .step-move-bar {
@@ -1159,6 +1316,9 @@ html, body {
 }
 
 #current-step-type {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
 	font-size: 0.75rem;
 	font-weight: 700;
 	color: var(--accent);
