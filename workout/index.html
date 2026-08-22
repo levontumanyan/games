@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Workout Routine Player</title>
+	<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💪</text></svg>">
+	<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+	<div class="app-container">
+
+		<!-- ── Sidebar ────────────────────────────────────────────────── -->
+		<aside class="sidebar">
+			<div class="sidebar-header">
+				<h1>🏋️ Workout</h1>
+				<p>Custom routine player</p>
+			</div>
+
+			<div class="sidebar-actions">
+				<button id="add-workout-btn" class="btn btn-primary btn-sm">+ Add Workout</button>
+			</div>
+
+			<div class="routine-list-container">
+				<ul id="routine-list"></ul>
+			</div>
+
+			<div class="sidebar-footer">
+				<button id="export-btn" class="btn btn-ghost btn-sm">📤 Export</button>
+				<button id="import-btn" class="btn btn-ghost btn-sm">📥 Import</button>
+			</div>
+		</aside>
+
+		<!-- ── Main Content ──────────────────────────────────────────── -->
+		<main class="main-content">
+
+			<!-- ── Editor View ───────────────────────────────────────── -->
+			<div id="editor-view">
+
+				<!-- Empty state -->
+				<div id="editor-empty">
+					<p class="empty-message">Select or create a workout to get started.</p>
+				</div>
+
+				<!-- Editor content -->
+				<div id="editor-content" class="hidden">
+					<div class="editor-header">
+						<input
+							type="text"
+							id="routine-title"
+							class="input-title"
+							placeholder="Workout title..."
+						>
+						<button id="play-routine-btn" class="btn btn-primary">▶ Play</button>
+						<button id="delete-routine-btn" class="btn btn-danger">🗑 Delete</button>
+					</div>
+
+					<div class="step-actions">
+						<button id="add-clip-btn" class="btn btn-sm">🎬 Add Clip</button>
+						<button id="add-timer-btn" class="btn btn-sm">⏱️ Add Timer</button>
+					</div>
+
+					<div id="step-list"></div>
+				</div>
+			</div>
+
+			<!-- ── Player View ───────────────────────────────────────── -->
+			<div id="player-view" class="hidden">
+
+				<!-- Stage: video or timer -->
+				<div class="player-stage">
+					<!-- YouTube player container -->
+					<div id="video-wrapper" class="hidden">
+						<div id="youtube-player"></div>
+					</div>
+
+					<!-- Timer overlay -->
+					<div id="timer-overlay" class="hidden">
+						<div class="timer-ring-container">
+							<svg viewBox="0 0 300 300">
+								<circle class="timer-ring-bg" cx="150" cy="150" r="140" />
+								<circle id="timer-ring" cx="150" cy="150" r="140" />
+							</svg>
+							<div class="timer-center-text">
+								<div id="timer-display">00:30</div>
+								<div id="timer-label">Exercise</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Step info bar -->
+				<div class="player-info">
+					<div class="player-step-info">
+						<span id="current-step-label">—</span>
+						<span id="current-step-type"></span>
+					</div>
+					<span id="step-counter">Step 0 / 0</span>
+					<span id="next-step-preview"></span>
+				</div>
+
+				<!-- Music controls bar -->
+				<div id="music-controls-bar" class="music-controls-bar hidden">
+					<span class="music-controls-icon">🎵</span>
+					<button id="music-prev-btn" class="btn btn-ghost btn-sm" title="Previous track">⏮</button>
+					<span id="music-track-name" class="music-track-name">No music</span>
+					<button id="music-next-btn" class="btn btn-ghost btn-sm" title="Next track">⏭</button>
+					<input type="range" id="music-volume" min="0" max="100" value="50" class="volume-slider" title="Music volume">
+					<button id="music-mute-btn" class="btn btn-ghost btn-sm" title="Mute music">🔊</button>
+				</div>
+
+				<!-- Step timeline -->
+				<div id="step-timeline"></div>
+
+				<!-- Playback controls -->
+				<div class="player-controls">
+					<button id="stop-btn" class="btn btn-icon btn-ghost" title="Stop">⏹️</button>
+					<button id="prev-btn" class="btn btn-icon btn-ghost" title="Previous">⏮️</button>
+					<button id="play-pause-btn" class="btn btn-icon btn-primary" title="Pause">⏸️</button>
+					<button id="skip-btn" class="btn btn-icon btn-ghost" title="Skip">⏭️</button>
+					<button id="reset-btn" class="btn btn-icon btn-ghost" title="Reset">🔄</button>
+				</div>
+			</div>
+
+		</main>
+	</div>
+
+	<!-- Hidden YouTube music player (off-screen, audio only) -->
+	<div id="yt-music-container" style="position:absolute;width:1px;height:1px;overflow:hidden;left:-9999px;top:-9999px;">
+		<div id="yt-music-player"></div>
+	</div>
+
+	<script type="module" src="js/app.js"></script>
+</body>
+</html>

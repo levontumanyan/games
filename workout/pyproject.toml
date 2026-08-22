@@ -1,0 +1,9 @@
+[project]
+name = "workout"
+version = "1.0.0"
+description = "Custom workout routine player with YouTube clips and interval timers"
+requires-python = ">=3.11"
+dependencies = [
+	"fastapi>=0.115.0",
+	"uvicorn[standard]>=0.30.0",
+]
