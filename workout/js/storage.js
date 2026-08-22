@@ -6,69 +6,50 @@ import { generateId } from './utils.js';
 
 const STORAGE_KEY = 'custom_workout_routines';
 
+function getApiUrl() {
+	const path = window.location.pathname;
+	if (path.startsWith('/workout')) {
+		return '/workout/api/routines';
+	}
+	return '/api/routines';
+}
+
 /**
- * Default seed routine so the app isn't empty on first launch.
+ * Fetch routines from the server JSON storage.
+ * @returns {Promise<Array>}
  */
-function createSeedRoutines() {
-	return [
-		{
-			id: generateId(),
-			title: 'Quick Full Body Warmup',
-			steps: [
-				{
-					id: generateId(),
-					type: 'clip',
-					videoId: 'JOhAdqQLEFI',
-					startSeconds: 0,
-					endSeconds: 60,
-					label: 'Dynamic Stretches'
-				},
-				{
-					id: generateId(),
-					type: 'timer',
-					durationSeconds: 30,
-					label: 'Push-ups',
-					musicTracks: []
-				},
-				{
-					id: generateId(),
-					type: 'timer',
-					durationSeconds: 15,
-					label: 'Rest',
-					musicTracks: []
-				},
-				{
-					id: generateId(),
-					type: 'timer',
-					durationSeconds: 30,
-					label: 'Jumping Jacks',
-					musicTracks: []
-				},
-				{
-					id: generateId(),
-					type: 'timer',
-					durationSeconds: 15,
-					label: 'Rest',
-					musicTracks: []
-				},
-				{
-					id: generateId(),
-					type: 'timer',
-					durationSeconds: 45,
-					label: 'Plank',
-					musicTracks: []
-				},
-				{
-					id: generateId(),
-					type: 'clip',
-					videoId: 'JOhAdqQLEFI',
-					startSeconds: 60,
-					endSeconds: 120,
-					label: 'Cool-down Stretch'
-				}
-			]
-		}
-	];
+export async function fetchServerRoutines() {
+	const res = await fetch(getApiUrl(), {
+		headers: { 'Accept': 'application/json' }
+	});
+	if (!res.ok) {
+		throw new Error(`Server returned HTTP ${res.status}`);
+	}
+	const data = await res.json();
+	if (!Array.isArray(data)) {
+		throw new Error('Server returned invalid data format');
+	}
+	return data;
+}
+
+/**
+ * Save routines to the server JSON storage.
+ * @param {Array} routines
+ * @returns {Promise<{status: string, count: number}>}
+ */
+export async function saveServerRoutines(routines) {
+	const res = await fetch(getApiUrl(), {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			'Accept': 'application/json'
+		},
+		body: JSON.stringify(routines)
+	});
+	if (!res.ok) {
+		throw new Error(`Failed to save to server: HTTP ${res.status}`);
+	}
+	return await res.json();
 }
 
 /**
@@ -80,18 +61,14 @@ export function loadRoutines() {
 		const raw = localStorage.getItem(STORAGE_KEY);
 		if (raw) {
 			const parsed = JSON.parse(raw);
-			if (Array.isArray(parsed) && parsed.length > 0) {
+			if (Array.isArray(parsed)) {
 				return parsed;
 			}
 		}
 	} catch (e) {
 		console.error('Failed to load routines from localStorage:', e);
 	}
-
-	// Seed on first launch
-	const seed = createSeedRoutines();
-	saveRoutines(seed);
-	return seed;
+	return [];
 }
 
 /**
@@ -105,6 +82,7 @@ export function saveRoutines(routines) {
 		console.error('Failed to save routines to localStorage:', e);
 	}
 }
+
 
 /**
  * Export routines as a JSON file download.

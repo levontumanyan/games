@@ -137,7 +137,35 @@ html, body {
 	padding: 12px 20px;
 	border-top: 1px solid var(--border);
 	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.sidebar-footer-buttons {
+	display: flex;
 	gap: 8px;
+}
+
+.sync-status {
+	font-size: 0.75rem;
+	color: var(--text-muted);
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	user-select: none;
+	transition: color var(--transition);
+}
+
+.sync-status.syncing {
+	color: var(--warning);
+}
+
+.sync-status.synced {
+	color: var(--success);
+}
+
+.sync-status.error {
+	color: var(--danger);
 }
 
 /* ── Main Content ────────────────────────────────────────────────────────── */

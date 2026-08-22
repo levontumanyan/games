@@ -2,7 +2,10 @@
  * App controller - coordinates UI, storage, editor, and player modules.
  */
 
-import { loadRoutines, saveRoutines, exportRoutines, importRoutines } from './storage.js';
+import {
+	loadRoutines, saveRoutines, fetchServerRoutines,
+	saveServerRoutines, exportRoutines, importRoutines
+} from './storage.js';
 import { renderEditor, createClipStep, createTimerStep, createRoutine } from './editor.js';
 import {
 	initPlayer, startRoutine, stopPlayback,
@@ -17,6 +20,7 @@ import { formatTime } from './utils.js';
 
 let routines = [];
 let selectedRoutineId = null;
+let syncTimeout = null;
 
 // DOM references
 const dom = {};
@@ -26,9 +30,9 @@ const dom = {};
  */
 async function init() {
 	cacheDom();
-	routines = loadRoutines();
 
-	// Select the first routine by default
+	// Fast initial render from localStorage cache
+	routines = loadRoutines();
 	if (routines.length > 0) {
 		selectedRoutineId = routines[0].id;
 	}
@@ -36,6 +40,9 @@ async function init() {
 	renderRoutineList();
 	renderSelectedRoutine();
 	bindEvents();
+
+	// Fetch server state as source of truth
+	await syncWithServerOnStartup();
 
 	// Initialize audio on first interaction
 	document.addEventListener('click', () => initAudio(), { once: true });
@@ -88,6 +95,7 @@ function cacheDom() {
 	dom.addWorkoutBtn = document.getElementById('add-workout-btn');
 	dom.exportBtn = document.getElementById('export-btn');
 	dom.importBtn = document.getElementById('import-btn');
+	dom.syncStatus = document.getElementById('sync-status');
 	dom.editorView = document.getElementById('editor-view');
 	dom.playerView = document.getElementById('player-view');
 	dom.routineTitle = document.getElementById('routine-title');
@@ -127,6 +135,62 @@ function cacheDom() {
 
 	// Hidden YouTube music player
 	dom.ytMusicPlayer = document.getElementById('yt-music-player');
+}
+
+/**
+ * Update UI sync status indicator.
+ * @param {'syncing' | 'synced' | 'error'} state
+ * @param {string} [message]
+ */
+function setSyncStatus(state, message) {
+	if (!dom.syncStatus) return;
+	dom.syncStatus.className = `sync-status ${state}`;
+	if (state === 'syncing') {
+		dom.syncStatus.textContent = '🔄 ' + (message || 'Saving...');
+	} else if (state === 'synced') {
+		dom.syncStatus.textContent = '☁️ ' + (message || 'Synced');
+	} else if (state === 'error') {
+		dom.syncStatus.textContent = '⚠️ ' + (message || 'Offline');
+	}
+}
+
+/**
+ * Sync current routines state with the backend server.
+ */
+async function syncToServer() {
+	setSyncStatus('syncing', 'Saving...');
+	try {
+		await saveServerRoutines(routines);
+		setSyncStatus('synced', 'Synced');
+	} catch (err) {
+		console.warn('Failed to sync routines to server:', err);
+		setSyncStatus('error', 'Saved locally (offline)');
+	}
+}
+
+/**
+ * Initial sync with server on app load.
+ */
+async function syncWithServerOnStartup() {
+	try {
+		setSyncStatus('syncing', 'Syncing...');
+		const serverRoutines = await fetchServerRoutines();
+		routines = serverRoutines;
+		saveRoutines(routines);
+		if (routines.length > 0) {
+			if (!routines.some(r => r.id === selectedRoutineId)) {
+				selectedRoutineId = routines[0].id;
+			}
+		} else {
+			selectedRoutineId = null;
+		}
+		renderRoutineList();
+		renderSelectedRoutine();
+		setSyncStatus('synced', 'Synced');
+	} catch (err) {
+		console.warn('Could not sync with server on startup, using local storage cache:', err);
+		setSyncStatus('error', 'Offline mode');
+	}
 }
 
 /**
@@ -181,11 +245,22 @@ function getSelectedRoutine() {
 }
 
 /**
- * Save routines and re-render editor.
+ * Save routines to local storage and sync to server.
+ * @param {boolean} [immediateServerSync=false]
  */
-function persist() {
+function persist(immediateServerSync = false) {
 	saveRoutines(routines);
+	if (syncTimeout) {
+		clearTimeout(syncTimeout);
+	}
+	if (immediateServerSync) {
+		syncToServer();
+	} else {
+		setSyncStatus('syncing', 'Saving...');
+		syncTimeout = setTimeout(syncToServer, 400);
+	}
 }
+
 
 /**
  * Render the sidebar routine list.
@@ -266,7 +341,7 @@ function handleAddWorkout() {
 	const routine = createRoutine(title.trim() || 'New Workout');
 	routines.push(routine);
 	selectedRoutineId = routine.id;
-	persist();
+	persist(true);
 	renderRoutineList();
 	renderSelectedRoutine();
 }
@@ -278,7 +353,7 @@ function handleDeleteRoutine() {
 
 	routines = routines.filter(r => r.id !== routine.id);
 	selectedRoutineId = routines.length > 0 ? routines[0].id : null;
-	persist();
+	persist(true);
 	renderRoutineList();
 	renderSelectedRoutine();
 }
@@ -287,7 +362,7 @@ function handleAddClip() {
 	const routine = getSelectedRoutine();
 	if (!routine) return;
 	routine.steps.push(createClipStep());
-	persist();
+	persist(true);
 	renderSelectedRoutine();
 }
 
@@ -295,7 +370,7 @@ function handleAddTimer() {
 	const routine = getSelectedRoutine();
 	if (!routine) return;
 	routine.steps.push(createTimerStep());
-	persist();
+	persist(true);
 	renderSelectedRoutine();
 }
 
@@ -314,7 +389,7 @@ async function handleImport() {
 		const imported = await importRoutines();
 		routines = imported;
 		selectedRoutineId = routines.length > 0 ? routines[0].id : null;
-		persist();
+		persist(true);
 		renderRoutineList();
 		renderSelectedRoutine();
 	} catch (err) {

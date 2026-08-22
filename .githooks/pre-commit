@@ -1,0 +1,12 @@
+#!/bin/bash
+set -e
+
+echo "Running pre-commit test suites..."
+
+echo "==> Running workout tests..."
+(cd workout && uv run pytest -q)
+
+echo "==> Running spelling-bee tests..."
+(cd spelling-bee && uv run pytest -q)
+
+echo "All pre-commit checks passed!"
