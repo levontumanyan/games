@@ -407,20 +407,21 @@ export function jumpToStep(index) {
 }
 
 /**
- * Show the player UI and hide editor.
+ * Show the player UI and hide other views.
  */
 function showPlayerUI() {
 	dom.playerView.classList.remove('hidden');
-	dom.editorView.classList.add('hidden');
+	if (dom.editorView) dom.editorView.classList.add('hidden');
+	if (dom.routineView) dom.routineView.classList.add('hidden');
+	if (dom.emptyView) dom.emptyView.classList.add('hidden');
 	updatePlayPauseBtn(false);
 }
 
 /**
- * Hide the player UI and show editor.
+ * Hide the player UI.
  */
 function hidePlayerUI() {
 	dom.playerView.classList.add('hidden');
-	dom.editorView.classList.remove('hidden');
 	dom.timerOverlay.classList.add('hidden');
 	dom.videoWrapper.classList.add('hidden');
 }

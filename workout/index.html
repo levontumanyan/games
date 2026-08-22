@@ -37,16 +37,19 @@
 		<!-- ── Main Content ──────────────────────────────────────────── -->
 		<main class="main-content">
 
-			<!-- ── Editor View ───────────────────────────────────────── -->
-			<div id="editor-view">
+			<!-- ── Empty View ────────────────────────────────────────── -->
+			<div id="empty-view" class="empty-state-view">
+				<p class="empty-message">Select or create a workout to get started.</p>
+			</div>
 
-				<!-- Empty state -->
-				<div id="editor-empty">
-					<p class="empty-message">Select or create a workout to get started.</p>
-				</div>
+			<!-- ── Routine Overview View (View Mode) ────────────────── -->
+			<div id="routine-view" class="hidden">
+				<div id="routine-overview-container"></div>
+			</div>
 
-				<!-- Editor content -->
-				<div id="editor-content" class="hidden">
+			<!-- ── Editor View (Edit Mode) ──────────────────────────── -->
+			<div id="editor-view" class="hidden">
+				<div id="editor-content">
 					<div class="editor-header">
 						<input
 							type="text"
@@ -54,7 +57,7 @@
 							class="input-title"
 							placeholder="Workout title..."
 						>
-						<button id="play-routine-btn" class="btn btn-primary">▶ Play</button>
+						<button id="done-editing-btn" class="btn btn-primary">✓ Done</button>
 						<button id="delete-routine-btn" class="btn btn-danger">🗑 Delete</button>
 					</div>
 

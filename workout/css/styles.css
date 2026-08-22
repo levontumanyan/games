@@ -249,7 +249,328 @@ html, body {
 	position: relative;
 }
 
-/* ── Editor View ─────────────────────────────────────────────────────────── */
+/* ── Empty View & Layouts ────────────────────────────────────────────────── */
+
+.empty-state-view {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 100%;
+}
+
+.empty-message {
+	text-align: center;
+	color: var(--text-muted);
+	padding: 80px 20px;
+	font-size: 1.05rem;
+	font-weight: 500;
+}
+
+/* ── Routine View (View Mode) ────────────────────────────────────────────── */
+
+#routine-view {
+	flex: 1;
+	overflow-y: auto;
+	padding: 32px 40px;
+	max-width: 900px;
+	width: 100%;
+	margin: 0 auto;
+}
+
+.view-hero-header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 20px;
+	margin-bottom: 28px;
+	padding-bottom: 22px;
+	border-bottom: 1px solid var(--border);
+	flex-wrap: wrap;
+}
+
+.view-title-info {
+	flex: 1;
+	min-width: 260px;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.view-routine-title {
+	font-size: 1.8rem;
+	font-weight: 800;
+	letter-spacing: -0.02em;
+	color: #ffffff;
+	line-height: 1.2;
+}
+
+.view-stats-row {
+	display: flex;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+.view-stat-pill {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	font-size: 0.75rem;
+	font-weight: 600;
+	color: var(--text-secondary);
+	background: rgba(255, 255, 255, 0.05);
+	padding: 4px 10px;
+	border-radius: 14px;
+	border: 1px solid var(--border);
+}
+
+.view-actions-group {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+
+.btn-hero-play {
+	font-size: 0.95rem;
+	font-weight: 700;
+	padding: 10px 20px;
+	border-radius: var(--radius);
+	box-shadow: 0 4px 16px var(--accent-glow);
+	transition: all var(--transition);
+}
+
+.btn-hero-play:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 6px 22px rgba(99, 102, 241, 0.5);
+}
+
+.view-empty-card {
+	background: var(--bg-card);
+	border: 1px dashed var(--border);
+	border-radius: var(--radius-lg);
+	padding: 48px 24px;
+	text-align: center;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 14px;
+	margin-top: 20px;
+}
+
+.view-empty-card .empty-icon {
+	font-size: 2.8rem;
+}
+
+.view-empty-card h3 {
+	font-size: 1.25rem;
+	font-weight: 700;
+	color: var(--text-primary);
+}
+
+.view-empty-card p {
+	color: var(--text-muted);
+	font-size: 0.9rem;
+	max-width: 360px;
+	margin-bottom: 8px;
+}
+
+/* ── View Steps Feed ─────────────────────────────────────────────────────── */
+
+.view-steps-feed {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.view-step-card {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	background: var(--bg-card);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	padding: 12px 16px;
+	cursor: pointer;
+	transition: all var(--transition);
+	position: relative;
+	overflow: hidden;
+}
+
+.view-step-card:hover {
+	background: var(--bg-card-elevated);
+	border-color: var(--border-hover);
+	transform: translateY(-2px);
+	box-shadow: var(--shadow);
+}
+
+.view-step-clip {
+	border-left: 4px solid var(--clip-color);
+}
+
+.view-step-timer {
+	border-left: 4px solid var(--timer-color);
+}
+
+.view-step-index {
+	font-size: 0.8rem;
+	font-weight: 800;
+	color: var(--text-muted);
+	min-width: 28px;
+}
+
+.view-step-media {
+	width: 120px;
+	height: 68px;
+	border-radius: var(--radius-sm);
+	overflow: hidden;
+	background: #000000;
+	flex-shrink: 0;
+	position: relative;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border: 1px solid var(--border);
+}
+
+.view-step-media img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+.thumbnail-play-overlay {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: rgba(0, 0, 0, 0.35);
+	color: #ffffff;
+	font-size: 1.1rem;
+	opacity: 0.85;
+	transition: all var(--transition-fast);
+}
+
+.view-step-card:hover .thumbnail-play-overlay {
+	background: rgba(6, 182, 212, 0.5);
+	opacity: 1;
+	transform: scale(1.08);
+}
+
+.timer-visual-box {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	height: 100%;
+	background: radial-gradient(circle at center, var(--timer-subtle) 0%, rgba(0, 0, 0, 0.4) 100%);
+	gap: 2px;
+}
+
+.timer-visual-box .timer-icon {
+	font-size: 1.2rem;
+}
+
+.timer-visual-box .timer-badge-sec {
+	font-size: 0.72rem;
+	font-weight: 700;
+	color: #fbbf24;
+	letter-spacing: 0.03em;
+}
+
+.media-fallback {
+	font-size: 1.6rem;
+	opacity: 0.6;
+}
+
+.view-step-details {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	min-width: 0;
+}
+
+.view-step-title {
+	font-size: 1rem;
+	font-weight: 700;
+	color: var(--text-primary);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.view-step-tags {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+.view-tag {
+	font-size: 0.72rem;
+	font-weight: 600;
+	padding: 2px 8px;
+	border-radius: 12px;
+	letter-spacing: 0.02em;
+}
+
+.view-tag-clip {
+	background: var(--clip-subtle);
+	color: #38bdf8;
+	border: 1px solid rgba(6, 182, 212, 0.25);
+}
+
+.view-tag-timer {
+	background: var(--timer-subtle);
+	color: #fbbf24;
+	border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.view-tag-time {
+	background: rgba(255, 255, 255, 0.05);
+	color: var(--text-secondary);
+	border: 1px solid var(--border);
+}
+
+.view-tag-music {
+	background: rgba(168, 85, 247, 0.12);
+	color: #c084fc;
+	border: 1px solid rgba(168, 85, 247, 0.25);
+}
+
+.view-step-play-btn {
+	width: 36px;
+	height: 36px;
+	border-radius: 50%;
+	background: var(--bg-hover);
+	border: 1px solid var(--border);
+	color: var(--text-primary);
+	font-size: 0.9rem;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	transition: all var(--transition-fast);
+	flex-shrink: 0;
+	margin-left: auto;
+}
+
+.view-step-card:hover .view-step-play-btn {
+	background: var(--accent);
+	border-color: var(--accent);
+	color: #ffffff;
+	transform: scale(1.1);
+	box-shadow: 0 0 14px var(--accent-glow);
+}
+
+.view-bottom-cta {
+	display: flex;
+	justify-content: center;
+	padding: 28px 0 12px 0;
+}
+
+/* ── Editor View (Edit Mode) ─────────────────────────────────────────────── */
 
 #editor-view {
 	flex: 1;
@@ -319,21 +640,6 @@ html, body {
 	border-color: var(--timer-color);
 	box-shadow: 0 0 16px var(--timer-glow);
 	transform: translateY(-1px);
-}
-
-.empty-message {
-	text-align: center;
-	color: var(--text-muted);
-	padding: 80px 20px;
-	font-size: 1.05rem;
-	font-weight: 500;
-}
-
-#editor-empty {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	height: 100%;
 }
 
 /* ── Step Cards ──────────────────────────────────────────────────────────── */

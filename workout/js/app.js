@@ -7,6 +7,7 @@ import {
 	saveServerRoutines, exportRoutines, importRoutines
 } from './storage.js?v=5';
 import { renderEditor, createClipStep, createTimerStep, createRoutine } from './editor.js?v=5';
+import { renderRoutineOverview } from './view.js?v=5';
 import {
 	initPlayer, startRoutine, stopPlayback,
 	togglePause, skipStep, previousStep, resetPlayback
@@ -21,6 +22,7 @@ import { showPrompt, showConfirm, showAlert } from './modal.js?v=5';
 
 let routines = [];
 let selectedRoutineId = null;
+let currentMode = 'view'; // 'view' | 'edit'
 let syncTimeout = null;
 
 // DOM references
@@ -54,6 +56,8 @@ async function init() {
 			youtubeContainer: dom.youtubePlayer,
 			playerView: dom.playerView,
 			editorView: dom.editorView,
+			routineView: dom.routineView,
+			emptyView: dom.emptyView,
 			timerOverlay: dom.timerOverlay,
 			timerDisplay: dom.timerDisplay,
 			timerLabel: dom.timerLabel,
@@ -97,16 +101,17 @@ function cacheDom() {
 	dom.exportBtn = document.getElementById('export-btn');
 	dom.importBtn = document.getElementById('import-btn');
 	dom.syncStatus = document.getElementById('sync-status');
+	dom.emptyView = document.getElementById('empty-view');
+	dom.routineView = document.getElementById('routine-view');
+	dom.routineOverviewContainer = document.getElementById('routine-overview-container');
 	dom.editorView = document.getElementById('editor-view');
 	dom.playerView = document.getElementById('player-view');
 	dom.routineTitle = document.getElementById('routine-title');
 	dom.stepList = document.getElementById('step-list');
 	dom.addClipBtn = document.getElementById('add-clip-btn');
 	dom.addTimerBtn = document.getElementById('add-timer-btn');
-	dom.playRoutineBtn = document.getElementById('play-routine-btn');
+	dom.doneEditingBtn = document.getElementById('done-editing-btn');
 	dom.deleteRoutineBtn = document.getElementById('delete-routine-btn');
-	dom.editorEmpty = document.getElementById('editor-empty');
-	dom.editorContent = document.getElementById('editor-content');
 
 	// Player elements
 	dom.youtubePlayer = document.getElementById('youtube-player');
@@ -203,7 +208,10 @@ function bindEvents() {
 	dom.importBtn.addEventListener('click', handleImport);
 	dom.addClipBtn.addEventListener('click', handleAddClip);
 	dom.addTimerBtn.addEventListener('click', handleAddTimer);
-	dom.playRoutineBtn.addEventListener('click', handlePlayRoutine);
+	dom.doneEditingBtn.addEventListener('click', () => {
+		currentMode = 'view';
+		renderSelectedRoutine();
+	});
 	dom.deleteRoutineBtn.addEventListener('click', handleDeleteRoutine);
 	dom.playPauseBtn.addEventListener('click', togglePause);
 	dom.skipBtn.addEventListener('click', skipStep);
@@ -262,7 +270,6 @@ function persist(immediateServerSync = false) {
 	}
 }
 
-
 /**
  * Render the sidebar routine list.
  */
@@ -299,6 +306,7 @@ function renderRoutineList() {
 
 		li.addEventListener('click', () => {
 			selectedRoutineId = routine.id;
+			currentMode = 'view';
 			renderRoutineList();
 			renderSelectedRoutine();
 		});
@@ -308,30 +316,49 @@ function renderRoutineList() {
 }
 
 /**
- * Render the editor for the selected routine.
+ * Render the active mode (View Mode or Edit Mode) for the selected routine.
  */
 function renderSelectedRoutine() {
 	const routine = getSelectedRoutine();
 
 	if (!routine) {
-		dom.editorEmpty.classList.remove('hidden');
-		dom.editorContent.classList.add('hidden');
+		dom.emptyView.classList.remove('hidden');
+		dom.routineView.classList.add('hidden');
+		dom.editorView.classList.add('hidden');
+		dom.playerView.classList.add('hidden');
 		return;
 	}
 
-	dom.editorEmpty.classList.add('hidden');
-	dom.editorContent.classList.remove('hidden');
-	dom.routineTitle.value = routine.title;
+	dom.emptyView.classList.add('hidden');
 
-	const onStepUpdate = () => {
-		persist();
+	if (currentMode === 'view') {
+		dom.routineView.classList.remove('hidden');
+		dom.editorView.classList.add('hidden');
+		dom.playerView.classList.add('hidden');
+
+		renderRoutineOverview(routine, dom.routineOverviewContainer, {
+			onEdit: () => {
+				currentMode = 'edit';
+				renderSelectedRoutine();
+			},
+			onPlay: (startIndex = 0) => {
+				startRoutine(routine, startIndex);
+			}
+		});
+	} else if (currentMode === 'edit') {
+		dom.routineView.classList.add('hidden');
+		dom.editorView.classList.remove('hidden');
+		dom.playerView.classList.add('hidden');
+
+		dom.routineTitle.value = routine.title;
+
+		const onStepUpdate = () => {
+			persist();
+			renderEditor(routine, dom.stepList, onStepUpdate);
+			renderRoutineList();
+		};
 		renderEditor(routine, dom.stepList, onStepUpdate);
-		renderRoutineList();
-	};
-	renderEditor(routine, dom.stepList, onStepUpdate);
-
-	// Disable play if no steps
-	dom.playRoutineBtn.disabled = routine.steps.length === 0;
+	}
 }
 
 // ── Event Handlers ──────────────────────────────────────────────────────────
@@ -347,6 +374,7 @@ async function handleAddWorkout() {
 	const routine = createRoutine(title.trim() || 'New Workout');
 	routines.push(routine);
 	selectedRoutineId = routine.id;
+	currentMode = 'edit';
 	persist(true);
 	renderRoutineList();
 	renderSelectedRoutine();
