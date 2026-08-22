@@ -2,12 +2,21 @@
  * Player module - YouTube IFrame API integration and timer countdown engine.
  */
 
-import { formatTime } from './utils.js';
-import { playCountdownBeep } from './audio.js';
+import { formatTime } from './utils.js?v=4';
+import { playCountdownBeep } from './audio.js?v=4';
 import {
 	setPlaylist, startMusic, pauseMusic, resumeMusic,
 	stopMusic, muteMusic, unmuteMusic, hasMusic
-} from './music.js';
+} from './music.js?v=4';
+
+const PLAY_ICON = `<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><polygon points="7,4 19,12 7,20"/></svg>`;
+const PAUSE_ICON = `<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1.5"/><rect x="14" y="4" width="4" height="16" rx="1.5"/></svg>`;
+
+function updatePlayPauseBtn(paused) {
+	if (!dom.playPauseBtn) return;
+	dom.playPauseBtn.innerHTML = paused ? PLAY_ICON : PAUSE_ICON;
+	dom.playPauseBtn.title = paused ? 'Play (Space)' : 'Pause (Space)';
+}
 
 /** @type {YT.Player|null} */
 let ytPlayer = null;
@@ -73,6 +82,28 @@ export async function initPlayer(domRefs, callbacks) {
 				ytReady = true;
 			},
 			onStateChange: onYTStateChange,
+		}
+	});
+
+	// Global player keyboard controls
+	window.addEventListener('keydown', (e) => {
+		if (!isPlaying) return;
+		if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+		if (e.code === 'Space') {
+			e.preventDefault();
+			togglePause();
+		} else if (e.key === 'ArrowRight') {
+			e.preventDefault();
+			skipStep();
+		} else if (e.key === 'ArrowLeft') {
+			e.preventDefault();
+			previousStep();
+		} else if (e.key === 'Escape') {
+			e.preventDefault();
+			stopPlayback();
+		} else if (e.key === 'r' || e.key === 'R') {
+			e.preventDefault();
+			resetPlayback();
 		}
 	});
 }
@@ -311,8 +342,7 @@ export function togglePause() {
 			resumeMusic();
 		}
 
-		dom.playPauseBtn.textContent = '⏸️';
-		dom.playPauseBtn.title = 'Pause';
+		updatePlayPauseBtn(false);
 	} else {
 		// Pause
 		isPaused = true;
@@ -327,8 +357,7 @@ export function togglePause() {
 			pauseMusic();
 		}
 
-		dom.playPauseBtn.textContent = '▶️';
-		dom.playPauseBtn.title = 'Play';
+		updatePlayPauseBtn(true);
 	}
 }
 
@@ -339,8 +368,7 @@ export function resetPlayback() {
 	if (!currentRoutine) return;
 	currentStepIndex = 0;
 	isPaused = false;
-	dom.playPauseBtn.textContent = '⏸️';
-	dom.playPauseBtn.title = 'Pause';
+	updatePlayPauseBtn(false);
 	executeCurrentStep();
 }
 
@@ -374,8 +402,7 @@ export function jumpToStep(index) {
 	if (!currentRoutine || index < 0 || index >= currentRoutine.steps.length) return;
 	currentStepIndex = index;
 	isPaused = false;
-	dom.playPauseBtn.textContent = '⏸️';
-	dom.playPauseBtn.title = 'Pause';
+	updatePlayPauseBtn(false);
 	executeCurrentStep();
 }
 
@@ -385,8 +412,7 @@ export function jumpToStep(index) {
 function showPlayerUI() {
 	dom.playerView.classList.remove('hidden');
 	dom.editorView.classList.add('hidden');
-	dom.playPauseBtn.textContent = '⏸️';
-	dom.playPauseBtn.title = 'Pause';
+	updatePlayPauseBtn(false);
 }
 
 /**

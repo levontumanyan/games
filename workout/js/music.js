@@ -8,7 +8,7 @@
  * Loops through the playlist and wraps around.
  */
 
-import { getAudioFile } from './musicdb.js';
+import { getAudioFile } from './musicdb.js?v=4';
 
 /** @type {YT.Player|null} */
 let ytMusicPlayer = null;

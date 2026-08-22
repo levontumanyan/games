@@ -2,9 +2,9 @@
  * Editor module - Routine & step editing, drag-and-drop reorder.
  */
 
-import { generateId, parseYouTubeId, parseTime, formatTime } from './utils.js?v=3';
-import { saveAudioFile, deleteAudioFile } from './musicdb.js?v=3';
-import { showPrompt, showAlert } from './modal.js?v=3';
+import { generateId, parseYouTubeId, parseTime, formatTime } from './utils.js?v=4';
+import { saveAudioFile, deleteAudioFile } from './musicdb.js?v=4';
+import { showPrompt, showAlert } from './modal.js?v=4';
 
 /**
  * Render the routine editor for a given routine.
