@@ -5,7 +5,7 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>Workout Routine Player</title>
 	<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💪</text></svg>">
-	<link rel="stylesheet" href="css/styles.css?v=2">
+	<link rel="stylesheet" href="css/styles.css?v=3">
 </head>
 <body>
 	<div class="app-container">
@@ -133,6 +133,26 @@
 		<div id="yt-music-player"></div>
 	</div>
 
-	<script type="module" src="js/app.js?v=2"></script>
+	<!-- Modern Modal Dialog -->
+	<div id="modal-backdrop" class="modal-backdrop hidden">
+		<div class="modal-window">
+			<div class="modal-header">
+				<h3 id="modal-title" class="modal-title">Title</h3>
+				<button id="modal-close-btn" class="modal-close-btn" title="Close">✕</button>
+			</div>
+			<div class="modal-body">
+				<p id="modal-message" class="modal-message"></p>
+				<div id="modal-input-group" class="modal-input-group">
+					<input type="text" id="modal-input" class="modal-input" spellcheck="false" autocomplete="off">
+				</div>
+			</div>
+			<div class="modal-footer">
+				<button id="modal-cancel-btn" class="btn btn-ghost">Cancel</button>
+				<button id="modal-confirm-btn" class="btn btn-primary">Confirm</button>
+			</div>
+		</div>
+	</div>
+
+	<script type="module" src="js/app.js?v=3"></script>
 </body>
 </html>

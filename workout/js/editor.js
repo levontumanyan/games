@@ -2,8 +2,9 @@
  * Editor module - Routine & step editing, drag-and-drop reorder.
  */
 
-import { generateId, parseYouTubeId, parseTime, formatTime } from './utils.js';
-import { saveAudioFile, deleteAudioFile } from './musicdb.js';
+import { generateId, parseYouTubeId, parseTime, formatTime } from './utils.js?v=3';
+import { saveAudioFile, deleteAudioFile } from './musicdb.js?v=3';
+import { showPrompt, showAlert } from './modal.js?v=3';
 
 /**
  * Render the routine editor for a given routine.
@@ -186,20 +187,34 @@ function createTimerFields(step, onUpdate) {
 	addYtBtn.className = 'btn btn-ghost btn-sm';
 	addYtBtn.textContent = '🔗 YouTube';
 	addYtBtn.type = 'button';
-	addYtBtn.addEventListener('click', () => {
-		const url = prompt('YouTube or YouTube Music URL:');
+	addYtBtn.addEventListener('click', async () => {
+		const url = await showPrompt({
+			title: 'Add YouTube Music',
+			message: 'Paste a YouTube or YouTube Music link:',
+			placeholder: 'https://music.youtube.com/watch?v=... or https://youtube.com/watch?v=...',
+			confirmText: 'Next'
+		});
 		if (!url) return;
 		const videoId = parseYouTubeId(url);
 		if (!videoId) {
-			alert('Could not parse a valid YouTube video ID from that URL.');
+			await showAlert({
+				title: 'Invalid Link',
+				message: 'Could not find a valid YouTube video ID from that link. Please check the URL and try again.'
+			});
 			return;
 		}
-		const label = prompt('Track label:', 'Music') || 'Music';
+		const label = await showPrompt({
+			title: 'Track Label',
+			message: 'Display name for this track:',
+			defaultValue: 'Music',
+			placeholder: 'e.g. Upbeat Workout Beat',
+			confirmText: 'Add Track'
+		}) || 'Music';
 		step.musicTracks.push({
 			id: generateId(),
 			source: 'youtube',
 			videoId: videoId,
-			label: label,
+			label: label
 		});
 		onUpdate();
 	});
@@ -216,7 +231,12 @@ function createTimerFields(step, onUpdate) {
 			const file = e.target.files[0];
 			if (!file) return;
 			const trackId = generateId();
-			const label = prompt('Track label:', file.name) || file.name;
+			const label = await showPrompt({
+				title: 'Audio Track Label',
+				message: 'Display name for this audio file:',
+				defaultValue: file.name,
+				confirmText: 'Add Track'
+			}) || file.name;
 			try {
 				await saveAudioFile(trackId, file, file.name);
 				step.musicTracks.push({
@@ -224,11 +244,14 @@ function createTimerFields(step, onUpdate) {
 					source: 'file',
 					fileId: trackId,
 					fileName: file.name,
-					label: label,
+					label: label
 				});
 				onUpdate();
 			} catch (err) {
-				alert('Failed to save audio file: ' + err.message);
+				await showAlert({
+					title: 'File Save Error',
+					message: 'Failed to save audio file: ' + err.message
+				});
 			}
 		};
 		input.click();

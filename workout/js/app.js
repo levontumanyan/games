@@ -5,18 +5,19 @@
 import {
 	loadRoutines, saveRoutines, fetchServerRoutines,
 	saveServerRoutines, exportRoutines, importRoutines
-} from './storage.js?v=2';
-import { renderEditor, createClipStep, createTimerStep, createRoutine } from './editor.js?v=2';
+} from './storage.js?v=3';
+import { renderEditor, createClipStep, createTimerStep, createRoutine } from './editor.js?v=3';
 import {
 	initPlayer, startRoutine, stopPlayback,
 	togglePause, skipStep, previousStep, resetPlayback
-} from './player.js?v=2';
-import { initAudio } from './audio.js?v=2';
+} from './player.js?v=3';
+import { initAudio } from './audio.js?v=3';
 import {
 	initMusic, setVolume as setMusicVolume, nextTrack, prevTrack,
 	muteMusic, unmuteMusic, isMuted as isMusicMuted
-} from './music.js?v=2';
-import { formatTime } from './utils.js?v=2';
+} from './music.js?v=3';
+import { formatTime } from './utils.js?v=3';
+import { showPrompt, showConfirm, showAlert } from './modal.js?v=3';
 
 let routines = [];
 let selectedRoutineId = null;
@@ -335,8 +336,13 @@ function renderSelectedRoutine() {
 
 // ── Event Handlers ──────────────────────────────────────────────────────────
 
-function handleAddWorkout() {
-	const title = prompt('Workout name:');
+async function handleAddWorkout() {
+	const title = await showPrompt({
+		title: 'New Workout',
+		message: 'Enter a name for your new workout routine:',
+		placeholder: 'e.g. Morning HIIT, Upper Body Power',
+		confirmText: 'Create Workout'
+	});
 	if (title === null) return;
 	const routine = createRoutine(title.trim() || 'New Workout');
 	routines.push(routine);
@@ -346,10 +352,16 @@ function handleAddWorkout() {
 	renderSelectedRoutine();
 }
 
-function handleDeleteRoutine() {
+async function handleDeleteRoutine() {
 	const routine = getSelectedRoutine();
 	if (!routine) return;
-	if (!confirm(`Delete "${routine.title}"?`)) return;
+	const confirmed = await showConfirm({
+		title: 'Delete Workout',
+		message: `Are you sure you want to delete "${routine.title}"? This cannot be undone.`,
+		confirmText: 'Delete',
+		danger: true
+	});
+	if (!confirmed) return;
 
 	routines = routines.filter(r => r.id !== routine.id);
 	selectedRoutineId = routines.length > 0 ? routines[0].id : null;
@@ -393,7 +405,10 @@ async function handleImport() {
 		renderRoutineList();
 		renderSelectedRoutine();
 	} catch (err) {
-		alert('Import failed: ' + err.message);
+		await showAlert({
+			title: 'Import Failed',
+			message: 'Could not import routines: ' + err.message
+		});
 	}
 }
 
