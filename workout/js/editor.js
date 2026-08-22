@@ -2,9 +2,9 @@
  * Editor module - Routine & step editing, drag-and-drop reorder.
  */
 
-import { generateId, parseYouTubeId, parseTime, formatTime } from './utils.js?v=4';
-import { saveAudioFile, deleteAudioFile } from './musicdb.js?v=4';
-import { showPrompt, showAlert } from './modal.js?v=4';
+import { generateId, parseYouTubeId, parseYouTubeInfo, parseTime, formatTime, formatFriendlyDuration } from './utils.js?v=5';
+import { saveAudioFile, deleteAudioFile } from './musicdb.js?v=5';
+import { showPrompt, showAlert } from './modal.js?v=5';
 
 /**
  * Render the routine editor for a given routine.
@@ -114,6 +114,9 @@ function createStepElement(step, index, routine, onUpdate) {
 /**
  * Create input fields for a clip step.
  */
+/**
+ * Create input fields for a clip step.
+ */
 function createClipFields(step, onUpdate) {
 	const frag = document.createDocumentFragment();
 
@@ -125,34 +128,236 @@ function createClipFields(step, onUpdate) {
 
 	// YouTube URL/ID
 	frag.appendChild(createField('YouTube URL or ID', step.videoId, (val) => {
-		const id = parseYouTubeId(val);
-		if (id) {
-			step.videoId = id;
+		const info = parseYouTubeInfo(val);
+		if (info && info.videoId) {
+			step.videoId = info.videoId;
+			if (info.startSeconds !== null && info.startSeconds !== undefined) {
+				step.startSeconds = info.startSeconds;
+				if (!step.endSeconds || step.endSeconds <= step.startSeconds) {
+					step.endSeconds = step.startSeconds + 60;
+				}
+			}
+			if (!step.label || step.label === 'Video Clip') {
+				fetchVideoTitle(info.videoId, (title) => {
+					if (title && (!step.label || step.label === 'Video Clip')) {
+						step.label = title;
+						onUpdate();
+					}
+				});
+			}
 			onUpdate();
 		}
 	}, 'e.g., https://youtube.com/watch?v=dQw4w9WgXcQ'));
 
-	// Start time
-	const timeRow = document.createElement('div');
-	timeRow.className = 'field-row';
-
-	timeRow.appendChild(createField('Start (MM:SS or sec)', formatTime(step.startSeconds), (val) => {
-		step.startSeconds = parseTime(val);
-		onUpdate();
-	}, '0:00'));
-
-	timeRow.appendChild(createField('End (MM:SS or sec)', formatTime(step.endSeconds), (val) => {
-		step.endSeconds = parseTime(val);
-		onUpdate();
-	}, '1:00'));
-
-	frag.appendChild(timeRow);
+	// Dual-Handle Range Trimmer (Option 2)
+	frag.appendChild(createVideoRangeTrimmer(step, onUpdate));
 
 	return frag;
 }
 
 /**
- * Create input fields for a timer step.
+ * Dual-Handle Range Trimmer component for video clips.
+ * Visual interactive slider with two draggable handles, draggable range block,
+ * and synchronized start/end time inputs.
+ */
+function createVideoRangeTrimmer(step, onUpdate) {
+	const container = document.createElement('div');
+	container.className = 'video-trimmer';
+
+	let startSec = Math.max(0, step.startSeconds || 0);
+	let endSec = Math.max(startSec + 1, step.endSeconds || (startSec + 60));
+
+	function getTimelineMax() {
+		const ceiling = Math.max(300, endSec * 1.35);
+		return Math.ceil(ceiling / 60) * 60;
+	}
+	let timelineMax = getTimelineMax();
+
+	const trackWrapper = document.createElement('div');
+	trackWrapper.className = 'trimmer-track-wrapper';
+
+	const trackBg = document.createElement('div');
+	trackBg.className = 'trimmer-track-bg';
+
+	const highlight = document.createElement('div');
+	highlight.className = 'trimmer-highlight';
+	highlight.title = 'Drag interval window';
+
+	const handleStart = document.createElement('div');
+	handleStart.className = 'trimmer-handle trimmer-handle-start';
+	handleStart.title = 'Drag Start';
+
+	const handleEnd = document.createElement('div');
+	handleEnd.className = 'trimmer-handle trimmer-handle-end';
+	handleEnd.title = 'Drag End';
+
+	trackWrapper.append(trackBg, highlight, handleStart, handleEnd);
+
+	// Controls below trimmer
+	const controlsRow = document.createElement('div');
+	controlsRow.className = 'trimmer-controls-row';
+
+	// Start Input
+	const startGroup = document.createElement('div');
+	startGroup.className = 'field-group trimmer-input-group';
+	const startLbl = document.createElement('label');
+	startLbl.textContent = 'Start';
+	const startInput = document.createElement('input');
+	startInput.type = 'text';
+	startInput.className = 'input trimmer-input';
+	startInput.value = formatTime(startSec);
+	startGroup.append(startLbl, startInput);
+
+	// Duration Pill
+	const durationPill = document.createElement('div');
+	durationPill.className = 'trimmer-duration-pill';
+	durationPill.textContent = `⏱️ ${formatFriendlyDuration(endSec - startSec)}`;
+
+	// End Input
+	const endGroup = document.createElement('div');
+	endGroup.className = 'field-group trimmer-input-group';
+	const endLbl = document.createElement('label');
+	endLbl.textContent = 'End';
+	const endInput = document.createElement('input');
+	endInput.type = 'text';
+	endInput.className = 'input trimmer-input';
+	endInput.value = formatTime(endSec);
+	endGroup.append(endLbl, endInput);
+
+	controlsRow.append(startGroup, durationPill, endGroup);
+	container.append(trackWrapper, controlsRow);
+
+	function updateVisuals() {
+		timelineMax = getTimelineMax();
+		const leftPercent = (startSec / timelineMax) * 100;
+		const rightPercent = (endSec / timelineMax) * 100;
+		const widthPercent = Math.max(0, rightPercent - leftPercent);
+
+		highlight.style.left = `${leftPercent}%`;
+		highlight.style.width = `${widthPercent}%`;
+		handleStart.style.left = `${leftPercent}%`;
+		handleEnd.style.left = `${rightPercent}%`;
+
+		startInput.value = formatTime(startSec);
+		endInput.value = formatTime(endSec);
+		durationPill.textContent = `⏱️ ${formatFriendlyDuration(endSec - startSec)}`;
+	}
+
+	updateVisuals();
+
+	// Pointer dragging
+	let isDragging = null;
+	let dragStartX = 0;
+	let dragInitialStart = 0;
+	let dragInitialEnd = 0;
+
+	function getSecFromPointer(e) {
+		const rect = trackWrapper.getBoundingClientRect();
+		const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+		return Math.round(frac * timelineMax);
+	}
+
+	handleStart.addEventListener('pointerdown', (e) => {
+		e.preventDefault();
+		handleStart.setPointerCapture(e.pointerId);
+		isDragging = 'start';
+	});
+
+	handleEnd.addEventListener('pointerdown', (e) => {
+		e.preventDefault();
+		handleEnd.setPointerCapture(e.pointerId);
+		isDragging = 'end';
+	});
+
+	highlight.addEventListener('pointerdown', (e) => {
+		e.preventDefault();
+		highlight.setPointerCapture(e.pointerId);
+		isDragging = 'range';
+		dragStartX = e.clientX;
+		dragInitialStart = startSec;
+		dragInitialEnd = endSec;
+	});
+
+	const onPointerMove = (e) => {
+		if (!isDragging) return;
+		if (isDragging === 'start') {
+			const s = getSecFromPointer(e);
+			startSec = Math.max(0, Math.min(s, endSec - 1));
+			step.startSeconds = startSec;
+			updateVisuals();
+		} else if (isDragging === 'end') {
+			const end = getSecFromPointer(e);
+			endSec = Math.max(startSec + 1, Math.min(end, timelineMax));
+			step.endSeconds = endSec;
+			updateVisuals();
+		} else if (isDragging === 'range') {
+			const rect = trackWrapper.getBoundingClientRect();
+			const deltaSec = Math.round(((e.clientX - dragStartX) / rect.width) * timelineMax);
+			const dur = dragInitialEnd - dragInitialStart;
+			let newStart = dragInitialStart + deltaSec;
+			if (newStart < 0) newStart = 0;
+			if (newStart + dur > timelineMax) newStart = timelineMax - dur;
+			startSec = newStart;
+			endSec = newStart + dur;
+			step.startSeconds = startSec;
+			step.endSeconds = endSec;
+			updateVisuals();
+		}
+	};
+
+	const onPointerUp = () => {
+		if (isDragging) {
+			isDragging = null;
+			onUpdate();
+		}
+	};
+
+	trackWrapper.addEventListener('pointermove', onPointerMove);
+	trackWrapper.addEventListener('pointerup', onPointerUp);
+	trackWrapper.addEventListener('pointercancel', onPointerUp);
+
+	// Typing listeners with auto-select
+	startInput.addEventListener('focus', () => startInput.select());
+	endInput.addEventListener('focus', () => endInput.select());
+
+	const commitStart = () => {
+		const parsed = parseTime(startInput.value);
+		startSec = parsed;
+		if (endSec <= startSec) {
+			endSec = startSec + 60;
+		}
+		step.startSeconds = startSec;
+		step.endSeconds = endSec;
+		updateVisuals();
+		onUpdate();
+	};
+
+	const commitEnd = () => {
+		const parsed = parseTime(endInput.value);
+		if (parsed > startSec) {
+			endSec = parsed;
+		} else {
+			endSec = startSec + 60;
+		}
+		step.startSeconds = startSec;
+		step.endSeconds = endSec;
+		updateVisuals();
+		onUpdate();
+	};
+
+	startInput.addEventListener('change', commitStart);
+	startInput.addEventListener('blur', commitStart);
+	startInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') startInput.blur(); });
+
+	endInput.addEventListener('change', commitEnd);
+	endInput.addEventListener('blur', commitEnd);
+	endInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') endInput.blur(); });
+
+	return container;
+}
+
+/**
+ * Create input fields for a timer step (Option 1: Start + Duration / Clean Duration Model).
  */
 function createTimerFields(step, onUpdate) {
 	const frag = document.createDocumentFragment();
@@ -166,11 +371,45 @@ function createTimerFields(step, onUpdate) {
 		onUpdate();
 	}, 'e.g., Push-ups, Rest, Plank'));
 
-	// Duration
-	frag.appendChild(createField('Duration (MM:SS or sec)', formatTime(step.durationSeconds), (val) => {
-		step.durationSeconds = parseTime(val);
+	// Duration field (Option 1)
+	const durationContainer = document.createElement('div');
+	durationContainer.className = 'timer-duration-container';
+
+	durationContainer.appendChild(createTimeField('Duration (MM:SS or sec)', step.durationSeconds || 30, (val) => {
+		step.durationSeconds = Math.max(1, val);
 		onUpdate();
-	}, '0:30'));
+	}, '0:30', false));
+
+	// Quick Duration Presets for Timers
+	const presetsRow = document.createElement('div');
+	presetsRow.className = 'preset-chips-row';
+
+	const presets = [
+		{ label: '15s', sec: 15 },
+		{ label: '30s', sec: 30 },
+		{ label: '45s', sec: 45 },
+		{ label: '1m', sec: 60 },
+		{ label: '1m 30s', sec: 90 },
+		{ label: '2m', sec: 120 },
+		{ label: '3m', sec: 180 },
+		{ label: '5m', sec: 300 },
+	];
+
+	presets.forEach(p => {
+		const chip = document.createElement('button');
+		chip.type = 'button';
+		chip.className = 'preset-chip';
+		if ((step.durationSeconds || 30) === p.sec) chip.classList.add('active');
+		chip.textContent = p.label;
+		chip.addEventListener('click', () => {
+			step.durationSeconds = p.sec;
+			onUpdate();
+		});
+		presetsRow.appendChild(chip);
+	});
+
+	durationContainer.appendChild(presetsRow);
+	frag.appendChild(durationContainer);
 
 	// ── Music Section ───────────────────────────────────────────────────────
 	const musicSection = document.createElement('div');
@@ -302,7 +541,65 @@ function createTimerFields(step, onUpdate) {
 }
 
 /**
- * Create an input field group.
+ * Create a simple, clean time input field.
+ * Auto-selects on focus so user can immediately type a new number without backspacing.
+ * Supports typing seconds ("45", "90") or MM:SS ("1:30") and formats cleanly on blur/Enter.
+ */
+function createTimeField(labelText, valueSeconds, onChange, placeholder = '0:00', emptyWhenZero = false) {
+	const group = document.createElement('div');
+	group.className = 'field-group';
+
+	const label = document.createElement('label');
+	label.textContent = labelText;
+
+	const input = document.createElement('input');
+	input.type = 'text';
+	input.className = 'input';
+	input.placeholder = placeholder;
+	input.value = (valueSeconds === 0 && emptyWhenZero) ? '' : (valueSeconds > 0 ? formatTime(valueSeconds) : '');
+
+	// Select all on focus so user can immediately type over the existing value
+	input.addEventListener('focus', () => {
+		input.select();
+	});
+
+	const commit = () => {
+		const parsed = parseTime(input.value);
+		input.value = (parsed === 0 && emptyWhenZero) ? '' : formatTime(parsed);
+		onChange(parsed);
+	};
+
+	input.addEventListener('change', commit);
+	input.addEventListener('blur', commit);
+	input.addEventListener('keydown', (e) => {
+		if (e.key === 'Enter') {
+			input.blur();
+		}
+	});
+
+	group.append(label, input);
+	return group;
+}
+
+/**
+ * Fetch video title using YouTube oEmbed.
+ */
+async function fetchVideoTitle(videoId, callback) {
+	try {
+		const res = await fetch(`https://noembed.com/embed?url=https://www.youtube.com/watch?v=${videoId}`);
+		if (res.ok) {
+			const data = await res.json();
+			if (data && data.title) {
+				callback(data.title);
+			}
+		}
+	} catch {
+		// Silent failure
+	}
+}
+
+/**
+ * Create a standard input field group.
  */
 function createField(labelText, value, onChange, placeholder = '') {
 	const group = document.createElement('div');

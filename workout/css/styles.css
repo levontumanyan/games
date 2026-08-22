@@ -494,6 +494,155 @@ html, body {
 	color: var(--text-muted);
 }
 
+/* ── Video Range Trimmer (Option 2) ──────────────────────────────────────── */
+
+.video-trimmer {
+	margin-top: 14px;
+	padding: 14px 16px;
+	background: rgba(0, 0, 0, 0.22);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.trimmer-track-wrapper {
+	position: relative;
+	height: 36px;
+	margin: 6px 4px 10px 4px;
+	cursor: pointer;
+	user-select: none;
+	touch-action: none;
+}
+
+.trimmer-track-bg {
+	position: absolute;
+	left: 0;
+	right: 0;
+	top: 10px;
+	bottom: 10px;
+	background: rgba(255, 255, 255, 0.07);
+	border-radius: 8px;
+	border: 1px solid var(--border);
+}
+
+.trimmer-highlight {
+	position: absolute;
+	top: 8px;
+	bottom: 8px;
+	background: rgba(6, 182, 212, 0.3);
+	border-top: 2px solid var(--clip-color);
+	border-bottom: 2px solid var(--clip-color);
+	border-radius: 4px;
+	cursor: grab;
+	transition: background var(--transition-fast);
+}
+
+.trimmer-highlight:active {
+	cursor: grabbing;
+	background: rgba(6, 182, 212, 0.45);
+}
+
+.trimmer-handle {
+	position: absolute;
+	top: 2px;
+	bottom: 2px;
+	width: 14px;
+	margin-left: -7px;
+	background: #ffffff;
+	border: 2px solid var(--clip-color);
+	border-radius: 5px;
+	cursor: ew-resize;
+	box-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+	transition: transform var(--transition-fast), background var(--transition-fast);
+	z-index: 2;
+}
+
+.trimmer-handle:hover,
+.trimmer-handle:active {
+	transform: scaleY(1.18);
+	background: #38bdf8;
+	box-shadow: 0 0 12px var(--clip-glow);
+}
+
+.trimmer-controls-row {
+	display: flex;
+	align-items: flex-end;
+	justify-content: space-between;
+	gap: 12px;
+}
+
+.trimmer-input-group {
+	flex: 1;
+	margin-bottom: 0;
+}
+
+.trimmer-input {
+	text-align: center;
+	font-weight: 700;
+	font-size: 0.95rem;
+	letter-spacing: 0.04em;
+}
+
+.trimmer-duration-pill {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 8px 14px;
+	border-radius: 20px;
+	background: var(--clip-subtle);
+	color: #38bdf8;
+	border: 1px solid rgba(6, 182, 212, 0.3);
+	font-size: 0.8rem;
+	font-weight: 700;
+	letter-spacing: 0.02em;
+	white-space: nowrap;
+	margin-bottom: 1px;
+}
+
+/* ── Timer Duration & Presets (Option 1) ─────────────────────────────────── */
+
+.timer-duration-container {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.preset-chips-row {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	flex-wrap: wrap;
+	margin-top: 4px;
+}
+
+.preset-chip {
+	background: rgba(255, 255, 255, 0.04);
+	border: 1px solid var(--border);
+	color: var(--text-secondary);
+	border-radius: 12px;
+	padding: 4px 10px;
+	font-size: 0.72rem;
+	font-weight: 600;
+	cursor: pointer;
+	transition: all var(--transition-fast);
+}
+
+.preset-chip:hover {
+	background: var(--bg-hover);
+	color: var(--text-primary);
+	border-color: var(--border-hover);
+	transform: translateY(-1px);
+}
+
+.preset-chip:active, .preset-chip.active {
+	background: var(--accent-subtle);
+	color: #a5b4fc;
+	border-color: rgba(99, 102, 241, 0.4);
+	box-shadow: 0 0 10px var(--accent-glow);
+}
+
 /* ── Per-Step Music ──────────────────────────────────────────────────────── */
 
 .step-music-section {

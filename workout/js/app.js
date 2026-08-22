@@ -5,19 +5,19 @@
 import {
 	loadRoutines, saveRoutines, fetchServerRoutines,
 	saveServerRoutines, exportRoutines, importRoutines
-} from './storage.js?v=4';
-import { renderEditor, createClipStep, createTimerStep, createRoutine } from './editor.js?v=4';
+} from './storage.js?v=5';
+import { renderEditor, createClipStep, createTimerStep, createRoutine } from './editor.js?v=5';
 import {
 	initPlayer, startRoutine, stopPlayback,
 	togglePause, skipStep, previousStep, resetPlayback
-} from './player.js?v=4';
-import { initAudio } from './audio.js?v=4';
+} from './player.js?v=5';
+import { initAudio } from './audio.js?v=5';
 import {
 	initMusic, setVolume as setMusicVolume, nextTrack, prevTrack,
 	muteMusic, unmuteMusic, isMuted as isMusicMuted
-} from './music.js?v=4';
-import { formatTime } from './utils.js?v=4';
-import { showPrompt, showConfirm, showAlert } from './modal.js?v=4';
+} from './music.js?v=5';
+import { formatTime } from './utils.js?v=5';
+import { showPrompt, showConfirm, showAlert } from './modal.js?v=5';
 
 let routines = [];
 let selectedRoutineId = null;

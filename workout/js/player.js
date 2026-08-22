@@ -2,12 +2,12 @@
  * Player module - YouTube IFrame API integration and timer countdown engine.
  */
 
-import { formatTime } from './utils.js?v=4';
-import { playCountdownBeep } from './audio.js?v=4';
+import { formatTime } from './utils.js?v=5';
+import { playCountdownBeep } from './audio.js?v=5';
 import {
 	setPlaylist, startMusic, pauseMusic, resumeMusic,
 	stopMusic, muteMusic, unmuteMusic, hasMusic
-} from './music.js?v=4';
+} from './music.js?v=5';
 
 const PLAY_ICON = `<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><polygon points="7,4 19,12 7,20"/></svg>`;
 const PAUSE_ICON = `<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1.5"/><rect x="14" y="4" width="4" height="16" rx="1.5"/></svg>`;

@@ -3,88 +3,149 @@
  */
 
 /**
- * Extract YouTube video ID from various URL formats or a raw 11-char ID.
- * Supports: youtube.com/watch?v=, youtu.be/, youtube.com/shorts/, youtube.com/embed/, raw ID.
+ * Extract YouTube video ID and optional start timestamp from various URL formats.
  * @param {string} input - YouTube URL or video ID
- * @returns {string|null} - 11-character video ID or null if invalid
+ * @returns {{ videoId: string, startSeconds: number|null } | null}
  */
-export function parseYouTubeId(input) {
+export function parseYouTubeInfo(input) {
 	if (!input) return null;
 	input = input.trim();
 
 	// Raw 11-character ID
 	if (/^[A-Za-z0-9_-]{11}$/.test(input)) {
-		return input;
+		return { videoId: input, startSeconds: null };
 	}
 
 	try {
 		const url = new URL(input);
 		const hostname = url.hostname.replace('www.', '');
+		let videoId = null;
 
-		// youtube.com/watch?v=VIDEO_ID or music.youtube.com/watch?v=VIDEO_ID
 		if ((hostname === 'youtube.com' || hostname === 'music.youtube.com') && url.pathname === '/watch') {
 			const v = url.searchParams.get('v');
-			if (v && /^[A-Za-z0-9_-]{11}$/.test(v)) return v;
-		}
-
-		// youtube.com/embed/VIDEO_ID
-		if (hostname === 'youtube.com' && url.pathname.startsWith('/embed/')) {
+			if (v && /^[A-Za-z0-9_-]{11}$/.test(v)) videoId = v;
+		} else if (hostname === 'youtube.com' && url.pathname.startsWith('/embed/')) {
 			const id = url.pathname.split('/embed/')[1]?.split(/[?/]/)[0];
-			if (id && /^[A-Za-z0-9_-]{11}$/.test(id)) return id;
-		}
-
-		// youtube.com/shorts/VIDEO_ID
-		if (hostname === 'youtube.com' && url.pathname.startsWith('/shorts/')) {
+			if (id && /^[A-Za-z0-9_-]{11}$/.test(id)) videoId = id;
+		} else if (hostname === 'youtube.com' && url.pathname.startsWith('/shorts/')) {
 			const id = url.pathname.split('/shorts/')[1]?.split(/[?/]/)[0];
-			if (id && /^[A-Za-z0-9_-]{11}$/.test(id)) return id;
+			if (id && /^[A-Za-z0-9_-]{11}$/.test(id)) videoId = id;
+		} else if (hostname === 'youtu.be') {
+			const id = url.pathname.slice(1).split(/[?/]/)[0];
+			if (id && /^[A-Za-z0-9_-]{11}$/.test(id)) videoId = id;
 		}
 
-		// youtu.be/VIDEO_ID
-		if (hostname === 'youtu.be') {
-			const id = url.pathname.slice(1).split(/[?/]/)[0];
-			if (id && /^[A-Za-z0-9_-]{11}$/.test(id)) return id;
+		if (!videoId) return null;
+
+		// Extract timestamp if present in query params or fragment
+		let timeParam = url.searchParams.get('t') || url.searchParams.get('start') || url.searchParams.get('time_continue');
+		if (!timeParam && url.hash && url.hash.includes('t=')) {
+			const match = url.hash.match(/t=([^&]+)/);
+			if (match) timeParam = match[1];
 		}
+
+		const startSeconds = timeParam ? parseTime(timeParam) : null;
+		return { videoId, startSeconds };
 	} catch {
-		// Not a valid URL, check if it looks like a video ID with extra chars
+		// Not a valid URL
 	}
 
 	return null;
 }
 
 /**
- * Parse a time input string in MM:SS or pure seconds format.
- * @param {string} input - Time string (e.g., "1:30", "90", "02:15")
+ * Legacy wrapper: Extract YouTube video ID.
+ * @param {string} input - YouTube URL or video ID
+ * @returns {string|null}
+ */
+export function parseYouTubeId(input) {
+	const info = parseYouTubeInfo(input);
+	return info ? info.videoId : null;
+}
+
+/**
+ * Parse a time input string in various formats:
+ * - MM:SS (e.g. "1:30" -> 90)
+ * - HH:MM:SS (e.g. "1:02:30" -> 3750)
+ * - Pure seconds (e.g. "90", "90s" -> 90)
+ * - Human units (e.g. "1m30s", "1m 30s", "2m", "1h 5m" -> 3900)
+ * @param {string|number} input
  * @returns {number} - Total seconds, or 0 if invalid
  */
 export function parseTime(input) {
+	if (typeof input === 'number') return Math.max(0, Math.floor(input));
 	if (!input) return 0;
-	input = input.trim();
+	input = String(input).trim().toLowerCase();
 
-	// MM:SS format
-	if (input.includes(':')) {
-		const parts = input.split(':');
-		if (parts.length === 2) {
-			const minutes = parseInt(parts[0], 10) || 0;
-			const seconds = parseInt(parts[1], 10) || 0;
-			return minutes * 60 + seconds;
+	// Check if human format: e.g. "1h 20m 30s", "1m30s", "45s"
+	if (/[hms]/.test(input)) {
+		let total = 0;
+		const hoursMatch = input.match(/(\d+)\s*h/);
+		const minutesMatch = input.match(/(\d+)\s*m/);
+		const secondsMatch = input.match(/(\d+)\s*s/);
+
+		if (hoursMatch) total += parseInt(hoursMatch[1], 10) * 3600;
+		if (minutesMatch) total += parseInt(minutesMatch[1], 10) * 60;
+		if (secondsMatch) total += parseInt(secondsMatch[1], 10);
+
+		if (hoursMatch || minutesMatch || secondsMatch) {
+			return total;
 		}
 	}
 
-	// Pure seconds
-	const num = parseInt(input, 10);
+	// Colon-separated: MM:SS or HH:MM:SS
+	if (input.includes(':')) {
+		const parts = input.split(':').map(p => parseInt(p, 10) || 0);
+		if (parts.length === 2) {
+			return parts[0] * 60 + parts[1];
+		}
+		if (parts.length === 3) {
+			return parts[0] * 3600 + parts[1] * 60 + parts[2];
+		}
+	}
+
+	// Pure seconds (with or without 's')
+	const clean = input.replace(/[^0-9]/g, '');
+	const num = parseInt(clean, 10);
 	return isNaN(num) ? 0 : Math.max(0, num);
 }
 
 /**
- * Format seconds into MM:SS display string.
+ * Format seconds into MM:SS display string (or HH:MM:SS if >= 1 hour).
  * @param {number} totalSeconds
  * @returns {string}
  */
 export function formatTime(totalSeconds) {
-	totalSeconds = Math.max(0, Math.floor(totalSeconds));
-	const minutes = Math.floor(totalSeconds / 60);
+	totalSeconds = Math.max(0, Math.floor(totalSeconds || 0));
+	const hours = Math.floor(totalSeconds / 3600);
+	const minutes = Math.floor((totalSeconds % 3600) / 60);
 	const seconds = totalSeconds % 60;
+
+	if (hours > 0) {
+		return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+	}
 	return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+
+/**
+ * Format seconds into compact friendly string like "45s", "1m 30s", "2m".
+ * @param {number} totalSeconds
+ * @returns {string}
+ */
+export function formatFriendlyDuration(totalSeconds) {
+	totalSeconds = Math.max(0, Math.floor(totalSeconds || 0));
+	if (totalSeconds === 0) return '0s';
+
+	const hours = Math.floor(totalSeconds / 3600);
+	const minutes = Math.floor((totalSeconds % 3600) / 60);
+	const seconds = totalSeconds % 60;
+
+	const parts = [];
+	if (hours > 0) parts.push(`${hours}h`);
+	if (minutes > 0) parts.push(`${minutes}m`);
+	if (seconds > 0 || parts.length === 0) parts.push(`${seconds}s`);
+
+	return parts.join(' ');
 }
 
 /**
