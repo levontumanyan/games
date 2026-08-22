@@ -15,6 +15,7 @@ A collection of self-hosted, real-time web games built with FastAPI and vanilla 
 - **Backend**: Minimal FastAPI static file server (purely optional — works as standalone HTML/JS/CSS).
 - **Frontend**: Dark-theme responsive SPA with drag-and-drop editing, Web Audio countdown beeps, and YouTube IFrame API integration.
 - **Storage**: localStorage with JSON import/export.
+- **Live Demo**: [https://levon.ajwest.ca/workout/](https://levon.ajwest.ca/workout/)
 
 # Running Locally
 
