@@ -16,9 +16,9 @@ def create_app() -> FastAPI:
 	app.mount("/css", StaticFiles(directory=static_dir / "css"), name="css")
 	app.mount("/js", StaticFiles(directory=static_dir / "js"), name="js")
 
-	@app.get("/")
-	@app.get("/workout")
-	@app.get("/workout/")
+	@app.api_route("/", methods=["GET", "HEAD"])
+	@app.api_route("/workout", methods=["GET", "HEAD"])
+	@app.api_route("/workout/", methods=["GET", "HEAD"])
 	async def index():
 		return FileResponse(static_dir / "index.html")
 
