@@ -419,8 +419,11 @@ function executeTimerStep(step) {
 		if (contentEl) contentEl.classList.remove('has-media');
 	}
 
-	// Set and start music playlist specifically for this timer step
-	const tracks = step.musicTracks || [];
+	// Set and start music playlist specifically for this timer step or routine-level tracks
+	const tracks = (step.musicTracks && step.musicTracks.length > 0)
+		? step.musicTracks
+		: (currentRoutine?.musicTracks || []);
+
 	setPlaylist(tracks);
 	if (tracks.length > 0) {
 		if (dom.musicControlsBar) {

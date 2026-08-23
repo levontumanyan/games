@@ -112,8 +112,14 @@ function handleTrackEnded() {
  * @param {Array} tracks - Array of MusicTrack objects
  */
 export function setPlaylist(tracks) {
-	playlist = tracks || [];
-	currentTrackIndex = playlist.length > 0 ? 0 : -1;
+	const newTracks = tracks || [];
+	const isSame = playlist.length === newTracks.length &&
+		playlist.every((t, i) => t.source === newTracks[i].source && (t.videoId === newTracks[i].videoId || t.fileId === newTracks[i].fileId));
+	if (isSame) return;
+	playlist = newTracks;
+	if (currentTrackIndex >= playlist.length) {
+		currentTrackIndex = playlist.length > 0 ? 0 : -1;
+	}
 }
 
 /**
@@ -188,12 +194,17 @@ function stopCurrentSource() {
 }
 
 /**
- * Start playing music from the beginning of the playlist.
+ * Start playing music (or resume if already active).
  */
 export function startMusic() {
 	if (playlist.length === 0) return;
-	if (currentTrackIndex < 0) currentTrackIndex = 0;
 	isMusicMuted = false;
+	unmuteMusic();
+	if (isMusicPlaying && activeSource) {
+		resumeMusic();
+		return;
+	}
+	if (currentTrackIndex < 0) currentTrackIndex = 0;
 	playCurrentTrack();
 }
 
