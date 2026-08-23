@@ -96,12 +96,12 @@ export function renderRoutineOverview(routine, container, actions = {}) {
 			const success = await actions.onShare();
 			if (success !== false) {
 				const originalHtml = shareBtn.innerHTML;
-				shareBtn.innerHTML = `✓ Link Copied!`;
+				shareBtn.innerHTML = `✓ Copied!`;
 				shareBtn.classList.add('btn-share-success');
 				setTimeout(() => {
 					shareBtn.innerHTML = originalHtml;
 					shareBtn.classList.remove('btn-share-success');
-				}, 3000);
+				}, 2500);
 			}
 		}
 	});

@@ -34,16 +34,16 @@ def test_save_and_fetch_routines(client: TestClient, tmp_path: Path):
 					"type": "timer",
 					"durationSeconds": 45,
 					"label": "Squats",
-					"musicTracks": []
+					"musicTracks": [],
 				},
 				{
 					"id": "step-2",
 					"type": "timer",
 					"durationSeconds": 15,
 					"label": "Rest",
-					"musicTracks": []
-				}
-			]
+					"musicTracks": [],
+				},
+			],
 		}
 	]
 
@@ -87,7 +87,6 @@ def test_invalid_payload_rejected_without_data_corruption(client: TestClient, tm
 	assert get_res.json()[0]["title"] == "Core Workout"
 
 
-
 def test_delete_all_routines(client: TestClient, tmp_path: Path):
 	initial_routines = [{"id": "r-1", "title": "Morning Routine", "steps": []}]
 	client.post("/workout/api/routines", json=initial_routines)
@@ -111,9 +110,9 @@ def test_create_and_fetch_short_share_link(client: TestClient):
 				"type": "timer",
 				"durationSeconds": 30,
 				"label": "Plank",
-				"musicTracks": []
+				"musicTracks": [],
 			}
-		]
+		],
 	}
 
 	# Create share link via root API
@@ -139,4 +138,3 @@ def test_create_and_fetch_short_share_link(client: TestClient):
 
 	# Non-existent share link returns 404
 	assert client.get("/api/share/nonexist").status_code == 404
-

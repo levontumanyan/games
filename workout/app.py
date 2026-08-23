@@ -129,7 +129,9 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 		except Exception:
 			raise HTTPException(status_code=400, detail="Invalid JSON body")
 		if not isinstance(data, dict) or "title" not in data or "steps" not in data:
-			raise HTTPException(status_code=400, detail="Expected a routine object with title and steps")
+			raise HTTPException(
+				status_code=400, detail="Expected a routine object with title and steps"
+			)
 
 		try:
 			code = db.create_shared_routine(data)
@@ -146,7 +148,6 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 		return JSONResponse(content=routine)
 
 	# ── Static & HTML ─────────────────────────────────────────────────────────
-
 
 	@app.middleware("http")
 	async def add_cache_control_header(request: Request, call_next):

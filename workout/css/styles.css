@@ -2563,6 +2563,14 @@ html, body {
 	transform: translateY(0) scale(1);
 }
 
+.btn-share-action {
+	min-width: 96px;
+	justify-content: center;
+	text-align: center;
+	white-space: nowrap;
+	box-sizing: border-box;
+}
+
 .btn-share-success {
 	color: #34d399 !important;
 	border-color: rgba(16, 185, 129, 0.45) !important;

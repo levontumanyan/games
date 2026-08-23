@@ -90,7 +90,6 @@ class Database:
 						"""
 					)
 
-
 			# Ensure default user 'levon' exists
 			cursor = conn.execute("SELECT id FROM users WHERE id = ?", ("levon",))
 			if not cursor.fetchone():
@@ -109,7 +108,9 @@ class Database:
 				return
 
 			with self.get_connection() as conn:
-				count = conn.execute("SELECT COUNT(*) FROM routines WHERE user_id = 'levon'").fetchone()[0]
+				count = conn.execute(
+					"SELECT COUNT(*) FROM routines WHERE user_id = 'levon'"
+				).fetchone()[0]
 				if count == 0:
 					for routine in routines:
 						if not isinstance(routine, dict) or "id" not in routine:
@@ -133,14 +134,18 @@ class Database:
 
 	def list_users(self) -> list[dict[str, Any]]:
 		with self.get_connection() as conn:
-			rows = conn.execute("SELECT id, display_name, created_at FROM users ORDER BY created_at ASC").fetchall()
+			rows = conn.execute(
+				"SELECT id, display_name, created_at FROM users ORDER BY created_at ASC"
+			).fetchall()
 			return [dict(row) for row in rows]
 
 	def get_or_create_user(self, user_id: str, display_name: str | None = None) -> dict[str, Any]:
 		clean_id = user_id.strip().lower()
 		name = (display_name or user_id).strip()
 		with self.get_connection() as conn:
-			row = conn.execute("SELECT id, display_name, created_at FROM users WHERE id = ?", (clean_id,)).fetchone()
+			row = conn.execute(
+				"SELECT id, display_name, created_at FROM users WHERE id = ?", (clean_id,)
+			).fetchone()
 			if row:
 				return dict(row)
 			now = datetime.now().isoformat()
@@ -168,12 +173,14 @@ class Database:
 					music = json.loads(row["music_tracks_json"])
 				except Exception:
 					music = []
-				result.append({
-					"id": row["id"],
-					"title": row["title"],
-					"steps": steps,
-					"musicTracks": music,
-				})
+				result.append(
+					{
+						"id": row["id"],
+						"title": row["title"],
+						"steps": steps,
+						"musicTracks": music,
+					}
+				)
 			return result
 
 	def save_routines(self, user_id: str, routines: list[dict[str, Any]]) -> None:
@@ -217,8 +224,10 @@ class Database:
 		with self.get_connection() as conn:
 			conn.execute(
 				"""
-				INSERT INTO sessions (id, user_id, routine_id, routine_title, started_at, completed_at,
-				                      duration_seconds, completed_steps, total_steps, status)
+				INSERT INTO sessions (
+					id, user_id, routine_id, routine_title, started_at, completed_at,
+					duration_seconds, completed_steps, total_steps, status
+				)
 				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 				ON CONFLICT(id) DO UPDATE SET
 					routine_title = excluded.routine_title,
@@ -228,8 +237,18 @@ class Database:
 					total_steps = excluded.total_steps,
 					status = excluded.status
 				""",
-				(session_id, user_id, routine_id, routine_title, started_at, completed_at,
-				 duration_seconds, completed_steps, total_steps, status),
+				(
+					session_id,
+					user_id,
+					routine_id,
+					routine_title,
+					started_at,
+					completed_at,
+					duration_seconds,
+					completed_steps,
+					total_steps,
+					status,
+				),
 			)
 		return session
 
@@ -237,8 +256,9 @@ class Database:
 		with self.get_connection() as conn:
 			rows = conn.execute(
 				"""
-				SELECT id, user_id, routine_id, routine_title, started_at, completed_at,
-				       duration_seconds, completed_steps, total_steps, status
+				SELECT
+					id, user_id, routine_id, routine_title, started_at, completed_at,
+					duration_seconds, completed_steps, total_steps, status
 				FROM sessions
 				WHERE user_id = ?
 				ORDER BY started_at DESC
@@ -263,8 +283,9 @@ class Database:
 			# Fetch all valid sessions for user (meaningful progress > 15s or completed)
 			rows = conn.execute(
 				"""
-				SELECT id, routine_id, routine_title, started_at, completed_at,
-				       duration_seconds, completed_steps, total_steps, status
+				SELECT
+					id, routine_id, routine_title, started_at, completed_at,
+					duration_seconds, completed_steps, total_steps, status
 				FROM sessions
 				WHERE user_id = ? AND (duration_seconds >= 15 OR status = 'completed')
 				ORDER BY started_at ASC
@@ -303,7 +324,9 @@ class Database:
 
 		# Compute streaks
 		active_dates = sorted(daily_stats.keys())
-		current_streak, longest_streak = self._calculate_streaks(active_dates, timezone_offset_minutes)
+		current_streak, longest_streak = self._calculate_streaks(
+			active_dates, timezone_offset_minutes
+		)
 
 		# Weekly breakdown (current ISO week Mon-Sun)
 		client_now = datetime.now()
@@ -319,14 +342,16 @@ class Database:
 			d = start_of_week + timedelta(days=i)
 			d_str = d.strftime("%Y-%m-%d")
 			st = daily_stats.get(d_str, {"minutes": 0, "sessions": 0, "completed": 0})
-			weekly_data.append({
-				"date": d_str,
-				"day": day_names[i],
-				"isToday": d == today_date,
-				"minutes": st["minutes"],
-				"sessions": st["sessions"],
-				"completed": st["completed"],
-			})
+			weekly_data.append(
+				{
+					"date": d_str,
+					"day": day_names[i],
+					"isToday": d == today_date,
+					"minutes": st["minutes"],
+					"sessions": st["sessions"],
+					"completed": st["completed"],
+				}
+			)
 
 		# Monthly breakdown (current calendar month)
 		monthly_active_days = []
@@ -334,11 +359,13 @@ class Database:
 		month_total_minutes = 0
 		for day_str, st in daily_stats.items():
 			if day_str.startswith(month_prefix):
-				monthly_active_days.append({
-					"date": day_str,
-					"minutes": st["minutes"],
-					"sessions": st["sessions"],
-				})
+				monthly_active_days.append(
+					{
+						"date": day_str,
+						"minutes": st["minutes"],
+						"sessions": st["sessions"],
+					}
+				)
 				month_total_minutes += st["minutes"]
 
 		# Recent 20 sessions (latest first)
@@ -361,7 +388,9 @@ class Database:
 			"recent_sessions": recent,
 		}
 
-	def _calculate_streaks(self, active_date_strs: list[str], timezone_offset_minutes: int) -> tuple[int, int]:
+	def _calculate_streaks(
+		self, active_date_strs: list[str], timezone_offset_minutes: int
+	) -> tuple[int, int]:
 		if not active_date_strs:
 			return 0, 0
 
@@ -432,11 +461,12 @@ class Database:
 	def get_shared_routine(self, share_id: str) -> dict[str, Any] | None:
 		clean_id = share_id.strip().lower()
 		with self.get_connection() as conn:
-			row = conn.execute("SELECT routine_json FROM shared_routines WHERE id = ?", (clean_id,)).fetchone()
+			row = conn.execute(
+				"SELECT routine_json FROM shared_routines WHERE id = ?", (clean_id,)
+			).fetchone()
 			if not row:
 				return None
 			try:
 				return json.loads(row["routine_json"])
 			except Exception:
 				return None
-

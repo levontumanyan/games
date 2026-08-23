@@ -49,8 +49,12 @@ def test_create_and_switch_users(client: TestClient):
 def test_identical_routine_id_across_users_does_not_collide(client: TestClient):
 	# Both users import a template with identical ID 'template-001'
 	shared_template_id = "template-001"
-	levon_template = [{"id": shared_template_id, "title": "HIIT by Levon", "steps": [], "musicTracks": []}]
-	alex_template = [{"id": shared_template_id, "title": "HIIT by Alex", "steps": [], "musicTracks": []}]
+	levon_template = [
+		{"id": shared_template_id, "title": "HIIT by Levon", "steps": [], "musicTracks": []}
+	]
+	alex_template = [
+		{"id": shared_template_id, "title": "HIIT by Alex", "steps": [], "musicTracks": []}
+	]
 
 	# Levon saves template
 	res1 = client.post("/api/routines", json=levon_template, headers={"X-User-Id": "levon"})
@@ -61,10 +65,14 @@ def test_identical_routine_id_across_users_does_not_collide(client: TestClient):
 	assert res2.status_code == 200
 
 	# Both users see their own version with no collision
-	assert client.get("/api/routines", headers={"X-User-Id": "levon"}).json()[0]["title"] == "HIIT by Levon"
-	assert client.get("/api/routines", headers={"X-User-Id": "alex"}).json()[0]["title"] == "HIIT by Alex"
-
-
+	assert (
+		client.get("/api/routines", headers={"X-User-Id": "levon"}).json()[0]["title"]
+		== "HIIT by Levon"
+	)
+	assert (
+		client.get("/api/routines", headers={"X-User-Id": "alex"}).json()[0]["title"]
+		== "HIIT by Alex"
+	)
 
 
 def test_session_recording_live_progress_and_partial_completion(client: TestClient):
