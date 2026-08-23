@@ -2,10 +2,10 @@
  * Editor module - Routine & step editing, drag-and-drop reorder.
  */
 
-import { generateId, parseYouTubeId, parseYouTubeInfo, parseTime, formatTime, formatFriendlyDuration } from './utils.js?v=5';
-import { saveAudioFile, deleteAudioFile } from './musicdb.js?v=5';
-import { showPrompt, showAlert } from './modal.js?v=5';
-import { getClipIcon, getTimerIcon, getBreakIcon } from './icons.js?v=5';
+import { generateId, parseYouTubeId, parseYouTubeInfo, parseTime, formatTime, formatFriendlyDuration } from './utils.js?v=6';
+import { saveAudioFile, deleteAudioFile } from './musicdb.js?v=6';
+import { showPrompt, showAlert } from './modal.js?v=6';
+import { getClipIcon, getTimerIcon, getBreakIcon } from './icons.js?v=6';
 
 /**
  * Render the routine editor for a given routine.

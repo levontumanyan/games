@@ -5,20 +5,21 @@
 import {
 	loadRoutines, saveRoutines, fetchServerRoutines,
 	saveServerRoutines, exportRoutines, importRoutines
-} from './storage.js?v=5';
-import { renderEditor, createClipStep, createTimerStep, createBreakStep, createRoutine } from './editor.js?v=5';
-import { renderRoutineOverview } from './view.js?v=5';
+} from './storage.js?v=6';
+import { renderEditor, createClipStep, createTimerStep, createBreakStep, createRoutine } from './editor.js?v=6';
+import { renderRoutineOverview } from './view.js?v=6';
 import {
 	initPlayer, startRoutine, stopPlayback,
-	togglePause, skipStep, previousStep, resetPlayback
-} from './player.js?v=5';
-import { initAudio } from './audio.js?v=5';
+	togglePause, skipStep, previousStep, resetPlayback,
+	toggleFullscreen
+} from './player.js?v=6';
+import { initAudio } from './audio.js?v=6';
 import {
 	initMusic, setVolume as setMusicVolume, nextTrack, prevTrack,
 	muteMusic, unmuteMusic, isMuted as isMusicMuted
-} from './music.js?v=5';
-import { formatTime } from './utils.js?v=5';
-import { showPrompt, showConfirm, showAlert } from './modal.js?v=5';
+} from './music.js?v=6';
+import { formatTime } from './utils.js?v=6';
+import { showPrompt, showConfirm, showAlert } from './modal.js?v=6';
 
 let routines = [];
 let selectedRoutineId = null;
@@ -55,6 +56,7 @@ async function init() {
 		{
 			youtubeContainer: dom.youtubePlayer,
 			playerView: dom.playerView,
+			playerStage: dom.playerStage,
 			editorView: dom.editorView,
 			routineView: dom.routineView,
 			emptyView: dom.emptyView,
@@ -71,6 +73,14 @@ async function init() {
 			playPauseBtn: dom.playPauseBtn,
 			musicControlsBar: dom.musicControlsBar,
 			musicTrackName: dom.musicTrackName,
+			playerBackBtn: dom.playerBackBtn,
+			playerRoutineTitle: dom.playerRoutineTitle,
+			fullscreenTopBtn: dom.fullscreenTopBtn,
+			fullscreenDockBtn: dom.fullscreenDockBtn,
+			upNextCard: dom.upNextCard,
+			upNextLabel: dom.upNextLabel,
+			upNextMeta: dom.upNextMeta,
+			upNextMediaThumb: dom.upNextMediaThumb,
 		},
 		{
 			onStop: () => {
@@ -79,6 +89,7 @@ async function init() {
 			onRoutineComplete: () => {
 				dom.timerOverlay.classList.remove('hidden');
 				dom.videoWrapper.classList.add('hidden');
+				if (dom.upNextCard) dom.upNextCard.classList.add('hidden');
 				dom.timerDisplay.textContent = '🎉';
 				dom.timerLabel.textContent = 'Workout Complete!';
 				dom.currentStepLabel.textContent = 'Done';
@@ -106,6 +117,7 @@ function cacheDom() {
 	dom.routineOverviewContainer = document.getElementById('routine-overview-container');
 	dom.editorView = document.getElementById('editor-view');
 	dom.playerView = document.getElementById('player-view');
+	dom.playerStage = document.querySelector('.player-stage');
 	dom.routineTitle = document.getElementById('routine-title');
 	dom.stepList = document.getElementById('step-list');
 	dom.addClipBtn = document.getElementById('add-clip-btn');
@@ -114,13 +126,26 @@ function cacheDom() {
 	dom.doneEditingBtn = document.getElementById('done-editing-btn');
 	dom.deleteRoutineBtn = document.getElementById('delete-routine-btn');
 
-	// Player elements
+	// Player top bar & buttons
+	dom.playerBackBtn = document.getElementById('player-back-btn');
+	dom.playerRoutineTitle = document.getElementById('player-routine-title');
+	dom.fullscreenTopBtn = document.getElementById('fullscreen-top-btn');
+	dom.fullscreenDockBtn = document.getElementById('fullscreen-dock-btn');
+	dom.fullscreenAppBtn = document.getElementById('fullscreen-app-btn');
+
+	// Player stage elements
 	dom.youtubePlayer = document.getElementById('youtube-player');
 	dom.videoWrapper = document.getElementById('video-wrapper');
 	dom.timerOverlay = document.getElementById('timer-overlay');
 	dom.timerDisplay = document.getElementById('timer-display');
 	dom.timerLabel = document.getElementById('timer-label');
 	dom.timerRing = document.getElementById('timer-ring');
+	dom.upNextCard = document.getElementById('up-next-card');
+	dom.upNextLabel = document.getElementById('up-next-label');
+	dom.upNextMeta = document.getElementById('up-next-meta');
+	dom.upNextMediaThumb = document.getElementById('up-next-media-thumb');
+
+	// Player bottom controls elements
 	dom.currentStepLabel = document.getElementById('current-step-label');
 	dom.currentStepType = document.getElementById('current-step-type');
 	dom.stepTimeline = document.getElementById('step-timeline');
@@ -207,6 +232,9 @@ function bindEvents() {
 	dom.addWorkoutBtn.addEventListener('click', handleAddWorkout);
 	dom.exportBtn.addEventListener('click', handleExport);
 	dom.importBtn.addEventListener('click', handleImport);
+	if (dom.fullscreenAppBtn) {
+		dom.fullscreenAppBtn.addEventListener('click', toggleFullscreen);
+	}
 	dom.addClipBtn.addEventListener('click', handleAddClip);
 	dom.addTimerBtn.addEventListener('click', handleAddTimer);
 	if (dom.addBreakBtn) dom.addBreakBtn.addEventListener('click', handleAddBreak);
@@ -345,6 +373,9 @@ function renderSelectedRoutine() {
 			},
 			onPlay: (startIndex = 0) => {
 				startRoutine(routine, startIndex);
+			},
+			onToggleFullscreen: () => {
+				toggleFullscreen();
 			}
 		});
 	} else if (currentMode === 'edit') {

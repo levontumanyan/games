@@ -2,14 +2,14 @@
  * Player module - YouTube IFrame API integration and timer countdown engine.
  */
 
-import { formatTime } from './utils.js?v=5';
-import { isBreakStep } from './editor.js?v=5';
-import { playCountdownBeep } from './audio.js?v=5';
-import { getClipIcon, getTimerIcon, getBreakIcon } from './icons.js?v=5';
+import { formatTime, formatFriendlyDuration } from './utils.js?v=6';
+import { isBreakStep } from './editor.js?v=6';
+import { playCountdownBeep } from './audio.js?v=6';
+import { getClipIcon, getTimerIcon, getBreakIcon } from './icons.js?v=6';
 import {
 	setPlaylist, startMusic, pauseMusic, resumeMusic,
 	stopMusic, muteMusic, unmuteMusic, hasMusic
-} from './music.js?v=5';
+} from './music.js?v=6';
 
 const PLAY_ICON = `<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><polygon points="7,4 19,12 7,20"/></svg>`;
 const PAUSE_ICON = `<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1.5"/><rect x="14" y="4" width="4" height="16" rx="1.5"/></svg>`;
@@ -34,6 +34,10 @@ let isPaused = false;
 // Timer state
 let timerInterval = null;
 let timerRemaining = 0;
+
+// HUD idle timer
+let hudIdleTimer = null;
+const HUD_IDLE_DELAY = 3000;
 
 // DOM references (set by init)
 let dom = {};
@@ -78,19 +82,72 @@ export async function initPlayer(domRefs, callbacks) {
 			rel: 0,
 			fs: 0,
 			playsinline: 1,
+			iv_load_policy: 3, // Disable video annotations, info cards & interactive popups
+			cc_load_policy: 0, // Disable closed captions / subtitles by default
+			cc_lang_pref: 'none',
+			showinfo: 0,
+			autohide: 1,
 		},
 		events: {
 			onReady: () => {
 				ytReady = true;
+				disableCaptions();
 			},
 			onStateChange: onYTStateChange,
 		}
 	});
 
+	// Fullscreen toggle buttons
+	if (dom.fullscreenTopBtn) {
+		dom.fullscreenTopBtn.addEventListener('click', toggleFullscreen);
+	}
+	if (dom.fullscreenDockBtn) {
+		dom.fullscreenDockBtn.addEventListener('click', toggleFullscreen);
+	}
+	if (dom.playerBackBtn) {
+		dom.playerBackBtn.addEventListener('click', stopPlayback);
+	}
+
+	// Click on stage/video to toggle play/pause
+	if (dom.playerStage) {
+		dom.playerStage.addEventListener('click', (e) => {
+			if (e.target.closest('button') || e.target.closest('input') || e.target.closest('.step-indicator')) return;
+			if (isPlaying) {
+				togglePause();
+			}
+		});
+	}
+
+	// Fullscreen change listener to sync icons across all browsers
+	const onFsChange = () => syncFullscreenIcons();
+	document.addEventListener('fullscreenchange', onFsChange);
+	document.addEventListener('webkitfullscreenchange', onFsChange);
+	document.addEventListener('mozfullscreenchange', onFsChange);
+	document.addEventListener('MSFullscreenChange', onFsChange);
+
+	// User activity events for auto-hiding HUD
+	const resetActivity = () => {
+		if (isPlaying) {
+			resetHudIdleTimer();
+		}
+	};
+	window.addEventListener('mousemove', resetActivity, { passive: true });
+	window.addEventListener('touchstart', resetActivity, { passive: true });
+
 	// Global player keyboard controls
 	window.addEventListener('keydown', (e) => {
-		if (!isPlaying) return;
 		if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+		if (e.key === 'f' || e.key === 'F') {
+			e.preventDefault();
+			toggleFullscreen();
+			return;
+		}
+
+		if (!isPlaying) return;
+
+		resetActivity();
+
 		if (e.code === 'Space') {
 			e.preventDefault();
 			togglePause();
@@ -102,6 +159,9 @@ export async function initPlayer(domRefs, callbacks) {
 			previousStep();
 		} else if (e.key === 'Escape') {
 			e.preventDefault();
+			if (isNativeFullscreen()) {
+				toggleFullscreen();
+			}
 			stopPlayback();
 		} else if (e.key === 'r' || e.key === 'R') {
 			e.preventDefault();
@@ -111,10 +171,120 @@ export async function initPlayer(domRefs, callbacks) {
 }
 
 /**
+ * Check if the browser is currently in native fullscreen.
+ */
+export function isNativeFullscreen() {
+	return !!(
+		document.fullscreenElement ||
+		document.webkitFullscreenElement ||
+		document.mozFullScreenElement ||
+		document.msFullscreenElement
+	);
+}
+
+/**
+ * Toggle native Fullscreen mode with full cross-browser vendor prefix support.
+ */
+export async function toggleFullscreen() {
+	try {
+		if (!isNativeFullscreen()) {
+			const el = document.documentElement;
+			if (el.requestFullscreen) {
+				await el.requestFullscreen();
+			} else if (el.webkitRequestFullscreen) {
+				await el.webkitRequestFullscreen();
+			} else if (el.mozRequestFullScreen) {
+				await el.mozRequestFullScreen();
+			} else if (el.msRequestFullscreen) {
+				await el.msRequestFullscreen();
+			}
+		} else {
+			if (document.exitFullscreen) {
+				await document.exitFullscreen();
+			} else if (document.webkitExitFullscreen) {
+				await document.webkitExitFullscreen();
+			} else if (document.mozCancelFullScreen) {
+				await document.mozCancelFullScreen();
+			} else if (document.msExitFullscreen) {
+				await document.msExitFullscreen();
+			}
+		}
+	} catch (err) {
+		console.warn('Fullscreen request failed:', err);
+	}
+}
+
+/**
+ * Sync fullscreen enter/exit icons across UI.
+ */
+export function syncFullscreenIcons() {
+	const isFull = isNativeFullscreen();
+	const enterIcons = document.querySelectorAll('.icon-enter-fullscreen');
+	const exitIcons = document.querySelectorAll('.icon-exit-fullscreen');
+
+	enterIcons.forEach(el => el.classList.toggle('hidden', isFull));
+	exitIcons.forEach(el => el.classList.toggle('hidden', !isFull));
+}
+
+/**
+ * Reset HUD idle timer to auto-hide controls after delay.
+ */
+function resetHudIdleTimer() {
+	if (!dom.playerView) return;
+	dom.playerView.classList.remove('hud-idle');
+
+	if (hudIdleTimer) {
+		clearTimeout(hudIdleTimer);
+		hudIdleTimer = null;
+	}
+
+	if (isPlaying && !isPaused) {
+		hudIdleTimer = setTimeout(() => {
+			if (isPlaying && !isPaused && dom.playerView) {
+				dom.playerView.classList.add('hud-idle');
+			}
+		}, HUD_IDLE_DELAY);
+	}
+}
+
+/**
+ * Clear HUD idle timer and keep controls visible.
+ */
+function clearHudIdleTimer() {
+	if (hudIdleTimer) {
+		clearTimeout(hudIdleTimer);
+		hudIdleTimer = null;
+	}
+	if (dom.playerView) {
+		dom.playerView.classList.remove('hud-idle');
+	}
+}
+
+/**
+ * Actively disable YouTube closed captions / subtitles.
+ */
+function disableCaptions() {
+	if (!ytReady || !ytPlayer) return;
+	try {
+		if (typeof ytPlayer.unloadModule === 'function') {
+			ytPlayer.unloadModule('captions');
+			ytPlayer.unloadModule('cc');
+		}
+		if (typeof ytPlayer.setOption === 'function') {
+			ytPlayer.setOption('captions', 'track', {});
+			ytPlayer.setOption('cc', 'track', {});
+			ytPlayer.setOption('captions', 'fontSize', 0);
+		}
+	} catch {}
+}
+
+/**
  * Handle YouTube player state changes.
  */
 function onYTStateChange(event) {
-	if (event.data === YT.PlayerState.ENDED) {
+	if (event.data === YT.PlayerState.PLAYING) {
+		disableCaptions();
+	} else if (event.data === YT.PlayerState.ENDED) {
 		// Video segment finished, advance to next step
 		if (isPlaying && !isPaused) {
 			advanceStep();
@@ -137,6 +307,7 @@ export function startRoutine(routine, startIndex = 0) {
 
 	showPlayerUI();
 	executeCurrentStep();
+	resetHudIdleTimer();
 }
 
 /**
@@ -157,6 +328,8 @@ function executeCurrentStep() {
 	} else if (step.type === 'timer') {
 		executeTimerStep(step);
 	}
+
+	resetHudIdleTimer();
 }
 
 /**
@@ -165,6 +338,10 @@ function executeCurrentStep() {
 function executeClipStep(step) {
 	dom.timerOverlay.classList.add('hidden');
 	dom.videoWrapper.classList.remove('hidden');
+
+	if (dom.upNextCard) {
+		dom.upNextCard.classList.add('hidden');
+	}
 
 	// Stop any music during video clips
 	stopMusic();
@@ -178,6 +355,7 @@ function executeClipStep(step) {
 			startSeconds: step.startSeconds || 0,
 			endSeconds: step.endSeconds || undefined,
 		});
+		disableCaptions();
 	}
 
 	dom.currentStepLabel.textContent = step.label || 'Video Clip';
@@ -194,6 +372,9 @@ function executeTimerStep(step) {
 	}
 	dom.videoWrapper.classList.add('hidden');
 	dom.timerOverlay.classList.remove('hidden');
+
+	const isBreak = isBreakStep(step);
+	dom.timerOverlay.classList.toggle('is-break', isBreak);
 
 	// Set and start music playlist specifically for this timer step
 	const tracks = step.musicTracks || [];
@@ -215,10 +396,47 @@ function executeTimerStep(step) {
 	}
 
 	timerRemaining = step.durationSeconds;
-	dom.timerLabel.textContent = step.label || (isBreakStep(step) ? 'Rest' : 'Timer');
+	dom.timerLabel.textContent = step.label || (isBreak ? 'Rest' : 'Timer');
 	dom.timerDisplay.textContent = formatTime(timerRemaining);
-	dom.currentStepLabel.textContent = step.label || (isBreakStep(step) ? 'Rest' : 'Timer');
-	dom.currentStepType.innerHTML = isBreakStep(step) ? `${getBreakIcon(14)} Rest` : `${getTimerIcon(14)} Timer`;
+	dom.currentStepLabel.textContent = step.label || (isBreak ? 'Rest' : 'Timer');
+	dom.currentStepType.innerHTML = isBreak ? `${getBreakIcon(14)} Rest` : `${getTimerIcon(14)} Timer`;
+
+	// Update Up Next preview card for break steps
+	if (dom.upNextCard) {
+		const next = currentRoutine.steps[currentStepIndex + 1];
+		if (isBreak && next) {
+			dom.upNextCard.classList.remove('hidden');
+			if (dom.upNextLabel) {
+				dom.upNextLabel.textContent = next.label || (next.type === 'clip' ? 'Video Clip' : 'Exercise');
+			}
+			if (dom.upNextMeta) {
+				if (next.type === 'clip') {
+					const start = next.startSeconds || 0;
+					const end = next.endSeconds || (start + 60);
+					const dur = Math.max(0, end - start);
+					dom.upNextMeta.textContent = `🎬 Next Video · ${formatFriendlyDuration(dur)} (${formatTime(start)} → ${formatTime(end)})`;
+				} else if (isBreakStep(next)) {
+					dom.upNextMeta.textContent = `☕ Rest (${formatFriendlyDuration(next.durationSeconds || 30)})`;
+				} else {
+					dom.upNextMeta.textContent = `⏱ Exercise (${formatFriendlyDuration(next.durationSeconds || 30)})`;
+				}
+			}
+			if (dom.upNextMediaThumb) {
+				if (next.type === 'clip' && next.videoId) {
+					dom.upNextMediaThumb.innerHTML = `
+						<img src="https://img.youtube.com/vi/${next.videoId}/hqdefault.jpg" onerror="this.src='https://img.youtube.com/vi/${next.videoId}/mqdefault.jpg'" alt="${next.label || 'Next Video'}">
+						<div class="thumbnail-play-overlay">▶</div>
+					`;
+				} else if (isBreakStep(next)) {
+					dom.upNextMediaThumb.innerHTML = getBreakIcon(24);
+				} else {
+					dom.upNextMediaThumb.innerHTML = `<div class="timer-visual-box"><span class="timer-icon">${getTimerIcon(22)}</span></div>`;
+				}
+			}
+		} else {
+			dom.upNextCard.classList.add('hidden');
+		}
+	}
 
 	// Update progress ring
 	updateTimerProgress(step.durationSeconds, timerRemaining);
@@ -345,6 +563,7 @@ export function togglePause() {
 		}
 
 		updatePlayPauseBtn(false);
+		resetHudIdleTimer();
 	} else {
 		// Pause
 		isPaused = true;
@@ -360,6 +579,7 @@ export function togglePause() {
 		}
 
 		updatePlayPauseBtn(true);
+		clearHudIdleTimer();
 	}
 }
 
@@ -379,6 +599,7 @@ export function resetPlayback() {
  */
 export function stopPlayback() {
 	clearTimer();
+	clearHudIdleTimer();
 	isPlaying = false;
 	isPaused = false;
 	currentStepIndex = -1;
@@ -416,6 +637,9 @@ function showPlayerUI() {
 	if (dom.editorView) dom.editorView.classList.add('hidden');
 	if (dom.routineView) dom.routineView.classList.add('hidden');
 	if (dom.emptyView) dom.emptyView.classList.add('hidden');
+	if (dom.playerRoutineTitle) {
+		dom.playerRoutineTitle.textContent = currentRoutine?.title || 'Workout';
+	}
 	updatePlayPauseBtn(false);
 }
 
@@ -426,6 +650,7 @@ function hidePlayerUI() {
 	dom.playerView.classList.add('hidden');
 	dom.timerOverlay.classList.add('hidden');
 	dom.videoWrapper.classList.add('hidden');
+	if (dom.upNextCard) dom.upNextCard.classList.add('hidden');
 }
 
 /**

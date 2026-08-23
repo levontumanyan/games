@@ -1,6 +1,6 @@
-import { formatTime, formatFriendlyDuration } from './utils.js?v=5';
-import { isBreakStep } from './editor.js?v=5';
-import { getClipIcon, getTimerIcon, getBreakIcon, getStepsIcon } from './icons.js?v=5';
+import { formatTime, formatFriendlyDuration } from './utils.js?v=6';
+import { isBreakStep } from './editor.js?v=6';
+import { getClipIcon, getTimerIcon, getBreakIcon, getStepsIcon } from './icons.js?v=6';
 
 /**
  * Render the read-only routine overview.
@@ -71,13 +71,19 @@ export function renderRoutineOverview(routine, container, actions = {}) {
 	editBtn.innerHTML = '✏️ Edit';
 	editBtn.addEventListener('click', () => actions.onEdit?.());
 
+	const fullscreenBtn = document.createElement('button');
+	fullscreenBtn.className = 'btn btn-ghost';
+	fullscreenBtn.innerHTML = '⛶ Fullscreen';
+	fullscreenBtn.title = 'Toggle Fullscreen (F)';
+	fullscreenBtn.addEventListener('click', () => actions.onToggleFullscreen?.());
+
 	const playBtn = document.createElement('button');
 	playBtn.className = 'btn btn-primary btn-hero-play';
 	playBtn.innerHTML = '▶ Start Workout';
 	playBtn.disabled = steps.length === 0;
 	playBtn.addEventListener('click', () => actions.onPlay?.(0));
 
-	actionsGroup.append(editBtn, playBtn);
+	actionsGroup.append(editBtn, fullscreenBtn, playBtn);
 	header.append(titleInfo, actionsGroup);
 	container.appendChild(header);
 
