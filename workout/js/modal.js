@@ -53,6 +53,9 @@ function initModalElements() {
 function close(result) {
 	if (!modalBackdrop) return;
 	modalBackdrop.classList.add('hidden');
+	if (modalInput) {
+		modalInput.readOnly = false;
+	}
 	if (currentResolve) {
 		const res = currentResolve;
 		currentResolve = null;
