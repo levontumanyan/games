@@ -1,10 +1,11 @@
 /**
- * App controller - coordinates UI, soft accounts, routines, stats, and player modules.
+ * App controller - coordinates UI, soft accounts, routines, stats, sharing, and player modules.
  */
 
 import {
 	loadRoutines, saveRoutines, fetchServerRoutines,
-	saveServerRoutines, exportRoutines, importRoutines
+	saveServerRoutines, exportRoutines, exportSingleRoutine,
+	importRoutines, encodeRoutineToShareUrl, getSharedRoutineFromUrl
 } from './storage.js';
 import { renderEditor, createClipStep, createTimerStep, createBreakStep, createRoutine } from './editor.js';
 import { renderRoutineOverview } from './view.js';
@@ -19,7 +20,7 @@ import {
 	muteMusic, unmuteMusic, isMuted as isMusicMuted
 } from './music.js';
 import { formatTime } from './utils.js';
-import { showPrompt, showConfirm, showAlert } from './modal.js';
+import { showPrompt, showConfirm, showAlert, showShareModal } from './modal.js';
 import {
 	getActiveUserId, getActiveDisplayName, setActiveUser,
 	fetchUsers, createUser
@@ -31,6 +32,8 @@ let selectedRoutineId = null;
 let currentMode = 'view'; // 'view' | 'edit'
 let currentTab = 'routines'; // 'routines' | 'stats'
 let syncTimeout = null;
+let sharedRoutine = null;
+let isViewingShared = false;
 
 // DOM references
 const dom = {};
@@ -48,12 +51,26 @@ async function init() {
 		selectedRoutineId = routines[0].id;
 	}
 
+	// Check if URL contains a shared routine
+	const incomingShared = await getSharedRoutineFromUrl();
+	if (incomingShared) {
+		sharedRoutine = incomingShared;
+		isViewingShared = true;
+	}
+
 	renderRoutineList();
 	renderSelectedRoutine();
 	bindEvents();
 
 	// Fetch server state as source of truth
 	await syncWithServerOnStartup();
+
+	// If a shared routine was loaded, keep it active after server sync
+	if (sharedRoutine) {
+		isViewingShared = true;
+		renderRoutineList();
+		renderSelectedRoutine();
+	}
 
 	// Initialize audio on first interaction
 	document.addEventListener('click', () => initAudio(), { once: true });
@@ -459,6 +476,9 @@ async function handleCreateProfile() {
  * Get the currently selected routine.
  */
 function getSelectedRoutine() {
+	if (isViewingShared && sharedRoutine) {
+		return sharedRoutine;
+	}
 	return routines.find(r => r.id === selectedRoutineId) || null;
 }
 
@@ -485,10 +505,37 @@ function persist(immediateServerSync = false) {
 function renderRoutineList() {
 	dom.routineList.innerHTML = '';
 
+	if (isViewingShared && sharedRoutine) {
+		const sharedLi = document.createElement('li');
+		sharedLi.className = 'routine-item active shared-item';
+
+		const info = document.createElement('div');
+		info.className = 'routine-info';
+
+		const title = document.createElement('span');
+		title.className = 'routine-title-text';
+		title.textContent = `✨ ${sharedRoutine.title}`;
+
+		const meta = document.createElement('span');
+		meta.className = 'routine-meta';
+		const clipCount = sharedRoutine.steps.filter(s => s.type === 'clip').length;
+		const timerCount = sharedRoutine.steps.filter(s => s.type === 'timer').length;
+		const totalTime = sharedRoutine.steps.reduce((sum, s) => {
+			if (s.type === 'timer') return sum + (s.durationSeconds || 0);
+			if (s.type === 'clip') return sum + Math.max(0, (s.endSeconds || 0) - (s.startSeconds || 0));
+			return sum;
+		}, 0);
+		meta.textContent = `Shared · ${sharedRoutine.steps.length} steps · ~${formatTime(totalTime)}`;
+
+		info.append(title, meta);
+		sharedLi.appendChild(info);
+		dom.routineList.appendChild(sharedLi);
+	}
+
 	routines.forEach((routine) => {
 		const li = document.createElement('li');
 		li.className = 'routine-item';
-		if (routine.id === selectedRoutineId) {
+		if (!isViewingShared && routine.id === selectedRoutineId) {
 			li.classList.add('active');
 		}
 
@@ -514,6 +561,11 @@ function renderRoutineList() {
 		li.appendChild(info);
 
 		li.addEventListener('click', () => {
+			if (isViewingShared) {
+				isViewingShared = false;
+				sharedRoutine = null;
+				history.replaceState(null, '', window.location.pathname);
+			}
 			if (currentTab !== 'routines') {
 				switchTab('routines');
 			}
@@ -551,7 +603,11 @@ function renderSelectedRoutine() {
 		dom.playerView.classList.add('hidden');
 
 		renderRoutineOverview(routine, dom.routineOverviewContainer, {
+			isShared: isViewingShared,
 			onEdit: () => {
+				if (isViewingShared) {
+					handleSaveSharedToLibrary(false);
+				}
 				currentMode = 'edit';
 				renderSelectedRoutine();
 			},
@@ -560,6 +616,17 @@ function renderSelectedRoutine() {
 			},
 			onToggleFullscreen: () => {
 				toggleFullscreen();
+			},
+			onShare: async () => {
+				const shareUrl = await encodeRoutineToShareUrl(routine);
+				showShareModal({
+					routineTitle: routine.title,
+					shareUrl,
+					onDownloadJson: () => exportSingleRoutine(routine)
+				});
+			},
+			onSaveToLibrary: () => {
+				handleSaveSharedToLibrary(true);
 			}
 		});
 	} else if (currentMode === 'edit') {
@@ -580,6 +647,25 @@ function renderSelectedRoutine() {
 
 // ── Event Handlers ──────────────────────────────────────────────────────────
 
+function handleSaveSharedToLibrary(notify = true) {
+	if (!sharedRoutine) return;
+	const routineToSave = { ...sharedRoutine };
+	routines.push(routineToSave);
+	selectedRoutineId = routineToSave.id;
+	isViewingShared = false;
+	sharedRoutine = null;
+	history.replaceState(null, '', window.location.pathname);
+	persist(true);
+	renderRoutineList();
+	renderSelectedRoutine();
+	if (notify) {
+		showAlert({
+			title: 'Saved!',
+			message: `"${routineToSave.title}" has been saved to your workouts.`
+		});
+	}
+}
+
 async function handleAddWorkout() {
 	const title = await showPrompt({
 		title: 'New Workout',
@@ -591,6 +677,11 @@ async function handleAddWorkout() {
 	const routine = createRoutine(title.trim() || 'New Workout');
 	routines.push(routine);
 	selectedRoutineId = routine.id;
+	if (isViewingShared) {
+		isViewingShared = false;
+		sharedRoutine = null;
+		history.replaceState(null, '', window.location.pathname);
+	}
 	if (currentTab !== 'routines') {
 		switchTab('routines');
 	}
@@ -603,6 +694,16 @@ async function handleAddWorkout() {
 async function handleDeleteRoutine() {
 	const routine = getSelectedRoutine();
 	if (!routine) return;
+	if (isViewingShared) {
+		isViewingShared = false;
+		sharedRoutine = null;
+		history.replaceState(null, '', window.location.pathname);
+		selectedRoutineId = routines.length > 0 ? routines[0].id : null;
+		renderRoutineList();
+		renderSelectedRoutine();
+		return;
+	}
+
 	const confirmed = await showConfirm({
 		title: 'Delete Workout',
 		message: `Are you sure you want to delete "${routine.title}"? This cannot be undone.`,
@@ -648,12 +749,37 @@ function handleExport() {
 
 async function handleImport() {
 	try {
-		const imported = await importRoutines();
-		routines = imported;
-		selectedRoutineId = routines.length > 0 ? routines[0].id : null;
-		persist(true);
-		renderRoutineList();
-		renderSelectedRoutine();
+		const { routines: imported, isSingle } = await importRoutines();
+		if (isSingle && imported.length > 0) {
+			const newRoutine = imported[0];
+			routines.push(newRoutine);
+			selectedRoutineId = newRoutine.id;
+			if (isViewingShared) {
+				isViewingShared = false;
+				sharedRoutine = null;
+				history.replaceState(null, '', window.location.pathname);
+			}
+			currentMode = 'view';
+			persist(true);
+			renderRoutineList();
+			renderSelectedRoutine();
+			await showAlert({
+				title: 'Workout Imported',
+				message: `"${newRoutine.title}" was successfully added to your workouts.`
+			});
+		} else {
+			routines = imported;
+			selectedRoutineId = routines.length > 0 ? routines[0].id : null;
+			if (isViewingShared) {
+				isViewingShared = false;
+				sharedRoutine = null;
+				history.replaceState(null, '', window.location.pathname);
+			}
+			currentMode = 'view';
+			persist(true);
+			renderRoutineList();
+			renderSelectedRoutine();
+		}
 	} catch (err) {
 		await showAlert({
 			title: 'Import Failed',

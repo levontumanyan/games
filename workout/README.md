@@ -1,36 +1,42 @@
-# Workout
+# Workout Routine Player
 
-A client-side workout routine player that combines YouTube video clips with custom interval timers. Create, manage, and play custom workout routines entirely in the browser.
+A client-side workout routine player that combines YouTube video clips with custom interval timers, live session tracking, streak analytics, and soft accounts.
 
 # Features
 
-- **Routine Management** — Create, edit, duplicate, and delete workout routines
-- **Video Clips** — Embed YouTube segments with start/end timestamps
-- **Interval Timers & Music** — Custom countdown timers with exercise labels and per-interval background music (YouTube / YouTube Music links or local audio files) that seamlessly loop or play sequentially
-- **Seamless Playback** — Auto-advances through clips and timers with smooth transitions and auto-coordinated audio/video
-- **Audio Feedback** — Synthetic beeps at 3, 2, 1, and 0 seconds using Web Audio API
-- **Drag & Reorder** — Drag-and-drop step ordering in the editor
-- **Import/Export** — Save and share routines as JSON files
-- **Persistent Storage** — All routines saved server-side in `data/routines.json` with automatic two-way sync and `localStorage` offline caching; uploaded audio files cached in `IndexedDB`
-- **Responsive UI** — Dark theme, works on desktop and mobile
+- **Routine Management** — Create, edit, duplicate, and delete custom workout routines.
+- **Video Clips & Timers** — Embed YouTube segments with start/end timestamps alongside countdown timers and custom background music.
+- **Soft Accounts** — Frictionless profile switcher (default: `levon`) with independent routines, history, and stats per user.
+- **Live Session Persistence** — Active workout duration and step progress are continuously saved so exiting midway records progress as a partial session.
+- **Streaks & Activity Analytics** — Streak tracking (🔥), weekly active minutes bar charts, monthly calendar heatmap, and session history logs.
+- **Workout Sharing** — Generate shareable links (`#s=id` or compressed `#share=payload`) to preview and import routines with one click.
+- **Import / Export** — Full JSON backup and restore capabilities.
+- **Audio Feedback & Music** — Synthetic countdown beeps using Web Audio API and background music looping.
 
 # Running Locally
 
+From the root repository:
 ```bash
-cd workout
-uv sync
-uv run python main.py
+make dev-workout
+```
+Or within the `workout/` directory:
+```bash
+make dev
+```
+Open [http://localhost:8766/workout/](http://localhost:8766/workout/) in your browser.
+
+# Running Tests
+
+```bash
+make test
 ```
 
-Then open [http://127.0.0.1:8766](http://127.0.0.1:8766).
+# Architecture
 
-# Data Schema
-
-```
-Routine:    { id, title, steps[] }
-Step Clip:  { id, type:'clip', videoId, startSeconds, endSeconds, label }
-Step Timer: { id, type:'timer', durationSeconds, label, musicTracks: MusicTrack[] }
-MusicTrack: { id, source: 'youtube' | 'file', videoId?, fileId?, fileName?, label }
-```
-
-Routines are persisted on the server in `workout/data/routines.json` and cached locally in `localStorage` under `custom_workout_routines`. Audio files are stored in `IndexedDB` (`workout_music_db`).
+- **Backend**: FastAPI with Python standard `sqlite3` database (`data/workout.db`).
+- **Database Schema**:
+  - `users`: `id`, `display_name`, `created_at`
+  - `routines`: `id`, `user_id`, `title`, `steps_json`, `music_tracks_json`, `updated_at`
+  - `sessions`: `id`, `user_id`, `routine_id`, `routine_title`, `started_at`, `completed_at`, `duration_seconds`, `completed_steps`, `total_steps`, `status`
+  - `shared_routines`: `id`, `title`, `routine_json`, `created_at`
+- **Frontend**: Vanilla ES modules (`js/app.js`, `js/player.js`, `js/editor.js`, `js/stats.js`, `js/session.js`, `js/user.js`, `js/storage.js`).

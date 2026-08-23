@@ -1,26 +1,46 @@
 # Games
 
-A collection of self-hosted, real-time web games built with FastAPI and vanilla JavaScript.
+A collection of self-hosted, real-time web games and apps built with FastAPI and vanilla JavaScript.
 
-# Available Games
+# Available Apps
 
-## Spelling Bee (`spelling-bee/`)
-- A real-time, dynamic variation of the classic Spelling Bee word puzzle featuring live letter mutations, penalty lockouts, and achievement tracking.
-- **Backend**: FastAPI with SCOWL dictionary validation and vowel-equilibrium puzzle generation.
-- **Frontend**: Responsive single-page interface.
-- **Live Demo**: [https://levon.ajwest.ca/spelling/](https://levon.ajwest.ca/spelling/)
++--------------------+------------+-----------------------------------+-----------------------------------+
+| Application        | Local Port | Local Development URL             | Remote Production URL             |
++--------------------+------------+-----------------------------------+-----------------------------------+
+| **Spelling Bee**   | `8765`     | `http://localhost:8765/spelling/` | `https://levon.ajwest.ca/spelling/`|
+| **Workout Player** | `8766`     | `http://localhost:8766/workout/`  | `https://levon.ajwest.ca/workout/` |
++--------------------+------------+-----------------------------------+-----------------------------------+
 
-## Workout (`workout/`)
-- A client-side workout routine player combining YouTube video clips with custom interval timers.
-- **Backend**: Minimal FastAPI static file server (purely optional — works as standalone HTML/JS/CSS).
-- **Frontend**: Dark-theme responsive SPA with drag-and-drop editing, Web Audio countdown beeps, and YouTube IFrame API integration.
-- **Storage**: localStorage with JSON import/export.
-- **Live Demo**: [https://levon.ajwest.ca/workout/](https://levon.ajwest.ca/workout/)
+# Local Development
 
-# Running Locally
+Start the apps from the root directory using the Makefile:
+
+## Start Workout App
+```bash
+make dev-workout
+```
+Opens on [http://localhost:8766/workout/](http://localhost:8766/workout/) with hot-reloading.
+
+## Start Spelling Bee
+```bash
+make dev-spelling
+```
+Opens on [http://localhost:8765/spelling/](http://localhost:8765/spelling/) with hot-reloading.
+
+## Run All Tests
+```bash
+make test
+```
+
+## Stop Local Servers
+```bash
+make stop
+```
+
+# Deployment
+
+Pushing to `main` automatically runs dependencies check via `uv sync` and restarts the systemd services on `levon-box` via the git post-receive hook:
 
 ```bash
-cd spelling-bee
-uv sync
-uv run python main.py
+git push origin main
 ```
