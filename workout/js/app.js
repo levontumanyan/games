@@ -19,8 +19,8 @@ import {
 	initMusic, setVolume as setMusicVolume, nextTrack, prevTrack,
 	muteMusic, unmuteMusic, isMuted as isMusicMuted
 } from './music.js';
-import { formatTime } from './utils.js';
-import { showPrompt, showConfirm, showAlert, showShareModal } from './modal.js';
+import { formatTime, copyToClipboard, showToast } from './utils.js';
+import { showPrompt, showConfirm, showAlert } from './modal.js';
 import {
 	getActiveUserId, getActiveDisplayName, setActiveUser,
 	fetchUsers, createUser
@@ -619,11 +619,9 @@ function renderSelectedRoutine() {
 			},
 			onShare: async () => {
 				const shareUrl = await encodeRoutineToShareUrl(routine);
-				showShareModal({
-					routineTitle: routine.title,
-					shareUrl,
-					onDownloadJson: () => exportSingleRoutine(routine)
-				});
+				await copyToClipboard(shareUrl);
+				showToast('📋 Link copied to clipboard!');
+				return true;
 			},
 			onSaveToLibrary: () => {
 				handleSaveSharedToLibrary(true);

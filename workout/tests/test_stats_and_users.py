@@ -125,7 +125,6 @@ def test_streak_calculation_and_weekly_monthly_stats(client: TestClient, tmp_pat
 	today = datetime.now().date()
 	yesterday = today - timedelta(days=1)
 	two_days_ago = today - timedelta(days=2)
-	five_days_ago = today - timedelta(days=5)
 
 	# Record sessions across days
 	sessions_to_add = [

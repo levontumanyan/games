@@ -88,10 +88,23 @@ export function renderRoutineOverview(routine, container, actions = {}) {
 	actionsGroup.className = 'view-actions-group';
 
 	const shareBtn = document.createElement('button');
-	shareBtn.className = 'btn btn-ghost';
+	shareBtn.className = 'btn btn-ghost btn-share-action';
 	shareBtn.innerHTML = `${getShareIcon(15)} Share`;
-	shareBtn.title = 'Share this Workout';
-	shareBtn.addEventListener('click', () => actions.onShare?.());
+	shareBtn.title = 'Copy Shareable Link';
+	shareBtn.addEventListener('click', async () => {
+		if (actions.onShare) {
+			const success = await actions.onShare();
+			if (success !== false) {
+				const originalHtml = shareBtn.innerHTML;
+				shareBtn.innerHTML = `✓ Link Copied!`;
+				shareBtn.classList.add('btn-share-success');
+				setTimeout(() => {
+					shareBtn.innerHTML = originalHtml;
+					shareBtn.classList.remove('btn-share-success');
+				}, 3000);
+			}
+		}
+	});
 
 	const editBtn = document.createElement('button');
 	editBtn.className = 'btn btn-ghost';

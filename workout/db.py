@@ -2,7 +2,7 @@ import json
 import secrets
 import sqlite3
 import string
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 

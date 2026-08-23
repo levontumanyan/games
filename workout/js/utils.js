@@ -189,3 +189,35 @@ export async function copyToClipboard(text) {
 	}
 }
 
+/**
+ * Show a sleek floating toast notification for a brief duration.
+ * @param {string} message
+ * @param {number} [duration=3000]
+ */
+export function showToast(message, duration = 3000) {
+	let container = document.getElementById('toast-container');
+	if (!container) {
+		container = document.createElement('div');
+		container.id = 'toast-container';
+		container.className = 'toast-container';
+		document.body.appendChild(container);
+	}
+
+	const toast = document.createElement('div');
+	toast.className = 'toast-pill';
+	toast.innerHTML = message;
+	container.appendChild(toast);
+
+	requestAnimationFrame(() => {
+		toast.classList.add('show');
+	});
+
+	setTimeout(() => {
+		toast.classList.remove('show');
+		setTimeout(() => {
+			toast.remove();
+		}, 300);
+	}, duration);
+}
+
+
