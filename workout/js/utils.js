@@ -155,3 +155,37 @@ export function formatFriendlyDuration(totalSeconds) {
 export function generateId() {
 	return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
+
+/**
+ * Copy text to clipboard with fallback.
+ * @param {string} text
+ * @returns {Promise<boolean>}
+ */
+export async function copyToClipboard(text) {
+	try {
+		if (navigator.clipboard && window.isSecureContext) {
+			await navigator.clipboard.writeText(text);
+			return true;
+		}
+	} catch (e) {
+		console.warn('navigator.clipboard failed, using fallback:', e);
+	}
+
+	try {
+		const textArea = document.createElement('textarea');
+		textArea.value = text;
+		textArea.style.position = 'fixed';
+		textArea.style.left = '-999999px';
+		textArea.style.top = '-999999px';
+		document.body.appendChild(textArea);
+		textArea.focus();
+		textArea.select();
+		const successful = document.execCommand('copy');
+		document.body.removeChild(textArea);
+		return Boolean(successful);
+	} catch (err) {
+		console.error('Fallback clipboard copy failed:', err);
+		return false;
+	}
+}
+

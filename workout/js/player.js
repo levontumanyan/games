@@ -2,14 +2,18 @@
  * Player module - YouTube IFrame API integration and timer countdown engine.
  */
 
-import { formatTime, formatFriendlyDuration } from './utils.js?v=6';
-import { isBreakStep } from './editor.js?v=6';
-import { playCountdownBeep } from './audio.js?v=6';
-import { getClipIcon, getTimerIcon, getBreakIcon } from './icons.js?v=6';
+import { formatTime, formatFriendlyDuration } from './utils.js';
+import { isBreakStep } from './editor.js';
+import { playCountdownBeep } from './audio.js';
+import { getClipIcon, getTimerIcon, getBreakIcon } from './icons.js';
 import {
 	setPlaylist, startMusic, pauseMusic, resumeMusic,
 	stopMusic, muteMusic, unmuteMusic, hasMusic
-} from './music.js?v=6';
+} from './music.js';
+import {
+	startSession, updateSessionStep, pauseSession,
+	resumeSession, completeSession, stopSession
+} from './session.js';
 
 const PLAY_ICON = `<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><polygon points="7,4 19,12 7,20"/></svg>`;
 const PAUSE_ICON = `<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1.5"/><rect x="14" y="4" width="4" height="16" rx="1.5"/></svg>`;
@@ -305,6 +309,8 @@ export function startRoutine(routine, startIndex = 0) {
 	isPlaying = true;
 	isPaused = false;
 
+	startSession(routine);
+
 	showPlayerUI();
 	executeCurrentStep();
 	resetHudIdleTimer();
@@ -322,6 +328,7 @@ function executeCurrentStep() {
 	clearTimer();
 	const step = currentRoutine.steps[currentStepIndex];
 	updateStepIndicator();
+	updateSessionStep(currentStepIndex);
 
 	if (step.type === 'clip') {
 		executeClipStep(step);
@@ -511,10 +518,13 @@ function advanceStep() {
 	currentStepIndex++;
 	if (currentStepIndex >= currentRoutine.steps.length) {
 		// Routine complete
-		stopPlayback();
-		if (playerCallbacks.onRoutineComplete) {
-			playerCallbacks.onRoutineComplete();
-		}
+		const completedRoutine = currentRoutine;
+		stopPlayback(true);
+		completeSession().then((session) => {
+			if (playerCallbacks.onRoutineComplete) {
+				playerCallbacks.onRoutineComplete(session, completedRoutine);
+			}
+		});
 		return;
 	}
 
@@ -547,6 +557,7 @@ export function togglePause() {
 	if (isPaused) {
 		// Resume
 		isPaused = false;
+		resumeSession();
 		const step = currentRoutine.steps[currentStepIndex];
 
 		if (step.type === 'clip' && ytReady && ytPlayer) {
@@ -567,6 +578,7 @@ export function togglePause() {
 	} else {
 		// Pause
 		isPaused = true;
+		pauseSession();
 		clearTimer();
 
 		if (ytReady && ytPlayer) {
@@ -596,8 +608,9 @@ export function resetPlayback() {
 
 /**
  * Stop playback entirely and return to editor/list view.
+ * @param {boolean} [isCompleted=false]
  */
-export function stopPlayback() {
+export function stopPlayback(isCompleted = false) {
 	clearTimer();
 	clearHudIdleTimer();
 	isPlaying = false;
@@ -612,6 +625,10 @@ export function stopPlayback() {
 	stopMusic();
 
 	hidePlayerUI();
+
+	if (!isCompleted) {
+		stopSession();
+	}
 
 	if (playerCallbacks.onStop) {
 		playerCallbacks.onStop();

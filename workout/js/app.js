@@ -1,29 +1,35 @@
 /**
- * App controller - coordinates UI, storage, editor, and player modules.
+ * App controller - coordinates UI, soft accounts, routines, stats, and player modules.
  */
 
 import {
 	loadRoutines, saveRoutines, fetchServerRoutines,
 	saveServerRoutines, exportRoutines, importRoutines
-} from './storage.js?v=6';
-import { renderEditor, createClipStep, createTimerStep, createBreakStep, createRoutine } from './editor.js?v=6';
-import { renderRoutineOverview } from './view.js?v=6';
+} from './storage.js';
+import { renderEditor, createClipStep, createTimerStep, createBreakStep, createRoutine } from './editor.js';
+import { renderRoutineOverview } from './view.js';
 import {
 	initPlayer, startRoutine, stopPlayback,
 	togglePause, skipStep, previousStep, resetPlayback,
 	toggleFullscreen
-} from './player.js?v=6';
-import { initAudio } from './audio.js?v=6';
+} from './player.js';
+import { initAudio } from './audio.js';
 import {
 	initMusic, setVolume as setMusicVolume, nextTrack, prevTrack,
 	muteMusic, unmuteMusic, isMuted as isMusicMuted
-} from './music.js?v=6';
-import { formatTime } from './utils.js?v=6';
-import { showPrompt, showConfirm, showAlert } from './modal.js?v=6';
+} from './music.js';
+import { formatTime } from './utils.js';
+import { showPrompt, showConfirm, showAlert } from './modal.js';
+import {
+	getActiveUserId, getActiveDisplayName, setActiveUser,
+	fetchUsers, createUser
+} from './user.js';
+import { renderStatsDashboard } from './stats.js';
 
 let routines = [];
 let selectedRoutineId = null;
 let currentMode = 'view'; // 'view' | 'edit'
+let currentTab = 'routines'; // 'routines' | 'stats'
 let syncTimeout = null;
 
 // DOM references
@@ -34,6 +40,7 @@ const dom = {};
  */
 async function init() {
 	cacheDom();
+	updateProfileButtonLabel();
 
 	// Fast initial render from localStorage cache
 	routines = loadRoutines();
@@ -84,17 +91,21 @@ async function init() {
 		},
 		{
 			onStop: () => {
-				renderSelectedRoutine();
+				if (currentTab === 'stats') {
+					renderStatsDashboard(dom.statsView);
+				} else {
+					renderSelectedRoutine();
+				}
 			},
-			onRoutineComplete: () => {
+			onRoutineComplete: (session) => {
 				dom.timerOverlay.classList.remove('hidden');
 				dom.videoWrapper.classList.add('hidden');
 				if (dom.upNextCard) dom.upNextCard.classList.add('hidden');
 				dom.timerDisplay.textContent = '🎉';
 				dom.timerLabel.textContent = 'Workout Complete!';
-				dom.currentStepLabel.textContent = 'Done';
-				dom.currentStepType.textContent = '';
-				dom.nextStepPreview.textContent = '';
+				dom.currentStepLabel.textContent = 'Great job!';
+				dom.currentStepType.textContent = session ? `${formatTime(session.duration_seconds || 0)} active` : '';
+				dom.nextStepPreview.textContent = 'Streak updated! 🔥';
 			},
 		}
 	);
@@ -116,6 +127,7 @@ function cacheDom() {
 	dom.routineView = document.getElementById('routine-view');
 	dom.routineOverviewContainer = document.getElementById('routine-overview-container');
 	dom.editorView = document.getElementById('editor-view');
+	dom.statsView = document.getElementById('stats-view');
 	dom.playerView = document.getElementById('player-view');
 	dom.playerStage = document.querySelector('.player-stage');
 	dom.routineTitle = document.getElementById('routine-title');
@@ -125,6 +137,17 @@ function cacheDom() {
 	dom.addBreakBtn = document.getElementById('add-break-btn');
 	dom.doneEditingBtn = document.getElementById('done-editing-btn');
 	dom.deleteRoutineBtn = document.getElementById('delete-routine-btn');
+
+	// Soft Accounts & Navigation
+	dom.userProfileBtn = document.getElementById('user-profile-btn');
+	dom.userProfileName = document.getElementById('user-profile-name');
+	dom.tabRoutinesBtn = document.getElementById('tab-routines-btn');
+	dom.tabStatsBtn = document.getElementById('tab-stats-btn');
+	dom.profileModalBackdrop = document.getElementById('profile-modal-backdrop');
+	dom.profileModalCloseBtn = document.getElementById('profile-modal-close-btn');
+	dom.profileUserList = document.getElementById('profile-user-list');
+	dom.newProfileInput = document.getElementById('new-profile-input');
+	dom.createProfileBtn = document.getElementById('create-profile-btn');
 
 	// Player top bar & buttons
 	dom.playerBackBtn = document.getElementById('player-back-btn');
@@ -167,6 +190,12 @@ function cacheDom() {
 
 	// Hidden YouTube music player
 	dom.ytMusicPlayer = document.getElementById('yt-music-player');
+}
+
+function updateProfileButtonLabel() {
+	if (dom.userProfileName) {
+		dom.userProfileName.textContent = getActiveDisplayName();
+	}
 }
 
 /**
@@ -217,11 +246,41 @@ async function syncWithServerOnStartup() {
 			selectedRoutineId = null;
 		}
 		renderRoutineList();
-		renderSelectedRoutine();
+		if (currentTab === 'routines') {
+			renderSelectedRoutine();
+		}
 		setSyncStatus('synced', 'Synced');
 	} catch (err) {
 		console.warn('Could not sync with server on startup, using local storage cache:', err);
 		setSyncStatus('error', 'Offline mode');
+	}
+}
+
+/**
+ * Switch active navigation tab (Routines vs Stats).
+ * @param {'routines' | 'stats'} tab
+ */
+function switchTab(tab) {
+	currentTab = tab;
+
+	if (dom.tabRoutinesBtn) {
+		dom.tabRoutinesBtn.classList.toggle('active', tab === 'routines');
+	}
+	if (dom.tabStatsBtn) {
+		dom.tabStatsBtn.classList.toggle('active', tab === 'stats');
+	}
+
+	if (tab === 'stats') {
+		if (dom.routineView) dom.routineView.classList.add('hidden');
+		if (dom.editorView) dom.editorView.classList.add('hidden');
+		if (dom.emptyView) dom.emptyView.classList.add('hidden');
+		if (dom.statsView) {
+			dom.statsView.classList.remove('hidden');
+			renderStatsDashboard(dom.statsView);
+		}
+	} else {
+		if (dom.statsView) dom.statsView.classList.add('hidden');
+		renderSelectedRoutine();
 	}
 }
 
@@ -247,7 +306,52 @@ function bindEvents() {
 	dom.skipBtn.addEventListener('click', skipStep);
 	dom.prevBtn.addEventListener('click', previousStep);
 	dom.resetBtn.addEventListener('click', resetPlayback);
-	dom.stopBtn.addEventListener('click', stopPlayback);
+	dom.stopBtn.addEventListener('click', () => stopPlayback());
+
+	// Tab switcher
+	if (dom.tabRoutinesBtn) {
+		dom.tabRoutinesBtn.addEventListener('click', () => switchTab('routines'));
+	}
+	if (dom.tabStatsBtn) {
+		dom.tabStatsBtn.addEventListener('click', () => switchTab('stats'));
+	}
+
+	// Soft Profile modal
+	if (dom.userProfileBtn) {
+		dom.userProfileBtn.addEventListener('click', openProfileModal);
+	}
+	if (dom.profileModalCloseBtn) {
+		dom.profileModalCloseBtn.addEventListener('click', closeProfileModal);
+	}
+	if (dom.profileModalBackdrop) {
+		dom.profileModalBackdrop.addEventListener('click', (e) => {
+			if (e.target === dom.profileModalBackdrop) closeProfileModal();
+		});
+	}
+	if (dom.createProfileBtn) {
+		dom.createProfileBtn.addEventListener('click', handleCreateProfile);
+	}
+	if (dom.newProfileInput) {
+		dom.newProfileInput.addEventListener('keydown', (e) => {
+			if (e.key === 'Enter') handleCreateProfile();
+		});
+	}
+
+	// Listen for user changed events
+	document.addEventListener('workout:userchanged', async () => {
+		updateProfileButtonLabel();
+		currentMode = 'view';
+		stopPlayback();
+		routines = loadRoutines();
+		selectedRoutineId = routines.length > 0 ? routines[0].id : null;
+		renderRoutineList();
+		if (currentTab === 'stats') {
+			renderStatsDashboard(dom.statsView);
+		} else {
+			renderSelectedRoutine();
+		}
+		await syncWithServerOnStartup();
+	});
 
 	// Routine title editing
 	dom.routineTitle.addEventListener('change', (e) => {
@@ -274,6 +378,81 @@ function bindEvents() {
 			dom.musicMuteBtn.textContent = '🔇';
 		}
 	});
+}
+
+/**
+ * Open soft profile switcher modal.
+ */
+async function openProfileModal() {
+	if (!dom.profileModalBackdrop || !dom.profileUserList) return;
+	dom.profileModalBackdrop.classList.remove('hidden');
+	dom.profileUserList.innerHTML = '<div class="spinner-small"></div> Loading profiles...';
+
+	try {
+		const users = await fetchUsers();
+		renderProfileList(users);
+	} catch (e) {
+		dom.profileUserList.innerHTML = '<p class="text-muted">Could not load profiles.</p>';
+	}
+}
+
+/**
+ * Close soft profile modal.
+ */
+function closeProfileModal() {
+	if (dom.profileModalBackdrop) {
+		dom.profileModalBackdrop.classList.add('hidden');
+	}
+	if (dom.newProfileInput) {
+		dom.newProfileInput.value = '';
+	}
+}
+
+/**
+ * Render profile item list in modal.
+ * @param {Array} users
+ */
+function renderProfileList(users) {
+	if (!dom.profileUserList) return;
+	dom.profileUserList.innerHTML = '';
+	const currentUserId = getActiveUserId();
+
+	users.forEach(user => {
+		const div = document.createElement('div');
+		div.className = `profile-item ${user.id === currentUserId ? 'active' : ''}`;
+		div.innerHTML = `
+			<div class="profile-item-left">
+				<span class="profile-avatar">👤</span>
+				<div class="profile-name-text">${escapeHtml(user.display_name || user.id)}</div>
+			</div>
+			${user.id === currentUserId ? '<span class="active-badge">Active</span>' : ''}
+		`;
+		div.addEventListener('click', () => {
+			setActiveUser(user.id, user.display_name);
+			closeProfileModal();
+		});
+		dom.profileUserList.appendChild(div);
+	});
+}
+
+/**
+ * Handle creating a new soft profile.
+ */
+async function handleCreateProfile() {
+	if (!dom.newProfileInput) return;
+	const name = dom.newProfileInput.value.trim();
+	if (!name) return;
+
+	try {
+		const created = await createUser(name, name);
+		setActiveUser(created.id, created.display_name);
+		closeProfileModal();
+	} catch (e) {
+		await showAlert({
+			title: 'Create Profile Failed',
+			message: e.message
+		});
+	}
 }
 
 /**
@@ -325,8 +504,8 @@ function renderRoutineList() {
 		const clipCount = routine.steps.filter(s => s.type === 'clip').length;
 		const timerCount = routine.steps.filter(s => s.type === 'timer').length;
 		const totalTime = routine.steps.reduce((sum, s) => {
-			if (s.type === 'timer') return sum + s.durationSeconds;
-			if (s.type === 'clip') return sum + ((s.endSeconds || 0) - (s.startSeconds || 0));
+			if (s.type === 'timer') return sum + (s.durationSeconds || 0);
+			if (s.type === 'clip') return sum + Math.max(0, (s.endSeconds || 0) - (s.startSeconds || 0));
 			return sum;
 		}, 0);
 		meta.textContent = `${routine.steps.length} steps · ${clipCount} clips · ${timerCount} timers · ~${formatTime(totalTime)}`;
@@ -335,6 +514,9 @@ function renderRoutineList() {
 		li.appendChild(info);
 
 		li.addEventListener('click', () => {
+			if (currentTab !== 'routines') {
+				switchTab('routines');
+			}
 			selectedRoutineId = routine.id;
 			currentMode = 'view';
 			renderRoutineList();
@@ -349,6 +531,8 @@ function renderRoutineList() {
  * Render the active mode (View Mode or Edit Mode) for the selected routine.
  */
 function renderSelectedRoutine() {
+	if (currentTab === 'stats') return;
+
 	const routine = getSelectedRoutine();
 
 	if (!routine) {
@@ -407,6 +591,9 @@ async function handleAddWorkout() {
 	const routine = createRoutine(title.trim() || 'New Workout');
 	routines.push(routine);
 	selectedRoutineId = routine.id;
+	if (currentTab !== 'routines') {
+		switchTab('routines');
+	}
 	currentMode = 'edit';
 	persist(true);
 	renderRoutineList();
@@ -455,12 +642,6 @@ function handleAddBreak() {
 	renderSelectedRoutine();
 }
 
-function handlePlayRoutine() {
-	const routine = getSelectedRoutine();
-	if (!routine || routine.steps.length === 0) return;
-	startRoutine(routine);
-}
-
 function handleExport() {
 	exportRoutines(routines);
 }
@@ -481,10 +662,15 @@ async function handleImport() {
 	}
 }
 
+function escapeHtml(str) {
+	const div = document.createElement('div');
+	div.textContent = str;
+	return div.innerHTML;
+}
+
 // ── Bootstrap ───────────────────────────────────────────────────────────────
 
 async function initMusicModule() {
-	// Initialize the hidden YouTube music player after the main player is ready
 	await initMusic(dom.ytMusicPlayer, {
 		onTrackChange: (track) => {
 			if (dom.musicTrackName) {

@@ -2,6 +2,9 @@
  * Modern modal dialogs replacing browser prompt(), confirm(), alert().
  */
 
+import { copyToClipboard } from './utils.js';
+
+
 let modalBackdrop = null;
 let modalTitle = null;
 let modalMessage = null;
@@ -185,3 +188,54 @@ export function showAlert({
 		}, 50);
 	});
 }
+
+/**
+ * Show a Share dialog with URL and one-click copy button.
+ * @param {Object} options
+ * @param {string} options.routineTitle
+ * @param {string} options.shareUrl
+ * @param {Function} [options.onDownloadJson]
+ * @returns {Promise<void>}
+ */
+export function showShareModal({
+	routineTitle = 'Workout',
+	shareUrl = '',
+	onDownloadJson = null
+} = {}) {
+	initModalElements();
+	return new Promise((resolve) => {
+		currentResolve = resolve;
+
+		modalTitle.textContent = '🔗 Share Workout';
+		modalMessage.textContent = `Anyone with this link can view and play "${routineTitle}" directly in their browser:`;
+		modalMessage.style.display = 'block';
+
+		modalInputGroup.classList.remove('hidden');
+		modalInput.value = shareUrl;
+		modalInput.readOnly = true;
+
+		modalConfirmBtn.textContent = '📋 Copy Link';
+		modalConfirmBtn.className = 'btn btn-primary';
+		modalCancelBtn.textContent = 'Close';
+		modalCancelBtn.classList.remove('hidden');
+
+		modalConfirmBtn.onclick = async () => {
+			const success = await copyToClipboard(shareUrl);
+			if (success) {
+				modalConfirmBtn.textContent = '✓ Link Copied!';
+				modalConfirmBtn.classList.add('btn-success');
+				setTimeout(() => {
+					modalConfirmBtn.textContent = '📋 Copy Link';
+					modalConfirmBtn.classList.remove('btn-success');
+				}, 2500);
+			}
+		};
+
+		modalBackdrop.classList.remove('hidden');
+		setTimeout(() => {
+			modalInput.focus();
+			modalInput.select();
+		}, 50);
+	});
+}
+

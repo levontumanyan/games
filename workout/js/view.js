@@ -1,12 +1,12 @@
-import { formatTime, formatFriendlyDuration } from './utils.js?v=6';
-import { isBreakStep } from './editor.js?v=6';
-import { getClipIcon, getTimerIcon, getBreakIcon, getStepsIcon } from './icons.js?v=6';
+import { formatTime, formatFriendlyDuration } from './utils.js';
+import { isBreakStep } from './editor.js';
+import { getClipIcon, getTimerIcon, getBreakIcon, getStepsIcon, getShareIcon, getSaveIcon } from './icons.js';
 
 /**
  * Render the read-only routine overview.
  * @param {Object} routine - The routine to render
  * @param {HTMLElement} container - The container element
- * @param {Object} actions - Action callbacks: { onEdit, onPlay, onPlayStep }
+ * @param {Object} actions - Action callbacks: { onEdit, onPlay, onPlayStep, onShare, onSaveToLibrary, isShared }
  */
 export function renderRoutineOverview(routine, container, actions = {}) {
 	container.innerHTML = '';
@@ -14,6 +14,27 @@ export function renderRoutineOverview(routine, container, actions = {}) {
 	if (!routine) {
 		container.innerHTML = '<p class="empty-message">Select or create a workout to get started.</p>';
 		return;
+	}
+
+	// ── Shared Routine Banner ────────────────────────────────────────────────
+	if (actions.isShared) {
+		const banner = document.createElement('div');
+		banner.className = 'shared-routine-banner';
+
+		const bannerContent = document.createElement('div');
+		bannerContent.className = 'shared-banner-content';
+		bannerContent.innerHTML = `
+			<span class="shared-banner-badge">✨ Shared Workout</span>
+			<span class="shared-banner-subtext">You're viewing a shared workout routine. Play it now or save it to your library!</span>
+		`;
+
+		const saveLibBtn = document.createElement('button');
+		saveLibBtn.className = 'btn btn-primary btn-sm btn-save-shared';
+		saveLibBtn.innerHTML = `${getSaveIcon(14)} Save to My Workouts`;
+		saveLibBtn.addEventListener('click', () => actions.onSaveToLibrary?.());
+
+		banner.append(bannerContent, saveLibBtn);
+		container.appendChild(banner);
 	}
 
 	const steps = routine.steps || [];
@@ -66,6 +87,12 @@ export function renderRoutineOverview(routine, container, actions = {}) {
 	const actionsGroup = document.createElement('div');
 	actionsGroup.className = 'view-actions-group';
 
+	const shareBtn = document.createElement('button');
+	shareBtn.className = 'btn btn-ghost';
+	shareBtn.innerHTML = `${getShareIcon(15)} Share`;
+	shareBtn.title = 'Share this Workout';
+	shareBtn.addEventListener('click', () => actions.onShare?.());
+
 	const editBtn = document.createElement('button');
 	editBtn.className = 'btn btn-ghost';
 	editBtn.innerHTML = '✏️ Edit';
@@ -83,9 +110,20 @@ export function renderRoutineOverview(routine, container, actions = {}) {
 	playBtn.disabled = steps.length === 0;
 	playBtn.addEventListener('click', () => actions.onPlay?.(0));
 
-	actionsGroup.append(editBtn, fullscreenBtn, playBtn);
+	if (actions.isShared) {
+		const headerSaveBtn = document.createElement('button');
+		headerSaveBtn.className = 'btn btn-primary';
+		headerSaveBtn.innerHTML = `${getSaveIcon(14)} Save to My Workouts`;
+		headerSaveBtn.addEventListener('click', () => actions.onSaveToLibrary?.());
+
+		actionsGroup.append(shareBtn, headerSaveBtn, fullscreenBtn, playBtn);
+	} else {
+		actionsGroup.append(shareBtn, editBtn, fullscreenBtn, playBtn);
+	}
+
 	header.append(titleInfo, actionsGroup);
 	container.appendChild(header);
+
 
 	// ── Empty State ──────────────────────────────────────────────────────────
 	if (steps.length === 0) {

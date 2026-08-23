@@ -54,19 +54,22 @@ def test_save_and_fetch_routines(client: TestClient, tmp_path: Path):
 	assert post_res.json() == {"status": "ok", "count": 1}
 
 	# Verify on-disk persistence
-	disk_file = tmp_path / "routines.json"
-	assert disk_file.exists()
-	assert json.loads(disk_file.read_text("utf-8")) == sample_routines
+	db_file = tmp_path / "workout.db"
+	assert db_file.exists()
 
 	# Fetch via GET
 	get_res = client.get("/api/routines")
 	assert get_res.status_code == 200
-	assert get_res.json() == sample_routines
+	assert len(get_res.json()) == 1
+	assert get_res.json()[0]["id"] == "routine-1"
+	assert get_res.json()[0]["title"] == "Leg Day HIIT"
+	assert len(get_res.json()[0]["steps"]) == 2
 
 	# Fetch via subpath GET
 	get_subpath_res = client.get("/workout/api/routines")
 	assert get_subpath_res.status_code == 200
-	assert get_subpath_res.json() == sample_routines
+	assert len(get_subpath_res.json()) == 1
+	assert get_subpath_res.json()[0]["id"] == "routine-1"
 
 
 def test_invalid_payload_rejected_without_data_corruption(client: TestClient, tmp_path: Path):
@@ -80,7 +83,10 @@ def test_invalid_payload_rejected_without_data_corruption(client: TestClient, tm
 	# Ensure previous valid routines were not overwritten
 	get_res = client.get("/api/routines")
 	assert get_res.status_code == 200
-	assert get_res.json() == valid_routines
+	assert len(get_res.json()) == 1
+	assert get_res.json()[0]["id"] == "r-1"
+	assert get_res.json()[0]["title"] == "Core Workout"
+
 
 
 def test_delete_all_routines(client: TestClient, tmp_path: Path):
@@ -95,3 +101,43 @@ def test_delete_all_routines(client: TestClient, tmp_path: Path):
 
 	# Ensure persisted state is empty list
 	assert client.get("/api/routines").json() == []
+
+
+def test_create_and_fetch_short_share_link(client: TestClient):
+	routine = {
+		"title": "Short Shared Workout",
+		"steps": [
+			{
+				"id": "step-1",
+				"type": "timer",
+				"durationSeconds": 30,
+				"label": "Plank",
+				"musicTracks": []
+			}
+		]
+	}
+
+	# Create share link via root API
+	res = client.post("/api/share", json=routine)
+	assert res.status_code == 200
+	data = res.json()
+	assert data["status"] == "ok"
+	share_id = data["id"]
+	assert len(share_id) == 6
+
+	# Fetch share link via root API
+	get_res = client.get(f"/api/share/{share_id}")
+	assert get_res.status_code == 200
+	fetched = get_res.json()
+	assert fetched["title"] == "Short Shared Workout"
+	assert len(fetched["steps"]) == 1
+	assert fetched["steps"][0]["label"] == "Plank"
+
+	# Fetch via subpath API
+	get_subpath = client.get(f"/workout/api/share/{share_id}")
+	assert get_subpath.status_code == 200
+	assert get_subpath.json()["title"] == "Short Shared Workout"
+
+	# Non-existent share link returns 404
+	assert client.get("/api/share/nonexist").status_code == 404
+
