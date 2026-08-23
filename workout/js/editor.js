@@ -403,16 +403,19 @@ export function resolveStepMediaUrl(step) {
 			return '/workout/media/shoulder-taps.svg';
 		}
 		if (l.includes('cobra')) {
-			return '/workout/media/cobra-stretch.svg';
+			return '/workout/media/cobra-stretch.jpg';
 		}
 		if (l.includes('tricep') || (l.includes('shoulder') && (l.includes('stretch') || l.includes('mobility')))) {
-			return '/workout/media/shoulder-tricep-stretch.svg';
+			return '/workout/media/overhead-tricep-stretch.jpg';
 		}
 		if (l.includes('pigeon')) {
-			return '/workout/media/pigeon-pose.svg';
+			return '/workout/media/pigeon-pose.jpg';
 		}
 		if (l.includes('child')) {
-			return '/workout/media/childs-pose.svg';
+			return '/workout/media/childs-pose.jpg';
+		}
+		if (l.includes('hamstring') || l.includes('forward fold') || l.includes('forward bend')) {
+			return '/workout/media/seated-hamstring-fold.jpg';
 		}
 	}
 	return null;
@@ -596,10 +599,11 @@ function createTimerFields(step, onUpdate) {
 		{ label: 'Pushups', url: '/workout/media/pushups.svg' },
 		{ label: 'Diamond Pushups', url: '/workout/media/diamond-pushups.svg' },
 		{ label: 'Shoulder Taps', url: '/workout/media/shoulder-taps.svg' },
-		{ label: 'Cobra Stretch', url: '/workout/media/cobra-stretch.svg' },
-		{ label: 'Shoulder Stretch', url: '/workout/media/shoulder-tricep-stretch.svg' },
-		{ label: 'Pigeon Pose', url: '/workout/media/pigeon-pose.svg' },
-		{ label: 'Child’s Pose', url: '/workout/media/childs-pose.svg' },
+		{ label: 'Cobra Stretch', url: '/workout/media/cobra-stretch.jpg' },
+		{ label: 'Tricep Stretch', url: '/workout/media/overhead-tricep-stretch.jpg' },
+		{ label: 'Pigeon Pose', url: '/workout/media/pigeon-pose.jpg' },
+		{ label: 'Child’s Pose', url: '/workout/media/childs-pose.jpg' },
+		{ label: 'Hamstring Fold', url: '/workout/media/seated-hamstring-fold.jpg' },
 	];
 
 	mediaPresets.forEach(p => {
