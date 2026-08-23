@@ -25,6 +25,8 @@ let isMusicMuted = false;
 let activeSource = null; // 'youtube' | 'file' | null
 let onTrackChangeCallback = null;
 
+let pendingPlay = false;
+
 /**
  * Wait for the YouTube IFrame API to be available.
  * It should already be loading from player.js.
@@ -63,24 +65,34 @@ export async function initMusic(containerEl, callbacks) {
 	await waitForYTApi();
 
 	ytMusicPlayer = new YT.Player(containerEl.id, {
-		height: '1',
-		width: '1',
+		height: '200',
+		width: '200',
 		playerVars: {
 			controls: 0,
 			disablekb: 1,
+			enablejsapi: 1,
 			modestbranding: 1,
 			rel: 0,
 			fs: 0,
 			playsinline: 1,
+			origin: window.location.origin
 		},
 		events: {
 			onReady: () => {
 				ytMusicReady = true;
+				if (pendingPlay) {
+					pendingPlay = false;
+					playCurrentTrack();
+				}
 			},
 			onStateChange: (event) => {
 				if (event.data === YT.PlayerState.ENDED) {
 					handleTrackEnded();
 				}
+			},
+			onError: (err) => {
+				console.warn('YouTube music player error:', err);
+				handleTrackEnded();
 			}
 		}
 	});
@@ -144,11 +156,23 @@ async function playCurrentTrack() {
 	if (track.source === 'youtube' && track.videoId) {
 		activeSource = 'youtube';
 		if (ytMusicReady && ytMusicPlayer) {
-			ytMusicPlayer.loadVideoById(track.videoId);
-			ytMusicPlayer.setVolume(musicVolume * 100);
-			if (isMusicMuted) {
-				ytMusicPlayer.mute();
+			try {
+				ytMusicPlayer.loadVideoById({
+					videoId: track.videoId,
+					suggestedQuality: 'small'
+				});
+				ytMusicPlayer.setVolume(musicVolume * 100);
+				if (isMusicMuted) {
+					ytMusicPlayer.mute();
+				} else {
+					ytMusicPlayer.unMute();
+					try { ytMusicPlayer.playVideo(); } catch {}
+				}
+			} catch (err) {
+				console.warn('Failed to load video on YouTube music player:', err);
 			}
+		} else {
+			pendingPlay = true;
 		}
 	} else if (track.source === 'file' && track.fileId) {
 		activeSource = 'file';
@@ -262,10 +286,15 @@ export function muteMusic() {
 export function unmuteMusic() {
 	isMusicMuted = false;
 	if (activeSource === 'youtube' && ytMusicReady && ytMusicPlayer) {
-		ytMusicPlayer.unMute();
+		try {
+			ytMusicPlayer.unMute();
+			ytMusicPlayer.setVolume(musicVolume * 100);
+			ytMusicPlayer.playVideo();
+		} catch {}
 	}
 	if (activeSource === 'file' && audioElement) {
 		audioElement.muted = false;
+		audioElement.play().catch(() => {});
 	}
 }
 
@@ -276,7 +305,12 @@ export function unmuteMusic() {
 export function setVolume(vol) {
 	musicVolume = Math.max(0, Math.min(1, vol));
 	if (activeSource === 'youtube' && ytMusicReady && ytMusicPlayer) {
-		ytMusicPlayer.setVolume(musicVolume * 100);
+		try {
+			ytMusicPlayer.setVolume(musicVolume * 100);
+			if (musicVolume > 0 && isMusicPlaying && !isMusicMuted) {
+				ytMusicPlayer.unMute();
+			}
+		} catch {}
 	}
 	if (activeSource === 'file' && audioElement) {
 		audioElement.volume = musicVolume;

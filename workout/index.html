@@ -243,8 +243,8 @@
 		</div>
 	</div>
 
-	<!-- Hidden YouTube music player (off-screen, audio only) -->
-	<div id="yt-music-container" style="position:absolute;width:1px;height:1px;overflow:hidden;left:-9999px;top:-9999px;">
+	<!-- YouTube music player (in-viewport to avoid browser background throttling, visually hidden) -->
+	<div id="yt-music-container" style="position:fixed;width:200px;height:200px;bottom:0;right:0;opacity:0.001;pointer-events:none;z-index:-100;">
 		<div id="yt-music-player"></div>
 	</div>
 
