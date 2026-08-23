@@ -60,6 +60,7 @@ async function init() {
 
 	renderRoutineList();
 	renderSelectedRoutine();
+	initSidebarState();
 	bindEvents();
 
 	// Fetch server state as source of truth
@@ -155,6 +156,12 @@ function cacheDom() {
 	dom.doneEditingBtn = document.getElementById('done-editing-btn');
 	dom.deleteRoutineBtn = document.getElementById('delete-routine-btn');
 
+	// Sidebar & Layout
+	dom.appContainer = document.querySelector('.app-container');
+	dom.sidebar = document.getElementById('app-sidebar');
+	dom.sidebarToggleBtn = document.getElementById('sidebar-toggle-btn');
+	dom.sidebarExpandBtn = document.getElementById('sidebar-expand-btn');
+
 	// Soft Accounts & Navigation
 	dom.userProfileBtn = document.getElementById('user-profile-btn');
 	dom.userProfileName = document.getElementById('user-profile-name');
@@ -171,7 +178,6 @@ function cacheDom() {
 	dom.playerRoutineTitle = document.getElementById('player-routine-title');
 	dom.fullscreenTopBtn = document.getElementById('fullscreen-top-btn');
 	dom.fullscreenDockBtn = document.getElementById('fullscreen-dock-btn');
-	dom.fullscreenAppBtn = document.getElementById('fullscreen-app-btn');
 
 	// Player stage elements
 	dom.youtubePlayer = document.getElementById('youtube-player');
@@ -302,14 +308,44 @@ function switchTab(tab) {
 }
 
 /**
+ * Initialize sidebar visibility from saved user preference.
+ */
+function initSidebarState() {
+	const isHidden = localStorage.getItem('workout_sidebar_hidden') === 'true';
+	if (isHidden && dom.appContainer) {
+		dom.appContainer.classList.add('sidebar-hidden');
+		if (dom.sidebarExpandBtn) {
+			dom.sidebarExpandBtn.classList.remove('hidden');
+		}
+	}
+}
+
+/**
+ * Toggle sidebar visibility (hide or expand).
+ * @param {boolean} [hide]
+ */
+function toggleSidebar(hide) {
+	if (!dom.appContainer) return;
+	const shouldHide = typeof hide === 'boolean' ? hide : !dom.appContainer.classList.contains('sidebar-hidden');
+	dom.appContainer.classList.toggle('sidebar-hidden', shouldHide);
+	if (dom.sidebarExpandBtn) {
+		dom.sidebarExpandBtn.classList.toggle('hidden', !shouldHide);
+	}
+	localStorage.setItem('workout_sidebar_hidden', shouldHide ? 'true' : 'false');
+}
+
+/**
  * Bind UI event handlers.
  */
 function bindEvents() {
 	dom.addWorkoutBtn.addEventListener('click', handleAddWorkout);
 	dom.exportBtn.addEventListener('click', handleExport);
 	dom.importBtn.addEventListener('click', handleImport);
-	if (dom.fullscreenAppBtn) {
-		dom.fullscreenAppBtn.addEventListener('click', toggleFullscreen);
+	if (dom.sidebarToggleBtn) {
+		dom.sidebarToggleBtn.addEventListener('click', () => toggleSidebar(true));
+	}
+	if (dom.sidebarExpandBtn) {
+		dom.sidebarExpandBtn.addEventListener('click', () => toggleSidebar(false));
 	}
 	dom.addClipBtn.addEventListener('click', handleAddClip);
 	dom.addTimerBtn.addEventListener('click', handleAddTimer);
@@ -613,9 +649,6 @@ function renderSelectedRoutine() {
 			},
 			onPlay: (startIndex = 0) => {
 				startRoutine(routine, startIndex);
-			},
-			onToggleFullscreen: () => {
-				toggleFullscreen();
 			},
 			onShare: async () => {
 				const shareUrl = await encodeRoutineToShareUrl(routine);

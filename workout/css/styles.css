@@ -100,6 +100,48 @@ html, body {
 	flex-direction: column;
 	overflow: hidden;
 	z-index: 10;
+	transition: margin-left 0.28s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.22s ease;
+	flex-shrink: 0;
+}
+
+.app-container.sidebar-hidden .sidebar {
+	margin-left: -320px;
+	opacity: 0;
+	pointer-events: none;
+}
+
+/* Sidebar Expand Floating Button */
+.sidebar-expand-btn {
+	position: absolute;
+	top: 18px;
+	left: 18px;
+	z-index: 25;
+	display: inline-flex;
+	align-items: center;
+	gap: 7px;
+	padding: 8px 14px;
+	background: var(--bg-card-elevated);
+	color: var(--text-primary);
+	border: 1px solid var(--border);
+	border-radius: var(--radius-sm);
+	font-size: 0.85rem;
+	font-weight: 600;
+	cursor: pointer;
+	box-shadow: var(--shadow);
+	backdrop-filter: blur(12px);
+	-webkit-backdrop-filter: blur(12px);
+	transition: all var(--transition-fast);
+}
+
+.sidebar-expand-btn:hover {
+	background: var(--bg-hover);
+	border-color: var(--border-hover);
+	color: #ffffff;
+	transform: translateX(2px);
+}
+
+.sidebar-expand-btn.hidden {
+	display: none !important;
 }
 
 .sidebar-header {
@@ -2590,6 +2632,16 @@ html, body {
 		max-height: 42vh;
 		border-right: none;
 		border-bottom: 1px solid var(--border);
+		transition: max-height 0.28s cubic-bezier(0.4, 0, 0.2, 1), margin-top 0.28s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.22s ease;
+	}
+
+	.app-container.sidebar-hidden .sidebar {
+		margin-left: 0;
+		margin-top: -42vh;
+		max-height: 0;
+		border-bottom: none;
+		opacity: 0;
+		pointer-events: none;
 	}
 
 	#stats-view {

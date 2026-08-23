@@ -143,8 +143,10 @@ export async function initPlayer(domRefs, callbacks) {
 		if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
 		if (e.key === 'f' || e.key === 'F') {
-			e.preventDefault();
-			toggleFullscreen();
+			if (isPlaying || (dom.playerView && !dom.playerView.classList.contains('hidden'))) {
+				e.preventDefault();
+				toggleFullscreen();
+			}
 			return;
 		}
 

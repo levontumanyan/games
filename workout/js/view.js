@@ -111,12 +111,6 @@ export function renderRoutineOverview(routine, container, actions = {}) {
 	editBtn.innerHTML = '✏️ Edit';
 	editBtn.addEventListener('click', () => actions.onEdit?.());
 
-	const fullscreenBtn = document.createElement('button');
-	fullscreenBtn.className = 'btn btn-ghost';
-	fullscreenBtn.innerHTML = '⛶ Fullscreen';
-	fullscreenBtn.title = 'Toggle Fullscreen (F)';
-	fullscreenBtn.addEventListener('click', () => actions.onToggleFullscreen?.());
-
 	const playBtn = document.createElement('button');
 	playBtn.className = 'btn btn-primary btn-hero-play';
 	playBtn.innerHTML = '▶ Start Workout';
@@ -129,9 +123,9 @@ export function renderRoutineOverview(routine, container, actions = {}) {
 		headerSaveBtn.innerHTML = `${getSaveIcon(14)} Save to My Workouts`;
 		headerSaveBtn.addEventListener('click', () => actions.onSaveToLibrary?.());
 
-		actionsGroup.append(shareBtn, headerSaveBtn, fullscreenBtn, playBtn);
+		actionsGroup.append(shareBtn, headerSaveBtn, playBtn);
 	} else {
-		actionsGroup.append(shareBtn, editBtn, fullscreenBtn, playBtn);
+		actionsGroup.append(shareBtn, editBtn, playBtn);
 	}
 
 	header.append(titleInfo, actionsGroup);
