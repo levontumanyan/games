@@ -226,6 +226,8 @@ export async function encodeRoutineToShareUrl(routine) {
 			} else if (s.type === 'timer') {
 				clean.durationSeconds = s.durationSeconds || 30;
 				if (s.isBreak) clean.isBreak = true;
+				if (s.gifUrl) clean.gifUrl = s.gifUrl;
+				if (s.mediaUrl) clean.mediaUrl = s.mediaUrl;
 				if (Array.isArray(s.musicTracks) && s.musicTracks.length > 0) {
 					const ytTracks = s.musicTracks
 						.filter(t => t.source === 'youtube' && t.videoId)

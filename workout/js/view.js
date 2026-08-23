@@ -1,5 +1,5 @@
 import { formatTime, formatFriendlyDuration } from './utils.js';
-import { isBreakStep } from './editor.js';
+import { isBreakStep, resolveStepMediaUrl } from './editor.js';
 import { getClipIcon, getTimerIcon, getBreakIcon, getStepsIcon, getShareIcon, getSaveIcon } from './icons.js';
 
 /**
@@ -155,7 +155,7 @@ export function renderRoutineOverview(routine, container, actions = {}) {
 	feed.className = 'view-steps-feed';
 
 	steps.forEach((step, index) => {
-		const card = createViewStepCard(step, index, actions);
+		const card = createViewStepCard(step, index, steps, actions);
 		feed.appendChild(card);
 	});
 
@@ -179,7 +179,7 @@ export function renderRoutineOverview(routine, container, actions = {}) {
 /**
  * Create a single step preview card for View Mode.
  */
-function createViewStepCard(step, index, actions) {
+function createViewStepCard(step, index, steps, actions) {
 	if (isBreakStep(step)) {
 		const card = document.createElement('div');
 		card.className = 'view-step-card view-step-break';
@@ -200,11 +200,24 @@ function createViewStepCard(step, index, actions) {
 		title.className = 'view-step-title view-break-title';
 		title.textContent = step.label || 'Rest';
 
+		const tagsRow = document.createElement('div');
+		tagsRow.className = 'view-step-tags';
+
 		const tag = document.createElement('span');
 		tag.className = 'view-tag view-tag-break';
 		tag.innerHTML = `${getTimerIcon(11)} ${formatFriendlyDuration(step.durationSeconds || 30)}`;
+		tagsRow.appendChild(tag);
 
-		details.append(title, tag);
+		const nextStep = steps ? steps[index + 1] : null;
+		if (nextStep) {
+			const nextTag = document.createElement('span');
+			nextTag.className = 'view-tag view-tag-next-preview';
+			const nextIcon = nextStep.type === 'clip' ? '🎬' : '⚡';
+			nextTag.textContent = `${nextIcon} Next: ${nextStep.label || (nextStep.type === 'clip' ? 'Video Clip' : 'Exercise')}`;
+			tagsRow.appendChild(nextTag);
+		}
+
+		details.append(title, tagsRow);
 
 		const playAction = document.createElement('button');
 		playAction.className = 'view-step-play-btn';
@@ -233,6 +246,8 @@ function createViewStepCard(step, index, actions) {
 	const mediaBox = document.createElement('div');
 	mediaBox.className = 'view-step-media';
 
+	const mediaUrl = resolveStepMediaUrl(step);
+
 	if (step.type === 'clip') {
 		if (step.videoId) {
 			const img = document.createElement('img');
@@ -252,10 +267,9 @@ function createViewStepCard(step, index, actions) {
 		} else {
 			mediaBox.innerHTML = `<div class="media-fallback">${getClipIcon(26)}</div>`;
 		}
-	} else if (step.gifUrl || step.mediaUrl || step.imageUrl) {
-		const mUrl = step.gifUrl || step.mediaUrl || step.imageUrl;
+	} else if (mediaUrl) {
 		const img = document.createElement('img');
-		img.src = mUrl;
+		img.src = mediaUrl;
 		img.alt = step.label || 'Animation';
 		img.loading = 'lazy';
 		img.className = 'view-media-thumb';
@@ -269,6 +283,11 @@ function createViewStepCard(step, index, actions) {
 			`;
 		};
 		mediaBox.appendChild(img);
+
+		const playOverlay = document.createElement('div');
+		playOverlay.className = 'thumbnail-play-overlay';
+		playOverlay.innerHTML = '▶';
+		mediaBox.appendChild(playOverlay);
 	} else {
 		// Timer visual box
 		mediaBox.innerHTML = `
@@ -317,7 +336,7 @@ function createViewStepCard(step, index, actions) {
 
 		tagsRow.append(typeTag, durationTag);
 
-		if (step.gifUrl || step.mediaUrl || step.imageUrl) {
+		if (mediaUrl) {
 			const animTag = document.createElement('span');
 			animTag.className = 'view-tag view-tag-anim';
 			animTag.textContent = '✨ Animation';

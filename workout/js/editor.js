@@ -376,9 +376,46 @@ export function isBreakStep(step) {
 	if (step.subtype === 'break' || step.isBreak) return true;
 	if (step.type === 'timer' && step.label) {
 		const l = step.label.trim().toLowerCase();
-		if (l === 'rest' || l === 'break' || l === 'quick break') return true;
+		if (l === 'rest' || l === 'break' || l === 'quick break' || l.startsWith('rest') || l.startsWith('break') || l === 'recovery' || l === 'breathe' || l === 'pause') return true;
 	}
 	return false;
+}
+
+/**
+ * Auto-resolve the media/GIF URL for a step (either from explicit properties or by matching exercise name).
+ * @param {Object} step
+ * @returns {string|null}
+ */
+export function resolveStepMediaUrl(step) {
+	if (!step) return null;
+	const direct = step.gifUrl || step.mediaUrl || step.imageUrl;
+	if (direct && typeof direct === 'string' && direct.trim()) return direct.trim();
+
+	if (step.type === 'timer' && step.label) {
+		const l = step.label.toLowerCase();
+		if (l.includes('diamond pushup') || l.includes('diamond push-up') || l.includes('diamond-pushup')) {
+			return '/workout/media/diamond-pushups.svg';
+		}
+		if (l.includes('pushup') || l.includes('push-up') || l.includes('push up')) {
+			return '/workout/media/pushups.svg';
+		}
+		if (l.includes('shoulder tap') || l.includes('shoulder-tap') || l.includes('shouldertap')) {
+			return '/workout/media/shoulder-taps.svg';
+		}
+		if (l.includes('cobra')) {
+			return '/workout/media/cobra-stretch.svg';
+		}
+		if (l.includes('tricep') || (l.includes('shoulder') && (l.includes('stretch') || l.includes('mobility')))) {
+			return '/workout/media/shoulder-tricep-stretch.svg';
+		}
+		if (l.includes('pigeon')) {
+			return '/workout/media/pigeon-pose.svg';
+		}
+		if (l.includes('child')) {
+			return '/workout/media/childs-pose.svg';
+		}
+	}
+	return null;
 }
 
 /**

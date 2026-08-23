@@ -86,6 +86,8 @@ async function init() {
 			routineView: dom.routineView,
 			emptyView: dom.emptyView,
 			timerOverlay: dom.timerOverlay,
+			timerMediaContainer: dom.timerMediaContainer,
+			timerMediaImg: dom.timerMediaImg,
 			timerDisplay: dom.timerDisplay,
 			timerLabel: dom.timerLabel,
 			timerRing: dom.timerRing,

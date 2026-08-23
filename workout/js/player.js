@@ -3,7 +3,7 @@
  */
 
 import { formatTime, formatFriendlyDuration } from './utils.js';
-import { isBreakStep } from './editor.js';
+import { isBreakStep, resolveStepMediaUrl } from './editor.js';
 import { playCountdownBeep } from './audio.js';
 import { getClipIcon, getTimerIcon, getBreakIcon } from './icons.js';
 import {
@@ -348,11 +348,13 @@ function executeClipStep(step) {
 	dom.timerOverlay.classList.add('hidden');
 	dom.videoWrapper.classList.remove('hidden');
 
-	if (dom.timerMediaContainer) {
-		dom.timerMediaContainer.classList.add('hidden');
+	const mediaContainer = dom.timerMediaContainer || document.getElementById('timer-media-container');
+	const mediaImg = dom.timerMediaImg || document.getElementById('timer-media-img');
+	if (mediaContainer) {
+		mediaContainer.classList.add('hidden');
 	}
-	if (dom.timerMediaImg) {
-		dom.timerMediaImg.removeAttribute('src');
+	if (mediaImg) {
+		mediaImg.removeAttribute('src');
 	}
 	dom.timerOverlay?.querySelector('.timer-stage-content')?.classList.remove('has-media');
 
@@ -394,23 +396,25 @@ function executeTimerStep(step) {
 	dom.timerOverlay.classList.toggle('is-break', isBreak);
 
 	// Handle media/gif animation display
-	const mediaUrl = step.gifUrl || step.mediaUrl || step.imageUrl;
+	const mediaUrl = resolveStepMediaUrl(step);
+	const mediaContainer = dom.timerMediaContainer || document.getElementById('timer-media-container');
+	const mediaImg = dom.timerMediaImg || document.getElementById('timer-media-img');
 	const contentEl = dom.timerOverlay?.querySelector('.timer-stage-content');
 	if (mediaUrl) {
-		if (dom.timerMediaImg) {
-			dom.timerMediaImg.src = mediaUrl;
-			dom.timerMediaImg.alt = step.label || 'Exercise animation';
+		if (mediaImg) {
+			mediaImg.src = mediaUrl;
+			mediaImg.alt = step.label || 'Exercise animation';
 		}
-		if (dom.timerMediaContainer) {
-			dom.timerMediaContainer.classList.remove('hidden');
+		if (mediaContainer) {
+			mediaContainer.classList.remove('hidden');
 		}
 		if (contentEl) contentEl.classList.add('has-media');
 	} else {
-		if (dom.timerMediaContainer) {
-			dom.timerMediaContainer.classList.add('hidden');
+		if (mediaContainer) {
+			mediaContainer.classList.add('hidden');
 		}
-		if (dom.timerMediaImg) {
-			dom.timerMediaImg.removeAttribute('src');
+		if (mediaImg) {
+			mediaImg.removeAttribute('src');
 		}
 		if (contentEl) contentEl.classList.remove('has-media');
 	}
@@ -461,7 +465,7 @@ function executeTimerStep(step) {
 				}
 			}
 			if (dom.upNextMediaThumb) {
-				const nextMedia = next.gifUrl || next.mediaUrl || next.imageUrl;
+				const nextMedia = resolveStepMediaUrl(next);
 				if (next.type === 'clip' && next.videoId) {
 					dom.upNextMediaThumb.innerHTML = `
 						<img src="https://img.youtube.com/vi/${next.videoId}/hqdefault.jpg" onerror="this.src='https://img.youtube.com/vi/${next.videoId}/mqdefault.jpg'" alt="${next.label || 'Next Video'}">
@@ -702,8 +706,10 @@ function hidePlayerUI() {
 	dom.playerView.classList.add('hidden');
 	dom.timerOverlay.classList.add('hidden');
 	dom.videoWrapper.classList.add('hidden');
-	if (dom.timerMediaContainer) dom.timerMediaContainer.classList.add('hidden');
-	if (dom.timerMediaImg) dom.timerMediaImg.removeAttribute('src');
+	const mediaContainer = dom.timerMediaContainer || document.getElementById('timer-media-container');
+	const mediaImg = dom.timerMediaImg || document.getElementById('timer-media-img');
+	if (mediaContainer) mediaContainer.classList.add('hidden');
+	if (mediaImg) mediaImg.removeAttribute('src');
 	dom.timerOverlay?.querySelector('.timer-stage-content')?.classList.remove('has-media');
 	if (dom.upNextCard) dom.upNextCard.classList.add('hidden');
 }
