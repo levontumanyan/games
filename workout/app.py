@@ -158,10 +158,14 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 		return response
 
 	# Mount static directories
+	media_dir = static_dir / "media"
+	media_dir.mkdir(parents=True, exist_ok=True)
 	app.mount("/workout/css", StaticFiles(directory=static_dir / "css"), name="workout_css")
 	app.mount("/workout/js", StaticFiles(directory=static_dir / "js"), name="workout_js")
+	app.mount("/workout/media", StaticFiles(directory=media_dir), name="workout_media")
 	app.mount("/css", StaticFiles(directory=static_dir / "css"), name="css")
 	app.mount("/js", StaticFiles(directory=static_dir / "js"), name="js")
+	app.mount("/media", StaticFiles(directory=media_dir), name="media")
 
 	@app.api_route("/", methods=["GET", "HEAD"])
 	@app.api_route("/workout", methods=["GET", "HEAD"])

@@ -252,6 +252,23 @@ function createViewStepCard(step, index, actions) {
 		} else {
 			mediaBox.innerHTML = `<div class="media-fallback">${getClipIcon(26)}</div>`;
 		}
+	} else if (step.gifUrl || step.mediaUrl || step.imageUrl) {
+		const mUrl = step.gifUrl || step.mediaUrl || step.imageUrl;
+		const img = document.createElement('img');
+		img.src = mUrl;
+		img.alt = step.label || 'Animation';
+		img.loading = 'lazy';
+		img.className = 'view-media-thumb';
+		img.onerror = () => {
+			img.style.display = 'none';
+			mediaBox.innerHTML = `
+				<div class="timer-visual-box">
+					<span class="timer-icon">${getTimerIcon(24)}</span>
+					<span class="timer-badge-sec">${formatTime(step.durationSeconds || 30)}</span>
+				</div>
+			`;
+		};
+		mediaBox.appendChild(img);
 	} else {
 		// Timer visual box
 		mediaBox.innerHTML = `
@@ -299,6 +316,13 @@ function createViewStepCard(step, index, actions) {
 		durationTag.innerHTML = `${getTimerIcon(11)} ${formatFriendlyDuration(dur)}`;
 
 		tagsRow.append(typeTag, durationTag);
+
+		if (step.gifUrl || step.mediaUrl || step.imageUrl) {
+			const animTag = document.createElement('span');
+			animTag.className = 'view-tag view-tag-anim';
+			animTag.textContent = '✨ Animation';
+			tagsRow.appendChild(animTag);
+		}
 
 		if (step.musicTracks && step.musicTracks.length > 0) {
 			const musicTag = document.createElement('span');

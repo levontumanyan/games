@@ -183,6 +183,8 @@ function cacheDom() {
 	dom.youtubePlayer = document.getElementById('youtube-player');
 	dom.videoWrapper = document.getElementById('video-wrapper');
 	dom.timerOverlay = document.getElementById('timer-overlay');
+	dom.timerMediaContainer = document.getElementById('timer-media-container');
+	dom.timerMediaImg = document.getElementById('timer-media-img');
 	dom.timerDisplay = document.getElementById('timer-display');
 	dom.timerLabel = document.getElementById('timer-label');
 	dom.timerRing = document.getElementById('timer-ring');

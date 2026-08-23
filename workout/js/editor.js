@@ -537,6 +537,56 @@ function createTimerFields(step, onUpdate) {
 	durationContainer.appendChild(presetsRow);
 	frag.appendChild(durationContainer);
 
+	// ── Animation / GIF Section ──────────────────────────────────────────────
+	const mediaSection = document.createElement('div');
+	mediaSection.className = 'step-media-section';
+
+	const mediaField = createField('Animation / GIF URL', step.gifUrl || step.mediaUrl || '', (val) => {
+		const clean = val.trim();
+		if (clean) {
+			step.gifUrl = clean;
+		} else {
+			delete step.gifUrl;
+			delete step.mediaUrl;
+		}
+		onUpdate();
+	}, '/workout/media/cobra-stretch.svg or https://...');
+
+	const mediaPresetsRow = document.createElement('div');
+	mediaPresetsRow.className = 'preset-chips-row media-preset-chips';
+
+	const mediaPresets = [
+		{ label: 'Pushups', url: '/workout/media/pushups.svg' },
+		{ label: 'Diamond Pushups', url: '/workout/media/diamond-pushups.svg' },
+		{ label: 'Shoulder Taps', url: '/workout/media/shoulder-taps.svg' },
+		{ label: 'Cobra Stretch', url: '/workout/media/cobra-stretch.svg' },
+		{ label: 'Shoulder Stretch', url: '/workout/media/shoulder-tricep-stretch.svg' },
+		{ label: 'Pigeon Pose', url: '/workout/media/pigeon-pose.svg' },
+		{ label: 'Child’s Pose', url: '/workout/media/childs-pose.svg' },
+	];
+
+	mediaPresets.forEach(p => {
+		const chip = document.createElement('button');
+		chip.type = 'button';
+		chip.className = 'preset-chip';
+		if ((step.gifUrl || step.mediaUrl) === p.url) chip.classList.add('active');
+		chip.textContent = p.label;
+		chip.addEventListener('click', () => {
+			if (step.gifUrl === p.url || step.mediaUrl === p.url) {
+				delete step.gifUrl;
+				delete step.mediaUrl;
+			} else {
+				step.gifUrl = p.url;
+			}
+			onUpdate();
+		});
+		mediaPresetsRow.appendChild(chip);
+	});
+
+	mediaSection.appendChild(mediaField);
+	mediaSection.appendChild(mediaPresetsRow);
+	frag.appendChild(mediaSection);
+
 	// ── Music Section ───────────────────────────────────────────────────────
 	const musicSection = document.createElement('div');
 	musicSection.className = 'step-music-section';

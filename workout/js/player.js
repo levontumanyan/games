@@ -348,6 +348,14 @@ function executeClipStep(step) {
 	dom.timerOverlay.classList.add('hidden');
 	dom.videoWrapper.classList.remove('hidden');
 
+	if (dom.timerMediaContainer) {
+		dom.timerMediaContainer.classList.add('hidden');
+	}
+	if (dom.timerMediaImg) {
+		dom.timerMediaImg.removeAttribute('src');
+	}
+	dom.timerOverlay?.querySelector('.timer-stage-content')?.classList.remove('has-media');
+
 	if (dom.upNextCard) {
 		dom.upNextCard.classList.add('hidden');
 	}
@@ -384,6 +392,28 @@ function executeTimerStep(step) {
 
 	const isBreak = isBreakStep(step);
 	dom.timerOverlay.classList.toggle('is-break', isBreak);
+
+	// Handle media/gif animation display
+	const mediaUrl = step.gifUrl || step.mediaUrl || step.imageUrl;
+	const contentEl = dom.timerOverlay?.querySelector('.timer-stage-content');
+	if (mediaUrl) {
+		if (dom.timerMediaImg) {
+			dom.timerMediaImg.src = mediaUrl;
+			dom.timerMediaImg.alt = step.label || 'Exercise animation';
+		}
+		if (dom.timerMediaContainer) {
+			dom.timerMediaContainer.classList.remove('hidden');
+		}
+		if (contentEl) contentEl.classList.add('has-media');
+	} else {
+		if (dom.timerMediaContainer) {
+			dom.timerMediaContainer.classList.add('hidden');
+		}
+		if (dom.timerMediaImg) {
+			dom.timerMediaImg.removeAttribute('src');
+		}
+		if (contentEl) contentEl.classList.remove('has-media');
+	}
 
 	// Set and start music playlist specifically for this timer step
 	const tracks = step.musicTracks || [];
@@ -431,11 +461,14 @@ function executeTimerStep(step) {
 				}
 			}
 			if (dom.upNextMediaThumb) {
+				const nextMedia = next.gifUrl || next.mediaUrl || next.imageUrl;
 				if (next.type === 'clip' && next.videoId) {
 					dom.upNextMediaThumb.innerHTML = `
 						<img src="https://img.youtube.com/vi/${next.videoId}/hqdefault.jpg" onerror="this.src='https://img.youtube.com/vi/${next.videoId}/mqdefault.jpg'" alt="${next.label || 'Next Video'}">
 						<div class="thumbnail-play-overlay">▶</div>
 					`;
+				} else if (nextMedia) {
+					dom.upNextMediaThumb.innerHTML = `<img src="${nextMedia}" alt="${next.label || 'Next Step'}" class="up-next-gif-thumb">`;
 				} else if (isBreakStep(next)) {
 					dom.upNextMediaThumb.innerHTML = getBreakIcon(24);
 				} else {
@@ -669,6 +702,9 @@ function hidePlayerUI() {
 	dom.playerView.classList.add('hidden');
 	dom.timerOverlay.classList.add('hidden');
 	dom.videoWrapper.classList.add('hidden');
+	if (dom.timerMediaContainer) dom.timerMediaContainer.classList.add('hidden');
+	if (dom.timerMediaImg) dom.timerMediaImg.removeAttribute('src');
+	dom.timerOverlay?.querySelector('.timer-stage-content')?.classList.remove('has-media');
 	if (dom.upNextCard) dom.upNextCard.classList.add('hidden');
 }
 

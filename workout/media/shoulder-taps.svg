@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" width="100%" height="100%">
+	<defs>
+		<linearGradient id="tapGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+			<stop offset="0%" stop-color="#ec4899" />
+			<stop offset="100%" stop-color="#8b5cf6" />
+		</linearGradient>
+		<filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+			<feGaussianBlur stdDeviation="3" result="blur" />
+			<feComposite in="SourceGraphic" in2="blur" operator="over" />
+		</filter>
+	</defs>
+	<style>
+		.ground { stroke: rgba(255,255,255,0.15); stroke-width: 3; stroke-dasharray: 6 6; }
+		.tapping-arm {
+			transform-origin: 220px 95px;
+			animation: tap-arm 2s ease-in-out infinite;
+		}
+		.tap-point {
+			animation: tap-flash 2s ease-in-out infinite;
+		}
+		@keyframes tap-arm {
+			0%, 40%, 100% { transform: rotate(0deg); }
+			20% { transform: rotate(65deg) scale(0.9); }
+		}
+		@keyframes tap-flash {
+			0%, 15%, 25%, 100% { opacity: 0; }
+			20% { opacity: 1; transform: scale(1.4); }
+		}
+	</style>
+	<rect width="320" height="200" rx="16" fill="#0b0d17" />
+	<!-- Floor line -->
+	<line x1="20" y1="150" x2="300" y2="150" class="ground" />
+	<line x1="30" y1="150" x2="290" y2="150" stroke="#ec4899" stroke-width="2" opacity="0.3" />
+
+	<!-- Base Body / Plank -->
+	<g>
+		<!-- Head -->
+		<circle cx="260" cy="80" r="14" fill="#fbcfe8" filter="url(#glow)" />
+		<!-- Spine / Body -->
+		<line x1="60" y1="145" x2="245" y2="90" stroke="url(#tapGrad)" stroke-width="12" stroke-linecap="round" filter="url(#glow)" />
+		<!-- Rear Leg / Feet -->
+		<circle cx="60" cy="145" r="7" fill="#8b5cf6" />
+
+		<!-- Supporting Base Arm -->
+		<line x1="235" y1="95" x2="235" y2="150" stroke="#fbcfe8" stroke-width="8" stroke-linecap="round" />
+	</g>
+
+	<!-- Tapping Hand -->
+	<g class="tapping-arm">
+		<line x1="220" y1="95" x2="210" y2="148" stroke="#f472b6" stroke-width="8" stroke-linecap="round" />
+	</g>
+
+	<!-- Tap effect on opposite shoulder -->
+	<circle cx="225" cy="92" r="8" fill="#f43f5e" class="tap-point" style="transform-origin: 225px 92px;" />
+
+	<!-- Exercise Tag -->
+	<rect x="18" y="18" width="120" height="26" rx="6" fill="rgba(236,72,153,0.15)" stroke="rgba(236,72,153,0.4)" stroke-width="1" />
+	<text x="78" y="35" fill="#fbcfe8" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" font-weight="700" text-anchor="middle" letter-spacing="0.5">SHOULDER TAPS</text>
+</svg>
