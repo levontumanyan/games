@@ -69,10 +69,12 @@ def test_websocket_duel_flow():
 			assert start_p1["payload"]["outer"] == start_p2["payload"]["outer"]
 
 			# P1 submits an invalid guess
-			ws_p1.send_json({
-				"type": "submit_guess",
-				"payload": {"word": "xyz", "center_letter": start_p1["payload"]["center"]},
-			})
+			ws_p1.send_json(
+				{
+					"type": "submit_guess",
+					"payload": {"word": "xyz", "center_letter": start_p1["payload"]["center"]},
+				}
+			)
 			guess_res = ws_p1.receive_json()
 			assert guess_res["type"] == "guess_result"
 			assert guess_res["payload"]["valid"] is False

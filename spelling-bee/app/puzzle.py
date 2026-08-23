@@ -54,10 +54,7 @@ def _find_valid_puzzle(word_set: set[str]) -> tuple[str, list[str]]:
 		# Evaluate candidate center letters to ensure a high-yield puzzle
 		viable_centers: list[str] = []
 		for candidate_center in shuffled_letters:
-			valid_words = [
-				w for w in word_set
-				if candidate_center in w and set(w).issubset(base)
-			]
+			valid_words = [w for w in word_set if candidate_center in w and set(w).issubset(base)]
 			if len(valid_words) >= MIN_VALID_WORDS:
 				viable_centers.append(candidate_center)
 
@@ -75,23 +72,20 @@ def _find_valid_puzzle(word_set: set[str]) -> tuple[str, list[str]]:
 
 def _build_puzzle() -> dict:
 	"""Generate and return a complete puzzle dict."""
-	word_set        = get_word_set()
-	center, outer   = _find_valid_puzzle(word_set)
-	letters_set     = set(outer) | {center}
+	word_set = get_word_set()
+	center, outer = _find_valid_puzzle(word_set)
+	letters_set = set(outer) | {center}
 
-	valid_words = sorted(
-		w for w in word_set
-		if center in w and all(c in letters_set for c in w)
-	)
+	valid_words = sorted(w for w in word_set if center in w and all(c in letters_set for c in w))
 	pangrams = [w for w in valid_words if letters_set.issubset(set(w))]
 
 	return {
-		"center":      center,
-		"outer":       outer,
+		"center": center,
+		"outer": outer,
 		"all_letters": sorted(letters_set),
 		"valid_words": valid_words,
-		"pangrams":    pangrams,
-		"max_score":   sum(_score(w, letters_set) for w in valid_words),
+		"pangrams": pangrams,
+		"max_score": sum(_score(w, letters_set) for w in valid_words),
 	}
 
 

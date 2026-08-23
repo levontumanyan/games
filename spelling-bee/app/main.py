@@ -33,6 +33,7 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 # ── Static Routes ─────────────────────────────────────────────────────────────
 
+
 @app.get("/")
 @app.get("/spelling")
 @app.get("/spelling/")
@@ -57,16 +58,17 @@ async def favicon():
 
 # ── Solo Play API ─────────────────────────────────────────────────────────────
 
+
 @app.get("/api/puzzle")
 @app.get("/spelling/api/puzzle")
 async def api_get_puzzle():
 	"""Return current solo puzzle metadata."""
 	p = get_puzzle()
 	return {
-		"center":        p["center"],
-		"outer":         p["outer"],
-		"max_score":     p["max_score"],
-		"word_count":    len(p["valid_words"]),
+		"center": p["center"],
+		"outer": p["outer"],
+		"max_score": p["max_score"],
+		"word_count": len(p["valid_words"]),
 		"pangram_count": len(p["pangrams"]),
 	}
 
@@ -77,10 +79,10 @@ async def api_new_game():
 	"""Discard the solo puzzle and generate a fresh random one."""
 	p = new_puzzle()
 	return {
-		"center":        p["center"],
-		"outer":         p["outer"],
-		"max_score":     p["max_score"],
-		"word_count":    len(p["valid_words"]),
+		"center": p["center"],
+		"outer": p["outer"],
+		"max_score": p["max_score"],
+		"word_count": len(p["valid_words"]),
 		"pangram_count": len(p["pangrams"]),
 	}
 
@@ -98,7 +100,7 @@ async def submit_guess(payload: GuessPayload):
 	"""Solo mode word validation."""
 	p = get_puzzle()
 	center = payload.center_letter.lower().strip() if payload.center_letter else p["center"]
-	word   = payload.word.lower().strip()
+	word = payload.word.lower().strip()
 
 	if payload.current_letters:
 		live_letters = {char.lower().strip() for char in payload.current_letters} | {center}
@@ -124,14 +126,15 @@ async def submit_guess(payload: GuessPayload):
 		pts += 7
 
 	return {
-		"valid":   True,
+		"valid": True,
 		"pangram": pangram,
-		"score":   pts,
+		"score": pts,
 		"message": "Pangram! 🌟" if pangram else f"+{pts}",
 	}
 
 
 # ── Multiplayer Room API ──────────────────────────────────────────────────────
+
 
 class CreateRoomRequest(BaseModel):
 	host_id: str
@@ -165,6 +168,7 @@ async def get_room_info(code: str):
 
 # ── WebSocket Endpoint ────────────────────────────────────────────────────────
 
+
 @app.websocket("/ws/room/{code}")
 @app.websocket("/spelling/ws/room/{code}")
 async def websocket_room_endpoint(websocket: WebSocket, code: str):
@@ -183,10 +187,12 @@ async def websocket_room_endpoint(websocket: WebSocket, code: str):
 
 	try:
 		# Send initial snapshot immediately upon connect
-		await websocket.send_json({
-			"type": "room_state",
-			"payload": {"snapshot": room.get_snapshot().model_dump()},
-		})
+		await websocket.send_json(
+			{
+				"type": "room_state",
+				"payload": {"snapshot": room.get_snapshot().model_dump()},
+			}
+		)
 
 		while True:
 			raw_data = await websocket.receive_text()

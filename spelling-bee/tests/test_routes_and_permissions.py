@@ -38,7 +38,12 @@ def test_subpath_api_parity():
 	assert "code" in res_r2.json()
 
 	# 3. Favicon endpoints
-	for fav_path in ["/favicon.svg", "/spelling/favicon.svg", "/favicon.ico", "/spelling/favicon.ico"]:
+	for fav_path in [
+		"/favicon.svg",
+		"/spelling/favicon.svg",
+		"/favicon.ico",
+		"/spelling/favicon.ico",
+	]:
 		res_fav = client.get(fav_path)
 		assert res_fav.status_code == 200
 
@@ -61,11 +66,14 @@ def test_host_vs_guest_permission_boundaries():
 	client = TestClient(app)
 
 	# 1. Create Room
-	res = client.post("/api/rooms", json={
-		"host_id": "host_user",
-		"host_name": "Alice",
-		"config": {"mode": "1v1", "duration_seconds": 300},
-	})
+	res = client.post(
+		"/api/rooms",
+		json={
+			"host_id": "host_user",
+			"host_name": "Alice",
+			"config": {"mode": "1v1", "duration_seconds": 300},
+		},
+	)
 	code = res.json()["code"]
 
 	with client.websocket_connect(f"/ws/room/{code}?player_id=host_user") as ws_host:
@@ -88,18 +96,22 @@ def test_host_vs_guest_permission_boundaries():
 			assert guest_p["is_host"] is False
 
 			# Guest attempts to update config -> MUST BE IGNORED
-			ws_guest.send_json({
-				"type": "update_config",
-				"payload": {"config": {"mode": "1v1", "duration_seconds": 600}},
-			})
+			ws_guest.send_json(
+				{
+					"type": "update_config",
+					"payload": {"config": {"mode": "1v1", "duration_seconds": 600}},
+				}
+			)
 			# Guest attempts to start game -> MUST BE IGNORED
 			ws_guest.send_json({"type": "start_game", "payload": {}})
 
 			# Host updates config -> SUCCEEDS
-			ws_host.send_json({
-				"type": "update_config",
-				"payload": {"config": {"mode": "1v1", "duration_seconds": 600}},
-			})
+			ws_host.send_json(
+				{
+					"type": "update_config",
+					"payload": {"config": {"mode": "1v1", "duration_seconds": 600}},
+				}
+			)
 			update_host = ws_host.receive_json()
 			update_guest = ws_guest.receive_json()
 			assert update_host["payload"]["snapshot"]["config"]["duration_seconds"] == 600

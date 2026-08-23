@@ -12,11 +12,16 @@ dependencies = [
 serve = "uvicorn app.main:app --reload --host 0.0.0.0 --port 8765"
 
 [tool.ruff]
+target-version = "py311"
 line-length = 100
-indent-width = 1
+
+[tool.ruff.format]
+indent-style = "tab"
+quote-style = "double"
 
 [tool.ruff.lint]
 select = ["E", "F", "I"]
+ignore = ["E501"]
 
 [dependency-groups]
 dev = [

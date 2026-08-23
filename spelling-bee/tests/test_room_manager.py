@@ -72,6 +72,7 @@ def test_room_snapshot_includes_host_id(manager):
 
 def test_update_config_variants(manager):
 	from app.models.room import GameVariant, RoomConfig
+
 	room, _ = manager.create_room("host_123", "Alice")
 	# Update to classic variant
 	classic_cfg = RoomConfig(variant=GameVariant.CLASSIC)
@@ -84,4 +85,3 @@ def test_update_config_variants(manager):
 	room.update_config(dynamic_cfg)
 	assert room.config.mutations_enabled is True
 	assert room.config.lockouts_enabled is True
-

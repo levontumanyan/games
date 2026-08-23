@@ -16,6 +16,7 @@ class WSMessage(BaseModel):
 
 # ── Client -> Server Event Payloads ──────────────────────────────────────────
 
+
 class JoinPayload(BaseModel):
 	player_id: str
 	nickname: str
@@ -42,6 +43,7 @@ class SubmitGuessPayload(BaseModel):
 
 # ── Server -> Client Event Payloads ──────────────────────────────────────────
 
+
 class RoomStatePayload(BaseModel):
 	snapshot: RoomSnapshot
 
@@ -64,7 +66,7 @@ class HiveMutationPayload(BaseModel):
 
 
 class HiveLockoutPayload(BaseModel):
-	phase: str                     # "idle" | "warning" | "locked"
+	phase: str  # "idle" | "warning" | "locked"
 	letter: str | None = None
 	duration: int = 0
 

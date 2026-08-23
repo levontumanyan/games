@@ -36,7 +36,9 @@ class GameRuleStrategy(ABC):
 		pass
 
 	@abstractmethod
-	def on_valid_word(self, session: "GameSession", player: PlayerState, word_obj: FoundWord) -> None:
+	def on_valid_word(
+		self, session: "GameSession", player: PlayerState, word_obj: FoundWord
+	) -> None:
 		"""Update session state upon a valid guess."""
 		pass
 
@@ -97,13 +99,18 @@ class DynamicDuelRule(GameRuleStrategy):
 
 		# Check if locked letter is used
 		if session.locked_letter and session.locked_letter in clean_word:
-			return False, f'Letter "{session.locked_letter.upper()}" is currently locked! 🔒', 0, False
+			return (
+				False,
+				f'Letter "{session.locked_letter.upper()}" is currently locked! 🔒',
+				0,
+				False,
+			)
 
 		# Check duplicate / snatch claim policies
 		if self.config.word_claim_mode == WordClaimMode.SNATCH:
 			if clean_word in session.claimed_words:
 				claimed_by = session.claimed_words[clean_word]
-				return False, f'Already snatched by {claimed_by}!', 0, False
+				return False, f"Already snatched by {claimed_by}!", 0, False
 		else:
 			if any(w.word == clean_word for w in player.words):
 				return False, "Already found!", 0, False
@@ -125,7 +132,9 @@ class DynamicDuelRule(GameRuleStrategy):
 		msg = "Pangram! 🌟" if pangram else f"+{pts}"
 		return True, msg, pts, pangram
 
-	def on_valid_word(self, session: "GameSession", player: PlayerState, word_obj: FoundWord) -> None:
+	def on_valid_word(
+		self, session: "GameSession", player: PlayerState, word_obj: FoundWord
+	) -> None:
 		player.score += word_obj.score
 		player.words.append(word_obj)
 		session.claimed_words[word_obj.word] = player.nickname
@@ -169,7 +178,12 @@ class DynamicDuelRule(GameRuleStrategy):
 				if score >= self.config.target_score:
 					top_player = max(session.players.values(), key=lambda p: p.score, default=None)
 					top_name = top_player.nickname if top_player else None
-					return True, TeamId(team), top_name, f"Target score of {self.config.target_score} reached!"
+					return (
+						True,
+						TeamId(team),
+						top_name,
+						f"Target score of {self.config.target_score} reached!",
+					)
 
 		# 2. Time limit expired
 		if session.time_left <= 0 and self.config.duration_seconds > 0:
@@ -222,7 +236,7 @@ class ClassicRule(DynamicDuelRule):
 		if self.config.word_claim_mode == WordClaimMode.SNATCH:
 			if clean_word in session.claimed_words:
 				claimed_by = session.claimed_words[clean_word]
-				return False, f'Already snatched by {claimed_by}!', 0, False
+				return False, f"Already snatched by {claimed_by}!", 0, False
 		else:
 			if any(w.word == clean_word for w in player.words):
 				return False, "Already found!", 0, False

@@ -27,9 +27,12 @@ make dev-spelling
 ```
 Opens on [http://localhost:8765/spelling/](http://localhost:8765/spelling/) with hot-reloading.
 
-## Run All Tests
+## Quality Checks & Testing
 ```bash
-make test
+make check      # Run linting, formatting checks, and test suites
+make lint       # Run Ruff lint and format verification
+make format     # Auto-format and auto-fix code with Ruff
+make test       # Run pytest across all test suites
 ```
 
 ## Stop Local Servers

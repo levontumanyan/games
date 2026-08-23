@@ -7,6 +7,7 @@ import asyncio
 import json
 import os
 import sys
+
 import httpx
 import websockets
 
@@ -30,10 +31,13 @@ async def main():
 
 		# 2. Test Room Creation REST API
 		print("[2/3] Creating test multiplayer room...")
-		res_room = await client.post(f"{base}/api/rooms", json={
-			"host_id": "smoke_host",
-			"host_name": "SmokeHost",
-		})
+		res_room = await client.post(
+			f"{base}/api/rooms",
+			json={
+				"host_id": "smoke_host",
+				"host_name": "SmokeHost",
+			},
+		)
 		if res_room.status_code != 200:
 			print(f"[FAIL] Failed to create room: HTTP {res_room.status_code}")
 			sys.exit(1)

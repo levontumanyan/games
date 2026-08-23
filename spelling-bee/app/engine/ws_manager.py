@@ -33,7 +33,9 @@ class ConnectionManager:
 			try:
 				await ws.send_json(message)
 			except Exception as exc:
-				logger.debug(f"Failed to send personal WS message to {player_id} in {room_code}: {exc}")
+				logger.debug(
+					f"Failed to send personal WS message to {player_id} in {room_code}: {exc}"
+				)
 
 	async def broadcast(
 		self, room_code: str, message: dict[str, Any], exclude_player_id: str | None = None

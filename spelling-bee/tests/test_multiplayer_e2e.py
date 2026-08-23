@@ -39,16 +39,18 @@ def test_full_1v1_multiplayer_duel_lifecycle():
 		assert alice_init["payload"]["snapshot"]["players"][0]["is_host"] is True
 
 		# Alice updates config
-		ws_alice.send_json({
-			"type": "update_config",
-			"payload": {
-				"config": {
-					"mode": GameMode.DUEL_1V1.value,
-					"duration_seconds": 180,
-					"variant": "classic",
-				}
+		ws_alice.send_json(
+			{
+				"type": "update_config",
+				"payload": {
+					"config": {
+						"mode": GameMode.DUEL_1V1.value,
+						"duration_seconds": 180,
+						"variant": "classic",
+					}
+				},
 			}
-		})
+		)
 		cfg_update = ws_alice.receive_json()
 		assert cfg_update["type"] == "room_state"
 		assert cfg_update["payload"]["snapshot"]["config"]["duration_seconds"] == 180
@@ -60,10 +62,12 @@ def test_full_1v1_multiplayer_duel_lifecycle():
 			assert bob_init["payload"]["snapshot"]["host_id"] == "alice_id"
 
 			# Bob sends join payload with his nickname
-			ws_bob.send_json({
-				"type": "join",
-				"payload": {"nickname": "Bob"},
-			})
+			ws_bob.send_json(
+				{
+					"type": "join",
+					"payload": {"nickname": "Bob"},
+				}
+			)
 
 			# Both Alice and Bob should receive the updated room_state
 			alice_room_update = ws_alice.receive_json()
@@ -121,10 +125,12 @@ def test_full_1v1_multiplayer_duel_lifecycle():
 			active_session.puzzle["valid_words"] = ["bead", "badge", "cafe", "deaf"]
 
 			# Alice submits valid word "bead"
-			ws_alice.send_json({
-				"type": "submit_guess",
-				"payload": {"word": "bead", "center_letter": "a"},
-			})
+			ws_alice.send_json(
+				{
+					"type": "submit_guess",
+					"payload": {"word": "bead", "center_letter": "a"},
+				}
+			)
 
 			# Alice receives guess_result
 			alice_guess_res = ws_alice.receive_json()
@@ -219,10 +225,12 @@ def test_snatch_mode_reveals_word_in_opponent_event():
 			active_session.puzzle["valid_words"] = ["bead"]
 
 			# Alice submits valid word "bead" in snatch mode
-			ws_alice.send_json({
-				"type": "submit_guess",
-				"payload": {"word": "bead", "center_letter": "a"},
-			})
+			ws_alice.send_json(
+				{
+					"type": "submit_guess",
+					"payload": {"word": "bead", "center_letter": "a"},
+				}
+			)
 
 			alice_guess_res = ws_alice.receive_json()
 			assert alice_guess_res["type"] == "guess_result"

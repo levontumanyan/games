@@ -42,10 +42,7 @@ LOCKOUT_LOCK_DURATION = 10
 
 
 def _get_next_lockout_delay() -> int:
-	return (
-		LOCKOUT_INTERVAL_BASE
-		+ random.randint(-LOCKOUT_INTERVAL_JITTER, LOCKOUT_INTERVAL_JITTER)
-	)
+	return LOCKOUT_INTERVAL_BASE + random.randint(-LOCKOUT_INTERVAL_JITTER, LOCKOUT_INTERVAL_JITTER)
 
 
 class GameSession:
@@ -280,7 +277,9 @@ class GameSession:
 				if pangram:
 					opp_msg = f"{player.nickname} found a Pangram! 🌟 (+{pts} pts)"
 				else:
-					opp_msg = f"{player.nickname} found a {len(found.word)}-letter word (+{pts} pts)"
+					opp_msg = (
+						f"{player.nickname} found a {len(found.word)}-letter word (+{pts} pts)"
+					)
 				opp_word = None
 
 			opp_payload = OpponentEventPayload(
