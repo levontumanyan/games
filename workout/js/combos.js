@@ -256,7 +256,6 @@ export function renderCombosCatalog(container, options = {}) {
 			card.innerHTML = `
 				<div class="combo-card-header">
 					<div class="combo-card-badges">
-						${getFlowTypeBadgeHtml(combo.flow_type)}
 						${getCategoryBadgeHtml(combo.category)}
 						${combo.discipline ? getDisciplineBadgeHtml(combo.discipline) : ''}
 					</div>
