@@ -553,10 +553,11 @@ html, body {
 }
 
 .view-step-break {
-	border-left: 4px solid var(--break-color);
+	border-left: 3px solid var(--break-color);
 	background: rgba(16, 185, 129, 0.03);
-	padding: 8px 14px;
-	gap: 12px;
+	padding: 4px 12px;
+	gap: 10px;
+	min-height: 34px;
 }
 
 .view-step-break:hover {
@@ -564,23 +565,39 @@ html, body {
 	border-color: rgba(16, 185, 129, 0.35);
 }
 
-.view-break-icon-box {
-	width: 34px;
-	height: 34px;
+.view-step-break .view-step-details {
+	flex-direction: row;
+	align-items: center;
+	gap: 10px;
+}
+
+.view-step-break .view-break-icon-box {
+	width: 24px;
+	height: 24px;
 	border-radius: var(--radius-sm);
 	background: var(--break-subtle);
 	border: 1px solid rgba(16, 185, 129, 0.25);
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	font-size: 1.1rem;
 	flex-shrink: 0;
 }
 
-.view-break-title {
-	font-size: 0.9rem;
+.view-step-break .view-break-title {
+	font-size: 0.84rem;
 	font-weight: 600;
-	color: var(--text-primary);
+	color: var(--text-secondary);
+}
+
+.view-step-break .view-tag-break {
+	font-size: 0.72rem;
+	padding: 2px 7px;
+}
+
+.view-step-break .view-step-play-btn {
+	width: 26px;
+	height: 26px;
+	font-size: 0.72rem;
 }
 
 .view-step-index {

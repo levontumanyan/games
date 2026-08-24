@@ -306,24 +306,11 @@ function createViewStepCard(step, index, steps, actions) {
 		title.className = 'view-step-title view-break-title';
 		title.textContent = step.label || 'Rest';
 
-		const tagsRow = document.createElement('div');
-		tagsRow.className = 'view-step-tags';
-
 		const tag = document.createElement('span');
 		tag.className = 'view-tag view-tag-break';
 		tag.innerHTML = `${getTimerIcon(11)} ${formatFriendlyDuration(step.durationSeconds || 30)}`;
-		tagsRow.appendChild(tag);
 
-		const nextStep = steps ? steps[index + 1] : null;
-		if (nextStep) {
-			const nextTag = document.createElement('span');
-			nextTag.className = 'view-tag view-tag-next-preview';
-			const nextIcon = nextStep.type === 'clip' ? '🎬' : '⚡';
-			nextTag.textContent = `${nextIcon} Next: ${nextStep.label || (nextStep.type === 'clip' ? 'Video Clip' : 'Exercise')}`;
-			tagsRow.appendChild(nextTag);
-		}
-
-		details.append(title, tagsRow);
+		details.append(title, tag);
 
 		const playAction = document.createElement('button');
 		playAction.className = 'view-step-play-btn';
