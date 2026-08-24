@@ -1085,9 +1085,307 @@ html, body {
 }
 
 .step-header .btn-danger {
-	margin-left: auto;
 	padding: 4px 8px;
 	font-size: 0.8rem;
+}
+
+.btn-duplicate-step {
+	color: #94a3b8;
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	background: rgba(255, 255, 255, 0.03);
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	font-size: 0.72rem;
+	font-weight: 700;
+	transition: all var(--transition-fast);
+}
+
+.btn-duplicate-step:hover {
+	color: #a5b4fc;
+	border-color: rgba(99, 102, 241, 0.4);
+	background: rgba(99, 102, 241, 0.12);
+	box-shadow: 0 0 10px rgba(99, 102, 241, 0.25);
+}
+
+.step-card-highlighted {
+	animation: stepCardGlowPulse 1.8s ease-out;
+}
+
+@keyframes stepCardGlowPulse {
+	0% {
+		border-color: #818cf8;
+		box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.4), 0 0 24px rgba(99, 102, 241, 0.6);
+		transform: scale(1.015);
+	}
+	50% {
+		border-color: #a5b4fc;
+		box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.3), 0 0 16px rgba(99, 102, 241, 0.4);
+		transform: scale(1.005);
+	}
+	100% {
+		border-color: var(--border);
+		box-shadow: var(--shadow-sm);
+		transform: scale(1);
+	}
+}
+
+/* ── In-Between Step Insertion Dividers ──────────────────────────────────── */
+
+.step-insert-divider {
+	position: relative;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 18px;
+	margin: -2px 0;
+	z-index: 10;
+	transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.step-insert-divider:hover,
+.step-insert-divider:focus-within {
+	height: 38px;
+	margin: 4px 0;
+}
+
+.step-insert-line {
+	position: absolute;
+	left: 12px;
+	right: 12px;
+	top: 50%;
+	height: 1px;
+	background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.08) 20%, rgba(255, 255, 255, 0.08) 80%, transparent 100%);
+	pointer-events: none;
+	transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.step-insert-divider:hover .step-insert-line,
+.step-insert-divider:focus-within .step-insert-line {
+	background: linear-gradient(90deg, transparent 0%, rgba(99, 102, 241, 0.4) 20%, rgba(99, 102, 241, 0.4) 80%, transparent 100%);
+	box-shadow: 0 0 8px rgba(99, 102, 241, 0.3);
+}
+
+.btn-insert-divider {
+	position: relative;
+	z-index: 2;
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 2px 10px;
+	font-size: 0.72rem;
+	font-weight: 700;
+	color: var(--text-muted);
+	background: #12141f;
+	border: 1px dashed rgba(255, 255, 255, 0.15);
+	border-radius: 20px;
+	cursor: pointer;
+	opacity: 0.35;
+	transform: scale(0.92);
+	transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.step-insert-divider:hover .btn-insert-divider,
+.step-insert-divider:focus-within .btn-insert-divider,
+.btn-insert-divider:focus {
+	opacity: 1;
+	transform: scale(1);
+	color: #ffffff;
+	background: #181b2a;
+	border: 1px solid rgba(99, 102, 241, 0.5);
+	box-shadow: 0 0 14px rgba(99, 102, 241, 0.4), 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.btn-insert-divider span {
+	white-space: nowrap;
+}
+
+.step-insert-menu {
+	position: relative;
+	z-index: 5;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 4px 10px;
+	background: #131624;
+	border: 1px solid rgba(99, 102, 241, 0.4);
+	border-radius: 30px;
+	box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6), 0 0 16px rgba(99, 102, 241, 0.3);
+	animation: fadeInScale 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.step-insert-menu.hidden {
+	display: none !important;
+}
+
+.btn-insert-pill {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 4px 10px;
+	font-size: 0.76rem;
+	font-weight: 700;
+	border-radius: 16px;
+	border: 1px solid transparent;
+	cursor: pointer;
+	transition: all var(--transition-fast);
+	white-space: nowrap;
+}
+
+.btn-insert-pill.btn-insert-ex {
+	background: rgba(99, 102, 241, 0.15);
+	color: #a5b4fc;
+	border-color: rgba(99, 102, 241, 0.3);
+}
+
+.btn-insert-pill.btn-insert-ex:hover {
+	background: #6366f1;
+	color: #ffffff;
+	border-color: #818cf8;
+	box-shadow: 0 0 12px rgba(99, 102, 241, 0.5);
+	transform: translateY(-1px);
+}
+
+.btn-insert-pill.btn-insert-break {
+	background: rgba(245, 158, 11, 0.15);
+	color: #fde68a;
+	border-color: rgba(245, 158, 11, 0.3);
+}
+
+.btn-insert-pill.btn-insert-break:hover {
+	background: #f59e0b;
+	color: #0f172a;
+	border-color: #fbbf24;
+	box-shadow: 0 0 12px rgba(245, 158, 11, 0.5);
+	transform: translateY(-1px);
+}
+
+.btn-insert-pill.btn-insert-combo {
+	background: rgba(6, 182, 212, 0.15);
+	color: #a5f3fc;
+	border-color: rgba(6, 182, 212, 0.3);
+}
+
+.btn-insert-pill.btn-insert-combo:hover {
+	background: #06b6d4;
+	color: #ffffff;
+	border-color: #38bdf8;
+	box-shadow: 0 0 12px rgba(6, 182, 212, 0.5);
+	transform: translateY(-1px);
+}
+
+.btn-insert-pill.btn-insert-clip {
+	background: rgba(236, 72, 153, 0.15);
+	color: #fbcfe8;
+	border-color: rgba(236, 72, 153, 0.3);
+}
+
+.btn-insert-pill.btn-insert-clip:hover {
+	background: #ec4899;
+	color: #ffffff;
+	border-color: #f472b6;
+	box-shadow: 0 0 12px rgba(236, 72, 153, 0.5);
+	transform: translateY(-1px);
+}
+
+.btn-insert-close {
+	background: transparent;
+	border: none;
+	color: var(--text-muted);
+	font-size: 0.75rem;
+	padding: 2px 6px;
+	border-radius: 50%;
+	cursor: pointer;
+	transition: color var(--transition-fast);
+}
+
+.btn-insert-close:hover {
+	color: var(--text-primary);
+}
+
+/* ── Bottom Editor Add Bar ───────────────────────────────────────────────── */
+
+.editor-bottom-add-bar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 12px 18px;
+	margin-top: 10px;
+	background: rgba(18, 20, 32, 0.65);
+	border: 1px dashed rgba(255, 255, 255, 0.14);
+	border-radius: var(--radius-md);
+	flex-wrap: wrap;
+	transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.editor-bottom-add-bar:hover {
+	border-color: rgba(99, 102, 241, 0.4);
+	background: rgba(18, 20, 32, 0.9);
+}
+
+.editor-bottom-add-label {
+	font-size: 0.8rem;
+	font-weight: 700;
+	color: var(--text-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+}
+
+.editor-bottom-actions {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+.btn-action-clip {
+	background: linear-gradient(135deg, #ec4899 0%, #db2777 100%) !important;
+	color: #ffffff !important;
+	border: 1px solid rgba(255, 255, 255, 0.2) !important;
+	box-shadow: 0 0 16px rgba(236, 72, 153, 0.35);
+	font-weight: 700;
+}
+
+.btn-action-clip:hover {
+	background: linear-gradient(135deg, #f472b6 0%, #ec4899 100%) !important;
+	box-shadow: 0 0 24px rgba(236, 72, 153, 0.6);
+	transform: translateY(-1px);
+}
+
+.editor-empty-steps-card {
+	padding: 36px 24px;
+	text-align: center;
+	background: var(--bg-card);
+	border: 1px dashed var(--border);
+	border-radius: var(--radius-lg);
+	margin-top: 12px;
+}
+
+.editor-empty-steps-card .empty-steps-icon {
+	font-size: 2.5rem;
+	margin-bottom: 8px;
+}
+
+.editor-empty-steps-card h4 {
+	font-size: 1.1rem;
+	font-weight: 700;
+	color: var(--text-primary);
+	margin-bottom: 6px;
+}
+
+.editor-empty-steps-card p {
+	font-size: 0.85rem;
+	color: var(--text-muted);
+	margin-bottom: 18px;
+}
+
+.editor-empty-actions {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	flex-wrap: wrap;
 }
 
 .step-body {

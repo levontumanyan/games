@@ -171,6 +171,7 @@ function cacheDom() {
 	dom.addExerciseBtn = document.getElementById('add-exercise-btn');
 	dom.addComboBtn = document.getElementById('add-combo-btn');
 	dom.addBreakBtn = document.getElementById('add-break-btn');
+	dom.addClipBtn = document.getElementById('add-clip-btn');
 	dom.doneEditingBtn = document.getElementById('done-editing-btn');
 	dom.deleteRoutineBtn = document.getElementById('delete-routine-btn');
 
@@ -687,6 +688,7 @@ function bindEvents() {
 		});
 	}
 	if (dom.addBreakBtn) dom.addBreakBtn.addEventListener('click', handleAddBreak);
+	if (dom.addClipBtn) dom.addClipBtn.addEventListener('click', handleAddClip);
 	dom.doneEditingBtn.addEventListener('click', () => {
 		currentMode = 'view';
 		renderSelectedRoutine();

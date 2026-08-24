@@ -2,10 +2,10 @@
  * Editor module - Routine & step editing, drag-and-drop reorder.
  */
 
-import { generateId, parseYouTubeId, parseYouTubeInfo, parseTime, formatTime, formatFriendlyDuration, escapeHtml } from './utils.js';
+import { generateId, parseYouTubeId, parseYouTubeInfo, parseTime, formatTime, formatFriendlyDuration, escapeHtml, showToast } from './utils.js';
 import { saveAudioFile, deleteAudioFile } from './musicdb.js';
 import { showPrompt, showAlert } from './modal.js';
-import { getClipIcon, getTimerIcon, getBreakIcon, getComboIcon, getExerciseIcon } from './icons.js';
+import { getClipIcon, getTimerIcon, getBreakIcon, getComboIcon, getExerciseIcon, getDuplicateIcon, getPlusIcon } from './icons.js';
 import {
 	getExercises, filterExercises, createCustomExercise,
 	getCategoryBadgeHtml, getDisciplineBadgeHtml,
@@ -26,6 +26,24 @@ export function expandStep(stepId) {
 }
 
 /**
+ * Highlight and scroll to a specific step card element.
+ * @param {string} stepId
+ */
+export function highlightStepElement(stepId) {
+	if (!stepId) return;
+	requestAnimationFrame(() => {
+		const el = document.querySelector(`.step-card[data-id="${stepId}"]`);
+		if (el) {
+			el.classList.add('step-card-highlighted');
+			el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+			setTimeout(() => {
+				el.classList.remove('step-card-highlighted');
+			}, 1800);
+		}
+	});
+}
+
+/**
  * Toggle collapse/expand on all step cards in container.
  * @param {HTMLElement} container
  * @param {boolean} [forceExpand]
@@ -34,11 +52,21 @@ export function expandStep(stepId) {
 export function toggleAllStepCards(container, forceExpand) {
 	if (!container) return true;
 	const cards = container.querySelectorAll('.step-card');
-	const anyCollapsed = Array.from(cards).some(c => c.classList.contains('step-card-collapsed'));
-	const shouldExpand = typeof forceExpand === 'boolean' ? forceExpand : anyCollapsed;
+	if (cards.length === 0) return true;
+
+	const allExpanded = Array.from(cards).every(c => !c.classList.contains('step-card-collapsed'));
+	const shouldExpand = typeof forceExpand === 'boolean' ? forceExpand : !allExpanded;
 
 	cards.forEach(card => {
+		const stepId = card.dataset.id;
 		card.classList.toggle('step-card-collapsed', !shouldExpand);
+		if (stepId) {
+			if (shouldExpand) {
+				expandedStepIds.add(stepId);
+			} else {
+				expandedStepIds.delete(stepId);
+			}
+		}
 	});
 	return shouldExpand;
 }
@@ -64,10 +92,50 @@ export function renderEditor(routine, container, actions) {
 	const musicCard = createRoutineMusicCard(routine, onUpdate);
 	container.appendChild(musicCard);
 
+	if (routine.steps.length === 0) {
+		const emptyCard = document.createElement('div');
+		emptyCard.className = 'editor-empty-steps-card';
+		emptyCard.innerHTML = `
+			<div class="empty-steps-icon">🥋</div>
+			<h4>No steps in this workout yet</h4>
+			<p>Choose an option below to start building your routine:</p>
+			<div class="editor-empty-actions">
+				<button type="button" class="btn btn-primary btn-sm btn-empty-add-ex">🥋 + Add Exercise</button>
+				<button type="button" class="btn btn-secondary btn-sm btn-empty-add-break">⏱️ + Add Rest</button>
+				<button type="button" class="btn btn-secondary btn-sm btn-empty-add-combo">🔗 + Add Combo</button>
+				<button type="button" class="btn btn-secondary btn-sm btn-empty-add-clip">🎬 + Add Video Clip</button>
+			</div>
+		`;
+		emptyCard.querySelector('.btn-empty-add-ex').addEventListener('click', () => showAddExerciseModal(routine, onUpdate, 0));
+		emptyCard.querySelector('.btn-empty-add-break').addEventListener('click', () => {
+			const s = insertBreakStep(routine, 0, 30);
+			onUpdate();
+			highlightStepElement(s.id);
+		});
+		emptyCard.querySelector('.btn-empty-add-combo').addEventListener('click', () => showAddComboModal(routine, onUpdate, 0));
+		emptyCard.querySelector('.btn-empty-add-clip').addEventListener('click', () => {
+			const s = insertClipStep(routine, 0);
+			onUpdate();
+			highlightStepElement(s.id);
+		});
+		container.appendChild(emptyCard);
+		return;
+	}
+
+	// In-between insert divider before the first step
+	container.appendChild(createInsertDivider(routine, 0, onUpdate));
+
 	routine.steps.forEach((step, index) => {
 		const stepEl = createStepElement(step, index, routine, onUpdate, onTestStep);
 		container.appendChild(stepEl);
+
+		// In-between insert divider after each step
+		container.appendChild(createInsertDivider(routine, index + 1, onUpdate));
 	});
+
+	// Prominent bottom toolbar to add steps at the end without scrolling back to top
+	const bottomBar = createEditorBottomToolbar(routine, onUpdate);
+	container.appendChild(bottomBar);
 
 	// Make steps draggable for reordering
 	initDragAndDrop(container, routine, onUpdate);
@@ -227,6 +295,229 @@ export function createRoutineMusicCard(routine, onUpdate) {
 }
 
 /**
+ * Duplicate a step in a routine at index + 1.
+ * @param {Object} routine
+ * @param {number} index
+ * @returns {Object|null}
+ */
+export function duplicateStep(routine, index) {
+	if (!routine || !Array.isArray(routine.steps) || index < 0 || index >= routine.steps.length) return null;
+	const original = routine.steps[index];
+	const cloned = JSON.parse(JSON.stringify(original));
+	cloned.id = generateId();
+	if (Array.isArray(cloned.musicTracks)) {
+		cloned.musicTracks.forEach(t => { t.id = generateId(); });
+	}
+	routine.steps.splice(index + 1, 0, cloned);
+	expandStep(cloned.id);
+	return cloned;
+}
+
+/**
+ * Insert a new break/rest step at a specific index.
+ * @param {Object} routine
+ * @param {number} [index]
+ * @param {number} [durationSeconds=30]
+ * @returns {Object}
+ */
+export function insertBreakStep(routine, index, durationSeconds = 30) {
+	if (!routine) return null;
+	if (!Array.isArray(routine.steps)) routine.steps = [];
+	const step = createBreakStep(durationSeconds);
+	const targetIdx = (typeof index === 'number' && index >= 0 && index <= routine.steps.length) ? index : routine.steps.length;
+	routine.steps.splice(targetIdx, 0, step);
+	expandStep(step.id);
+	return step;
+}
+
+/**
+ * Insert a new timer step at a specific index.
+ * @param {Object} routine
+ * @param {number} [index]
+ * @returns {Object}
+ */
+export function insertTimerStep(routine, index) {
+	if (!routine) return null;
+	if (!Array.isArray(routine.steps)) routine.steps = [];
+	const step = createTimerStep();
+	const targetIdx = (typeof index === 'number' && index >= 0 && index <= routine.steps.length) ? index : routine.steps.length;
+	routine.steps.splice(targetIdx, 0, step);
+	expandStep(step.id);
+	return step;
+}
+
+/**
+ * Insert a new video clip step at a specific index.
+ * @param {Object} routine
+ * @param {number} [index]
+ * @returns {Object}
+ */
+export function insertClipStep(routine, index) {
+	if (!routine) return null;
+	if (!Array.isArray(routine.steps)) routine.steps = [];
+	const step = createClipStep();
+	const targetIdx = (typeof index === 'number' && index >= 0 && index <= routine.steps.length) ? index : routine.steps.length;
+	routine.steps.splice(targetIdx, 0, step);
+	expandStep(step.id);
+	return step;
+}
+
+/**
+ * Create an interactive in-between insertion divider element.
+ * @param {Object} routine
+ * @param {number} insertIndex
+ * @param {Function} onUpdate
+ * @returns {HTMLElement}
+ */
+export function createInsertDivider(routine, insertIndex, onUpdate) {
+	const divider = document.createElement('div');
+	divider.className = 'step-insert-divider';
+	divider.dataset.insertIndex = insertIndex;
+
+	const line = document.createElement('div');
+	line.className = 'step-insert-line';
+
+	const addBtn = document.createElement('button');
+	addBtn.type = 'button';
+	addBtn.className = 'btn-insert-divider';
+	addBtn.title = `Insert step here (position #${insertIndex + 1})`;
+	addBtn.innerHTML = `${getPlusIcon(12)} <span>Insert Step Here</span>`;
+
+	const menu = document.createElement('div');
+	menu.className = 'step-insert-menu hidden';
+
+	const exBtn = document.createElement('button');
+	exBtn.type = 'button';
+	exBtn.className = 'btn-insert-pill btn-insert-ex';
+	exBtn.innerHTML = `🥋 + Exercise`;
+	exBtn.addEventListener('click', (e) => {
+		e.stopPropagation();
+		showAddExerciseModal(routine, onUpdate, insertIndex);
+	});
+
+	const breakBtn = document.createElement('button');
+	breakBtn.type = 'button';
+	breakBtn.className = 'btn-insert-pill btn-insert-break';
+	breakBtn.innerHTML = `⏱️ + Rest`;
+	breakBtn.addEventListener('click', (e) => {
+		e.stopPropagation();
+		const step = insertBreakStep(routine, insertIndex, 30);
+		onUpdate();
+		showToast(`Inserted Rest break at #${insertIndex + 1}`);
+		highlightStepElement(step.id);
+	});
+
+	const comboBtn = document.createElement('button');
+	comboBtn.type = 'button';
+	comboBtn.className = 'btn-insert-pill btn-insert-combo';
+	comboBtn.innerHTML = `🔗 + Combo`;
+	comboBtn.addEventListener('click', (e) => {
+		e.stopPropagation();
+		showAddComboModal(routine, onUpdate, insertIndex);
+	});
+
+	const clipBtn = document.createElement('button');
+	clipBtn.type = 'button';
+	clipBtn.className = 'btn-insert-pill btn-insert-clip';
+	clipBtn.innerHTML = `🎬 + Video`;
+	clipBtn.addEventListener('click', (e) => {
+		e.stopPropagation();
+		const step = insertClipStep(routine, insertIndex);
+		onUpdate();
+		showToast(`Inserted Video Clip at #${insertIndex + 1}`);
+		highlightStepElement(step.id);
+	});
+
+	const closeBtn = document.createElement('button');
+	closeBtn.type = 'button';
+	closeBtn.className = 'btn-insert-close';
+	closeBtn.title = 'Close';
+	closeBtn.textContent = '✕';
+	closeBtn.addEventListener('click', (e) => {
+		e.stopPropagation();
+		menu.classList.add('hidden');
+		addBtn.classList.remove('hidden');
+	});
+
+	menu.append(exBtn, breakBtn, comboBtn, clipBtn, closeBtn);
+
+	addBtn.addEventListener('click', (e) => {
+		e.stopPropagation();
+		// Close any other open insert menus
+		document.querySelectorAll('.step-insert-menu:not(.hidden)').forEach(m => {
+			m.classList.add('hidden');
+			const b = m.parentElement?.querySelector('.btn-insert-divider');
+			if (b) b.classList.remove('hidden');
+		});
+		addBtn.classList.add('hidden');
+		menu.classList.remove('hidden');
+	});
+
+	divider.append(line, addBtn, menu);
+	return divider;
+}
+
+/**
+ * Create a prominent quick bottom toolbar for the editor.
+ * @param {Object} routine
+ * @param {Function} onUpdate
+ * @returns {HTMLElement}
+ */
+export function createEditorBottomToolbar(routine, onUpdate) {
+	const bar = document.createElement('div');
+	bar.className = 'editor-bottom-add-bar';
+
+	const title = document.createElement('span');
+	title.className = 'editor-bottom-add-label';
+	title.textContent = '+ Add to End:';
+
+	const actions = document.createElement('div');
+	actions.className = 'editor-bottom-actions';
+
+	const exBtn = document.createElement('button');
+	exBtn.type = 'button';
+	exBtn.className = 'btn btn-sm btn-action-exercise';
+	exBtn.innerHTML = `<span>🥋 Add Exercise</span>`;
+	exBtn.addEventListener('click', () => {
+		showAddExerciseModal(routine, onUpdate, routine.steps.length);
+	});
+
+	const comboBtn = document.createElement('button');
+	comboBtn.type = 'button';
+	comboBtn.className = 'btn btn-sm btn-action-combo';
+	comboBtn.innerHTML = `<span>🔗 Add Combo</span>`;
+	comboBtn.addEventListener('click', () => {
+		showAddComboModal(routine, onUpdate, routine.steps.length);
+	});
+
+	const restBtn = document.createElement('button');
+	restBtn.type = 'button';
+	restBtn.className = 'btn btn-sm btn-action-break';
+	restBtn.innerHTML = `<span>⏱️ Add Rest</span>`;
+	restBtn.addEventListener('click', () => {
+		const step = insertBreakStep(routine, routine.steps.length, 30);
+		onUpdate();
+		showToast(`Added Rest break at step #${routine.steps.length}`);
+		highlightStepElement(step.id);
+	});
+
+	const clipBtn = document.createElement('button');
+	clipBtn.type = 'button';
+	clipBtn.className = 'btn btn-sm btn-action-clip';
+	clipBtn.innerHTML = `<span>🎬 Add Video</span>`;
+	clipBtn.addEventListener('click', () => {
+		const step = insertClipStep(routine, routine.steps.length);
+		onUpdate();
+		showToast(`Added Video Clip at step #${routine.steps.length}`);
+		highlightStepElement(step.id);
+	});
+
+	actions.append(exBtn, comboBtn, restBtn, clipBtn);
+	bar.append(title, actions);
+	return bar;
+}
+
+/**
  * Create a DOM element for a single step.
  */
 function createStepElement(step, index, routine, onUpdate, onTestStep) {
@@ -308,6 +599,22 @@ function createStepElement(step, index, routine, onUpdate, onTestStep) {
 		});
 		headerActions.appendChild(testBtn);
 	}
+
+	const dupBtn = document.createElement('button');
+	dupBtn.type = 'button';
+	dupBtn.className = 'btn btn-ghost btn-xs btn-duplicate-step';
+	dupBtn.innerHTML = `${getDuplicateIcon(13)} Duplicate`;
+	dupBtn.title = 'Duplicate step (clone with all settings)';
+	dupBtn.addEventListener('click', (e) => {
+		e.stopPropagation();
+		const cloned = duplicateStep(routine, index);
+		if (cloned) {
+			onUpdate();
+			showToast(`Duplicated step #${index + 1}`);
+			highlightStepElement(cloned.id);
+		}
+	});
+	headerActions.appendChild(dupBtn);
 
 	const removeBtn = document.createElement('button');
 	removeBtn.className = 'btn btn-danger btn-sm';
@@ -1643,17 +1950,26 @@ export function createRoutine(title) {
  * @param {Object} routine
  * @param {Function} onUpdate
  */
-export function showAddExerciseModal(routine, onUpdate) {
+/**
+ * Open a quick selection modal to add an exercise into the active routine.
+ * @param {Object} routine
+ * @param {Function} onUpdate
+ * @param {number} [insertIndex=-1] - Optional index to insert at (defaults to end)
+ */
+export function showAddExerciseModal(routine, onUpdate, insertIndex = -1) {
 	const backdrop = document.createElement('div');
 	backdrop.className = 'modal-backdrop';
 
 	const modal = document.createElement('div');
 	modal.className = 'modal modal-add-picker';
 
+	const isInserting = typeof insertIndex === 'number' && insertIndex >= 0;
+	const titleText = isInserting ? `🥋 Select Exercise (Insert at #${insertIndex + 1})` : '🥋 Select Exercise';
+
 	modal.innerHTML = `
 		<div id="add-ex-picker-main">
 			<div class="modal-header">
-				<h3 class="modal-title">🥋 Select Exercise</h3>
+				<h3 class="modal-title">${titleText}</h3>
 				<button class="modal-close-btn" title="Close">✕</button>
 			</div>
 
@@ -1765,12 +2081,11 @@ export function showAddExerciseModal(routine, onUpdate) {
 
 		let newStep;
 		if (isVidAsset || hasVideo) {
-			newStep = createClipStep(
-				ex.name,
-				asset?.videoId || parseYouTubeId(ex.media_url),
-				asset?.startSeconds || 0,
-				asset?.endSeconds || ((asset?.startSeconds || 0) + quantity)
-			);
+			newStep = createClipStep();
+			newStep.label = ex.name;
+			newStep.videoId = asset?.videoId || parseYouTubeId(ex.media_url);
+			newStep.startSeconds = asset?.startSeconds || 0;
+			newStep.endSeconds = asset?.endSeconds || ((asset?.startSeconds || 0) + quantity);
 		} else {
 			newStep = createTimerStep();
 			newStep.label = ex.name;
@@ -1782,9 +2097,19 @@ export function showAddExerciseModal(routine, onUpdate) {
 		}
 
 		newStep.exercises = [{ id: ex.id, name: ex.name, category: ex.category, discipline: ex.discipline }];
-		routine.steps.push(newStep);
+
+		if (typeof insertIndex === 'number' && insertIndex >= 0 && insertIndex <= routine.steps.length) {
+			routine.steps.splice(insertIndex, 0, newStep);
+		} else {
+			routine.steps.push(newStep);
+		}
+
+		expandStep(newStep.id);
 		close();
 		onUpdate();
+		const pos = (typeof insertIndex === 'number' && insertIndex >= 0) ? insertIndex + 1 : routine.steps.length;
+		showToast(`Added "${ex.name}" at step #${pos}`);
+		highlightStepElement(newStep.id);
 	}
 
 	backBtn.addEventListener('click', closeSubwindow);
@@ -1857,8 +2182,9 @@ export function showAddExerciseModal(routine, onUpdate) {
  * Open a quick selection modal to add a combo into the active routine.
  * @param {Object} routine
  * @param {Function} onUpdate
+ * @param {number} [insertIndex=-1] - Optional index to insert at (defaults to end)
  */
-export function showAddComboModal(routine, onUpdate) {
+export function showAddComboModal(routine, onUpdate, insertIndex = -1) {
 	const combos = getCombos();
 
 	const backdrop = document.createElement('div');
@@ -1867,9 +2193,12 @@ export function showAddComboModal(routine, onUpdate) {
 	const modal = document.createElement('div');
 	modal.className = 'modal modal-add-picker';
 
+	const isInserting = typeof insertIndex === 'number' && insertIndex >= 0;
+	const titleText = isInserting ? `🔗 Select Combo Flow (Insert at #${insertIndex + 1})` : '🔗 Select Combo Flow';
+
 	modal.innerHTML = `
 		<div class="modal-header">
-			<h3 class="modal-title">🔗 Select Combo Flow</h3>
+			<h3 class="modal-title">${titleText}</h3>
 			<button class="modal-close-btn" title="Close">✕</button>
 		</div>
 
@@ -1930,12 +2259,11 @@ export function showAddComboModal(routine, onUpdate) {
 
 				let newStep;
 				if (isVideo) {
-					newStep = createClipStep(
-						combo.name,
-						asset.videoId || parseYouTubeId(asset.url || combo.media_url),
-						asset.startSeconds || 0,
-						asset.endSeconds || ((asset.startSeconds || 0) + (combo.default_quantity || 190))
-					);
+					newStep = createClipStep();
+					newStep.label = combo.name;
+					newStep.videoId = asset.videoId || parseYouTubeId(asset.url || combo.media_url);
+					newStep.startSeconds = asset.startSeconds || 0;
+					newStep.endSeconds = asset.endSeconds || ((asset.startSeconds || 0) + (combo.default_quantity || 190));
 				} else {
 					newStep = createTimerStep();
 					newStep.label = combo.name;
@@ -1944,9 +2272,19 @@ export function showAddComboModal(routine, onUpdate) {
 
 				newStep.flow_type = combo.flow_type || 'alternating';
 				newStep.exercises = exList;
-				routine.steps.push(newStep);
+
+				if (typeof insertIndex === 'number' && insertIndex >= 0 && insertIndex <= routine.steps.length) {
+					routine.steps.splice(insertIndex, 0, newStep);
+				} else {
+					routine.steps.push(newStep);
+				}
+
+				expandStep(newStep.id);
 				close();
 				onUpdate();
+				const pos = (typeof insertIndex === 'number' && insertIndex >= 0) ? insertIndex + 1 : routine.steps.length;
+				showToast(`Added "${combo.name}" at step #${pos}`);
+				highlightStepElement(newStep.id);
 			});
 
 			listEl.appendChild(item);
@@ -1961,4 +2299,5 @@ export function showAddComboModal(routine, onUpdate) {
 	backdrop.appendChild(modal);
 	document.body.appendChild(backdrop);
 }
+
 
