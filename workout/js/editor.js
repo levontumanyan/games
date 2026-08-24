@@ -133,10 +133,6 @@ export function renderEditor(routine, container, actions) {
 		container.appendChild(createInsertDivider(routine, index + 1, onUpdate));
 	});
 
-	// Prominent bottom toolbar to add steps at the end without scrolling back to top
-	const bottomBar = createEditorBottomToolbar(routine, onUpdate);
-	container.appendChild(bottomBar);
-
 	// Make steps draggable for reordering
 	initDragAndDrop(container, routine, onUpdate);
 }
@@ -458,66 +454,6 @@ export function createInsertDivider(routine, insertIndex, onUpdate) {
 }
 
 /**
- * Create a prominent quick bottom toolbar for the editor.
- * @param {Object} routine
- * @param {Function} onUpdate
- * @returns {HTMLElement}
- */
-export function createEditorBottomToolbar(routine, onUpdate) {
-	const bar = document.createElement('div');
-	bar.className = 'editor-bottom-add-bar';
-
-	const title = document.createElement('span');
-	title.className = 'editor-bottom-add-label';
-	title.textContent = '+ Add to End:';
-
-	const actions = document.createElement('div');
-	actions.className = 'editor-bottom-actions';
-
-	const exBtn = document.createElement('button');
-	exBtn.type = 'button';
-	exBtn.className = 'btn btn-sm btn-action-exercise';
-	exBtn.innerHTML = `<span>🥋 Add Exercise</span>`;
-	exBtn.addEventListener('click', () => {
-		showAddExerciseModal(routine, onUpdate, routine.steps.length);
-	});
-
-	const comboBtn = document.createElement('button');
-	comboBtn.type = 'button';
-	comboBtn.className = 'btn btn-sm btn-action-combo';
-	comboBtn.innerHTML = `<span>🔗 Add Combo</span>`;
-	comboBtn.addEventListener('click', () => {
-		showAddComboModal(routine, onUpdate, routine.steps.length);
-	});
-
-	const restBtn = document.createElement('button');
-	restBtn.type = 'button';
-	restBtn.className = 'btn btn-sm btn-action-break';
-	restBtn.innerHTML = `<span>⏱️ Add Rest</span>`;
-	restBtn.addEventListener('click', () => {
-		const step = insertBreakStep(routine, routine.steps.length, 30);
-		onUpdate();
-		showToast(`Added Rest break at step #${routine.steps.length}`);
-		highlightStepElement(step.id);
-	});
-
-	const clipBtn = document.createElement('button');
-	clipBtn.type = 'button';
-	clipBtn.className = 'btn btn-sm btn-action-clip';
-	clipBtn.innerHTML = `<span>🎬 Add Video</span>`;
-	clipBtn.addEventListener('click', () => {
-		const step = insertClipStep(routine, routine.steps.length);
-		onUpdate();
-		showToast(`Added Video Clip at step #${routine.steps.length}`);
-		highlightStepElement(step.id);
-	});
-
-	actions.append(exBtn, comboBtn, restBtn, clipBtn);
-	bar.append(title, actions);
-	return bar;
-}
-
-/**
  * Create a DOM element for a single step.
  */
 function createStepElement(step, index, routine, onUpdate, onTestStep) {
@@ -603,7 +539,7 @@ function createStepElement(step, index, routine, onUpdate, onTestStep) {
 	const dupBtn = document.createElement('button');
 	dupBtn.type = 'button';
 	dupBtn.className = 'btn btn-ghost btn-xs btn-duplicate-step';
-	dupBtn.innerHTML = `${getDuplicateIcon(13)} Duplicate`;
+	dupBtn.innerHTML = getDuplicateIcon(14);
 	dupBtn.title = 'Duplicate step (clone with all settings)';
 	dupBtn.addEventListener('click', (e) => {
 		e.stopPropagation();
