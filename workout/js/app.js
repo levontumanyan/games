@@ -5,7 +5,8 @@
 import {
 	loadRoutines, saveRoutines, fetchServerRoutines,
 	saveServerRoutines, exportRoutines, exportSingleRoutine,
-	importRoutines, encodeRoutineToShareUrl, getSharedRoutineFromUrl
+	importRoutines, encodeRoutineToShareUrl, getSharedRoutineFromUrl,
+	fetchStats
 } from './storage.js';
 import { renderEditor, createClipStep, createTimerStep, createBreakStep, createRoutine } from './editor.js';
 import { renderRoutineOverview } from './view.js';
@@ -19,7 +20,8 @@ import {
 	initMusic, setVolume as setMusicVolume, nextTrack, prevTrack,
 	muteMusic, unmuteMusic, isMuted as isMusicMuted
 } from './music.js';
-import { formatTime, copyToClipboard, showToast } from './utils.js';
+import { formatTime, formatFriendlyDuration, copyToClipboard, showToast } from './utils.js';
+import { getClipIcon, getTimerIcon, getBreakIcon } from './icons.js';
 import { showPrompt, showConfirm, showAlert } from './modal.js';
 import {
 	getActiveUserId, getActiveDisplayName, setActiveUser,
@@ -117,15 +119,8 @@ async function init() {
 					renderSelectedRoutine();
 				}
 			},
-			onRoutineComplete: (session) => {
-				dom.timerOverlay.classList.remove('hidden');
-				dom.videoWrapper.classList.add('hidden');
-				if (dom.upNextCard) dom.upNextCard.classList.add('hidden');
-				dom.timerDisplay.textContent = '🎉';
-				dom.timerLabel.textContent = 'Workout Complete!';
-				dom.currentStepLabel.textContent = 'Great job!';
-				dom.currentStepType.textContent = session ? `${formatTime(session.duration_seconds || 0)} active` : '';
-				dom.nextStepPreview.textContent = 'Streak updated! 🔥';
+			onRoutineComplete: (session, completedRoutine) => {
+				showCompletionModal(session, completedRoutine);
 			},
 		}
 	);
@@ -217,6 +212,19 @@ function cacheDom() {
 
 	// Hidden YouTube music player
 	dom.ytMusicPlayer = document.getElementById('yt-music-player');
+
+	// Workout Completion Modal
+	dom.completionModalBackdrop = document.getElementById('completion-modal-backdrop');
+	dom.completionModalCloseBtn = document.getElementById('completion-modal-close-btn');
+	dom.completionRoutineTitle = document.getElementById('completion-routine-title');
+	dom.completionStatDuration = document.getElementById('completion-stat-duration');
+	dom.completionStatSteps = document.getElementById('completion-stat-steps');
+	dom.completionStatStreak = document.getElementById('completion-stat-streak');
+	dom.completionStepsCount = document.getElementById('completion-steps-count');
+	dom.completionStepsList = document.getElementById('completion-steps-list');
+	dom.completionStatsBtn = document.getElementById('completion-stats-btn');
+	dom.completionRestartBtn = document.getElementById('completion-restart-btn');
+	dom.completionDoneBtn = document.getElementById('completion-done-btn');
 }
 
 function updateProfileButtonLabel() {
@@ -435,6 +443,34 @@ function bindEvents() {
 			dom.musicMuteBtn.textContent = '🔇';
 		}
 	});
+
+	// Completion modal buttons
+	if (dom.completionModalCloseBtn) {
+		dom.completionModalCloseBtn.addEventListener('click', closeCompletionModal);
+	}
+	if (dom.completionModalBackdrop) {
+		dom.completionModalBackdrop.addEventListener('click', (e) => {
+			if (e.target === dom.completionModalBackdrop) closeCompletionModal();
+		});
+	}
+	if (dom.completionDoneBtn) {
+		dom.completionDoneBtn.addEventListener('click', closeCompletionModal);
+	}
+	if (dom.completionStatsBtn) {
+		dom.completionStatsBtn.addEventListener('click', () => {
+			closeCompletionModal();
+			switchTab('stats');
+		});
+	}
+	if (dom.completionRestartBtn) {
+		dom.completionRestartBtn.addEventListener('click', () => {
+			const routine = completedWorkoutRoutine || getSelectedRoutine();
+			closeCompletionModal();
+			if (routine) {
+				startRoutine(routine, 0);
+			}
+		});
+	}
 }
 
 /**
@@ -827,6 +863,104 @@ function escapeHtml(str) {
 	const div = document.createElement('div');
 	div.textContent = str;
 	return div.innerHTML;
+}
+
+// ── Workout Completion Modal ──────────────────────────────────────────────
+
+let completedWorkoutRoutine = null;
+
+function closeCompletionModal() {
+	if (dom.completionModalBackdrop) {
+		dom.completionModalBackdrop.classList.add('hidden');
+	}
+	renderSelectedRoutine();
+}
+
+async function showCompletionModal(session, completedRoutine) {
+	completedWorkoutRoutine = completedRoutine;
+	if (!dom.completionModalBackdrop) return;
+
+	// Populate title
+	if (dom.completionRoutineTitle) {
+		dom.completionRoutineTitle.textContent = completedRoutine?.title || 'Workout';
+	}
+
+	// Calculate total active duration
+	let totalSecs = session?.duration_seconds || 0;
+	if (totalSecs <= 0 && completedRoutine?.steps) {
+		totalSecs = completedRoutine.steps.reduce((sum, s) => {
+			if (s.type === 'timer') return sum + (s.durationSeconds || 0);
+			if (s.type === 'clip') return sum + Math.max(0, (s.endSeconds || 0) - (s.startSeconds || 0));
+			return sum;
+		}, 0);
+	}
+	if (dom.completionStatDuration) {
+		dom.completionStatDuration.textContent = formatFriendlyDuration(totalSecs);
+	}
+
+	// Steps completed count
+	const totalSteps = completedRoutine?.steps?.length || 0;
+	if (dom.completionStatSteps) {
+		dom.completionStatSteps.textContent = `${totalSteps} / ${totalSteps}`;
+	}
+	if (dom.completionStepsCount) {
+		dom.completionStepsCount.textContent = `${totalSteps} steps`;
+	}
+
+	// Fetch streak info asynchronously
+	if (dom.completionStatStreak) {
+		dom.completionStatStreak.textContent = '🔥 Updating...';
+		try {
+			const stats = await fetchStats();
+			if (stats && typeof stats.current_streak === 'number') {
+				dom.completionStatStreak.textContent = stats.current_streak > 0
+					? `${stats.current_streak} ${stats.current_streak === 1 ? 'day' : 'days'}`
+					: '1 day';
+			} else {
+				dom.completionStatStreak.textContent = '🔥 Active';
+			}
+		} catch (err) {
+			dom.completionStatStreak.textContent = '🔥 Active';
+		}
+	}
+
+	// Populate steps list
+	if (dom.completionStepsList && completedRoutine?.steps) {
+		dom.completionStepsList.innerHTML = '';
+		completedRoutine.steps.forEach((step, idx) => {
+			const item = document.createElement('div');
+			item.className = 'completion-step-item';
+
+			let iconSvg = '';
+			let typeLabel = '';
+			let durStr = '';
+
+			if (step.type === 'clip') {
+				iconSvg = getClipIcon(16);
+				const clipDur = Math.max(0, (step.endSeconds || 0) - (step.startSeconds || 0));
+				typeLabel = `Video Clip · ${formatTime(step.startSeconds || 0)} → ${formatTime(step.endSeconds || 0)}`;
+				durStr = formatFriendlyDuration(clipDur);
+			} else {
+				const isBreak = step.label?.toLowerCase().includes('rest') || step.label?.toLowerCase().includes('break');
+				iconSvg = isBreak ? getBreakIcon(16) : getTimerIcon(16);
+				typeLabel = isBreak ? 'Rest Break' : 'Exercise Timer';
+				durStr = formatFriendlyDuration(step.durationSeconds || 0);
+			}
+
+			item.innerHTML = `
+				<span class="completion-step-num">${idx + 1}</span>
+				<span class="completion-step-icon">${iconSvg}</span>
+				<div class="completion-step-info">
+					<span class="completion-step-name">${escapeHtml(step.label || 'Step')}</span>
+					<span class="completion-step-meta">${escapeHtml(typeLabel)}</span>
+				</div>
+				<span class="completion-step-dur">${escapeHtml(durStr)}</span>
+			`;
+			dom.completionStepsList.appendChild(item);
+		});
+	}
+
+	dom.completionModalBackdrop.classList.remove('hidden');
 }
 
 // ── Bootstrap ───────────────────────────────────────────────────────────────

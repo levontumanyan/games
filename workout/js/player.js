@@ -39,9 +39,17 @@ let isPaused = false;
 let timerInterval = null;
 let timerRemaining = 0;
 
+// Clip state
+let clipCheckInterval = null;
+let clipHasStartedPlaying = false;
+let clipLoadedAt = 0;
+
 // HUD idle timer
 let hudIdleTimer = null;
 const HUD_IDLE_DELAY = 3000;
+
+// Screen Wake Lock (prevent sleep / screensaver during workouts & fullscreen)
+let wakeLock = null;
 
 // DOM references (set by init)
 let dom = {};
@@ -98,6 +106,7 @@ export async function initPlayer(domRefs, callbacks) {
 				disableCaptions();
 			},
 			onStateChange: onYTStateChange,
+			onError: onYTError,
 		}
 	});
 
@@ -122,12 +131,26 @@ export async function initPlayer(domRefs, callbacks) {
 		});
 	}
 
-	// Fullscreen change listener to sync icons across all browsers
-	const onFsChange = () => syncFullscreenIcons();
+	// Fullscreen change listener to sync icons across all browsers and manage wake lock
+	const onFsChange = () => {
+		syncFullscreenIcons();
+		if (isNativeFullscreen() || (isPlaying && !isPaused)) {
+			requestWakeLock();
+		} else {
+			releaseWakeLock();
+		}
+	};
 	document.addEventListener('fullscreenchange', onFsChange);
 	document.addEventListener('webkitfullscreenchange', onFsChange);
 	document.addEventListener('mozfullscreenchange', onFsChange);
 	document.addEventListener('MSFullscreenChange', onFsChange);
+
+	// Screen Wake Lock re-acquisition when returning to active tab/window
+	document.addEventListener('visibilitychange', () => {
+		if (document.visibilityState === 'visible' && (isNativeFullscreen() || (isPlaying && !isPaused))) {
+			requestWakeLock();
+		}
+	});
 
 	// User activity events for auto-hiding HUD
 	const resetActivity = () => {
@@ -174,6 +197,35 @@ export async function initPlayer(domRefs, callbacks) {
 			resetPlayback();
 		}
 	});
+}
+
+/**
+ * Request Screen Wake Lock to prevent the screen/laptop from going to sleep or screensaver.
+ */
+export async function requestWakeLock() {
+	if (!('wakeLock' in navigator)) return;
+	try {
+		if (!wakeLock || wakeLock.released) {
+			wakeLock = await navigator.wakeLock.request('screen');
+			wakeLock.addEventListener('release', () => {
+				wakeLock = null;
+			});
+		}
+	} catch (err) {
+		console.warn('Screen Wake Lock request failed:', err);
+	}
+}
+
+/**
+ * Release Screen Wake Lock.
+ */
+export async function releaseWakeLock() {
+	if (wakeLock) {
+		try {
+			await wakeLock.release();
+		} catch {}
+		wakeLock = null;
+	}
 }
 
 /**
@@ -285,17 +337,73 @@ function disableCaptions() {
 }
 
 /**
+ * Start active polling to monitor clip playback position against step.endSeconds.
+ * @param {Object} step
+ */
+function startClipMonitor(step) {
+	clearClipMonitor();
+	if (!step || step.type !== 'clip' || !step.endSeconds) return;
+
+	clipCheckInterval = setInterval(() => {
+		if (!isPlaying || isPaused || !ytReady || !ytPlayer) return;
+		try {
+			const currentTime = ytPlayer.getCurrentTime();
+			if (typeof currentTime === 'number' && currentTime >= step.endSeconds - 0.25) {
+				clearClipMonitor();
+				try { ytPlayer.pauseVideo(); } catch {}
+				advanceStep();
+			}
+		} catch (e) {
+			// Ignore polling exceptions
+		}
+	}, 200);
+}
+
+/**
+ * Clear clip monitor interval.
+ */
+function clearClipMonitor() {
+	if (clipCheckInterval) {
+		clearInterval(clipCheckInterval);
+		clipCheckInterval = null;
+	}
+}
+
+/**
  * Handle YouTube player state changes.
  */
 function onYTStateChange(event) {
 	if (event.data === YT.PlayerState.PLAYING) {
 		disableCaptions();
-	} else if (event.data === YT.PlayerState.ENDED) {
-		// Video segment finished, advance to next step
-		if (isPlaying && !isPaused) {
-			advanceStep();
+		clipHasStartedPlaying = true;
+		if (isPlaying && !isPaused && currentRoutine) {
+			const currentStep = currentRoutine.steps[currentStepIndex];
+			if (currentStep && currentStep.type === 'clip') {
+				startClipMonitor(currentStep);
+			}
 		}
+	} else if (event.data === YT.PlayerState.ENDED) {
+		// Verify this is a legitimate ENDED event and not a spurious transition event
+		if (!isPlaying || isPaused || !currentRoutine) return;
+		const currentStep = currentRoutine.steps[currentStepIndex];
+		if (!currentStep || currentStep.type !== 'clip') return;
+
+		// If the video never actually entered PLAYING state for this step, or loaded less than 1s ago, ignore it
+		if (!clipHasStartedPlaying || (Date.now() - clipLoadedAt < 1000)) {
+			console.warn('Ignoring spurious YouTube ENDED event for step:', currentStepIndex);
+			return;
+		}
+
+		clearClipMonitor();
+		advanceStep();
 	}
+}
+
+/**
+ * Handle YouTube player error events.
+ */
+function onYTError(event) {
+	console.warn('YouTube Player error code:', event.data);
 }
 
 /**
@@ -312,6 +420,7 @@ export function startRoutine(routine, startIndex = 0) {
 	isPaused = false;
 
 	startSession(routine);
+	requestWakeLock();
 
 	showPlayerUI();
 	executeCurrentStep();
@@ -345,6 +454,11 @@ function executeCurrentStep() {
  * Execute a video clip step.
  */
 function executeClipStep(step) {
+	clearTimer();
+	clearClipMonitor();
+	clipHasStartedPlaying = false;
+	clipLoadedAt = Date.now();
+
 	dom.timerOverlay.classList.add('hidden');
 	dom.videoWrapper.classList.remove('hidden');
 
@@ -385,6 +499,9 @@ function executeClipStep(step) {
  * Execute a timer/interval step.
  */
 function executeTimerStep(step) {
+	clearClipMonitor();
+	clipHasStartedPlaying = false;
+
 	// Stop YouTube playback and hide
 	if (ytReady && ytPlayer) {
 		try { ytPlayer.pauseVideo(); } catch {}
@@ -549,6 +666,7 @@ function clearTimer() {
 		clearInterval(timerInterval);
 		timerInterval = null;
 	}
+	clearClipMonitor();
 }
 
 /**
@@ -600,10 +718,14 @@ export function togglePause() {
 		// Resume
 		isPaused = false;
 		resumeSession();
+		requestWakeLock();
 		const step = currentRoutine.steps[currentStepIndex];
 
-		if (step.type === 'clip' && ytReady && ytPlayer) {
-			ytPlayer.playVideo();
+		if (step.type === 'clip') {
+			if (ytReady && ytPlayer) {
+				ytPlayer.playVideo();
+			}
+			startClipMonitor(step);
 		} else if (step.type === 'timer') {
 			// Restart timer from remaining
 			const totalDuration = step.durationSeconds;
@@ -622,6 +744,10 @@ export function togglePause() {
 		isPaused = true;
 		pauseSession();
 		clearTimer();
+		clearClipMonitor();
+		if (!isNativeFullscreen()) {
+			releaseWakeLock();
+		}
 
 		if (ytReady && ytPlayer) {
 			try { ytPlayer.pauseVideo(); } catch {}
@@ -654,9 +780,14 @@ export function resetPlayback() {
  */
 export function stopPlayback(isCompleted = false) {
 	clearTimer();
+	clearClipMonitor();
 	clearHudIdleTimer();
+	if (!isNativeFullscreen()) {
+		releaseWakeLock();
+	}
 	isPlaying = false;
 	isPaused = false;
+	clipHasStartedPlaying = false;
 	currentStepIndex = -1;
 
 	if (ytReady && ytPlayer) {

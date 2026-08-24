@@ -5,7 +5,7 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>Workout Routine Player</title>
 	<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💪</text></svg>">
-	<link rel="stylesheet" href="css/styles.css?v=13">
+	<link rel="stylesheet" href="css/styles.css?v=14">
 </head>
 <body>
 	<div class="app-container">
@@ -248,6 +248,54 @@
 		<div id="yt-music-player"></div>
 	</div>
 
+	<!-- Workout Completion Modal -->
+	<div id="completion-modal-backdrop" class="modal-backdrop hidden">
+		<div class="modal-window completion-modal-window">
+			<div class="modal-header completion-modal-header">
+				<div class="completion-header-content">
+					<span class="completion-hero-emoji">🎉</span>
+					<div>
+						<h3 class="modal-title completion-title">Workout Completed!</h3>
+						<p id="completion-routine-title" class="completion-subtitle">Workout Title</p>
+					</div>
+				</div>
+				<button id="completion-modal-close-btn" class="modal-close-btn" title="Close">✕</button>
+			</div>
+			<div class="modal-body completion-modal-body">
+				<!-- Stat Badges -->
+				<div class="completion-stats-grid">
+					<div class="completion-stat-card">
+						<span class="completion-stat-icon">⏱</span>
+						<span id="completion-stat-duration" class="completion-stat-val">0m 0s</span>
+						<span class="completion-stat-lbl">Active Time</span>
+					</div>
+					<div class="completion-stat-card">
+						<span class="completion-stat-icon">✅</span>
+						<span id="completion-stat-steps" class="completion-stat-val">0 / 0</span>
+						<span class="completion-stat-lbl">Steps Done</span>
+					</div>
+					<div class="completion-stat-card">
+						<span class="completion-stat-icon">🔥</span>
+						<span id="completion-stat-streak" class="completion-stat-val">—</span>
+						<span class="completion-stat-lbl">Daily Streak</span>
+					</div>
+				</div>
+
+				<!-- What Was Done Section -->
+				<div class="completion-section-header">
+					<span>What Was Done</span>
+					<span id="completion-steps-count" class="completion-count-pill">0 steps</span>
+				</div>
+				<div id="completion-steps-list" class="completion-steps-list"></div>
+			</div>
+			<div class="modal-footer completion-modal-footer">
+				<button id="completion-stats-btn" class="btn btn-secondary btn-sm">📊 View Stats</button>
+				<button id="completion-restart-btn" class="btn btn-secondary btn-sm">🔄 Restart</button>
+				<button id="completion-done-btn" class="btn btn-primary btn-sm">✓ Done</button>
+			</div>
+		</div>
+	</div>
+
 	<!-- Modern Modal Dialog -->
 	<div id="modal-backdrop" class="modal-backdrop hidden">
 		<div class="modal-window">
@@ -268,6 +316,6 @@
 		</div>
 	</div>
 
-	<script type="module" src="js/app.js?v=12"></script>
+	<script type="module" src="js/app.js?v=13"></script>
 </body>
 </html>
