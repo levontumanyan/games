@@ -1644,10 +1644,6 @@ export function createRoutine(title) {
  * @param {Function} onUpdate
  */
 export function showAddExerciseModal(routine, onUpdate) {
-	const exercises = getExercises();
-
-	const backdrop = document.createElement('div');
-export function showAddExercisePicker(routine, onUpdate) {
 	const backdrop = document.createElement('div');
 	backdrop.className = 'modal-backdrop';
 
