@@ -338,6 +338,9 @@ export async function encodeRoutineToShareUrl(routine) {
 	// Clean payload to keep shared workouts clean and portable
 	const payload = {
 		title: routine.title || 'Shared Workout',
+		musicTracks: Array.isArray(routine.musicTracks) ? routine.musicTracks
+			.filter(t => t.source === 'youtube' && t.videoId)
+			.map(t => ({ source: 'youtube', videoId: t.videoId, label: t.label || '' })) : [],
 		steps: (routine.steps || []).map(s => {
 			const clean = {
 				type: s.type,
@@ -444,6 +447,12 @@ export async function fetchSharedRoutineFromServer(shareId) {
 		return {
 			id: generateId(),
 			title: data.title,
+			musicTracks: Array.isArray(data.musicTracks) ? data.musicTracks.map(t => ({
+				id: generateId(),
+				source: 'youtube',
+				videoId: t.videoId,
+				label: t.label || ''
+			})) : [],
 			steps: data.steps.map(s => ({
 				id: generateId(),
 				type: s.type || 'timer',
@@ -514,6 +523,12 @@ export async function decodeRoutineFromSharePayload(token) {
 		return {
 			id: generateId(),
 			title: parsed.title,
+			musicTracks: Array.isArray(parsed.musicTracks) ? parsed.musicTracks.map(t => ({
+				id: generateId(),
+				source: 'youtube',
+				videoId: t.videoId,
+				label: t.label || ''
+			})) : [],
 			steps: parsed.steps.map(s => ({
 				id: generateId(),
 				type: s.type || 'timer',

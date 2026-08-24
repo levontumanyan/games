@@ -74,8 +74,7 @@ export async function initMusic(containerEl, callbacks) {
 			modestbranding: 1,
 			rel: 0,
 			fs: 0,
-			playsinline: 1,
-			origin: window.location.origin
+			playsinline: 1
 		},
 		events: {
 			onReady: () => {
@@ -106,6 +105,11 @@ export function unlockAudio() {
 		audioElement.play().then(() => {
 			audioElement.pause();
 		}).catch(() => {});
+	}
+	if (ytMusicPlayer && ytMusicReady) {
+		try {
+			ytMusicPlayer.unMute();
+		} catch {}
 	}
 }
 

@@ -60,6 +60,10 @@ export function renderEditor(routine, container, actions) {
 		return;
 	}
 
+	// Workout-level background music playlist card
+	const musicCard = createRoutineMusicCard(routine, onUpdate);
+	container.appendChild(musicCard);
+
 	routine.steps.forEach((step, index) => {
 		const stepEl = createStepElement(step, index, routine, onUpdate, onTestStep);
 		container.appendChild(stepEl);
@@ -67,6 +71,159 @@ export function renderEditor(routine, container, actions) {
 
 	// Make steps draggable for reordering
 	initDragAndDrop(container, routine, onUpdate);
+}
+
+/**
+ * Create a UI card for editing workout-level background music.
+ * @param {Object} routine
+ * @param {Function} onUpdate
+ * @returns {HTMLElement}
+ */
+export function createRoutineMusicCard(routine, onUpdate) {
+	if (!routine.musicTracks) routine.musicTracks = [];
+	const card = document.createElement('div');
+	card.className = 'routine-music-card';
+
+	const header = document.createElement('div');
+	header.className = 'routine-music-header';
+
+	const titleInfo = document.createElement('div');
+	titleInfo.className = 'routine-music-title-info';
+
+	const title = document.createElement('span');
+	title.className = 'routine-music-title';
+	title.innerHTML = `🎵 Workout Music Playlist <span class="badge-music-count">${routine.musicTracks.length}</span>`;
+
+	const subtext = document.createElement('span');
+	subtext.className = 'routine-music-subtext';
+	subtext.textContent = 'Plays during all timer & rest intervals (video clips auto-mute).';
+
+	titleInfo.append(title, subtext);
+
+	const actions = document.createElement('div');
+	actions.className = 'routine-music-actions';
+
+	const addYtBtn = document.createElement('button');
+	addYtBtn.className = 'btn btn-ghost btn-xs';
+	addYtBtn.type = 'button';
+	addYtBtn.textContent = '🔗 + YouTube Track';
+	addYtBtn.addEventListener('click', async (e) => {
+		e.stopPropagation();
+		const url = await showPrompt({
+			title: 'Add YouTube Music to Workout',
+			message: 'Paste a YouTube or YouTube Music link:',
+			placeholder: 'https://music.youtube.com/watch?v=... or https://youtube.com/watch?v=...',
+			confirmText: 'Next'
+		});
+		if (!url) return;
+		const videoId = parseYouTubeId(url);
+		if (!videoId) {
+			await showAlert({
+				title: 'Invalid Link',
+				message: 'Could not find a valid YouTube video ID from that link. Please check the URL and try again.'
+			});
+			return;
+		}
+		const label = await showPrompt({
+			title: 'Track Label',
+			message: 'Display name for this track:',
+			defaultValue: 'Music Track',
+			placeholder: 'e.g. Upbeat Workout Beat',
+			confirmText: 'Add Track'
+		}) || 'Music Track';
+		routine.musicTracks.push({
+			id: generateId(),
+			source: 'youtube',
+			videoId: videoId,
+			label: label
+		});
+		onUpdate();
+	});
+
+	const addFileBtn = document.createElement('button');
+	addFileBtn.className = 'btn btn-ghost btn-xs';
+	addFileBtn.type = 'button';
+	addFileBtn.textContent = '📁 + Audio File';
+	addFileBtn.addEventListener('click', (e) => {
+		e.stopPropagation();
+		const input = document.createElement('input');
+		input.type = 'file';
+		input.accept = 'audio/*';
+		input.onchange = async (ev) => {
+			const file = ev.target.files[0];
+			if (!file) return;
+			const trackId = generateId();
+			const label = await showPrompt({
+				title: 'Audio Track Label',
+				message: 'Display name for this audio file:',
+				defaultValue: file.name,
+				confirmText: 'Add Track'
+			}) || file.name;
+			try {
+				await saveAudioFile(trackId, file, file.name);
+				routine.musicTracks.push({
+					id: trackId,
+					source: 'file',
+					fileId: trackId,
+					fileName: file.name,
+					label: label
+				});
+				onUpdate();
+			} catch (err) {
+				await showAlert({
+					title: 'File Save Error',
+					message: 'Failed to save audio file: ' + err.message
+				});
+			}
+		};
+		input.click();
+	});
+
+	actions.append(addYtBtn, addFileBtn);
+	header.append(titleInfo, actions);
+	card.appendChild(header);
+
+	if (routine.musicTracks.length === 0) {
+		const empty = document.createElement('p');
+		empty.className = 'routine-music-empty';
+		empty.textContent = 'No workout-level music tracks. Add YouTube links or audio files to play continuously across intervals.';
+		card.appendChild(empty);
+	} else {
+		const list = document.createElement('div');
+		list.className = 'routine-music-list';
+		routine.musicTracks.forEach((track, i) => {
+			const trackEl = document.createElement('div');
+			trackEl.className = 'step-music-track';
+
+			const badge = document.createElement('span');
+			badge.className = 'track-source-badge';
+			badge.textContent = track.source === 'youtube' ? '▶ YT' : '📁 File';
+
+			const trackLabel = document.createElement('span');
+			trackLabel.className = 'track-label';
+			trackLabel.textContent = track.label || (track.source === 'youtube' ? track.videoId : track.fileName);
+
+			const removeBtn = document.createElement('button');
+			removeBtn.className = 'btn btn-danger btn-sm';
+			removeBtn.textContent = '✕';
+			removeBtn.type = 'button';
+			removeBtn.title = 'Remove track from workout';
+			removeBtn.addEventListener('click', async (e) => {
+				e.stopPropagation();
+				if (track.source === 'file' && track.fileId) {
+					try { await deleteAudioFile(track.fileId); } catch {}
+				}
+				routine.musicTracks.splice(i, 1);
+				onUpdate();
+			});
+
+			trackEl.append(badge, trackLabel, removeBtn);
+			list.appendChild(trackEl);
+		});
+		card.appendChild(list);
+	}
+
+	return card;
 }
 
 /**

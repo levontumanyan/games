@@ -83,6 +83,9 @@ export function renderRoutineOverview(routine, container, actions = {}) {
 	if (breakCount > 0) {
 		stats.push({ label: `${breakCount} Breaks`, icon: getBreakIcon(14) });
 	}
+	if (routine.musicTracks && routine.musicTracks.length > 0) {
+		stats.push({ label: `${routine.musicTracks.length} Music Tracks`, icon: '🎵' });
+	}
 
 	stats.forEach(stat => {
 		const pill = document.createElement('span');
@@ -230,6 +233,27 @@ export function renderRoutineOverview(routine, container, actions = {}) {
 			</div>
 		`;
 		container.appendChild(muscleCard);
+	}
+
+	// ── Workout Background Music Summary ─────────────────────────────────────
+	if (routine.musicTracks && routine.musicTracks.length > 0) {
+		const musicCard = document.createElement('div');
+		musicCard.className = 'view-music-summary-card';
+		musicCard.innerHTML = `
+			<div class="view-music-summary-header">
+				<span class="view-music-title">🎵 Background Music Playlist (${routine.musicTracks.length} tracks)</span>
+				<span class="view-music-subtext">Plays during timer & rest steps</span>
+			</div>
+			<div class="view-music-list">
+				${routine.musicTracks.map(t => `
+					<div class="view-music-chip">
+						<span class="track-source-badge">${t.source === 'youtube' ? '▶ YT' : '📁 File'}</span>
+						<span class="track-chip-label">${escapeHtml(t.label || (t.source === 'youtube' ? t.videoId : t.fileName))}</span>
+					</div>
+				`).join('')}
+			</div>
+		`;
+		container.appendChild(musicCard);
 	}
 
 	// ── Steps Feed ───────────────────────────────────────────────────────────
