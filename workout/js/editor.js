@@ -1647,36 +1647,173 @@ export function showAddExerciseModal(routine, onUpdate) {
 	const exercises = getExercises();
 
 	const backdrop = document.createElement('div');
+export function showAddExercisePicker(routine, onUpdate) {
+	const backdrop = document.createElement('div');
 	backdrop.className = 'modal-backdrop';
 
 	const modal = document.createElement('div');
 	modal.className = 'modal modal-add-picker';
 
 	modal.innerHTML = `
-		<div class="modal-header">
-			<h3 class="modal-title">🥋 Select Exercise</h3>
-			<button class="modal-close-btn" title="Close">✕</button>
-		</div>
-
-		<div class="modal-body">
-			<div class="search-box-wrapper" style="margin-bottom:12px;">
-				<span class="search-icon">🔍</span>
-				<input type="text" id="add-ex-search" class="input combo-search-input" placeholder="Search exercises (pushups, teep, cobra, star jumps)..." autofocus>
+		<div id="add-ex-picker-main">
+			<div class="modal-header">
+				<h3 class="modal-title">🥋 Select Exercise</h3>
+				<button class="modal-close-btn" title="Close">✕</button>
 			</div>
 
-			<div id="add-ex-list" class="add-picker-list"></div>
+			<div class="modal-body">
+				<div class="search-box-wrapper" style="margin-bottom:12px;">
+					<span class="search-icon">🔍</span>
+					<input type="text" id="add-ex-search" class="input combo-search-input" placeholder="Search exercises (pushups, teep, squats)..." autofocus>
+				</div>
+
+				<div id="add-ex-list" class="add-picker-list"></div>
+			</div>
+		</div>
+
+		<div id="add-ex-picker-subwindow" class="add-picker-subwindow" style="display:none;">
+			<div class="modal-header">
+				<div>
+					<h3 class="modal-title" id="add-ex-sub-title">Exercise Name</h3>
+					<div class="modal-subtitle" id="add-ex-sub-meta" style="margin-top:2px;">Category • Discipline</div>
+				</div>
+				<button class="btn btn-ghost btn-xs" id="add-ex-sub-back-btn">← Back</button>
+			</div>
+
+			<div class="modal-body" style="gap:16px;">
+				<div class="sub-reps-box">
+					<div class="sub-reps-counter-row">
+						<button class="btn-sub-step" id="add-ex-step-minus" type="button">−</button>
+						<input type="number" id="add-ex-num-input" class="sub-reps-input" value="20" min="1" max="999">
+						<button class="btn-sub-step" id="add-ex-step-plus" type="button">+</button>
+						<span class="sub-unit-label" id="add-ex-unit-label">Reps</span>
+					</div>
+
+					<div class="sub-chips-row" id="add-ex-preset-chips"></div>
+				</div>
+
+				<div class="modal-footer" style="padding:0;border:none;margin-top:8px;">
+					<button class="btn btn-ghost btn-sm" id="add-ex-sub-cancel-btn">Cancel</button>
+					<button class="btn btn-primary btn-sm" id="add-ex-sub-confirm-btn">✓ Add to Workout (Enter)</button>
+				</div>
+			</div>
 		</div>
 	`;
 
 	const close = () => backdrop.remove();
 
-	modal.querySelector('.modal-close-btn').addEventListener('click', close);
+	modal.querySelectorAll('.modal-close-btn').forEach(btn => btn.addEventListener('click', close));
 	backdrop.addEventListener('click', (e) => {
 		if (e.target === backdrop) close();
 	});
 
 	const searchInput = modal.querySelector('#add-ex-search');
 	const listEl = modal.querySelector('#add-ex-list');
+	const mainView = modal.querySelector('#add-ex-picker-main');
+	const subView = modal.querySelector('#add-ex-picker-subwindow');
+	const subTitle = modal.querySelector('#add-ex-sub-title');
+	const subMeta = modal.querySelector('#add-ex-sub-meta');
+	const numInput = modal.querySelector('#add-ex-num-input');
+	const unitLabel = modal.querySelector('#add-ex-unit-label');
+	const presetChips = modal.querySelector('#add-ex-preset-chips');
+	const backBtn = modal.querySelector('#add-ex-sub-back-btn');
+	const cancelBtn = modal.querySelector('#add-ex-sub-cancel-btn');
+	const confirmBtn = modal.querySelector('#add-ex-sub-confirm-btn');
+	const stepMinus = modal.querySelector('#add-ex-step-minus');
+	const stepPlus = modal.querySelector('#add-ex-step-plus');
+
+	let activeEx = null;
+
+	function openSubwindow(ex) {
+		activeEx = ex;
+		subTitle.textContent = ex.name;
+		subMeta.textContent = [ex.category, ex.discipline].filter(Boolean).join(' • ');
+
+		const isReps = (ex.default_mode || 'reps') === 'reps';
+		unitLabel.textContent = isReps ? 'Reps' : 'Seconds';
+		numInput.value = ex.default_quantity || (isReps ? 20 : 30);
+
+		const chipValues = isReps ? [10, 15, 20, 25, 30, 50] : [15, 30, 45, 60, 90, 120];
+		presetChips.innerHTML = chipValues.map(v => `<button type="button" class="sub-chip-pill" data-val="${v}">${v}${isReps ? '' : 's'}</button>`).join('');
+
+		presetChips.querySelectorAll('.sub-chip-pill').forEach(chip => {
+			chip.addEventListener('click', () => {
+				numInput.value = chip.getAttribute('data-val');
+				numInput.focus();
+				numInput.select();
+			});
+		});
+
+		mainView.style.display = 'none';
+		subView.style.display = 'block';
+		numInput.focus();
+		numInput.select();
+	}
+
+	function closeSubwindow() {
+		subView.style.display = 'none';
+		mainView.style.display = 'block';
+		activeEx = null;
+		searchInput.focus();
+	}
+
+	function commitAdd() {
+		if (!activeEx) return;
+		const ex = activeEx;
+		const isReps = (ex.default_mode || 'reps') === 'reps';
+		const quantity = parseInt(numInput.value, 10) || ex.default_quantity || (isReps ? 20 : 30);
+
+		const hasVideo = ex.media_url && (ex.media_url.includes('youtube') || ex.media_url.includes('youtu.be'));
+		const asset = (ex.media_assets || [])[0];
+		const isVidAsset = asset && (asset.type === 'video' || Boolean(asset.videoId));
+
+		let newStep;
+		if (isVidAsset || hasVideo) {
+			newStep = createClipStep(
+				ex.name,
+				asset?.videoId || parseYouTubeId(ex.media_url),
+				asset?.startSeconds || 0,
+				asset?.endSeconds || ((asset?.startSeconds || 0) + quantity)
+			);
+		} else {
+			newStep = createTimerStep();
+			newStep.label = ex.name;
+			newStep.stepMode = ex.default_mode || 'reps';
+			newStep.targetReps = isReps ? quantity : 0;
+			newStep.durationSeconds = !isReps ? quantity : 30;
+			newStep.gifUrl = asset?.url || ex.media_url || '';
+			newStep.mediaUrl = asset?.url || ex.media_url || '';
+		}
+
+		newStep.exercises = [{ id: ex.id, name: ex.name, category: ex.category, discipline: ex.discipline }];
+		routine.steps.push(newStep);
+		close();
+		onUpdate();
+	}
+
+	backBtn.addEventListener('click', closeSubwindow);
+	cancelBtn.addEventListener('click', closeSubwindow);
+	confirmBtn.addEventListener('click', commitAdd);
+
+	stepMinus.addEventListener('click', () => {
+		const isReps = (activeEx?.default_mode || 'reps') === 'reps';
+		let val = parseInt(numInput.value, 10) || 10;
+		numInput.value = Math.max(1, val - (isReps ? 5 : 5));
+	});
+
+	stepPlus.addEventListener('click', () => {
+		const isReps = (activeEx?.default_mode || 'reps') === 'reps';
+		let val = parseInt(numInput.value, 10) || 10;
+		numInput.value = val + (isReps ? 5 : 5);
+	});
+
+	numInput.addEventListener('keydown', (e) => {
+		if (e.key === 'Enter') {
+			commitAdd();
+		} else if (e.key === 'Escape') {
+			closeSubwindow();
+		}
+	});
 
 	function renderList(query = '') {
 		const filtered = filterExercises(query);
@@ -1691,48 +1828,20 @@ export function showAddExerciseModal(routine, onUpdate) {
 			const item = document.createElement('div');
 			item.className = 'add-picker-item';
 
-			const isReps = (ex.default_mode || 'reps') === 'reps';
-			const modeStr = isReps ? `🔢 ${ex.default_quantity || 20} Reps` : `⏱️ ${formatTime(ex.default_quantity || 30)}`;
+			const metaText = [ex.category, ex.discipline].filter(Boolean).join(' • ');
 
 			item.innerHTML = `
 				<div class="add-picker-item-left">
-					${getCategoryBadgeHtml(ex.category)}
 					<span class="add-picker-name">${escapeHtml(ex.name)}</span>
-					${ex.discipline ? getDisciplineBadgeHtml(ex.discipline) : ''}
+					${metaText ? `<span class="add-picker-sub">${escapeHtml(metaText)}</span>` : ''}
 				</div>
 				<div class="add-picker-item-right">
-					<span class="add-picker-mode">${modeStr}</span>
-					<button class="btn btn-primary btn-xs">+ Add</button>
+					<button class="btn-picker-add" title="Configure reps & add">+</button>
 				</div>
 			`;
 
 			item.addEventListener('click', () => {
-				const hasVideo = ex.media_url && (ex.media_url.includes('youtube') || ex.media_url.includes('youtu.be'));
-				const asset = (ex.media_assets || [])[0];
-				const isVidAsset = asset && (asset.type === 'video' || Boolean(asset.videoId));
-
-				let newStep;
-				if (isVidAsset || hasVideo) {
-					newStep = createClipStep(
-						ex.name,
-						asset?.videoId || parseYouTubeId(ex.media_url),
-						asset?.startSeconds || 0,
-						asset?.endSeconds || ((asset?.startSeconds || 0) + (ex.default_quantity || 60))
-					);
-				} else {
-					newStep = createTimerStep();
-					newStep.label = ex.name;
-					newStep.stepMode = ex.default_mode || 'reps';
-					newStep.targetReps = isReps ? (ex.default_quantity || 20) : 0;
-					newStep.durationSeconds = !isReps ? (ex.default_quantity || 30) : 30;
-					newStep.gifUrl = asset?.url || ex.media_url || '';
-					newStep.mediaUrl = asset?.url || ex.media_url || '';
-				}
-
-				newStep.exercises = [{ id: ex.id, name: ex.name, category: ex.category, discipline: ex.discipline }];
-				routine.steps.push(newStep);
-				close();
-				onUpdate();
+				openSubwindow(ex);
 			});
 
 			listEl.appendChild(item);

@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Add Exercise Modal - Two-Line Breadcrumb & Quick Reps</title>
+	<style>
+		:root {
+			--bg-primary: #090a10;
+			--bg-secondary: #10121a;
+			--bg-card: #161824;
+			--bg-card-elevated: #1c1f30;
+			--bg-hover: #222538;
+			--text-primary: #f1f2f8;
+			--text-secondary: #9ea2bd;
+			--text-muted: #656984;
+			--border: rgba(255, 255, 255, 0.08);
+			--border-hover: rgba(255, 255, 255, 0.18);
+			--accent: #6366f1;
+			--accent-hover: #4f46e5;
+			--accent-subtle: rgba(99, 102, 241, 0.15);
+			--accent-glow: rgba(99, 102, 241, 0.25);
+			--radius-sm: 6px;
+			--radius-md: 8px;
+			--radius: 12px;
+			--radius-pill: 9999px;
+		}
+
+		* {
+			box-sizing: border-box;
+			margin: 0;
+			padding: 0;
+		}
+
+		body {
+			background: var(--bg-primary);
+			color: var(--text-primary);
+			font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
+			padding: 36px 20px 80px 20px;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+		}
+
+		.header-intro {
+			max-width: 900px;
+			width: 100%;
+			margin-bottom: 28px;
+			text-align: center;
+		}
+
+		.header-intro h1 {
+			font-size: 1.85rem;
+			font-weight: 800;
+			margin-bottom: 8px;
+			background: linear-gradient(135deg, #ffffff 0%, #a5b4fc 100%);
+			-webkit-background-clip: text;
+			-webkit-text-fill-color: transparent;
+		}
+
+		.header-intro p {
+			color: var(--text-secondary);
+			font-size: 0.95rem;
+			line-height: 1.5;
+		}
+
+		.demo-container {
+			max-width: 620px;
+			width: 100%;
+			display: flex;
+			flex-direction: column;
+			gap: 20px;
+		}
+
+		.modal-mock-full {
+			background: var(--bg-card);
+			border: 1px solid var(--border);
+			border-radius: var(--radius);
+			box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+			overflow: hidden;
+			position: relative;
+			min-height: 400px;
+		}
+
+		.modal-mock-header {
+			padding: 16px 20px 14px 20px;
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			border-bottom: 1px solid var(--border);
+		}
+
+		.modal-mock-title {
+			font-size: 1.05rem;
+			font-weight: 700;
+			display: flex;
+			align-items: center;
+			gap: 8px;
+		}
+
+		.modal-mock-close {
+			color: var(--text-muted);
+			font-size: 0.95rem;
+			cursor: pointer;
+			padding: 4px;
+		}
+
+		.modal-mock-body {
+			padding: 16px 20px;
+			display: flex;
+			flex-direction: column;
+			gap: 12px;
+		}
+
+		.mock-search-wrapper {
+			position: relative;
+			display: flex;
+			align-items: center;
+		}
+
+		.mock-search-icon {
+			position: absolute;
+			left: 12px;
+			font-size: 0.9rem;
+			opacity: 0.6;
+		}
+
+		.mock-search-input {
+			width: 100%;
+			padding: 9px 12px 9px 36px;
+			background: rgba(0, 0, 0, 0.35);
+			border: 1px solid var(--border);
+			border-radius: var(--radius-sm);
+			color: var(--text-primary);
+			font-size: 0.9rem;
+			outline: none;
+			transition: border-color 0.15s ease;
+		}
+		.mock-search-input:focus {
+			border-color: var(--accent);
+		}
+
+		.mock-items-list {
+			display: flex;
+			flex-direction: column;
+			gap: 7px;
+			max-height: 320px;
+			overflow-y: auto;
+		}
+
+		/* ── Two-Line Breadcrumb Item ──────────────────────────────────── */
+		.ex-picker-row {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			padding: 9px 14px;
+			background: rgba(255, 255, 255, 0.03);
+			border: 1px solid var(--border);
+			border-radius: var(--radius-sm);
+			cursor: pointer;
+			transition: all 0.15s ease;
+		}
+		.ex-picker-row:hover {
+			background: var(--bg-hover);
+			border-color: var(--accent);
+			transform: translateX(2px);
+		}
+		.ex-picker-left {
+			display: flex;
+			flex-direction: column;
+			gap: 2px;
+			min-width: 0;
+			flex: 1;
+		}
+		.ex-picker-name {
+			font-size: 0.92rem;
+			font-weight: 700;
+			color: var(--text-primary);
+			white-space: nowrap;
+			overflow: hidden;
+			text-overflow: ellipsis;
+		}
+		.ex-picker-sub {
+			font-size: 0.74rem;
+			color: var(--text-muted);
+			display: flex;
+			align-items: center;
+			gap: 6px;
+		}
+		.ex-picker-dot {
+			opacity: 0.35;
+		}
+		.ex-picker-add-btn {
+			width: 28px;
+			height: 28px;
+			border-radius: 50%;
+			background: var(--bg-hover);
+			border: 1px solid var(--border);
+			color: var(--text-primary);
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			font-size: 0.95rem;
+			flex-shrink: 0;
+			transition: all 0.15s ease;
+		}
+		.ex-picker-row:hover .ex-picker-add-btn {
+			background: var(--accent);
+			border-color: var(--accent);
+			color: #ffffff;
+			transform: scale(1.1);
+			box-shadow: 0 0 10px var(--accent-glow);
+		}
+
+		/* ── Quick Reps Subwindow / Popover ────────────────────────────── */
+		.reps-subwindow {
+			position: absolute;
+			inset: 0;
+			background: var(--bg-card);
+			display: flex;
+			flex-direction: column;
+			padding: 24px;
+			animation: fadeIn 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+			z-index: 10;
+		}
+
+		@keyframes fadeIn {
+			from { opacity: 0; transform: scale(0.98); }
+			to { opacity: 1; transform: scale(1); }
+		}
+
+		.reps-sub-header {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			margin-bottom: 20px;
+		}
+
+		.reps-sub-title-box {
+			display: flex;
+			flex-direction: column;
+			gap: 3px;
+		}
+
+		.reps-sub-title {
+			font-size: 1.15rem;
+			font-weight: 800;
+			color: var(--text-primary);
+		}
+
+		.reps-sub-meta {
+			font-size: 0.8rem;
+			color: var(--text-secondary);
+		}
+
+		.reps-sub-back-btn {
+			padding: 5px 10px;
+			border-radius: var(--radius-sm);
+			background: transparent;
+			border: 1px solid var(--border);
+			color: var(--text-secondary);
+			font-size: 0.78rem;
+			font-weight: 600;
+			cursor: pointer;
+		}
+		.reps-sub-back-btn:hover {
+			background: var(--bg-hover);
+			color: var(--text-primary);
+		}
+
+		.reps-input-section {
+			background: var(--bg-secondary);
+			border: 1px solid var(--border);
+			border-radius: var(--radius-md);
+			padding: 22px;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			gap: 16px;
+			margin-bottom: auto;
+		}
+
+		.reps-counter-row {
+			display: flex;
+			align-items: center;
+			gap: 12px;
+		}
+
+		.reps-step-btn {
+			width: 38px;
+			height: 38px;
+			border-radius: 50%;
+			background: var(--bg-hover);
+			border: 1px solid var(--border);
+			color: var(--text-primary);
+			font-size: 1.2rem;
+			font-weight: 700;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			cursor: pointer;
+			transition: all 0.15s ease;
+		}
+		.reps-step-btn:hover {
+			background: var(--accent-subtle);
+			border-color: var(--accent);
+			color: #ffffff;
+		}
+
+		.reps-number-input {
+			width: 100px;
+			height: 48px;
+			font-size: 1.8rem;
+			font-weight: 800;
+			text-align: center;
+			background: var(--bg-card);
+			border: 2px solid var(--accent);
+			border-radius: var(--radius-sm);
+			color: #ffffff;
+			outline: none;
+			box-shadow: 0 0 16px var(--accent-glow);
+		}
+
+		.reps-unit-label {
+			font-size: 0.95rem;
+			font-weight: 700;
+			color: var(--text-secondary);
+		}
+
+		/* Quick Chips */
+		.reps-chips-row {
+			display: flex;
+			gap: 8px;
+			flex-wrap: wrap;
+			justify-content: center;
+		}
+
+		.reps-chip {
+			padding: 4px 10px;
+			border-radius: var(--radius-pill);
+			background: rgba(255, 255, 255, 0.05);
+			border: 1px solid var(--border);
+			color: var(--text-secondary);
+			font-size: 0.8rem;
+			font-weight: 600;
+			cursor: pointer;
+			transition: all 0.12s ease;
+		}
+		.reps-chip:hover {
+			background: var(--accent-subtle);
+			color: #a5b4fc;
+			border-color: rgba(99, 102, 241, 0.4);
+		}
+
+		.reps-sub-actions {
+			display: flex;
+			gap: 10px;
+			margin-top: 16px;
+		}
+
+		.btn-confirm-add {
+			flex: 1;
+			padding: 10px 16px;
+			background: var(--accent);
+			color: #ffffff;
+			border: none;
+			border-radius: var(--radius-sm);
+			font-size: 0.92rem;
+			font-weight: 700;
+			cursor: pointer;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			gap: 6px;
+			transition: all 0.15s ease;
+		}
+		.btn-confirm-add:hover {
+			background: var(--accent-hover);
+			box-shadow: 0 0 16px var(--accent-glow);
+		}
+
+		.btn-cancel-sub {
+			padding: 10px 16px;
+			background: transparent;
+			color: var(--text-secondary);
+			border: 1px solid var(--border);
+			border-radius: var(--radius-sm);
+			font-size: 0.88rem;
+			font-weight: 600;
+			cursor: pointer;
+		}
+		.btn-cancel-sub:hover {
+			background: var(--bg-hover);
+			color: var(--text-primary);
+		}
+
+		/* Added workout step visualizer */
+		.added-log-box {
+			background: var(--bg-card);
+			border: 1px solid var(--border);
+			border-radius: var(--radius);
+			padding: 16px 20px;
+		}
+
+		.added-log-title {
+			font-size: 0.85rem;
+			font-weight: 700;
+			color: var(--text-secondary);
+			margin-bottom: 8px;
+			text-transform: uppercase;
+			letter-spacing: 0.04em;
+		}
+
+		.added-log-feed {
+			display: flex;
+			flex-direction: column;
+			gap: 6px;
+		}
+
+		.added-log-chip {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			padding: 6px 12px;
+			border-radius: var(--radius-sm);
+			background: rgba(16, 185, 129, 0.1);
+			border: 1px solid rgba(16, 185, 129, 0.3);
+			color: #6ee7b7;
+			font-size: 0.82rem;
+			font-weight: 600;
+		}
+	</style>
+</head>
+<body>
+
+	<div class="header-intro">
+		<h1>Two-Line Breadcrumb + Quick Reps Subwindow</h1>
+		<p>1. The initial list is ultra-clean with no rep numbers cluttering the cards.<br>2. Click any exercise below to open the quick reps subwindow with the default pre-filled.<br>3. Change the number or hit <strong>Enter</strong> to add it instantly.</p>
+	</div>
+
+	<div class="demo-container">
+
+		<div class="modal-mock-full" id="mock-modal">
+
+			<!-- Step 1: Clean Two-Line Exercise List -->
+			<div id="view-list">
+				<div class="modal-mock-header">
+					<div class="modal-mock-title">🥋 Select Exercise</div>
+					<span class="modal-mock-close">✕</span>
+				</div>
+
+				<div class="modal-mock-body">
+					<div class="mock-search-wrapper">
+						<span class="mock-search-icon">🔍</span>
+						<input type="text" id="demo-search" class="mock-search-input" placeholder="Search exercises (e.g. pushup, teep, squats)..." value="pushup">
+					</div>
+
+					<div class="mock-items-list" id="demo-list">
+						<!-- Injected by JS -->
+					</div>
+				</div>
+			</div>
+
+			<!-- Step 2: Quick Reps Subwindow (Shown when an exercise is clicked) -->
+			<div id="view-subwindow" class="reps-subwindow" style="display:none;">
+				<div class="reps-sub-header">
+					<div class="reps-sub-title-box">
+						<div class="reps-sub-title" id="sub-ex-name">Diamond Pushup</div>
+						<div class="reps-sub-meta" id="sub-ex-meta">Strength / Force • Calisthenics</div>
+					</div>
+					<button class="reps-sub-back-btn" id="sub-back-btn">← Back</button>
+				</div>
+
+				<div class="reps-input-section">
+					<div class="reps-counter-row">
+						<button class="reps-step-btn" id="btn-minus">-</button>
+						<input type="number" id="sub-num-input" class="reps-number-input" value="20" min="1" max="999">
+						<button class="reps-step-btn" id="btn-plus">+</button>
+						<span class="reps-unit-label" id="sub-unit-label">Reps</span>
+					</div>
+
+					<div class="reps-chips-row" id="reps-preset-chips">
+						<button class="reps-chip" data-val="10">10</button>
+						<button class="reps-chip" data-val="15">15</button>
+						<button class="reps-chip" data-val="20">20</button>
+						<button class="reps-chip" data-val="25">25</button>
+						<button class="reps-chip" data-val="30">30</button>
+						<button class="reps-chip" data-val="50">50</button>
+					</div>
+				</div>
+
+				<div class="reps-sub-actions">
+					<button class="btn-cancel-sub" id="btn-sub-cancel">Cancel</button>
+					<button class="btn-confirm-add" id="btn-sub-confirm">✓ Add to Workout (Enter)</button>
+				</div>
+			</div>
+
+		</div>
+
+		<!-- Added Log Feed Demo -->
+		<div class="added-log-box">
+			<div class="added-log-title">Workout Routine Preview:</div>
+			<div class="added-log-feed" id="added-log-feed">
+				<div style="font-size:0.8rem; color:var(--text-muted);">No exercises added yet. Click an exercise above!</div>
+			</div>
+		</div>
+
+	</div>
+
+	<script>
+		const sampleExercises = [
+			{ id: '1', name: 'Diamond Pushup', category: 'Strength / Force', discipline: 'Calisthenics', mode: 'reps', defaultQty: 15, icon: '💪' },
+			{ id: '2', name: 'Mountain Climbers', category: 'Cardio & HIIT', discipline: 'General Fitness', mode: 'time', defaultQty: 45, icon: '🫀' },
+			{ id: '3', name: 'Standard Pushup', category: 'Strength / Force', discipline: 'Calisthenics', mode: 'reps', defaultQty: 20, icon: '💪' },
+			{ id: '4', name: 'Muay Thai Lead Teep Kick', category: 'Striking & Combos', discipline: 'Muay Thai', mode: 'reps', defaultQty: 20, icon: '🥊' },
+			{ id: '5', name: 'Bodyweight Squats', category: 'Lower Body', discipline: 'Calisthenics', mode: 'reps', defaultQty: 25, icon: '🦵' }
+		];
+
+		let activeExercise = null;
+		const viewList = document.getElementById('view-list');
+		const viewSubwindow = document.getElementById('view-subwindow');
+		const listContainer = document.getElementById('demo-list');
+		const searchInput = document.getElementById('demo-search');
+		const subExName = document.getElementById('sub-ex-name');
+		const subExMeta = document.getElementById('sub-ex-meta');
+		const subNumInput = document.getElementById('sub-num-input');
+		const subUnitLabel = document.getElementById('sub-unit-label');
+		const addedLogFeed = document.getElementById('added-log-feed');
+		const presetChipsContainer = document.getElementById('reps-preset-chips');
+
+		function renderExercises(query = '') {
+			listContainer.innerHTML = '';
+			const q = query.toLowerCase().trim();
+			const filtered = sampleExercises.filter(e => e.name.toLowerCase().includes(q) || e.discipline.toLowerCase().includes(q) || e.category.toLowerCase().includes(q));
+
+			if (filtered.length === 0) {
+				listContainer.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-muted);font-size:0.85rem">No matching exercises</div>';
+				return;
+			}
+
+			filtered.forEach(ex => {
+				const row = document.createElement('div');
+				row.className = 'ex-picker-row';
+				row.innerHTML = `
+					<div class="ex-picker-left">
+						<span class="ex-picker-name">${ex.name}</span>
+						<span class="ex-picker-sub">${ex.category} <span class="ex-picker-dot">•</span> ${ex.discipline}</span>
+					</div>
+					<div class="ex-picker-add-btn">+</div>
+				`;
+				row.addEventListener('click', () => openQuickReps(ex));
+				listContainer.appendChild(row);
+			});
+		}
+
+		function openQuickReps(ex) {
+			activeExercise = ex;
+			subExName.textContent = ex.name;
+			subExMeta.textContent = `${ex.category} • ${ex.discipline}`;
+			const isReps = ex.mode === 'reps';
+			subUnitLabel.textContent = isReps ? 'Reps' : 'Sec';
+			subNumInput.value = ex.defaultQty;
+
+			// Customize preset chips
+			presetChipsContainer.innerHTML = isReps
+				? [10, 15, 20, 25, 30, 50].map(v => `<button class="reps-chip" data-val="${v}">${v}</button>`).join('')
+				: [15, 30, 45, 60, 90, 120].map(v => `<button class="reps-chip" data-val="${v}">${v}s</button>`).join('');
+
+			presetChipsContainer.querySelectorAll('.reps-chip').forEach(btn => {
+				btn.addEventListener('click', () => {
+					subNumInput.value = btn.getAttribute('data-val');
+					subNumInput.focus();
+					subNumInput.select();
+				});
+			});
+
+			viewList.style.display = 'none';
+			viewSubwindow.style.display = 'flex';
+			subNumInput.focus();
+			subNumInput.select();
+		}
+
+		function closeQuickReps() {
+			viewSubwindow.style.display = 'none';
+			viewList.style.display = 'block';
+			activeExercise = null;
+		}
+
+		function confirmAdd() {
+			if (!activeExercise) return;
+			const qty = parseInt(subNumInput.value, 10) || activeExercise.defaultQty;
+			const unit = activeExercise.mode === 'reps' ? 'Reps' : 'Sec';
+
+			if (addedLogFeed.querySelector('div[style*="text-muted"]')) {
+				addedLogFeed.innerHTML = '';
+			}
+
+			const chip = document.createElement('div');
+			chip.className = 'added-log-chip';
+			chip.innerHTML = `
+				<span>✓ Added <strong>${activeExercise.name}</strong></span>
+				<span>${qty} ${unit}</span>
+			`;
+			addedLogFeed.prepend(chip);
+
+			closeQuickReps();
+		}
+
+		document.getElementById('sub-back-btn').addEventListener('click', closeQuickReps);
+		document.getElementById('btn-sub-cancel').addEventListener('click', closeQuickReps);
+		document.getElementById('btn-sub-confirm').addEventListener('click', confirmAdd);
+
+		document.getElementById('btn-minus').addEventListener('click', () => {
+			let val = parseInt(subNumInput.value, 10) || 10;
+			subNumInput.value = Math.max(1, val - (activeExercise?.mode === 'reps' ? 5 : 5));
+		});
+
+		document.getElementById('btn-plus').addEventListener('click', () => {
+			let val = parseInt(subNumInput.value, 10) || 10;
+			subNumInput.value = val + (activeExercise?.mode === 'reps' ? 5 : 5);
+		});
+
+		subNumInput.addEventListener('keydown', (e) => {
+			if (e.key === 'Enter') {
+				confirmAdd();
+			} else if (e.key === 'Escape') {
+				closeQuickReps();
+			}
+		});
+
+		searchInput.addEventListener('input', (e) => renderExercises(e.target.value));
+
+		renderExercises('pushup');
+	</script>
+</body>
+</html>

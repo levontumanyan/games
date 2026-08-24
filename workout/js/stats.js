@@ -45,17 +45,7 @@ export async function renderStatsDashboard(container) {
  * @param {Object} stats
  */
 function renderStatsContent(container, stats) {
-	const currentStreak = stats.current_streak || 0;
-	const longestStreak = stats.longest_streak || 0;
-	const totalMinutes = stats.total_minutes || 0;
-	const totalSessions = stats.total_sessions || 0;
-	const completedCount = stats.completed_count || 0;
-	const totalReps = stats.total_reps || 0;
-
-	// Calculate weekly total
 	const weeklyMinutes = (stats.weekly || []).reduce((sum, d) => sum + (d.minutes || 0), 0);
-	const maxDayMinutes = Math.max(...(stats.weekly || []).map(d => d.minutes || 0), 30);
-
 	const categories = stats.categories || {};
 	const disciplines = stats.disciplines || {};
 	const topExercises = stats.top_exercises || [];
@@ -72,42 +62,8 @@ function renderStatsContent(container, stats) {
 			</div>
 
 			<!-- Hero Metric Cards -->
-			<div class="stats-hero-grid">
-				<div class="stat-card streak-card ${currentStreak > 0 ? 'streak-active' : ''}">
-					<div class="stat-card-icon">🔥</div>
-					<div class="stat-card-body">
-						<div class="stat-value">${currentStreak} <span class="stat-unit">days</span></div>
-						<div class="stat-label">Current Streak</div>
-					</div>
-					<div class="stat-footer-badge">Best: ${longestStreak} days</div>
-				</div>
-
-				<div class="stat-card">
-					<div class="stat-card-icon">⏱️</div>
-					<div class="stat-card-body">
-						<div class="stat-value">${formatMinutesToReadable(totalMinutes)}</div>
-						<div class="stat-label">Active Time</div>
-					</div>
-					<div class="stat-footer-badge">${weeklyMinutes}m this week</div>
-				</div>
-
-				<div class="stat-card">
-					<div class="stat-card-icon">🔢</div>
-					<div class="stat-card-body">
-						<div class="stat-value">${totalReps.toLocaleString()} <span class="stat-unit">reps</span></div>
-						<div class="stat-label">Total Reps</div>
-					</div>
-					<div class="stat-footer-badge">${Object.keys(categories).length} movement types</div>
-				</div>
-
-				<div class="stat-card">
-					<div class="stat-card-icon">🏆</div>
-					<div class="stat-card-body">
-						<div class="stat-value">${totalSessions}</div>
-						<div class="stat-label">Workouts</div>
-					</div>
-					<div class="stat-footer-badge">${completedCount} completed</div>
-				</div>
+			<div class="stats-hero-grid" id="stats-hero-grid">
+				${renderHeroGrid(stats)}
 			</div>
 
 			<!-- Visual Charts Grid -->
@@ -116,21 +72,10 @@ function renderStatsContent(container, stats) {
 				<div class="stats-section-card">
 					<div class="section-card-header">
 						<h3>📊 Weekly Activity</h3>
-						<span class="section-header-meta">${weeklyMinutes} mins total</span>
+						<span id="weekly-total-meta" class="section-header-meta">${weeklyMinutes} mins total</span>
 					</div>
-					<div class="weekly-bar-chart">
-						${(stats.weekly || []).map(d => {
-							const heightPct = Math.min(100, Math.round((d.minutes / maxDayMinutes) * 100));
-							return `
-								<div class="bar-col ${d.isToday ? 'is-today' : ''} ${d.minutes > 0 ? 'has-activity' : ''}">
-									<div class="bar-track">
-										<div class="bar-fill" style="height: ${heightPct}%;" title="${d.day}: ${d.minutes} mins (${d.sessions} workouts)"></div>
-									</div>
-									<div class="bar-label">${d.day}</div>
-									<div class="bar-val">${d.minutes > 0 ? d.minutes + 'm' : '—'}</div>
-								</div>
-							`;
-						}).join('')}
+					<div class="weekly-bar-chart" id="weekly-bar-chart">
+						${renderWeeklyChart(stats.weekly)}
 					</div>
 				</div>
 
@@ -138,9 +83,9 @@ function renderStatsContent(container, stats) {
 				<div class="stats-section-card">
 					<div class="section-card-header">
 						<h3>📅 ${stats.monthly?.month_name || 'Monthly'} Calendar</h3>
-						<span class="section-header-meta">${stats.monthly?.total_minutes || 0} mins</span>
+						<span id="monthly-total-meta" class="section-header-meta">${stats.monthly?.total_minutes || 0} mins</span>
 					</div>
-					<div class="monthly-calendar-container">
+					<div class="monthly-calendar-container" id="monthly-calendar-container">
 						${renderMonthCalendar(stats.monthly)}
 					</div>
 				</div>
@@ -154,7 +99,7 @@ function renderStatsContent(container, stats) {
 						<h3>🎯 Movement Types</h3>
 						<span class="section-header-meta">Categories</span>
 					</div>
-					<div class="stats-categories-list">
+					<div class="stats-categories-list" id="stats-categories-list">
 						${renderCategoriesList(categories)}
 					</div>
 				</div>
@@ -165,22 +110,12 @@ function renderStatsContent(container, stats) {
 						<h3>🥋 Disciplines & Top Movements</h3>
 						<span class="section-header-meta">Split</span>
 					</div>
-					<div class="stats-disciplines-list">
+					<div class="stats-disciplines-list" id="stats-disciplines-list">
 						${renderDisciplinesList(disciplines)}
 					</div>
-					${topExercises.length > 0 ? `
-						<div class="stats-top-exercises-sub">
-							<div class="sub-header">Top Movements</div>
-							<div class="top-exercises-chips">
-								${topExercises.slice(0, 6).map(ex => `
-									<div class="top-ex-badge" title="${ex.name}: ${ex.count} sets${ex.reps > 0 ? ', ' + ex.reps + ' reps' : ''}">
-										<span class="top-ex-name">${escapeHtml(ex.name)}</span>
-										<span class="top-ex-count">${ex.reps > 0 ? ex.reps + 'r' : ex.count + ' sets'}</span>
-									</div>
-								`).join('')}
-							</div>
-						</div>
-					` : ''}
+					<div id="stats-top-exercises-wrap">
+						${renderTopExercises(topExercises)}
+					</div>
 				</div>
 			</div>
 
@@ -188,7 +123,7 @@ function renderStatsContent(container, stats) {
 			<div class="stats-section-card session-history-card">
 				<div class="section-card-header">
 					<h3>📜 Workout History</h3>
-					<span class="section-header-meta">${(stats.recent_sessions || []).length} recent sessions</span>
+					<span id="session-history-meta" class="section-header-meta">${(stats.recent_sessions || []).length} recent sessions</span>
 				</div>
 				<div id="session-history-list" class="session-history-list">
 					${renderSessionList(stats.recent_sessions || [])}
@@ -200,10 +135,152 @@ function renderStatsContent(container, stats) {
 	// Bind events
 	const refreshBtn = container.querySelector('#stats-refresh-btn');
 	if (refreshBtn) {
-		refreshBtn.addEventListener('click', () => renderStatsDashboard(container));
+		refreshBtn.addEventListener('click', async () => {
+			try {
+				const freshStats = await fetchStats();
+				cachedStats = freshStats;
+				const scrollPos = container.scrollTop;
+				renderStatsContent(container, freshStats);
+				container.scrollTop = scrollPos;
+			} catch (e) {
+				console.error('Failed to refresh stats:', e);
+			}
+		});
 	}
 
 	bindHistoryActions(container);
+}
+
+/**
+ * Render hero metric cards.
+ * @param {Object} stats
+ * @returns {string}
+ */
+function renderHeroGrid(stats) {
+	const currentStreak = stats.current_streak || 0;
+	const longestStreak = stats.longest_streak || 0;
+	const totalMinutes = stats.total_minutes || 0;
+	const totalSessions = stats.total_sessions || 0;
+	const completedCount = stats.completed_count || 0;
+	const totalReps = stats.total_reps || 0;
+	const weeklyMinutes = (stats.weekly || []).reduce((sum, d) => sum + (d.minutes || 0), 0);
+	const categories = stats.categories || {};
+
+	return `
+		<div class="stat-card streak-card ${currentStreak > 0 ? 'streak-active' : ''}">
+			<div class="stat-card-icon">🔥</div>
+			<div class="stat-card-body">
+				<div class="stat-value">${currentStreak} <span class="stat-unit">days</span></div>
+				<div class="stat-label">Current Streak</div>
+			</div>
+			<div class="stat-footer-badge">Best: ${longestStreak} days</div>
+		</div>
+
+		<div class="stat-card">
+			<div class="stat-card-icon">⏱️</div>
+			<div class="stat-card-body">
+				<div class="stat-value">${formatMinutesToReadable(totalMinutes)}</div>
+				<div class="stat-label">Active Time</div>
+			</div>
+			<div class="stat-footer-badge">${weeklyMinutes}m this week</div>
+		</div>
+
+		<div class="stat-card">
+			<div class="stat-card-icon">🔢</div>
+			<div class="stat-card-body">
+				<div class="stat-value">${totalReps.toLocaleString()} <span class="stat-unit">reps</span></div>
+				<div class="stat-label">Total Reps</div>
+			</div>
+			<div class="stat-footer-badge">${Object.keys(categories).length} movement types</div>
+		</div>
+
+		<div class="stat-card">
+			<div class="stat-card-icon">🏆</div>
+			<div class="stat-card-body">
+				<div class="stat-value">${totalSessions}</div>
+				<div class="stat-label">Workouts</div>
+			</div>
+			<div class="stat-footer-badge">${completedCount} completed</div>
+		</div>
+	`;
+}
+
+/**
+ * Render weekly bar chart HTML.
+ * @param {Array} weekly
+ * @returns {string}
+ */
+function renderWeeklyChart(weekly) {
+	const weeklyList = weekly || [];
+	const maxDayMinutes = Math.max(...weeklyList.map(d => d.minutes || 0), 30);
+	return weeklyList.map(d => {
+		const heightPct = Math.min(100, Math.round((d.minutes / maxDayMinutes) * 100));
+		return `
+			<div class="bar-col ${d.isToday ? 'is-today' : ''} ${d.minutes > 0 ? 'has-activity' : ''}">
+				<div class="bar-track">
+					<div class="bar-fill" style="height: ${heightPct}%;" title="${d.day}: ${d.minutes} mins (${d.sessions} workouts)"></div>
+				</div>
+				<div class="bar-label">${d.day}</div>
+				<div class="bar-val">${d.minutes > 0 ? d.minutes + 'm' : '—'}</div>
+			</div>
+		`;
+	}).join('');
+}
+
+/**
+ * Update metrics, charts, and taxonomy in-place without touching scroll or list.
+ * @param {HTMLElement} container
+ * @param {Object} stats
+ */
+function updateStatsMetrics(container, stats) {
+	if (!stats || !container) return;
+	const weeklyMinutes = (stats.weekly || []).reduce((sum, d) => sum + (d.minutes || 0), 0);
+
+	const heroGrid = container.querySelector('#stats-hero-grid');
+	if (heroGrid) heroGrid.innerHTML = renderHeroGrid(stats);
+
+	const weeklyMeta = container.querySelector('#weekly-total-meta');
+	if (weeklyMeta) weeklyMeta.textContent = `${weeklyMinutes} mins total`;
+
+	const weeklyChart = container.querySelector('#weekly-bar-chart');
+	if (weeklyChart) weeklyChart.innerHTML = renderWeeklyChart(stats.weekly);
+
+	const monthlyMeta = container.querySelector('#monthly-total-meta');
+	if (monthlyMeta) monthlyMeta.textContent = `${stats.monthly?.total_minutes || 0} mins`;
+
+	const monthlyCalendar = container.querySelector('#monthly-calendar-container');
+	if (monthlyCalendar) monthlyCalendar.innerHTML = renderMonthCalendar(stats.monthly);
+
+	const catList = container.querySelector('#stats-categories-list');
+	if (catList) catList.innerHTML = renderCategoriesList(stats.categories || {});
+
+	const discList = container.querySelector('#stats-disciplines-list');
+	if (discList) discList.innerHTML = renderDisciplinesList(stats.disciplines || {});
+
+	const topExWrap = container.querySelector('#stats-top-exercises-wrap');
+	if (topExWrap) topExWrap.innerHTML = renderTopExercises(stats.top_exercises || []);
+}
+
+/**
+ * Render top exercises chips.
+ * @param {Array} topExercises
+ * @returns {string}
+ */
+function renderTopExercises(topExercises) {
+	if (!topExercises || topExercises.length === 0) return '';
+	return `
+		<div class="stats-top-exercises-sub">
+			<div class="sub-header">Top Movements</div>
+			<div class="top-exercises-chips">
+				${topExercises.slice(0, 6).map(ex => `
+					<div class="top-ex-badge" title="${escapeHtml(ex.name)}: ${ex.count} sets${ex.reps > 0 ? ', ' + ex.reps + ' reps' : ''}">
+						<span class="top-ex-name">${escapeHtml(ex.name)}</span>
+						<span class="top-ex-count">${ex.reps > 0 ? ex.reps + 'r' : ex.count + ' sets'}</span>
+					</div>
+				`).join('')}
+			</div>
+		</div>
+	`;
 }
 
 /**
@@ -413,8 +490,12 @@ function formatSessionDate(isoString) {
 function bindHistoryActions(container) {
 	const deleteBtns = container.querySelectorAll('.btn-delete-session');
 	deleteBtns.forEach(btn => {
+		if (btn.dataset.boundDelete) return;
+		btn.dataset.boundDelete = 'true';
+
 		btn.addEventListener('click', async (e) => {
 			e.stopPropagation();
+			e.preventDefault();
 			const sessionId = btn.getAttribute('data-id');
 			if (!sessionId) return;
 
@@ -425,17 +506,61 @@ function bindHistoryActions(container) {
 				danger: true
 			});
 
-			if (confirmed) {
-				try {
-					await deleteSession(sessionId);
-					await renderStatsDashboard(container);
-				} catch (err) {
+			if (!confirmed) return;
+
+			const sessionItem = btn.closest('.session-item');
+			if (sessionItem) {
+				const currentHeight = sessionItem.offsetHeight;
+				sessionItem.style.maxHeight = `${currentHeight}px`;
+				requestAnimationFrame(() => {
+					sessionItem.classList.add('deleting');
+				});
+				setTimeout(() => {
+					sessionItem.remove();
+					const historyList = container.querySelector('#session-history-list');
+					if (historyList) {
+						const remaining = historyList.querySelectorAll('.session-item:not(.deleting)');
+						if (remaining.length === 0) {
+							historyList.innerHTML = `
+								<div class="empty-sessions">
+									<p>No workouts recorded yet.</p>
+									<p class="empty-sub">Start a workout from the sidebar to begin tracking your streaks!</p>
+								</div>
+							`;
+						}
+						const metaEl = container.querySelector('#session-history-meta');
+						if (metaEl) {
+							metaEl.textContent = `${remaining.length} recent session${remaining.length === 1 ? '' : 's'}`;
+						}
+					}
+				}, 320);
+			}
+
+			// Background server delete and stats refresh
+			deleteSession(sessionId)
+				.then(async () => {
+					try {
+						const updatedStats = await fetchStats();
+						cachedStats = updatedStats;
+						updateStatsMetrics(container, updatedStats);
+					} catch (e) {
+						console.warn('Could not refresh stats metrics after session deletion:', e);
+					}
+				})
+				.catch(async (err) => {
+					console.error('Failed to delete session:', err);
 					await showAlert({
 						title: 'Error',
-						message: 'Could not delete session: ' + err.message
+						message: 'Could not delete session: ' + (err.message || 'Unknown error')
 					});
-				}
-			}
+					try {
+						const currentStats = await fetchStats();
+						cachedStats = currentStats;
+						const scrollPos = container.scrollTop;
+						renderStatsContent(container, currentStats);
+						container.scrollTop = scrollPos;
+					} catch {}
+				});
 		});
 	});
 }
