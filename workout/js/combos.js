@@ -243,10 +243,15 @@ export function renderCombosCatalog(container, options = {}) {
 				(m.primary || []).forEach(p => primarySet.add(p));
 				(m.secondary || []).forEach(s => secondarySet.add(s));
 			});
-			const muscleBadgesHtml = [
-				...Array.from(primarySet).map(m => getMuscleBadgeHtml(m, true)),
-				...Array.from(secondarySet).filter(m => !primarySet.has(m)).map(m => getMuscleBadgeHtml(m, false)),
-			].join('');
+			const primaryList = Array.from(primarySet).map(m => getMuscleBadgeHtml(m, true));
+			const secondaryList = Array.from(secondarySet).filter(m => !primarySet.has(m)).map(m => getMuscleBadgeHtml(m, false));
+			let displayedBadges = [...primaryList, ...secondaryList];
+			let moreCount = 0;
+			if (displayedBadges.length > 4) {
+				moreCount = displayedBadges.length - 3;
+				displayedBadges = displayedBadges.slice(0, 3);
+			}
+			const muscleBadgesHtml = displayedBadges.join('') + (moreCount > 0 ? `<span class="ex-muscle-more-pill">+${moreCount} more</span>` : '');
 
 			card.innerHTML = `
 				<div class="combo-card-header">
@@ -280,13 +285,13 @@ export function renderCombosCatalog(container, options = {}) {
 				</div>
 
 				<div class="combo-card-actions">
-					<button class="btn btn-sm btn-primary btn-play-combo" title="Play as continuous video flow">
-						▶ Play Continuous Flow
+					<button class="btn btn-sm btn-ghost btn-play-combo" title="Play as continuous video flow">
+						▶ Play Flow
 					</button>
 					<button class="btn btn-sm btn-ghost btn-breakdown-combo" title="Decompose into constituent exercise steps">
-						⚡ Break Down (${exList.length} Steps)
+						Break Down (${exList.length})
 					</button>
-					<button class="btn btn-sm btn-ghost btn-add-combo-routine" title="Add continuous combo to current workout">
+					<button class="btn btn-sm btn-primary btn-add-combo-routine" title="Add continuous combo to current workout">
 						+ Add to Workout
 					</button>
 				</div>

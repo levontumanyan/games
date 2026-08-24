@@ -14,6 +14,35 @@ import {
 } from './exercises.js';
 import { getCombos } from './combos.js';
 
+// Track expanded step IDs across renders
+const expandedStepIds = new Set();
+
+/**
+ * Mark a specific step ID as expanded.
+ * @param {string} stepId
+ */
+export function expandStep(stepId) {
+	if (stepId) expandedStepIds.add(stepId);
+}
+
+/**
+ * Toggle collapse/expand on all step cards in container.
+ * @param {HTMLElement} container
+ * @param {boolean} [forceExpand]
+ * @returns {boolean} Whether steps are now expanded
+ */
+export function toggleAllStepCards(container, forceExpand) {
+	if (!container) return true;
+	const cards = container.querySelectorAll('.step-card');
+	const anyCollapsed = Array.from(cards).some(c => c.classList.contains('step-card-collapsed'));
+	const shouldExpand = typeof forceExpand === 'boolean' ? forceExpand : anyCollapsed;
+
+	cards.forEach(card => {
+		card.classList.toggle('step-card-collapsed', !shouldExpand);
+	});
+	return shouldExpand;
+}
+
 /**
  * Render the routine editor for a given routine.
  * @param {Object} routine - The routine to edit
@@ -44,15 +73,20 @@ export function renderEditor(routine, container, actions) {
  * Create a DOM element for a single step.
  */
 function createStepElement(step, index, routine, onUpdate, onTestStep) {
+	if (!step.id) step.id = generateId();
 	const isBreak = isBreakStep(step);
 	const isCombo = Boolean((step.exercises && step.exercises.length >= 2) || step.flow_type);
+	const isExpanded = expandedStepIds.has(step.id) || (expandedStepIds.size === 0 && index === 0);
+
 	const el = document.createElement('div');
-	el.className = `step-card step-${step.type}` + (isBreak ? ' step-break step-card-compact' : '');
+	el.className = `step-card step-${step.type}` + (isBreak ? ' step-break step-card-compact' : '') + (isExpanded ? '' : ' step-card-collapsed');
 	el.dataset.index = index;
+	el.dataset.id = step.id;
 	el.draggable = true;
 
 	const header = document.createElement('div');
 	header.className = 'step-header';
+	header.title = 'Click to expand/collapse step fields';
 
 	const dragHandle = document.createElement('span');
 	dragHandle.className = 'drag-handle';
@@ -71,6 +105,35 @@ function createStepElement(step, index, routine, onUpdate, onTestStep) {
 		stepType.innerHTML = `${getComboIcon(13)} Combo Flow`;
 	} else {
 		stepType.innerHTML = `🥋 Exercise`;
+	}
+
+	// Compact summary info preview for collapsed state
+	const headerInfo = document.createElement('div');
+	headerInfo.className = 'step-header-info';
+
+	const headerTitle = document.createElement('span');
+	headerTitle.className = 'step-header-title';
+	headerTitle.textContent = step.label || (isBreak ? 'Rest' : 'Untitled Step');
+
+	const headerMeta = document.createElement('span');
+	headerMeta.className = 'step-header-meta';
+	if (step.type === 'clip') {
+		const dur = Math.max(0, (step.endSeconds || 60) - (step.startSeconds || 0));
+		headerMeta.textContent = `${formatTime(dur)} (${formatTime(step.startSeconds || 0)}–${formatTime(step.endSeconds || 60)})`;
+	} else if (step.stepMode === 'reps' || step.targetReps) {
+		headerMeta.textContent = `${step.targetReps || 20} reps`;
+	} else {
+		headerMeta.textContent = formatFriendlyDuration(step.durationSeconds || 30);
+	}
+
+	headerInfo.append(headerTitle, headerMeta);
+
+	if (step.musicTracks && step.musicTracks.length > 0) {
+		const musicBadge = document.createElement('span');
+		musicBadge.className = 'step-header-music-badge';
+		musicBadge.textContent = `🎵 ${step.musicTracks.length}`;
+		musicBadge.title = `${step.musicTracks.length} background music track(s)`;
+		headerInfo.appendChild(musicBadge);
 	}
 
 	const headerActions = document.createElement('div');
@@ -93,13 +156,36 @@ function createStepElement(step, index, routine, onUpdate, onTestStep) {
 	removeBtn.className = 'btn btn-danger btn-sm';
 	removeBtn.textContent = '✕';
 	removeBtn.title = 'Remove step';
-	removeBtn.addEventListener('click', () => {
+	removeBtn.addEventListener('click', (e) => {
+		e.stopPropagation();
 		routine.steps.splice(index, 1);
+		if (step.id) expandedStepIds.delete(step.id);
 		onUpdate();
 	});
 	headerActions.appendChild(removeBtn);
 
-	header.append(dragHandle, stepNumber, stepType, headerActions);
+	const expandToggle = document.createElement('span');
+	expandToggle.className = 'step-expand-toggle';
+	expandToggle.textContent = '▾';
+	headerActions.appendChild(expandToggle);
+
+	header.append(dragHandle, stepNumber, stepType, headerInfo, headerActions);
+
+	// Toggle collapse on header click
+	header.addEventListener('click', (e) => {
+		if (e.target.closest('button') || e.target.closest('input') || e.target.closest('.drag-handle')) {
+			return;
+		}
+		const collapsed = el.classList.toggle('step-card-collapsed');
+		if (step.id) {
+			if (collapsed) {
+				expandedStepIds.delete(step.id);
+			} else {
+				expandedStepIds.add(step.id);
+			}
+		}
+	});
+
 	el.appendChild(header);
 
 	const body = document.createElement('div');

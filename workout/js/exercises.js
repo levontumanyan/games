@@ -208,11 +208,10 @@ export function inferMusclesForExercise(ex) {
  * @returns {string}
  */
 export function getMuscleBadgeHtml(muscleKey, isPrimary = true) {
-	const def = MUSCLE_DEFINITIONS[muscleKey] || { label: muscleKey, icon: '🧬', color: '#9ea2bd' };
+	const def = MUSCLE_DEFINITIONS[muscleKey] || { label: muscleKey };
 	const typeClass = isPrimary ? 'muscle-badge-primary' : 'muscle-badge-secondary';
 	return `<span class="ex-muscle-badge ${typeClass}" title="${isPrimary ? 'Primary Target' : 'Secondary Synergist'}: ${def.label}">
-		<span class="muscle-icon">${def.icon}</span>
-		<span class="muscle-label">${def.label}</span>
+		<span class="muscle-label">${isPrimary ? '• ' : ''}${def.label}</span>
 	</span>`;
 }
 
@@ -457,10 +456,15 @@ export function renderExercisesCatalog(container, options = {}) {
 				? `🔢 ${ex.default_quantity || 20} Reps`
 				: `⏱️ ${formatTime(ex.default_quantity || 30)}`;
 
-			const muscleBadgesHtml = [
-				...(muscles.primary || []).map(m => getMuscleBadgeHtml(m, true)),
-				...(muscles.secondary || []).map(m => getMuscleBadgeHtml(m, false)),
-			].join('');
+			const primaryList = (muscles.primary || []).map(m => getMuscleBadgeHtml(m, true));
+			const secondaryList = (muscles.secondary || []).map(m => getMuscleBadgeHtml(m, false));
+			let displayedBadges = [...primaryList, ...secondaryList];
+			let moreCount = 0;
+			if (displayedBadges.length > 4) {
+				moreCount = displayedBadges.length - 3;
+				displayedBadges = displayedBadges.slice(0, 3);
+			}
+			const muscleBadgesHtml = displayedBadges.join('') + (moreCount > 0 ? `<span class="ex-muscle-more-pill">+${moreCount} more</span>` : '');
 
 			card.innerHTML = `
 				<div class="ex-lib-header">
@@ -492,13 +496,13 @@ export function renderExercisesCatalog(container, options = {}) {
 				</div>
 
 				<div class="ex-lib-actions">
-					<button class="btn btn-sm btn-primary btn-play-ex" title="Test in Preview Mode">
-						▶ Test / Play
+					<button class="btn btn-sm btn-ghost btn-play-ex" title="Test in Preview Mode">
+						▶ Preview
 					</button>
 					<button class="btn btn-sm btn-ghost btn-view-vars" title="View video tutorials and variations">
-						🎬 Variations (${assets.length})
+						Variations (${assets.length})
 					</button>
-					<button class="btn btn-sm btn-ghost btn-add-routine" title="Add to current workout">
+					<button class="btn btn-sm btn-primary btn-add-routine" title="Add to current workout">
 						+ Add to Workout
 					</button>
 				</div>

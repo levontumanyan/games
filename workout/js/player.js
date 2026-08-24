@@ -587,19 +587,22 @@ function executeTimerStep(step) {
 		: (currentRoutine?.musicTracks || []);
 
 	setPlaylist(tracks);
+	const quickTitle = document.getElementById('music-quick-title');
+	const musicToggleBtn = document.getElementById('player-music-toggle-btn');
 	if (tracks.length > 0) {
-		if (dom.musicControlsBar) {
-			dom.musicControlsBar.classList.remove('hidden');
-		}
-		if (dom.musicTrackName) {
-			dom.musicTrackName.textContent = tracks[0].label || (tracks[0].source === 'youtube' ? tracks[0].videoId : tracks[0].fileName);
-		}
+		const trackTitle = tracks[0].label || (tracks[0].source === 'youtube' ? tracks[0].videoId : tracks[0].fileName);
+		if (dom.musicTrackName) dom.musicTrackName.textContent = trackTitle;
+		if (quickTitle) quickTitle.textContent = trackTitle;
+		if (musicToggleBtn) musicToggleBtn.classList.add('has-music');
 		unmuteMusic();
 		startMusic();
 	} else {
 		stopMusic();
-		if (dom.musicControlsBar) {
-			dom.musicControlsBar.classList.add('hidden');
+		if (dom.musicControlsBar) dom.musicControlsBar.classList.add('hidden');
+		if (quickTitle) quickTitle.textContent = 'Music';
+		if (musicToggleBtn) {
+			musicToggleBtn.classList.remove('has-music');
+			musicToggleBtn.classList.remove('active');
 		}
 	}
 

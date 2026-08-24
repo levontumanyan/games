@@ -10,7 +10,7 @@ import {
 } from './storage.js';
 import {
 	renderEditor, createClipStep, createTimerStep, createBreakStep, createRoutine,
-	showAddExerciseModal, showAddComboModal
+	showAddExerciseModal, showAddComboModal, toggleAllStepCards, expandStep
 } from './editor.js';
 import { renderRoutineOverview } from './view.js';
 import {
@@ -194,6 +194,17 @@ function cacheDom() {
 	dom.newProfileInput = document.getElementById('new-profile-input');
 	dom.createProfileBtn = document.getElementById('create-profile-btn');
 
+	dom.emptyCreateBtn = document.getElementById('empty-create-btn');
+	dom.toggleCollapseAllBtn = document.getElementById('toggle-collapse-all-btn');
+	dom.collapseToggleText = document.getElementById('collapse-toggle-text');
+
+	// Mobile Navigation Elements
+	dom.mTabRoutinesBtn = document.getElementById('m-tab-routines-btn');
+	dom.mTabCombosBtn = document.getElementById('m-tab-combos-btn');
+	dom.mTabExercisesBtn = document.getElementById('m-tab-exercises-btn');
+	dom.mTabAnatomyBtn = document.getElementById('m-tab-anatomy-btn');
+	dom.mTabStatsBtn = document.getElementById('m-tab-stats-btn');
+
 	// Player top bar & buttons
 	dom.playerBackBtn = document.getElementById('player-back-btn');
 	dom.playerRoutineTitle = document.getElementById('player-routine-title');
@@ -220,6 +231,8 @@ function cacheDom() {
 	dom.stepTimeline = document.getElementById('step-timeline');
 	dom.stepCounter = document.getElementById('step-counter');
 	dom.nextStepPreview = document.getElementById('next-step-preview');
+	dom.playerMusicToggleBtn = document.getElementById('player-music-toggle-btn');
+	dom.musicQuickTitle = document.getElementById('music-quick-title');
 	dom.playPauseBtn = document.getElementById('play-pause-btn');
 	dom.skipBtn = document.getElementById('skip-btn');
 	dom.prevBtn = document.getElementById('prev-btn');
@@ -317,26 +330,23 @@ async function syncWithServerOnStartup() {
 
 /**
  * Switch active navigation tab (Routines vs Combos vs Exercises vs Stats).
- * @param {'routines' | 'combos' | 'exercises' | 'stats'} tab
+ * @param {'routines' | 'combos' | 'exercises' | 'anatomy' | 'stats'} tab
  */
 function switchTab(tab) {
 	currentTab = tab;
 
-	if (dom.tabRoutinesBtn) {
-		dom.tabRoutinesBtn.classList.toggle('active', tab === 'routines');
-	}
-	if (dom.tabCombosBtn) {
-		dom.tabCombosBtn.classList.toggle('active', tab === 'combos');
-	}
-	if (dom.tabExercisesBtn) {
-		dom.tabExercisesBtn.classList.toggle('active', tab === 'exercises');
-	}
-	if (dom.tabAnatomyBtn) {
-		dom.tabAnatomyBtn.classList.toggle('active', tab === 'anatomy');
-	}
-	if (dom.tabStatsBtn) {
-		dom.tabStatsBtn.classList.toggle('active', tab === 'stats');
-	}
+	if (dom.tabRoutinesBtn) dom.tabRoutinesBtn.classList.toggle('active', tab === 'routines');
+	if (dom.tabCombosBtn) dom.tabCombosBtn.classList.toggle('active', tab === 'combos');
+	if (dom.tabExercisesBtn) dom.tabExercisesBtn.classList.toggle('active', tab === 'exercises');
+	if (dom.tabAnatomyBtn) dom.tabAnatomyBtn.classList.toggle('active', tab === 'anatomy');
+	if (dom.tabStatsBtn) dom.tabStatsBtn.classList.toggle('active', tab === 'stats');
+
+	// Sync mobile bottom navigation bar active state
+	if (dom.mTabRoutinesBtn) dom.mTabRoutinesBtn.classList.toggle('active', tab === 'routines');
+	if (dom.mTabCombosBtn) dom.mTabCombosBtn.classList.toggle('active', tab === 'combos');
+	if (dom.mTabExercisesBtn) dom.mTabExercisesBtn.classList.toggle('active', tab === 'exercises');
+	if (dom.mTabAnatomyBtn) dom.mTabAnatomyBtn.classList.toggle('active', tab === 'anatomy');
+	if (dom.mTabStatsBtn) dom.mTabStatsBtn.classList.toggle('active', tab === 'stats');
 
 	if (dom.routineView) dom.routineView.classList.add('hidden');
 	if (dom.editorView) dom.editorView.classList.add('hidden');
@@ -395,6 +405,7 @@ function switchTab(tab) {
 					if (isReps) newStep.targetReps = exercise.default_quantity || 20;
 					newStep.exercises = [{ id: exercise.id, name: exercise.name, category: exercise.category, discipline: exercise.discipline }];
 					routine.steps.push(newStep);
+					expandStep(newStep.id);
 					persist();
 					currentMode = 'edit';
 					switchTab('routines');
@@ -507,6 +518,7 @@ function switchTab(tab) {
 					newStep.flow_type = combo.flow_type || 'alternating';
 					newStep.exercises = exList;
 					routine.steps.push(newStep);
+					expandStep(newStep.id);
 					persist();
 					currentMode = 'edit';
 					switchTab('routines');
@@ -568,6 +580,7 @@ function switchTab(tab) {
 					if (isReps) newStep.targetReps = exercise.default_quantity || 20;
 					newStep.exercises = [{ id: exercise.id, name: exercise.name, category: exercise.category, discipline: exercise.discipline }];
 					routine.steps.push(newStep);
+					expandStep(newStep.id);
 					persist();
 					currentMode = 'edit';
 					switchTab('routines');
@@ -658,20 +671,40 @@ function bindEvents() {
 	dom.stopBtn.addEventListener('click', () => stopPlayback());
 
 	// Tab switcher
-	if (dom.tabRoutinesBtn) {
-		dom.tabRoutinesBtn.addEventListener('click', () => switchTab('routines'));
+	if (dom.tabRoutinesBtn) dom.tabRoutinesBtn.addEventListener('click', () => switchTab('routines'));
+	if (dom.tabCombosBtn) dom.tabCombosBtn.addEventListener('click', () => switchTab('combos'));
+	if (dom.tabExercisesBtn) dom.tabExercisesBtn.addEventListener('click', () => switchTab('exercises'));
+	if (dom.tabAnatomyBtn) dom.tabAnatomyBtn.addEventListener('click', () => switchTab('anatomy'));
+	if (dom.tabStatsBtn) dom.tabStatsBtn.addEventListener('click', () => switchTab('stats'));
+
+	// Mobile Navigation tab buttons
+	if (dom.mTabRoutinesBtn) dom.mTabRoutinesBtn.addEventListener('click', () => switchTab('routines'));
+	if (dom.mTabCombosBtn) dom.mTabCombosBtn.addEventListener('click', () => switchTab('combos'));
+	if (dom.mTabExercisesBtn) dom.mTabExercisesBtn.addEventListener('click', () => switchTab('exercises'));
+	if (dom.mTabAnatomyBtn) dom.mTabAnatomyBtn.addEventListener('click', () => switchTab('anatomy'));
+	if (dom.mTabStatsBtn) dom.mTabStatsBtn.addEventListener('click', () => switchTab('stats'));
+
+	// Empty state create button
+	if (dom.emptyCreateBtn) dom.emptyCreateBtn.addEventListener('click', handleAddWorkout);
+
+	// Toggle collapse all editor steps
+	if (dom.toggleCollapseAllBtn) {
+		dom.toggleCollapseAllBtn.addEventListener('click', () => {
+			const expanded = toggleAllStepCards(dom.stepList);
+			if (dom.collapseToggleText) {
+				dom.collapseToggleText.textContent = expanded ? 'Collapse All' : 'Expand All';
+			}
+		});
 	}
-	if (dom.tabCombosBtn) {
-		dom.tabCombosBtn.addEventListener('click', () => switchTab('combos'));
-	}
-	if (dom.tabExercisesBtn) {
-		dom.tabExercisesBtn.addEventListener('click', () => switchTab('exercises'));
-	}
-	if (dom.tabAnatomyBtn) {
-		dom.tabAnatomyBtn.addEventListener('click', () => switchTab('anatomy'));
-	}
-	if (dom.tabStatsBtn) {
-		dom.tabStatsBtn.addEventListener('click', () => switchTab('stats'));
+
+	// Player music shelf toggle button
+	if (dom.playerMusicToggleBtn) {
+		dom.playerMusicToggleBtn.addEventListener('click', () => {
+			if (dom.musicControlsBar) {
+				const isHidden = dom.musicControlsBar.classList.toggle('hidden');
+				dom.playerMusicToggleBtn.classList.toggle('active', !isHidden);
+			}
+		});
 	}
 
 	// Soft Profile modal
@@ -1099,7 +1132,9 @@ async function handleDeleteRoutine() {
 function handleAddClip() {
 	const routine = getSelectedRoutine();
 	if (!routine) return;
-	routine.steps.push(createClipStep());
+	const newStep = createClipStep();
+	routine.steps.push(newStep);
+	expandStep(newStep.id);
 	persist(true);
 	renderSelectedRoutine();
 }
@@ -1107,7 +1142,9 @@ function handleAddClip() {
 function handleAddTimer() {
 	const routine = getSelectedRoutine();
 	if (!routine) return;
-	routine.steps.push(createTimerStep());
+	const newStep = createTimerStep();
+	routine.steps.push(newStep);
+	expandStep(newStep.id);
 	persist(true);
 	renderSelectedRoutine();
 }
@@ -1115,7 +1152,9 @@ function handleAddTimer() {
 function handleAddBreak() {
 	const routine = getSelectedRoutine();
 	if (!routine) return;
-	routine.steps.push(createBreakStep());
+	const newStep = createBreakStep();
+	routine.steps.push(newStep);
+	expandStep(newStep.id);
 	persist(true);
 	renderSelectedRoutine();
 }
