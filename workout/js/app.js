@@ -523,6 +523,34 @@ function switchTab(tab) {
 					currentMode = 'edit';
 					switchTab('routines');
 					showToast(`Added "${combo.name}" to workout!`);
+				},
+				onPlayExercise: (exercise, asset) => {
+					const isVideo = asset && (asset.type === 'video' || Boolean(asset.videoId));
+					const step = isVideo ? {
+						id: 'preview-step',
+						type: 'clip',
+						videoId: asset.videoId || parseYouTubeId(asset.url || exercise.media_url),
+						startSeconds: asset.startSeconds || 0,
+						endSeconds: asset.endSeconds || ((asset.startSeconds || 0) + (exercise.default_quantity || 60)),
+						label: asset.title || exercise.name,
+						exercises: [exercise]
+					} : {
+						id: 'preview-step',
+						type: 'timer',
+						stepMode: exercise.default_mode || 'time',
+						targetReps: exercise.default_quantity || 20,
+						durationSeconds: exercise.default_quantity || 30,
+						label: exercise.name,
+						gifUrl: asset?.url || exercise.media_url || '',
+						exercises: [exercise]
+					};
+					const previewRoutine = {
+						id: 'preview-routine',
+						title: `Preview: ${exercise.name}`,
+						steps: [step]
+					};
+					unlockAudio();
+					startRoutine(previewRoutine, 0, true);
 				}
 			});
 		}

@@ -2,6 +2,7 @@ import { formatTime, formatFriendlyDuration, escapeHtml } from './utils.js';
 import { isBreakStep, resolveStepMediaUrl } from './editor.js';
 import { getClipIcon, getTimerIcon, getBreakIcon, getStepsIcon, getShareIcon, getSaveIcon } from './icons.js';
 import { getCategoryBadgeHtml, getDisciplineBadgeHtml, inferMusclesForExercise, getMuscleBadgeHtml, getExerciseById } from './exercises.js';
+import { getFlowTypeBadgeHtml } from './combos.js';
 import { MUSCLE_DEFINITIONS } from './body_map.js';
 
 /**
@@ -460,6 +461,13 @@ function createViewStepCard(step, index, steps, actions) {
 	// Attached exercise tags & muscle badges
 	const linkedEx = (step.exercises && step.exercises[0]) || (step.exercise_id ? getExerciseById(step.exercise_id) : null);
 	const stepMuscles = inferMusclesForExercise(linkedEx || { name: step.label, description: step.description });
+
+	if (step.flow_type || (step.exercises && step.exercises.length >= 2)) {
+		const flowTag = document.createElement('span');
+		flowTag.className = 'view-tag view-tag-flow-pill';
+		flowTag.innerHTML = getFlowTypeBadgeHtml(step.flow_type || 'alternating');
+		tagsRow.appendChild(flowTag);
+	}
 
 	if (step.exercises && step.exercises.length > 0) {
 		step.exercises.forEach(ex => {

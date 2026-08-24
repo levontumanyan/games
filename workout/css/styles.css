@@ -4269,6 +4269,164 @@ html, body {
 	flex: 1;
 }
 
+.modal-combo-details {
+	max-width: 660px;
+	width: 92%;
+}
+
+.modal-detail-hint {
+	font-size: 0.8rem;
+	color: var(--text-muted);
+	margin: 0 0 10px 0;
+}
+
+.combo-flow-primary-card {
+	display: flex;
+	align-items: center;
+	gap: 14px;
+	padding: 12px 14px;
+	background: var(--bg-surface-elevated);
+	border: 1px solid var(--border);
+	border-radius: var(--radius-md);
+}
+
+.combo-flow-video-thumb {
+	position: relative;
+	width: 110px;
+	height: 70px;
+	border-radius: var(--radius-sm);
+	overflow: hidden;
+	background: #0b0d17;
+	flex-shrink: 0;
+}
+
+.combo-flow-video-thumb img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+.combo-flow-video-info {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+	min-width: 0;
+}
+
+.combo-flow-title {
+	font-size: 0.95rem;
+	font-weight: 700;
+	color: var(--text-primary);
+}
+
+.combo-flow-meta {
+	font-size: 0.78rem;
+	color: var(--text-muted);
+}
+
+.combo-constituents-detail-list {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	max-height: 280px;
+	overflow-y: auto;
+	padding-right: 4px;
+}
+
+.combo-constituent-item-card {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	padding: 10px 12px;
+	background: rgba(0, 0, 0, 0.25);
+	border: 1px solid var(--border);
+	border-radius: var(--radius-md);
+}
+
+.constituent-header-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+}
+
+.constituent-name-group {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.constituent-name {
+	font-size: 0.9rem;
+	font-weight: 700;
+	color: var(--text-primary);
+	margin: 0;
+}
+
+.constituent-mode-pill {
+	font-size: 0.72rem;
+	font-weight: 600;
+	color: var(--text-secondary);
+	background: rgba(255, 255, 255, 0.05);
+	padding: 2px 8px;
+	border-radius: 10px;
+	border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.constituent-muscles-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 5px;
+}
+
+.constituent-desc {
+	font-size: 0.78rem;
+	color: var(--text-secondary);
+	margin: 0;
+	line-height: 1.35;
+}
+
+.constituent-assets-row {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin-top: 4px;
+	padding-top: 6px;
+	border-top: 1px dashed rgba(255, 255, 255, 0.08);
+}
+
+.constituent-tutorials-label {
+	font-size: 0.7rem;
+	font-weight: 600;
+	color: var(--text-muted);
+	text-transform: uppercase;
+}
+
+.btn-play-constituent-asset {
+	font-size: 0.72rem;
+	padding: 2px 8px;
+	border-radius: 4px;
+	border: 1px solid rgba(56, 189, 248, 0.3);
+	color: #38bdf8;
+	background: rgba(56, 189, 248, 0.08);
+	cursor: pointer;
+}
+
+.btn-play-constituent-asset:hover {
+	background: rgba(56, 189, 248, 0.18);
+}
+
+.constituent-anim-pill {
+	font-size: 0.72rem;
+	color: #a855f7;
+	padding: 2px 6px;
+	background: rgba(168, 85, 247, 0.1);
+	border-radius: 4px;
+	border: 1px solid rgba(168, 85, 247, 0.2);
+}
+
 /* ── Combos & Flow Library Styles ────────────────────────────────────────── */
 
 #combos-view {

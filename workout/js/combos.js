@@ -288,8 +288,8 @@ export function renderCombosCatalog(container, options = {}) {
 					<button class="btn btn-sm btn-ghost btn-play-combo" title="Play as continuous video flow">
 						▶ Play Flow
 					</button>
-					<button class="btn btn-sm btn-ghost btn-breakdown-combo" title="Decompose into constituent exercise steps">
-						Break Down (${exList.length})
+					<button class="btn btn-sm btn-ghost btn-inspect-combo" title="View constituent movements, technique tutorials, and breakdown">
+						🔍 Breakdown (${exList.length})
 					</button>
 					<button class="btn btn-sm btn-primary btn-add-combo-routine" title="Add continuous combo to current workout">
 						+ Add to Workout
@@ -302,9 +302,14 @@ export function renderCombosCatalog(container, options = {}) {
 				onPlayCombo(combo, false); // continuous
 			});
 
-			const breakdownBtn = card.querySelector('.btn-breakdown-combo');
-			breakdownBtn.addEventListener('click', () => {
-				onBreakDownCombo(combo);
+			const inspectBtn = card.querySelector('.btn-inspect-combo');
+			inspectBtn.addEventListener('click', () => {
+				showComboDetailModal(combo, {
+					onPlayCombo,
+					onBreakDownCombo,
+					onAddToRoutine,
+					onPlayExercise: options.onPlayExercise
+				});
 			});
 
 			const addRoutineBtn = card.querySelector('.btn-add-combo-routine');
@@ -340,6 +345,178 @@ export function renderCombosCatalog(container, options = {}) {
 
 	renderFilterChips();
 	renderGrid();
+}
+
+/**
+ * Show a modal detailing a combo, its primary flow video, and all constituent exercise instructions.
+ * @param {Object} combo
+ * @param {Object} [options]
+ */
+export function showComboDetailModal(combo, options = {}) {
+	const onPlayCombo = options.onPlayCombo || (() => {});
+	const onBreakDownCombo = options.onBreakDownCombo || (() => {});
+	const onAddToRoutine = options.onAddToRoutine || (() => {});
+	const onPlayExercise = options.onPlayExercise || (() => {});
+
+	const backdrop = document.createElement('div');
+	backdrop.className = 'modal-backdrop';
+
+	const modal = document.createElement('div');
+	modal.className = 'modal modal-combo-details';
+
+	const exList = (combo.exercise_ids || []).map(id => getExerciseById(id)).filter(Boolean);
+	const primaryAsset = (combo.media_assets || [])[0];
+	const isVideo = primaryAsset && (primaryAsset.type === 'video' || Boolean(primaryAsset.videoId));
+	const vid = primaryAsset?.videoId || parseYouTubeId(primaryAsset?.url || combo.media_url);
+
+	const modeStr = (combo.default_mode || 'time') === 'reps'
+		? `🔢 ${combo.default_quantity || 20} Total Reps`
+		: `⏱️ ${formatTime(combo.default_quantity || 190)}`;
+
+	modal.innerHTML = `
+		<div class="modal-header">
+			<div>
+				<div class="modal-badges-row">
+					${getFlowTypeBadgeHtml(combo.flow_type)}
+					${getCategoryBadgeHtml(combo.category)}
+					${combo.discipline ? getDisciplineBadgeHtml(combo.discipline) : ''}
+				</div>
+				<h3 class="modal-title">${escapeHtml(combo.name)}</h3>
+			</div>
+			<button class="modal-close-btn" title="Close">✕</button>
+		</div>
+
+		<div class="modal-body">
+			<p class="modal-subtitle">${escapeHtml(combo.description || 'Compound movement flow and alternating cadence.')}</p>
+
+			<!-- Primary Continuous Flow Video Card -->
+			<div class="modal-section-title">⚡ Continuous Flow Cadence (${modeStr})</div>
+			<div class="combo-flow-primary-card">
+				<div class="combo-flow-video-thumb">
+					<img src="${vid ? `https://img.youtube.com/vi/${vid}/mqdefault.jpg` : '/workout/media/pushups.svg'}" alt="${escapeHtml(combo.name)}">
+					${isVideo ? '<span class="modal-play-badge">▶</span>' : ''}
+					${primaryAsset?.startSeconds !== undefined && primaryAsset?.endSeconds ? `<span class="asset-timestamp">${formatTime(primaryAsset.startSeconds)} – ${formatTime(primaryAsset.endSeconds)}</span>` : ''}
+				</div>
+				<div class="combo-flow-video-info">
+					<div class="combo-flow-title">${escapeHtml(primaryAsset?.title || `${combo.name} Continuous Flow`)}</div>
+					<div class="combo-flow-meta">Continuous interval execution • No mid-round cuts</div>
+					<button class="btn btn-sm btn-primary btn-play-flow-now" style="margin-top:6px;">▶ Play Continuous Flow</button>
+				</div>
+			</div>
+
+			<!-- Constituent Movements Breakdown -->
+			<div class="modal-section-title" style="margin-top:20px;">🥋 Constituent Movements (${exList.length})</div>
+			<p class="modal-detail-hint">Individual movement mechanics, target muscles, and coaching tutorials:</p>
+
+			<div class="combo-constituents-detail-list">
+				${exList.length === 0 ? '<p class="empty-chip-hint">No constituent exercises linked.</p>' : ''}
+				${exList.map(ex => {
+					const muscles = inferMusclesForExercise(ex);
+					const exAssets = getExerciseMediaAssets([ex]);
+					const instructionAssets = exAssets.filter(a => a.kind === 'instruction');
+					const demoAssets = exAssets.filter(a => a.kind === 'demonstration');
+					const animAssets = exAssets.filter(a => a.kind === 'animation' || a.kind === 'photo');
+
+					return `
+						<div class="combo-constituent-item-card">
+							<div class="constituent-header-row">
+								<div class="constituent-name-group">
+									${getCategoryBadgeHtml(ex.category)}
+									<h4 class="constituent-name">${escapeHtml(ex.name)}</h4>
+									${ex.discipline ? getDisciplineBadgeHtml(ex.discipline) : ''}
+								</div>
+								<span class="constituent-mode-pill">${(ex.default_mode || 'reps') === 'reps' ? `${ex.default_quantity || 20} Reps` : formatTime(ex.default_quantity || 30)}</span>
+							</div>
+
+							<div class="constituent-muscles-row">
+								${(muscles.primary || []).map(m => getMuscleBadgeHtml(m, true)).join('')}
+								${(muscles.secondary || []).map(m => getMuscleBadgeHtml(m, false)).join('')}
+							</div>
+
+							<p class="constituent-desc">${escapeHtml(ex.description || 'Movement and form execution.')}</p>
+
+							<!-- Attached tutorials & instruction clips -->
+							<div class="constituent-assets-row">
+								<span class="constituent-tutorials-label">Tutorials & Media:</span>
+								${instructionAssets.map(a => `
+									<button type="button" class="btn btn-xs btn-ghost btn-play-constituent-asset" data-ex-id="${ex.id}" data-asset-id="${a.id}" title="Watch Instruction Breakdown">
+										🎬 ${escapeHtml(a.title || 'Instruction Breakdown')}
+									</button>
+								`).join('')}
+								${demoAssets.map(a => `
+									<button type="button" class="btn btn-xs btn-ghost btn-play-constituent-asset" data-ex-id="${ex.id}" data-asset-id="${a.id}" title="Watch Drill Demonstration">
+										⚡ ${escapeHtml(a.title || 'Drill Execution')}
+									</button>
+								`).join('')}
+								${animAssets.map(() => `
+									<span class="constituent-anim-pill">✨ Visual Form</span>
+								`).join('')}
+								${exAssets.length === 0 ? '<span class="text-muted" style="font-size:0.75rem;">Standard form reference</span>' : ''}
+							</div>
+						</div>
+					`;
+				}).join('')}
+			</div>
+		</div>
+
+		<div class="modal-footer">
+			<button class="btn btn-ghost modal-btn-close">Close</button>
+			<button class="btn btn-ghost btn-modal-breakdown" title="Decompose into separate timer steps">⚡ Break Down into Steps</button>
+			<button class="btn btn-primary btn-modal-add-routine">+ Add to Workout</button>
+		</div>
+	`;
+
+	const close = () => backdrop.remove();
+
+	modal.querySelectorAll('.modal-close-btn, .modal-btn-close').forEach(b => {
+		b.addEventListener('click', close);
+	});
+
+	backdrop.addEventListener('click', (e) => {
+		if (e.target === backdrop) close();
+	});
+
+	const playFlowBtn = modal.querySelector('.btn-play-flow-now');
+	if (playFlowBtn) {
+		playFlowBtn.addEventListener('click', () => {
+			close();
+			onPlayCombo(combo, false);
+		});
+	}
+
+	const breakdownBtn = modal.querySelector('.btn-modal-breakdown');
+	if (breakdownBtn) {
+		breakdownBtn.addEventListener('click', () => {
+			close();
+			onBreakDownCombo(combo);
+		});
+	}
+
+	const addRoutineBtn = modal.querySelector('.btn-modal-add-routine');
+	if (addRoutineBtn) {
+		addRoutineBtn.addEventListener('click', () => {
+			close();
+			onAddToRoutine(combo);
+		});
+	}
+
+	modal.querySelectorAll('.btn-play-constituent-asset').forEach(btn => {
+		btn.addEventListener('click', () => {
+			const exId = btn.getAttribute('data-ex-id');
+			const assetId = btn.getAttribute('data-asset-id');
+			const ex = getExerciseById(exId);
+			if (!ex) return;
+			const assets = getExerciseMediaAssets([ex]);
+			const targetAsset = assets.find(a => a.id === assetId) || assets[0];
+			if (targetAsset) {
+				close();
+				onPlayExercise(ex, targetAsset);
+			}
+		});
+	});
+
+	backdrop.appendChild(modal);
+	document.body.appendChild(backdrop);
 }
 
 /**
