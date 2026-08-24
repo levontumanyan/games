@@ -4935,7 +4935,23 @@ html, body {
 	gap: 6px;
 	max-height: 380px;
 	overflow-y: auto;
+	overflow-x: hidden;
 	padding-right: 4px;
+	scrollbar-width: thin;
+	scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+
+.add-picker-list::-webkit-scrollbar {
+	width: 6px;
+}
+
+.add-picker-list::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+.add-picker-list::-webkit-scrollbar-thumb {
+	background: rgba(255, 255, 255, 0.15);
+	border-radius: 4px;
 }
 
 .add-picker-item {
@@ -4949,12 +4965,13 @@ html, body {
 	border-radius: var(--radius-sm);
 	cursor: pointer;
 	transition: all 0.15s ease;
+	box-sizing: border-box;
+	width: 100%;
 }
 
 .add-picker-item:hover {
 	background: var(--bg-hover);
 	border-color: var(--accent);
-	transform: translateX(2px);
 }
 
 .add-picker-item-left {
