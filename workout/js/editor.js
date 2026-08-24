@@ -5,13 +5,14 @@
 import { generateId, parseYouTubeId, parseYouTubeInfo, parseTime, formatTime, formatFriendlyDuration, escapeHtml } from './utils.js';
 import { saveAudioFile, deleteAudioFile } from './musicdb.js';
 import { showPrompt, showAlert } from './modal.js';
-import { getClipIcon, getTimerIcon, getBreakIcon } from './icons.js';
+import { getClipIcon, getTimerIcon, getBreakIcon, getComboIcon, getExerciseIcon } from './icons.js';
 import {
 	getExercises, filterExercises, createCustomExercise,
 	getCategoryBadgeHtml, getDisciplineBadgeHtml,
 	getExerciseMediaAssets, getMediaKindBadgeHtml,
 	addMediaAssetToExercise, MEDIA_KINDS
 } from './exercises.js';
+import { getCombos } from './combos.js';
 
 /**
  * Render the routine editor for a given routine.
@@ -44,6 +45,7 @@ export function renderEditor(routine, container, actions) {
  */
 function createStepElement(step, index, routine, onUpdate, onTestStep) {
 	const isBreak = isBreakStep(step);
+	const isCombo = Boolean((step.exercises && step.exercises.length >= 2) || step.flow_type);
 	const el = document.createElement('div');
 	el.className = `step-card step-${step.type}` + (isBreak ? ' step-break step-card-compact' : '');
 	el.dataset.index = index;
@@ -62,15 +64,13 @@ function createStepElement(step, index, routine, onUpdate, onTestStep) {
 	stepNumber.textContent = `#${index + 1}`;
 
 	const stepType = document.createElement('span');
-	stepType.className = 'step-type-badge';
-	if (step.type === 'clip') {
-		stepType.innerHTML = `${getClipIcon(13)} Clip`;
-	} else if (isBreak) {
-		stepType.innerHTML = `${getBreakIcon(13)} Break`;
-	} else if (step.stepMode === 'reps' || step.targetReps) {
-		stepType.innerHTML = `🔢 Reps`;
+	stepType.className = 'step-type-badge' + (isCombo ? ' step-badge-combo' : (isBreak ? ' step-badge-break' : ' step-badge-exercise'));
+	if (isBreak) {
+		stepType.innerHTML = `${getBreakIcon(13)} Rest`;
+	} else if (isCombo) {
+		stepType.innerHTML = `${getComboIcon(13)} Combo Flow`;
 	} else {
-		stepType.innerHTML = `${getTimerIcon(13)} Timer`;
+		stepType.innerHTML = `🥋 Exercise`;
 	}
 
 	const headerActions = document.createElement('div');
@@ -1394,3 +1394,223 @@ export function createRoutine(title) {
 		steps: [],
 	};
 }
+
+/**
+ * Open a quick selection modal to add an exercise into the active routine.
+ * @param {Object} routine
+ * @param {Function} onUpdate
+ */
+export function showAddExerciseModal(routine, onUpdate) {
+	const exercises = getExercises();
+
+	const backdrop = document.createElement('div');
+	backdrop.className = 'modal-backdrop';
+
+	const modal = document.createElement('div');
+	modal.className = 'modal modal-add-picker';
+
+	modal.innerHTML = `
+		<div class="modal-header">
+			<h3 class="modal-title">🥋 Select Exercise</h3>
+			<button class="modal-close-btn" title="Close">✕</button>
+		</div>
+
+		<div class="modal-body">
+			<div class="search-box-wrapper" style="margin-bottom:12px;">
+				<span class="search-icon">🔍</span>
+				<input type="text" id="add-ex-search" class="input combo-search-input" placeholder="Search exercises (pushups, teep, cobra, star jumps)..." autofocus>
+			</div>
+
+			<div id="add-ex-list" class="add-picker-list"></div>
+		</div>
+	`;
+
+	const close = () => backdrop.remove();
+
+	modal.querySelector('.modal-close-btn').addEventListener('click', close);
+	backdrop.addEventListener('click', (e) => {
+		if (e.target === backdrop) close();
+	});
+
+	const searchInput = modal.querySelector('#add-ex-search');
+	const listEl = modal.querySelector('#add-ex-list');
+
+	function renderList(query = '') {
+		const filtered = filterExercises(query);
+		listEl.innerHTML = '';
+
+		if (filtered.length === 0) {
+			listEl.innerHTML = `<div class="empty-sessions"><p>No exercises found.</p></div>`;
+			return;
+		}
+
+		filtered.forEach(ex => {
+			const item = document.createElement('div');
+			item.className = 'add-picker-item';
+
+			const isReps = (ex.default_mode || 'reps') === 'reps';
+			const modeStr = isReps ? `🔢 ${ex.default_quantity || 20} Reps` : `⏱️ ${formatTime(ex.default_quantity || 30)}`;
+
+			item.innerHTML = `
+				<div class="add-picker-item-left">
+					${getCategoryBadgeHtml(ex.category)}
+					<span class="add-picker-name">${escapeHtml(ex.name)}</span>
+					${ex.discipline ? getDisciplineBadgeHtml(ex.discipline) : ''}
+				</div>
+				<div class="add-picker-item-right">
+					<span class="add-picker-mode">${modeStr}</span>
+					<button class="btn btn-primary btn-xs">+ Add</button>
+				</div>
+			`;
+
+			item.addEventListener('click', () => {
+				const hasVideo = ex.media_url && (ex.media_url.includes('youtube') || ex.media_url.includes('youtu.be'));
+				const asset = (ex.media_assets || [])[0];
+				const isVidAsset = asset && (asset.type === 'video' || Boolean(asset.videoId));
+
+				let newStep;
+				if (isVidAsset || hasVideo) {
+					newStep = createClipStep(
+						ex.name,
+						asset?.videoId || parseYouTubeId(ex.media_url),
+						asset?.startSeconds || 0,
+						asset?.endSeconds || ((asset?.startSeconds || 0) + (ex.default_quantity || 60))
+					);
+				} else {
+					newStep = createTimerStep();
+					newStep.label = ex.name;
+					newStep.stepMode = ex.default_mode || 'reps';
+					newStep.targetReps = isReps ? (ex.default_quantity || 20) : 0;
+					newStep.durationSeconds = !isReps ? (ex.default_quantity || 30) : 30;
+					newStep.gifUrl = asset?.url || ex.media_url || '';
+					newStep.mediaUrl = asset?.url || ex.media_url || '';
+				}
+
+				newStep.exercises = [{ id: ex.id, name: ex.name, category: ex.category, discipline: ex.discipline }];
+				routine.steps.push(newStep);
+				close();
+				onUpdate();
+			});
+
+			listEl.appendChild(item);
+		});
+	}
+
+	searchInput.addEventListener('input', (e) => {
+		renderList(e.target.value);
+	});
+
+	renderList();
+	backdrop.appendChild(modal);
+	document.body.appendChild(backdrop);
+}
+
+/**
+ * Open a quick selection modal to add a combo into the active routine.
+ * @param {Object} routine
+ * @param {Function} onUpdate
+ */
+export function showAddComboModal(routine, onUpdate) {
+	const combos = getCombos();
+
+	const backdrop = document.createElement('div');
+	backdrop.className = 'modal-backdrop';
+
+	const modal = document.createElement('div');
+	modal.className = 'modal modal-add-picker';
+
+	modal.innerHTML = `
+		<div class="modal-header">
+			<h3 class="modal-title">🔗 Select Combo Flow</h3>
+			<button class="modal-close-btn" title="Close">✕</button>
+		</div>
+
+		<div class="modal-body">
+			<div class="search-box-wrapper" style="margin-bottom:12px;">
+				<span class="search-icon">🔍</span>
+				<input type="text" id="add-combo-search" class="input combo-search-input" placeholder="Search combos (Star Jumps ⮀ Coordination, Lateral Taps, Jab Knee)..." autofocus>
+			</div>
+
+			<div id="add-combo-list" class="add-picker-list"></div>
+		</div>
+	`;
+
+	const close = () => backdrop.remove();
+
+	modal.querySelector('.modal-close-btn').addEventListener('click', close);
+	backdrop.addEventListener('click', (e) => {
+		if (e.target === backdrop) close();
+	});
+
+	const searchInput = modal.querySelector('#add-combo-search');
+	const listEl = modal.querySelector('#add-combo-list');
+
+	function renderList(query = '') {
+		const q = (query || '').toLowerCase().trim();
+		const filtered = combos.filter(c => {
+			if (!q) return true;
+			return (c.name || '').toLowerCase().includes(q) || (c.description || '').toLowerCase().includes(q);
+		});
+		listEl.innerHTML = '';
+
+		if (filtered.length === 0) {
+			listEl.innerHTML = `<div class="empty-sessions"><p>No combos found.</p></div>`;
+			return;
+		}
+
+		filtered.forEach(combo => {
+			const item = document.createElement('div');
+			item.className = 'add-picker-item';
+
+			const modeStr = `⏱️ ${formatTime(combo.default_quantity || 190)}`;
+
+			item.innerHTML = `
+				<div class="add-picker-item-left">
+					<span class="combo-flow-badge" style="font-size:0.7rem;padding:2px 6px;">${combo.flow_type === 'alternating' ? '⮀ Alternating' : '➔ Sequence'}</span>
+					<span class="add-picker-name">${escapeHtml(combo.name)}</span>
+				</div>
+				<div class="add-picker-item-right">
+					<span class="add-picker-mode">${modeStr}</span>
+					<button class="btn btn-primary btn-xs">+ Add</button>
+				</div>
+			`;
+
+			item.addEventListener('click', () => {
+				const asset = (combo.media_assets || [])[0];
+				const isVideo = asset && (asset.type === 'video' || Boolean(asset.videoId));
+				const exList = (combo.exercise_ids || []).map(id => ({ id }));
+
+				let newStep;
+				if (isVideo) {
+					newStep = createClipStep(
+						combo.name,
+						asset.videoId || parseYouTubeId(asset.url || combo.media_url),
+						asset.startSeconds || 0,
+						asset.endSeconds || ((asset.startSeconds || 0) + (combo.default_quantity || 190))
+					);
+				} else {
+					newStep = createTimerStep();
+					newStep.label = combo.name;
+					newStep.durationSeconds = combo.default_quantity || 190;
+				}
+
+				newStep.flow_type = combo.flow_type || 'alternating';
+				newStep.exercises = exList;
+				routine.steps.push(newStep);
+				close();
+				onUpdate();
+			});
+
+			listEl.appendChild(item);
+		});
+	}
+
+	searchInput.addEventListener('input', (e) => {
+		renderList(e.target.value);
+	});
+
+	renderList();
+	backdrop.appendChild(modal);
+	document.body.appendChild(backdrop);
+}
+

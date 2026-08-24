@@ -8,7 +8,10 @@ import {
 	importRoutines, encodeRoutineToShareUrl, getSharedRoutineFromUrl,
 	fetchStats
 } from './storage.js';
-import { renderEditor, createClipStep, createTimerStep, createBreakStep, createRoutine } from './editor.js';
+import {
+	renderEditor, createClipStep, createTimerStep, createBreakStep, createRoutine,
+	showAddExerciseModal, showAddComboModal
+} from './editor.js';
 import { renderRoutineOverview } from './view.js';
 import {
 	initPlayer, startRoutine, stopPlayback,
@@ -155,8 +158,8 @@ function cacheDom() {
 	dom.playerStage = document.querySelector('.player-stage');
 	dom.routineTitle = document.getElementById('routine-title');
 	dom.stepList = document.getElementById('step-list');
-	dom.addClipBtn = document.getElementById('add-clip-btn');
-	dom.addTimerBtn = document.getElementById('add-timer-btn');
+	dom.addExerciseBtn = document.getElementById('add-exercise-btn');
+	dom.addComboBtn = document.getElementById('add-combo-btn');
 	dom.addBreakBtn = document.getElementById('add-break-btn');
 	dom.doneEditingBtn = document.getElementById('done-editing-btn');
 	dom.deleteRoutineBtn = document.getElementById('delete-routine-btn');
@@ -546,8 +549,28 @@ function bindEvents() {
 	if (dom.sidebarExpandBtn) {
 		dom.sidebarExpandBtn.addEventListener('click', () => toggleSidebar(false));
 	}
-	dom.addClipBtn.addEventListener('click', handleAddClip);
-	dom.addTimerBtn.addEventListener('click', handleAddTimer);
+	if (dom.addExerciseBtn) {
+		dom.addExerciseBtn.addEventListener('click', () => {
+			const r = getSelectedRoutine();
+			if (r) {
+				showAddExerciseModal(r, () => {
+					persist();
+					renderSelectedRoutine();
+				});
+			}
+		});
+	}
+	if (dom.addComboBtn) {
+		dom.addComboBtn.addEventListener('click', () => {
+			const r = getSelectedRoutine();
+			if (r) {
+				showAddComboModal(r, () => {
+					persist();
+					renderSelectedRoutine();
+				});
+			}
+		});
+	}
 	if (dom.addBreakBtn) dom.addBreakBtn.addEventListener('click', handleAddBreak);
 	dom.doneEditingBtn.addEventListener('click', () => {
 		currentMode = 'view';

@@ -247,6 +247,14 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 	app.mount("/js", StaticFiles(directory=static_dir / "js"), name="js")
 	app.mount("/media", StaticFiles(directory=media_dir), name="media")
 
+	@app.api_route("/preview_icons.html", methods=["GET", "HEAD"])
+	@app.api_route("/workout/preview_icons.html", methods=["GET", "HEAD"])
+	async def preview_icons():
+		preview_path = static_dir / "preview_icons.html"
+		if preview_path.exists():
+			return FileResponse(preview_path)
+		raise HTTPException(status_code=404, detail="Preview page not found")
+
 	@app.api_route("/", methods=["GET", "HEAD"])
 	@app.api_route("/workout", methods=["GET", "HEAD"])
 	@app.api_route("/workout/", methods=["GET", "HEAD"])
