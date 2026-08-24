@@ -3,7 +3,7 @@
  */
 
 import { fetchServerCombos, saveCustomComboOnServer, deleteCustomComboOnServer } from './storage.js';
-import { getExerciseById, getExercises, getCategoryBadgeHtml, getDisciplineBadgeHtml } from './exercises.js';
+import { getExerciseById, getExercises, getCategoryBadgeHtml, getDisciplineBadgeHtml, inferMusclesForExercise, getMuscleBadgeHtml } from './exercises.js';
 import { escapeHtml, formatTime, parseYouTubeId } from './utils.js';
 import { showConfirm, showAlert } from './modal.js';
 
@@ -235,6 +235,19 @@ export function renderCombosCatalog(container, options = {}) {
 				? `🔢 ${combo.default_quantity || 20} Total Reps`
 				: `⏱️ ${formatTime(combo.default_quantity || 190)}`;
 
+			// Aggregate muscles from constituent exercises
+			const primarySet = new Set();
+			const secondarySet = new Set();
+			exList.forEach(e => {
+				const m = inferMusclesForExercise(e);
+				(m.primary || []).forEach(p => primarySet.add(p));
+				(m.secondary || []).forEach(s => secondarySet.add(s));
+			});
+			const muscleBadgesHtml = [
+				...Array.from(primarySet).map(m => getMuscleBadgeHtml(m, true)),
+				...Array.from(secondarySet).filter(m => !primarySet.has(m)).map(m => getMuscleBadgeHtml(m, false)),
+			].join('');
+
 			card.innerHTML = `
 				<div class="combo-card-header">
 					<div class="combo-card-badges">
@@ -251,6 +264,8 @@ export function renderCombosCatalog(container, options = {}) {
 					<h3 class="combo-card-title">${escapeHtml(combo.name)}</h3>
 					<span class="combo-card-mode-tag">${modeStr}</span>
 				</div>
+
+				${muscleBadgesHtml ? `<div class="ex-lib-muscles-row">${muscleBadgesHtml}</div>` : ''}
 
 				<p class="combo-card-desc">${escapeHtml(combo.description || 'Compound movement flow.')}</p>
 

@@ -1,7 +1,8 @@
 import { formatTime, formatFriendlyDuration, escapeHtml } from './utils.js';
 import { isBreakStep, resolveStepMediaUrl } from './editor.js';
 import { getClipIcon, getTimerIcon, getBreakIcon, getStepsIcon, getShareIcon, getSaveIcon } from './icons.js';
-import { getCategoryBadgeHtml, getDisciplineBadgeHtml } from './exercises.js';
+import { getCategoryBadgeHtml, getDisciplineBadgeHtml, inferMusclesForExercise, getMuscleBadgeHtml, getExerciseById } from './exercises.js';
+import { MUSCLE_DEFINITIONS } from './body_map.js';
 
 /**
  * Render the read-only routine overview.
@@ -154,6 +155,80 @@ export function renderRoutineOverview(routine, container, actions = {}) {
 		emptyBox.appendChild(addBtn);
 		container.appendChild(emptyBox);
 		return;
+	}
+
+	// ── Target Muscle Engagement Breakdown ──────────────────────────────────
+	const muscleCounts = {};
+	const regionCounts = { upper: 0, core: 0, lower: 0 };
+	let totalMuscleHits = 0;
+
+	steps.forEach(s => {
+		if (isBreakStep(s)) return;
+		// Resolve exercise object or infer from label
+		const linkedEx = (s.exercises && s.exercises[0]) || (s.exercise_id ? getExerciseById(s.exercise_id) : null);
+		const muscles = inferMusclesForExercise(linkedEx || { name: s.label, description: s.description });
+
+		(muscles.primary || []).forEach(m => {
+			muscleCounts[m] = (muscleCounts[m] || 0) + 2;
+			totalMuscleHits += 2;
+			const def = MUSCLE_DEFINITIONS[m];
+			if (def && def.region && regionCounts[def.region] !== undefined) {
+				regionCounts[def.region] += 2;
+			}
+		});
+
+		(muscles.secondary || []).forEach(m => {
+			muscleCounts[m] = (muscleCounts[m] || 0) + 1;
+			totalMuscleHits += 1;
+			const def = MUSCLE_DEFINITIONS[m];
+			if (def && def.region && regionCounts[def.region] !== undefined) {
+				regionCounts[def.region] += 1;
+			}
+		});
+	});
+
+	if (totalMuscleHits > 0) {
+		const sortedMuscles = Object.entries(muscleCounts)
+			.sort((a, b) => b[1] - a[1])
+			.slice(0, 5);
+
+		const upperPct = Math.round((regionCounts.upper / totalMuscleHits) * 100);
+		const corePct = Math.round((regionCounts.core / totalMuscleHits) * 100);
+		const lowerPct = Math.round((regionCounts.lower / totalMuscleHits) * 100);
+
+		const muscleCard = document.createElement('div');
+		muscleCard.className = 'view-muscle-breakdown-card';
+		muscleCard.innerHTML = `
+			<div class="muscle-breakdown-header">
+				<div class="muscle-breakdown-title">
+					<span class="breakdown-icon">🧬</span>
+					<h4>Muscle Engagement & Anatomy</h4>
+				</div>
+				<div class="muscle-region-distribution">
+					<span class="region-pill reg-upper" title="Upper Body Load">Upper ${upperPct}%</span>
+					<span class="region-pill reg-core" title="Core & Abs Load">Core ${corePct}%</span>
+					<span class="region-pill reg-lower" title="Lower Body Load">Lower ${lowerPct}%</span>
+				</div>
+			</div>
+
+			<div class="muscle-breakdown-bar-track">
+				<div class="muscle-bar-seg seg-upper" style="width: ${upperPct}%" title="Upper Body: ${upperPct}%"></div>
+				<div class="muscle-bar-seg seg-core" style="width: ${corePct}%" title="Core: ${corePct}%"></div>
+				<div class="muscle-bar-seg seg-lower" style="width: ${lowerPct}%" title="Lower Body: ${lowerPct}%"></div>
+			</div>
+
+			<div class="muscle-top-tags">
+				<span class="top-tags-label">Primary Activations:</span>
+				${sortedMuscles.map(([mId, count]) => {
+					const def = MUSCLE_DEFINITIONS[mId];
+					if (!def) return '';
+					return `<span class="muscle-tag-chip" style="--chip-color:${def.color}">
+						<span>${def.icon}</span> <span>${def.label}</span>
+					</span>`;
+				}).join('')}
+			</div>
+		`;
+		container.appendChild(muscleCard);
 	}
 
 	// ── Steps Feed ───────────────────────────────────────────────────────────
@@ -382,7 +457,10 @@ function createViewStepCard(step, index, steps, actions) {
 		}
 	}
 
-	// Attached exercise tags
+	// Attached exercise tags & muscle badges
+	const linkedEx = (step.exercises && step.exercises[0]) || (step.exercise_id ? getExerciseById(step.exercise_id) : null);
+	const stepMuscles = inferMusclesForExercise(linkedEx || { name: step.label, description: step.description });
+
 	if (step.exercises && step.exercises.length > 0) {
 		step.exercises.forEach(ex => {
 			const exTag = document.createElement('span');
@@ -391,6 +469,16 @@ function createViewStepCard(step, index, steps, actions) {
 			tagsRow.appendChild(exTag);
 		});
 	}
+
+	(stepMuscles.primary || []).slice(0, 2).forEach(m => {
+		const mDef = MUSCLE_DEFINITIONS[m];
+		if (mDef) {
+			const mTag = document.createElement('span');
+			mTag.className = 'view-tag view-tag-muscle-pill';
+			mTag.innerHTML = `${mDef.icon} ${mDef.label}`;
+			tagsRow.appendChild(mTag);
+		}
+	});
 
 	details.append(title, tagsRow);
 

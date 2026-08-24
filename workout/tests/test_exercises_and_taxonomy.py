@@ -36,11 +36,30 @@ def test_seed_exercises_loaded(client: TestClient):
 	assert all(e["category"] == "stretch" for e in stretch_list)
 	assert any(e["name"] == "Cobra Pose & Hip Opener" for e in stretch_list)
 
-	# Test discipline filter
-	res_mt = client.get("/api/exercises?discipline=muay_thai", headers={"X-User-Id": "levon"})
-	assert res_mt.status_code == 200
-	mt_list = res_mt.json()
-	assert all(e["discipline"] == "muay_thai" for e in mt_list)
+	# Test muscle group presence and filter
+	pushup = next(e for e in exercises if e["name"] == "Standard Pushups")
+	assert "chest" in pushup.get("primary_muscles", [])
+	assert "triceps" in pushup.get("primary_muscles", [])
+
+	res_chest = client.get("/api/exercises?muscle=chest", headers={"X-User-Id": "levon"})
+	assert res_chest.status_code == 200
+	chest_list = res_chest.json()
+	assert any(e["name"] == "Standard Pushups" for e in chest_list)
+	assert any(e["name"] == "Diamond Pushups" for e in chest_list)
+
+	# Test groin filter
+	res_groin = client.get("/api/exercises?muscle=groin", headers={"X-User-Id": "levon"})
+	assert res_groin.status_code == 200
+	groin_list = res_groin.json()
+	assert any(e["name"] == "Pigeon Pose Hip Opener" for e in groin_list)
+	assert any(e["name"] == "Star Jumps" for e in groin_list)
+
+	# Test hip_flexors filter
+	res_hip = client.get("/api/exercises?muscle=hip_flexors", headers={"X-User-Id": "levon"})
+	assert res_hip.status_code == 200
+	hip_list = res_hip.json()
+	assert any(e["name"] == "Check Repeats (Lead & Rear Block)" for e in hip_list)
+	assert any(e["name"] == "Mountain Climbers" for e in hip_list)
 
 
 def test_create_and_delete_custom_exercise(client: TestClient):
@@ -52,6 +71,8 @@ def test_create_and_delete_custom_exercise(client: TestClient):
 		"default_mode": "reps",
 		"default_quantity": 40,
 		"description": "Heavy bag low kick repetition power drill.",
+		"primary_muscles": ["quads", "glutes"],
+		"secondary_muscles": ["calves", "core"],
 	}
 	res = client.post("/api/exercises", json=payload, headers={"X-User-Id": "levon"})
 	assert res.status_code == 200
@@ -61,11 +82,17 @@ def test_create_and_delete_custom_exercise(client: TestClient):
 	assert created["discipline"] == "muay_thai"
 	assert created["default_mode"] == "reps"
 	assert created["default_quantity"] == 40
+	assert created["primary_muscles"] == ["quads", "glutes"]
+	assert created["secondary_muscles"] == ["calves", "core"]
 	ex_id = created["id"]
 
 	# Verify it appears in user list
 	res_list = client.get("/api/exercises?discipline=muay_thai", headers={"X-User-Id": "levon"})
 	assert any(e["id"] == ex_id for e in res_list.json())
+
+	# Verify muscle filter returns custom exercise
+	res_quads = client.get("/api/exercises?muscle=quads", headers={"X-User-Id": "levon"})
+	assert any(e["id"] == ex_id for e in res_quads.json())
 
 	# Delete custom exercise
 	res_del = client.delete(f"/api/exercises/{ex_id}", headers={"X-User-Id": "levon"})

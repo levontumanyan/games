@@ -72,6 +72,8 @@ class Database:
 					description TEXT DEFAULT '',
 					media_url TEXT DEFAULT '',
 					media_assets_json TEXT NOT NULL DEFAULT '[]',
+					primary_muscles_json TEXT NOT NULL DEFAULT '[]',
+					secondary_muscles_json TEXT NOT NULL DEFAULT '[]',
 					created_at TEXT NOT NULL
 				);
 
@@ -140,13 +142,27 @@ class Database:
 				except Exception:
 					pass
 
-			# Auto-migrate exercises table to include media_assets_json
+			# Auto-migrate exercises table to include media_assets_json and muscle group columns
 			ex_info = conn.execute("PRAGMA table_info(exercises)").fetchall()
 			ex_cols = [row["name"] for row in ex_info]
 			if "media_assets_json" not in ex_cols:
 				try:
 					conn.execute(
 						"ALTER TABLE exercises ADD COLUMN media_assets_json TEXT NOT NULL DEFAULT '[]'"
+					)
+				except Exception:
+					pass
+			if "primary_muscles_json" not in ex_cols:
+				try:
+					conn.execute(
+						"ALTER TABLE exercises ADD COLUMN primary_muscles_json TEXT NOT NULL DEFAULT '[]'"
+					)
+				except Exception:
+					pass
+			if "secondary_muscles_json" not in ex_cols:
+				try:
+					conn.execute(
+						"ALTER TABLE exercises ADD COLUMN secondary_muscles_json TEXT NOT NULL DEFAULT '[]'"
 					)
 				except Exception:
 					pass
@@ -296,6 +312,8 @@ class Database:
 						"endSeconds": 250,
 					}
 				],
+				["calves", "quads", "groin"],
+				["shoulders", "abs"],
 			),
 			# Coordination Footwork Drills (Atomic)
 			(
@@ -319,6 +337,8 @@ class Database:
 						"endSeconds": 250,
 					}
 				],
+				["calves", "quads", "groin"],
+				["abs", "glutes"],
 			),
 			# Check Repeats (Lead & Rear Block)
 			(
@@ -342,6 +362,8 @@ class Database:
 						"endSeconds": 60,
 					}
 				],
+				["hip_flexors", "obliques", "quads"],
+				["calves", "groin"],
 			),
 			# Lateral Jumps
 			(
@@ -365,6 +387,8 @@ class Database:
 						"endSeconds": 770,
 					}
 				],
+				["quads", "calves", "groin"],
+				["glutes", "obliques"],
 			),
 			# Mountain Climbers
 			(
@@ -388,6 +412,8 @@ class Database:
 						"endSeconds": 552,
 					}
 				],
+				["abs", "hip_flexors", "shoulders"],
+				["quads", "chest", "calves"],
 			),
 			# Jab-Cross Combo
 			(
@@ -411,6 +437,8 @@ class Database:
 						"endSeconds": 846,
 					}
 				],
+				["shoulders", "obliques"],
+				["triceps", "forearms", "calves"],
 			),
 			# Rear Knee / Switch Knee Thrust
 			(
@@ -434,6 +462,8 @@ class Database:
 						"endSeconds": 938,
 					}
 				],
+				["hip_flexors", "abs", "glutes"],
+				["quads", "calves"],
 			),
 			# Lead & Rear Elbow Strikes
 			(
@@ -457,6 +487,8 @@ class Database:
 						"endSeconds": 1243,
 					}
 				],
+				["shoulders", "obliques", "lats"],
+				["traps", "triceps", "biceps"],
 			),
 			# Standard Pushups
 			(
@@ -478,6 +510,8 @@ class Database:
 						"url": "/workout/media/pushups.svg",
 					}
 				],
+				["chest", "triceps"],
+				["shoulders", "abs", "forearms"],
 			),
 			# Diamond Pushups
 			(
@@ -499,6 +533,8 @@ class Database:
 						"url": "/workout/media/diamond-pushups.svg",
 					}
 				],
+				["triceps", "chest"],
+				["shoulders", "abs", "forearms"],
 			),
 			# Plank Shoulder Taps
 			(
@@ -520,6 +556,8 @@ class Database:
 						"url": "/workout/media/shoulder-taps.svg",
 					}
 				],
+				["abs", "obliques", "shoulders"],
+				["chest", "triceps", "forearms"],
 			),
 			# Cobra Pose & Hip Opener
 			(
@@ -548,6 +586,8 @@ class Database:
 						"url": "/workout/media/cobra-stretch.svg",
 					},
 				],
+				["abs", "hip_flexors", "lower_back"],
+				["groin", "shoulders"],
 			),
 			# Overhead Tricep & Shoulder Stretch
 			(
@@ -576,6 +616,8 @@ class Database:
 						"url": "/workout/media/shoulder-tricep-stretch.svg",
 					},
 				],
+				["triceps", "shoulders", "lats"],
+				["traps"],
 			),
 			# Pigeon Pose Hip Opener
 			(
@@ -604,6 +646,8 @@ class Database:
 						"url": "/workout/media/pigeon-pose.svg",
 					},
 				],
+				["glutes", "groin", "hip_flexors"],
+				["hamstrings", "lower_back"],
 			),
 			# Seated Forward Hamstring Fold
 			(
@@ -625,6 +669,8 @@ class Database:
 						"url": "/workout/media/seated-hamstring-fold.jpg",
 					}
 				],
+				["hamstrings", "lower_back"],
+				["calves", "groin"],
 			),
 			# Extended Child's Pose Spine & Lat Stretch
 			(
@@ -653,16 +699,33 @@ class Database:
 						"url": "/workout/media/childs-pose.svg",
 					},
 				],
+				["lats", "lower_back", "traps"],
+				["groin", "glutes"],
 			),
 		]
 
-		for ex_id, u_id, name, cat, disc, mode, qty, desc, media, assets in default_exercises:
+		for (
+			ex_id,
+			u_id,
+			name,
+			cat,
+			disc,
+			mode,
+			qty,
+			desc,
+			media,
+			assets,
+			pri_muscles,
+			sec_muscles,
+		) in default_exercises:
 			assets_json = json.dumps(assets, ensure_ascii=False)
+			pri_json = json.dumps(pri_muscles, ensure_ascii=False)
+			sec_json = json.dumps(sec_muscles, ensure_ascii=False)
 			conn.execute(
 				"""
 				INSERT INTO exercises (
-					id, user_id, name, category, discipline, default_mode, default_quantity, description, media_url, media_assets_json, created_at
-				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+					id, user_id, name, category, discipline, default_mode, default_quantity, description, media_url, media_assets_json, primary_muscles_json, secondary_muscles_json, created_at
+				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 				ON CONFLICT(id) DO UPDATE SET
 					name = excluded.name,
 					category = excluded.category,
@@ -671,9 +734,25 @@ class Database:
 					default_quantity = excluded.default_quantity,
 					description = excluded.description,
 					media_url = excluded.media_url,
-					media_assets_json = excluded.media_assets_json
+					media_assets_json = excluded.media_assets_json,
+					primary_muscles_json = excluded.primary_muscles_json,
+					secondary_muscles_json = excluded.secondary_muscles_json
 				""",
-				(ex_id, u_id, name, cat, disc, mode, qty, desc, media, assets_json, now),
+				(
+					ex_id,
+					u_id,
+					name,
+					cat,
+					disc,
+					mode,
+					qty,
+					desc,
+					media,
+					assets_json,
+					pri_json,
+					sec_json,
+					now,
+				),
 			)
 
 	def _seed_default_combos(self, conn: sqlite3.Connection) -> None:
@@ -1006,10 +1085,11 @@ class Database:
 		category: str | None = None,
 		discipline: str | None = None,
 		search: str | None = None,
+		muscle: str | None = None,
 	) -> list[dict[str, Any]]:
 		clean_user = user_id.strip().lower() if user_id else "levon"
 		query = """
-			SELECT id, user_id, name, category, discipline, default_mode, default_quantity, description, media_url, media_assets_json, created_at
+			SELECT id, user_id, name, category, discipline, default_mode, default_quantity, description, media_url, media_assets_json, primary_muscles_json, secondary_muscles_json, created_at
 			FROM exercises
 			WHERE (user_id IS NULL OR user_id = 'system' OR user_id = ?)
 		"""
@@ -1028,6 +1108,13 @@ class Database:
 			term = f"%{search.strip().lower()}%"
 			params.extend([term, term])
 
+		if muscle and muscle.strip() and muscle.strip().lower() != "all":
+			m = f"%{muscle.strip().lower()}%"
+			query += (
+				" AND (LOWER(primary_muscles_json) LIKE ? OR LOWER(secondary_muscles_json) LIKE ?)"
+			)
+			params.extend([m, m])
+
 		query += " ORDER BY CASE WHEN user_id IS NOT NULL AND user_id != 'system' THEN 0 ELSE 1 END, name ASC"
 
 		with self.get_connection() as conn:
@@ -1039,6 +1126,14 @@ class Database:
 					d["media_assets"] = json.loads(d.get("media_assets_json") or "[]")
 				except Exception:
 					d["media_assets"] = []
+				try:
+					d["primary_muscles"] = json.loads(d.get("primary_muscles_json") or "[]")
+				except Exception:
+					d["primary_muscles"] = []
+				try:
+					d["secondary_muscles"] = json.loads(d.get("secondary_muscles_json") or "[]")
+				except Exception:
+					d["secondary_muscles"] = []
 				if not d["media_assets"] and d.get("media_url"):
 					d["media_assets"] = [
 						{
@@ -1062,6 +1157,14 @@ class Database:
 				d["media_assets"] = json.loads(d.get("media_assets_json") or "[]")
 			except Exception:
 				d["media_assets"] = []
+			try:
+				d["primary_muscles"] = json.loads(d.get("primary_muscles_json") or "[]")
+			except Exception:
+				d["primary_muscles"] = []
+			try:
+				d["secondary_muscles"] = json.loads(d.get("secondary_muscles_json") or "[]")
+			except Exception:
+				d["secondary_muscles"] = []
 			if not d["media_assets"] and d.get("media_url"):
 				d["media_assets"] = [
 					{
@@ -1105,14 +1208,23 @@ class Database:
 				}
 			]
 		media_assets_json = json.dumps(media_assets, ensure_ascii=False)
+		primary_muscles = data.get("primary_muscles", [])
+		if not isinstance(primary_muscles, list):
+			primary_muscles = []
+		primary_muscles_json = json.dumps(primary_muscles, ensure_ascii=False)
+
+		secondary_muscles = data.get("secondary_muscles", [])
+		if not isinstance(secondary_muscles, list):
+			secondary_muscles = []
+		secondary_muscles_json = json.dumps(secondary_muscles, ensure_ascii=False)
 		now = datetime.now().isoformat()
 
 		with self.get_connection() as conn:
 			conn.execute(
 				"""
 				INSERT INTO exercises (
-					id, user_id, name, category, discipline, default_mode, default_quantity, description, media_url, media_assets_json, created_at
-				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+					id, user_id, name, category, discipline, default_mode, default_quantity, description, media_url, media_assets_json, primary_muscles_json, secondary_muscles_json, created_at
+				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 				ON CONFLICT(id) DO UPDATE SET
 					name = excluded.name,
 					category = excluded.category,
@@ -1121,7 +1233,9 @@ class Database:
 					default_quantity = excluded.default_quantity,
 					description = excluded.description,
 					media_url = excluded.media_url,
-					media_assets_json = excluded.media_assets_json
+					media_assets_json = excluded.media_assets_json,
+					primary_muscles_json = excluded.primary_muscles_json,
+					secondary_muscles_json = excluded.secondary_muscles_json
 				""",
 				(
 					ex_id,
@@ -1134,6 +1248,8 @@ class Database:
 					description,
 					media_url,
 					media_assets_json,
+					primary_muscles_json,
+					secondary_muscles_json,
 					now,
 				),
 			)
@@ -1148,6 +1264,8 @@ class Database:
 			"description": description,
 			"media_url": media_url,
 			"media_assets": media_assets,
+			"primary_muscles": primary_muscles,
+			"secondary_muscles": secondary_muscles,
 			"created_at": now,
 		}
 

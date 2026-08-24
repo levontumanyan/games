@@ -5,6 +5,9 @@
 import { fetchServerExercises, saveCustomExerciseOnServer, deleteCustomExerciseOnServer } from './storage.js';
 import { escapeHtml, formatTime, parseYouTubeId } from './utils.js';
 import { showConfirm, showAlert } from './modal.js';
+import { createBodyMap, MUSCLE_DEFINITIONS } from './body_map.js';
+
+export const MUSCLE_GROUPS = MUSCLE_DEFINITIONS;
 
 export const CATEGORIES = {
 	strength: { label: 'Strength / Force', icon: '💪', color: '#6366f1', bg: 'rgba(99, 102, 241, 0.15)' },
@@ -155,27 +158,95 @@ export function getExercises() {
 }
 
 /**
- * Filter exercises by text query, category, or discipline.
+ * Infer or retrieve primary and secondary target muscle groups for an exercise.
+ * @param {Object} ex
+ * @returns {{ primary: Array<string>, secondary: Array<string> }}
+ */
+export function inferMusclesForExercise(ex) {
+	if (!ex) return { primary: [], secondary: [] };
+	if (Array.isArray(ex.primary_muscles) && ex.primary_muscles.length > 0) {
+		return {
+			primary: ex.primary_muscles,
+			secondary: Array.isArray(ex.secondary_muscles) ? ex.secondary_muscles : [],
+		};
+	}
+	const name = (ex.name || '').toLowerCase();
+	const desc = (ex.description || '').toLowerCase();
+	const combined = `${name} ${desc}`;
+
+	if (combined.includes('pushup') || combined.includes('push-up') || combined.includes('press')) {
+		return { primary: ['chest', 'triceps'], secondary: ['shoulders', 'abs', 'forearms'] };
+	}
+	if (combined.includes('jump') || combined.includes('squat') || combined.includes('lunge')) {
+		return { primary: ['quads', 'calves', 'groin'], secondary: ['glutes', 'abs'] };
+	}
+	if (combined.includes('knee') || combined.includes('kick')) {
+		return { primary: ['hip_flexors', 'abs', 'quads'], secondary: ['glutes', 'calves', 'groin'] };
+	}
+	if (combined.includes('jab') || combined.includes('cross') || combined.includes('punch') || combined.includes('elbow')) {
+		return { primary: ['shoulders', 'obliques'], secondary: ['triceps', 'forearms', 'calves'] };
+	}
+	if (combined.includes('plank') || combined.includes('climber') || combined.includes('tap')) {
+		return { primary: ['abs', 'obliques', 'shoulders'], secondary: ['chest', 'triceps', 'forearms'] };
+	}
+	if (combined.includes('cobra') || combined.includes('child') || combined.includes('pose') || combined.includes('stretch')) {
+		return { primary: ['abs', 'hip_flexors', 'lower_back'], secondary: ['groin', 'shoulders', 'lats'] };
+	}
+	if (combined.includes('pigeon')) {
+		return { primary: ['glutes', 'groin', 'hip_flexors'], secondary: ['hamstrings', 'lower_back'] };
+	}
+	if (combined.includes('fold') || combined.includes('hamstring')) {
+		return { primary: ['hamstrings', 'lower_back'], secondary: ['calves', 'groin'] };
+	}
+	return { primary: ['abs'], secondary: ['shoulders', 'core'] };
+}
+
+/**
+ * Render HTML badge for a muscle group.
+ * @param {string} muscleKey
+ * @param {boolean} [isPrimary=true]
+ * @returns {string}
+ */
+export function getMuscleBadgeHtml(muscleKey, isPrimary = true) {
+	const def = MUSCLE_DEFINITIONS[muscleKey] || { label: muscleKey, icon: '🧬', color: '#9ea2bd' };
+	const typeClass = isPrimary ? 'muscle-badge-primary' : 'muscle-badge-secondary';
+	return `<span class="ex-muscle-badge ${typeClass}" title="${isPrimary ? 'Primary Target' : 'Secondary Synergist'}: ${def.label}">
+		<span class="muscle-icon">${def.icon}</span>
+		<span class="muscle-label">${def.label}</span>
+	</span>`;
+}
+
+/**
+ * Filter exercises by text query, category, discipline, or target muscle group.
  * @param {string} query
  * @param {string} [category]
  * @param {string} [discipline]
+ * @param {string} [muscle]
  * @returns {Array}
  */
-export function filterExercises(query = '', category = '', discipline = '') {
+export function filterExercises(query = '', category = '', discipline = '', muscle = '') {
 	const all = getExercises();
 	const q = (query || '').trim().toLowerCase();
 	const cat = (category || '').trim().toLowerCase();
 	const disc = (discipline || '').trim().toLowerCase();
+	const mus = (muscle || '').trim().toLowerCase();
 
 	return all.filter(ex => {
 		if (cat && cat !== 'all' && (ex.category || '').toLowerCase() !== cat) return false;
 		if (disc && disc !== 'all' && (ex.discipline || '').toLowerCase() !== disc) return false;
+		if (mus && mus !== 'all') {
+			const targetMuscles = inferMusclesForExercise(ex);
+			const allExMuscles = [...(targetMuscles.primary || []), ...(targetMuscles.secondary || [])].map(m => m.toLowerCase());
+			if (!allExMuscles.includes(mus)) return false;
+		}
 		if (q) {
 			const nameMatch = (ex.name || '').toLowerCase().includes(q);
 			const descMatch = (ex.description || '').toLowerCase().includes(q);
 			const catMatch = (ex.category || '').toLowerCase().includes(q);
 			const discMatch = (ex.discipline || '').toLowerCase().includes(q);
-			return nameMatch || descMatch || catMatch || discMatch;
+			const targetMuscles = inferMusclesForExercise(ex);
+			const musMatch = [...(targetMuscles.primary || []), ...(targetMuscles.secondary || [])].some(m => m.toLowerCase().includes(q));
+			return nameMatch || descMatch || catMatch || discMatch || musMatch;
 		}
 		return true;
 	});
@@ -250,22 +321,26 @@ export function getDisciplineBadgeHtml(discipline) {
 export function renderExercisesCatalog(container, options = {}) {
 	const onPlayExercise = options.onPlayExercise || (() => {});
 	const onAddToRoutine = options.onAddToRoutine || (() => {});
+	const onOpenAnatomy = options.onOpenAnatomy || (() => {});
 
 	container.innerHTML = `
 		<div class="exercises-catalog-container">
 			<div class="exercises-catalog-header">
 				<div>
 					<h2 class="exercises-title">🥋 Exercise & Movement Library</h2>
-					<p class="exercises-subtitle">Explore supported techniques, breakdown instructions, and looping form animations</p>
+					<p class="exercises-subtitle">Biomechanical movements, skill taxonomy, and looping form animations</p>
 				</div>
-				<button id="btn-create-exercise" class="btn btn-primary btn-sm">+ New Exercise</button>
+				<div class="exercises-header-actions">
+					<button id="btn-open-anatomy-tab" class="btn btn-ghost btn-sm" title="Open Interactive Anatomy & Muscle Map">🧬 Anatomy Map</button>
+					<button id="btn-create-exercise" class="btn btn-primary btn-sm">+ New Exercise</button>
+				</div>
 			</div>
 
 			<!-- Search & Filter Bar -->
 			<div class="exercises-filter-bar">
 				<div class="search-box-wrapper">
 					<span class="search-icon">🔍</span>
-					<input type="text" id="exercise-search-input" class="input exercise-search-input" placeholder="Search exercises, techniques, drills, cues...">
+					<input type="text" id="exercise-search-input" class="input exercise-search-input" placeholder="Search exercises, muscles, techniques, cues...">
 				</div>
 				<div class="exercise-filter-chips" id="exercise-filter-chips"></div>
 			</div>
@@ -277,11 +352,19 @@ export function renderExercisesCatalog(container, options = {}) {
 
 	let currentSearch = '';
 	let currentFilter = 'all';
+	let currentMuscleFilter = null;
 
 	const searchInput = container.querySelector('#exercise-search-input');
 	const filterChipsContainer = container.querySelector('#exercise-filter-chips');
 	const gridContainer = container.querySelector('#exercises-cards-grid');
 	const createBtn = container.querySelector('#btn-create-exercise');
+	const anatomyBtn = container.querySelector('#btn-open-anatomy-tab');
+
+	if (anatomyBtn) {
+		anatomyBtn.addEventListener('click', () => {
+			onOpenAnatomy();
+		});
+	}
 
 	createBtn.addEventListener('click', () => {
 		showCreateExerciseModal({
@@ -306,6 +389,22 @@ export function renderExercisesCatalog(container, options = {}) {
 
 	function renderFilterChips() {
 		filterChipsContainer.innerHTML = '';
+
+		// If muscle filter is active, prepend an active muscle filter chip
+		if (currentMuscleFilter && MUSCLE_DEFINITIONS[currentMuscleFilter]) {
+			const mDef = MUSCLE_DEFINITIONS[currentMuscleFilter];
+			const mBtn = document.createElement('button');
+			mBtn.type = 'button';
+			mBtn.className = 'ex-chip-btn active muscle-active-chip';
+			mBtn.innerHTML = `<span>${mDef.icon}</span> <span>${mDef.label}</span> <span class="chip-clear-x">✕</span>`;
+			mBtn.addEventListener('click', () => {
+				currentMuscleFilter = null;
+				renderFilterChips();
+				renderGrid();
+			});
+			filterChipsContainer.appendChild(mBtn);
+		}
+
 		filterOptions.forEach(opt => {
 			const btn = document.createElement('button');
 			btn.type = 'button';
@@ -329,13 +428,13 @@ export function renderExercisesCatalog(container, options = {}) {
 			disc = currentFilter.replace('disc:', '');
 		}
 
-		const list = filterExercises(currentSearch, cat, disc);
+		const list = filterExercises(currentSearch, cat, disc, currentMuscleFilter);
 
 		if (list.length === 0) {
 			gridContainer.innerHTML = `
 				<div class="empty-sessions">
-					<p>No exercises found matching your search.</p>
-					<p class="empty-sub">Try searching for a different keyword or create a new custom exercise.</p>
+					<p>No exercises found matching your filter${currentMuscleFilter ? ` for ${MUSCLE_DEFINITIONS[currentMuscleFilter]?.label || currentMuscleFilter}` : ''}.</p>
+					<p class="empty-sub">Try selecting another muscle group on the body map or search with a different keyword.</p>
 				</div>
 			`;
 			return;
@@ -345,6 +444,7 @@ export function renderExercisesCatalog(container, options = {}) {
 		list.forEach(ex => {
 			const assets = getExerciseMediaAssets([ex]);
 			const isCustom = Boolean(ex.user_id && ex.user_id !== 'system');
+			const muscles = inferMusclesForExercise(ex);
 
 			const card = document.createElement('div');
 			card.className = 'exercise-library-card';
@@ -356,6 +456,11 @@ export function renderExercisesCatalog(container, options = {}) {
 			const modeStr = (ex.default_mode || 'reps') === 'reps'
 				? `🔢 ${ex.default_quantity || 20} Reps`
 				: `⏱️ ${formatTime(ex.default_quantity || 30)}`;
+
+			const muscleBadgesHtml = [
+				...(muscles.primary || []).map(m => getMuscleBadgeHtml(m, true)),
+				...(muscles.secondary || []).map(m => getMuscleBadgeHtml(m, false)),
+			].join('');
 
 			card.innerHTML = `
 				<div class="ex-lib-header">
@@ -371,6 +476,10 @@ export function renderExercisesCatalog(container, options = {}) {
 				<div class="ex-lib-title-row">
 					<h3 class="ex-lib-title">${escapeHtml(ex.name)}</h3>
 					<span class="ex-lib-mode-tag">${modeStr}</span>
+				</div>
+
+				<div class="ex-lib-muscles-row">
+					${muscleBadgesHtml}
 				</div>
 
 				<p class="ex-lib-desc">${escapeHtml(ex.description || 'Movement and technique practice.')}</p>
@@ -683,6 +792,16 @@ export function showCreateExerciseModal(options = {}) {
 			</div>
 
 			<div class="field-group">
+				<label>Primary Target Muscles</label>
+				<div class="muscle-selector-chips" id="create-ex-primary-muscles"></div>
+			</div>
+
+			<div class="field-group">
+				<label>Secondary Synergist Muscles (Optional)</label>
+				<div class="muscle-selector-chips" id="create-ex-secondary-muscles"></div>
+			</div>
+
+			<div class="field-group">
 				<label>Description & Technical Cues</label>
 				<textarea id="create-ex-desc" class="input" rows="2" placeholder="Key form cues, tempo, or setup instructions..."></textarea>
 			</div>
@@ -709,6 +828,53 @@ export function showCreateExerciseModal(options = {}) {
 		if (e.target === backdrop) close();
 	});
 
+	const priContainer = modal.querySelector('#create-ex-primary-muscles');
+	const secContainer = modal.querySelector('#create-ex-secondary-muscles');
+
+	const selectedPrimary = new Set(['core']);
+	const selectedSecondary = new Set();
+
+	function renderMusclePickers() {
+		priContainer.innerHTML = '';
+		secContainer.innerHTML = '';
+
+		Object.values(MUSCLE_DEFINITIONS).forEach(m => {
+			// Primary Chip
+			const priBtn = document.createElement('button');
+			priBtn.type = 'button';
+			priBtn.className = `muscle-pick-chip ${selectedPrimary.has(m.id) ? 'selected-pri' : ''}`;
+			priBtn.innerHTML = `<span>${m.icon}</span> <span>${m.label}</span>`;
+			priBtn.addEventListener('click', () => {
+				if (selectedPrimary.has(m.id)) {
+					selectedPrimary.delete(m.id);
+				} else {
+					selectedPrimary.add(m.id);
+					selectedSecondary.delete(m.id);
+				}
+				renderMusclePickers();
+			});
+			priContainer.appendChild(priBtn);
+
+			// Secondary Chip
+			const secBtn = document.createElement('button');
+			secBtn.type = 'button';
+			secBtn.className = `muscle-pick-chip ${selectedSecondary.has(m.id) ? 'selected-sec' : ''}`;
+			secBtn.innerHTML = `<span>${m.icon}</span> <span>${m.label}</span>`;
+			secBtn.addEventListener('click', () => {
+				if (selectedSecondary.has(m.id)) {
+					selectedSecondary.delete(m.id);
+				} else {
+					selectedSecondary.add(m.id);
+					selectedPrimary.delete(m.id);
+				}
+				renderMusclePickers();
+			});
+			secContainer.appendChild(secBtn);
+		});
+	}
+
+	renderMusclePickers();
+
 	const submitBtn = modal.querySelector('#btn-submit-create-ex');
 	submitBtn.addEventListener('click', async () => {
 		const name = modal.querySelector('#create-ex-name').value.trim();
@@ -718,6 +884,8 @@ export function showCreateExerciseModal(options = {}) {
 		const default_quantity = parseInt(modal.querySelector('#create-ex-quantity').value, 10) || 20;
 		const description = modal.querySelector('#create-ex-desc').value.trim();
 		const media_url = modal.querySelector('#create-ex-media').value.trim();
+		const primary_muscles = Array.from(selectedPrimary);
+		const secondary_muscles = Array.from(selectedSecondary);
 
 		if (!name) {
 			await showAlert({ title: 'Missing Name', message: 'Please provide a name for the exercise.' });
@@ -732,7 +900,9 @@ export function showCreateExerciseModal(options = {}) {
 				default_mode,
 				default_quantity,
 				description,
-				media_url
+				media_url,
+				primary_muscles,
+				secondary_muscles,
 			});
 			close();
 			onCreated(created);
@@ -750,20 +920,20 @@ export function showCreateExerciseModal(options = {}) {
  */
 function getDefaultFallbackExercises() {
 	return [
-		{ id: 'ex-star-jumps', name: 'Star Jumps + Coordination Drills', category: 'drill', discipline: 'general', default_mode: 'time', default_quantity: 190, media_url: 'https://www.youtube.com/watch?v=ZWZWzRnLpVM' },
-		{ id: 'ex-check-repeats', name: 'Check Repeats (Lead & Rear Block)', category: 'technique', discipline: 'muay_thai', default_mode: 'time', default_quantity: 60, media_url: 'https://www.youtube.com/watch?v=wPGC3uFIOBA' },
-		{ id: 'ex-lateral-jumps', name: 'Lateral Jumps + Shoulder Taps', category: 'drill', discipline: 'general', default_mode: 'time', default_quantity: 185, media_url: 'https://www.youtube.com/watch?v=ZWZWzRnLpVM' },
-		{ id: 'ex-mountain-climbers', name: 'Mountain Climbers', category: 'cardio', discipline: 'general', default_mode: 'time', default_quantity: 60, media_url: 'https://www.youtube.com/watch?v=7sLw5dHdRG4' },
-		{ id: 'ex-jab-cross', name: 'Jab-Cross Technique', category: 'technique', discipline: 'boxing', default_mode: 'time', default_quantity: 184, media_url: 'https://www.youtube.com/watch?v=7sLw5dHdRG4' },
-		{ id: 'ex-jab-knee', name: 'Jab + Rear Knee / Switch Knee', category: 'technique', discipline: 'muay_thai', default_mode: 'time', default_quantity: 244, media_url: 'https://www.youtube.com/watch?v=z37V3X6tPG4' },
-		{ id: 'ex-jab-elbow', name: 'Jab + Lead Elbow + Rear Elbow', category: 'technique', discipline: 'muay_thai', default_mode: 'time', default_quantity: 243, media_url: 'https://www.youtube.com/watch?v=z37V3X6tPG4' },
-		{ id: 'ex-standard-pushups', name: 'Standard Pushups', category: 'strength', discipline: 'calisthenics', default_mode: 'reps', default_quantity: 20, media_url: '/workout/media/pushups.svg' },
-		{ id: 'ex-diamond-pushups', name: 'Diamond Pushups', category: 'strength', discipline: 'calisthenics', default_mode: 'reps', default_quantity: 15, media_url: '/workout/media/diamond-pushups.svg' },
-		{ id: 'ex-plank-shoulder-taps', name: 'Plank Shoulder Taps', category: 'strength', discipline: 'calisthenics', default_mode: 'reps', default_quantity: 20, media_url: '/workout/media/shoulder-taps.svg' },
-		{ id: 'ex-cobra-pose', name: 'Cobra Pose & Hip Opener', category: 'stretch', discipline: 'yoga', default_mode: 'time', default_quantity: 45, media_url: '/workout/media/cobra-stretch.jpg' },
-		{ id: 'ex-overhead-tricep-stretch', name: 'Overhead Tricep & Shoulder Stretch', category: 'stretch', discipline: 'general', default_mode: 'time', default_quantity: 30, media_url: '/workout/media/overhead-tricep-stretch.jpg' },
-		{ id: 'ex-pigeon-pose', name: 'Pigeon Pose Hip Opener', category: 'stretch', discipline: 'yoga', default_mode: 'time', default_quantity: 45, media_url: '/workout/media/pigeon-pose.jpg' },
-		{ id: 'ex-seated-hamstring-fold', name: 'Seated Forward Hamstring Fold', category: 'stretch', discipline: 'yoga', default_mode: 'time', default_quantity: 45, media_url: '/workout/media/seated-hamstring-fold.jpg' },
-		{ id: 'ex-childs-pose', name: 'Extended Child’s Pose Spine & Lat Stretch', category: 'stretch', discipline: 'yoga', default_mode: 'time', default_quantity: 60, media_url: '/workout/media/childs-pose.jpg' },
+		{ id: 'ex-star-jumps', name: 'Star Jumps + Coordination Drills', category: 'drill', discipline: 'general', default_mode: 'time', default_quantity: 190, media_url: 'https://www.youtube.com/watch?v=ZWZWzRnLpVM', primary_muscles: ['calves', 'quads'], secondary_muscles: ['shoulders', 'core'] },
+		{ id: 'ex-check-repeats', name: 'Check Repeats (Lead & Rear Block)', category: 'technique', discipline: 'muay_thai', default_mode: 'time', default_quantity: 60, media_url: 'https://www.youtube.com/watch?v=wPGC3uFIOBA', primary_muscles: ['core', 'quads'], secondary_muscles: ['glutes', 'calves'] },
+		{ id: 'ex-lateral-jumps', name: 'Lateral Jumps + Shoulder Taps', category: 'drill', discipline: 'general', default_mode: 'time', default_quantity: 185, media_url: 'https://www.youtube.com/watch?v=ZWZWzRnLpVM', primary_muscles: ['quads', 'calves'], secondary_muscles: ['glutes', 'core'] },
+		{ id: 'ex-mountain-climbers', name: 'Mountain Climbers', category: 'cardio', discipline: 'general', default_mode: 'time', default_quantity: 60, media_url: 'https://www.youtube.com/watch?v=7sLw5dHdRG4', primary_muscles: ['core', 'shoulders'], secondary_muscles: ['quads', 'chest'] },
+		{ id: 'ex-jab-cross', name: 'Jab-Cross Technique', category: 'technique', discipline: 'boxing', default_mode: 'time', default_quantity: 184, media_url: 'https://www.youtube.com/watch?v=7sLw5dHdRG4', primary_muscles: ['shoulders', 'core'], secondary_muscles: ['triceps', 'chest', 'calves'] },
+		{ id: 'ex-jab-knee', name: 'Jab + Rear Knee / Switch Knee', category: 'technique', discipline: 'muay_thai', default_mode: 'time', default_quantity: 244, media_url: 'https://www.youtube.com/watch?v=z37V3X6tPG4', primary_muscles: ['core', 'glutes', 'quads'], secondary_muscles: ['calves'] },
+		{ id: 'ex-jab-elbow', name: 'Jab + Lead Elbow + Rear Elbow', category: 'technique', discipline: 'muay_thai', default_mode: 'time', default_quantity: 243, media_url: 'https://www.youtube.com/watch?v=z37V3X6tPG4', primary_muscles: ['shoulders', 'core', 'back'], secondary_muscles: ['triceps', 'biceps'] },
+		{ id: 'ex-standard-pushups', name: 'Standard Pushups', category: 'strength', discipline: 'calisthenics', default_mode: 'reps', default_quantity: 20, media_url: '/workout/media/pushups.svg', primary_muscles: ['chest', 'triceps'], secondary_muscles: ['shoulders', 'core'] },
+		{ id: 'ex-diamond-pushups', name: 'Diamond Pushups', category: 'strength', discipline: 'calisthenics', default_mode: 'reps', default_quantity: 15, media_url: '/workout/media/diamond-pushups.svg', primary_muscles: ['triceps', 'chest'], secondary_muscles: ['shoulders', 'core'] },
+		{ id: 'ex-plank-shoulder-taps', name: 'Plank Shoulder Taps', category: 'strength', discipline: 'calisthenics', default_mode: 'reps', default_quantity: 20, media_url: '/workout/media/shoulder-taps.svg', primary_muscles: ['core', 'shoulders'], secondary_muscles: ['chest', 'triceps', 'glutes'] },
+		{ id: 'ex-cobra-pose', name: 'Cobra Pose & Hip Opener', category: 'stretch', discipline: 'yoga', default_mode: 'time', default_quantity: 45, media_url: '/workout/media/cobra-stretch.jpg', primary_muscles: ['back', 'core'], secondary_muscles: ['chest', 'shoulders'] },
+		{ id: 'ex-overhead-tricep-stretch', name: 'Overhead Tricep & Shoulder Stretch', category: 'stretch', discipline: 'general', default_mode: 'time', default_quantity: 30, media_url: '/workout/media/overhead-tricep-stretch.jpg', primary_muscles: ['triceps', 'shoulders'], secondary_muscles: ['back'] },
+		{ id: 'ex-pigeon-pose', name: 'Pigeon Pose Hip Opener', category: 'stretch', discipline: 'yoga', default_mode: 'time', default_quantity: 45, media_url: '/workout/media/pigeon-pose.jpg', primary_muscles: ['glutes'], secondary_muscles: ['hamstrings', 'back'] },
+		{ id: 'ex-seated-hamstring-fold', name: 'Seated Forward Hamstring Fold', category: 'stretch', discipline: 'yoga', default_mode: 'time', default_quantity: 45, media_url: '/workout/media/seated-hamstring-fold.jpg', primary_muscles: ['hamstrings'], secondary_muscles: ['back', 'calves'] },
+		{ id: 'ex-childs-pose', name: 'Extended Child’s Pose Spine & Lat Stretch', category: 'stretch', discipline: 'yoga', default_mode: 'time', default_quantity: 60, media_url: '/workout/media/childs-pose.jpg', primary_muscles: ['back', 'shoulders'], secondary_muscles: ['glutes'] },
 	];
 }

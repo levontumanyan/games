@@ -128,8 +128,11 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 		cat = request.query_params.get("category")
 		disc = request.query_params.get("discipline")
 		search = request.query_params.get("search")
+		muscle = request.query_params.get("muscle")
 		return JSONResponse(
-			content=db.list_exercises(user_id=user_id, category=cat, discipline=disc, search=search)
+			content=db.list_exercises(
+				user_id=user_id, category=cat, discipline=disc, search=search, muscle=muscle
+			)
 		)
 
 	@app.post("/api/exercises")

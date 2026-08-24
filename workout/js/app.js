@@ -33,6 +33,7 @@ import {
 import { renderStatsDashboard } from './stats.js';
 import { loadExercises, renderExercisesCatalog } from './exercises.js';
 import { loadCombos, renderCombosCatalog } from './combos.js';
+import { renderAnatomyExplorer } from './body_map.js';
 
 let routines = [];
 let selectedRoutineId = null;
@@ -161,6 +162,7 @@ function cacheDom() {
 	dom.editorView = document.getElementById('editor-view');
 	dom.combosView = document.getElementById('combos-view');
 	dom.exercisesView = document.getElementById('exercises-view');
+	dom.anatomyView = document.getElementById('anatomy-view');
 	dom.statsView = document.getElementById('stats-view');
 	dom.playerView = document.getElementById('player-view');
 	dom.playerStage = document.querySelector('.player-stage');
@@ -184,6 +186,7 @@ function cacheDom() {
 	dom.tabRoutinesBtn = document.getElementById('tab-routines-btn');
 	dom.tabCombosBtn = document.getElementById('tab-combos-btn');
 	dom.tabExercisesBtn = document.getElementById('tab-exercises-btn');
+	dom.tabAnatomyBtn = document.getElementById('tab-anatomy-btn');
 	dom.tabStatsBtn = document.getElementById('tab-stats-btn');
 	dom.profileModalBackdrop = document.getElementById('profile-modal-backdrop');
 	dom.profileModalCloseBtn = document.getElementById('profile-modal-close-btn');
@@ -328,6 +331,9 @@ function switchTab(tab) {
 	if (dom.tabExercisesBtn) {
 		dom.tabExercisesBtn.classList.toggle('active', tab === 'exercises');
 	}
+	if (dom.tabAnatomyBtn) {
+		dom.tabAnatomyBtn.classList.toggle('active', tab === 'anatomy');
+	}
 	if (dom.tabStatsBtn) {
 		dom.tabStatsBtn.classList.toggle('active', tab === 'stats');
 	}
@@ -337,10 +343,66 @@ function switchTab(tab) {
 	if (dom.emptyView) dom.emptyView.classList.add('hidden');
 	if (dom.combosView) dom.combosView.classList.add('hidden');
 	if (dom.exercisesView) dom.exercisesView.classList.add('hidden');
+	if (dom.anatomyView) dom.anatomyView.classList.add('hidden');
 	if (dom.statsView) dom.statsView.classList.add('hidden');
 	if (dom.playerView) dom.playerView.classList.add('hidden');
 
-	if (tab === 'stats') {
+	if (tab === 'anatomy') {
+		if (dom.anatomyView) {
+			dom.anatomyView.classList.remove('hidden');
+			renderAnatomyExplorer(dom.anatomyView, {
+				onPlayExercise: (exercise, asset) => {
+					const isVideo = asset && (asset.type === 'video' || Boolean(asset.videoId));
+					const step = isVideo ? {
+						id: 'preview-step',
+						type: 'clip',
+						videoId: asset.videoId || parseYouTubeId(asset.url),
+						startSeconds: asset.startSeconds || 0,
+						endSeconds: asset.endSeconds || ((asset.startSeconds || 0) + 60),
+						label: `${exercise.name}: ${asset.title || 'Instruction'}`
+					} : {
+						id: 'preview-step',
+						type: 'timer',
+						stepMode: exercise.default_mode || 'reps',
+						targetReps: exercise.default_quantity || 20,
+						durationSeconds: exercise.default_quantity || 30,
+						label: exercise.name,
+						gifUrl: asset?.url || exercise.media_url || '',
+						exercises: [exercise]
+					};
+					const previewRoutine = {
+						id: 'preview-routine',
+						title: `Preview: ${exercise.name}`,
+						steps: [step]
+					};
+					unlockAudio();
+					startRoutine(previewRoutine, 0, true);
+				},
+				onAddToRoutine: (exercise) => {
+					let routine = getSelectedRoutine();
+					if (!routine) {
+						routine = createRoutine('New Workout');
+						routines.push(routine);
+						selectedRoutineId = routine.id;
+					}
+					const isReps = (exercise.default_mode || 'reps') === 'reps';
+					const newStep = createTimerStep(
+						exercise.name,
+						isReps ? 30 : (exercise.default_quantity || 30),
+						exercise.media_url || ''
+					);
+					newStep.stepMode = exercise.default_mode || 'reps';
+					if (isReps) newStep.targetReps = exercise.default_quantity || 20;
+					newStep.exercises = [{ id: exercise.id, name: exercise.name, category: exercise.category, discipline: exercise.discipline }];
+					routine.steps.push(newStep);
+					persist();
+					currentMode = 'edit';
+					switchTab('routines');
+					showToast(`Added "${exercise.name}" to workout!`);
+				}
+			});
+		}
+	} else if (tab === 'stats') {
 		if (dom.statsView) {
 			dom.statsView.classList.remove('hidden');
 			renderStatsDashboard(dom.statsView);
@@ -461,6 +523,7 @@ function switchTab(tab) {
 		if (dom.exercisesView) {
 			dom.exercisesView.classList.remove('hidden');
 			renderExercisesCatalog(dom.exercisesView, {
+				onOpenAnatomy: () => switchTab('anatomy'),
 				onPlayExercise: (exercise, asset) => {
 					const isVideo = asset && (asset.type === 'video' || Boolean(asset.videoId));
 					const step = isVideo ? {
@@ -603,6 +666,9 @@ function bindEvents() {
 	}
 	if (dom.tabExercisesBtn) {
 		dom.tabExercisesBtn.addEventListener('click', () => switchTab('exercises'));
+	}
+	if (dom.tabAnatomyBtn) {
+		dom.tabAnatomyBtn.addEventListener('click', () => switchTab('anatomy'));
 	}
 	if (dom.tabStatsBtn) {
 		dom.tabStatsBtn.addEventListener('click', () => switchTab('stats'));

@@ -14,6 +14,8 @@ import {
 	startSession, updateSessionStep, pauseSession,
 	resumeSession, completeSession, stopSession
 } from './session.js';
+import { inferMusclesForExercise, getExerciseById } from './exercises.js';
+import { MUSCLE_DEFINITIONS } from './body_map.js';
 
 const PLAY_ICON = `<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><polygon points="7,4 19,12 7,20"/></svg>`;
 const PAUSE_ICON = `<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1.5"/><rect x="14" y="4" width="4" height="16" rx="1.5"/></svg>`;
@@ -625,12 +627,18 @@ function executeTimerStep(step) {
 			centerContainer.appendChild(doneBtn);
 		}
 
+		const linkedEx = (step.exercises && step.exercises[0]) || (step.exercise_id ? getExerciseById(step.exercise_id) : null);
+		const stepMuscles = inferMusclesForExercise(linkedEx || { name: step.label, description: step.description });
+		const priMuscle = (stepMuscles.primary || [])[0];
+		const priDef = priMuscle ? MUSCLE_DEFINITIONS[priMuscle] : null;
+		const muscleTagHtml = priDef ? ` <span class="player-hud-muscle-tag" style="color:${priDef.color}">${priDef.icon} ${priDef.label}</span>` : '';
+
 		dom.currentStepLabel.textContent = `${step.label || 'Exercise'} (${targetReps} reps)`;
 		if (step.exercises && step.exercises.length > 0) {
 			const joiner = step.flow_type === 'alternating' ? ' ⮀ ' : ' + ';
-			dom.currentStepType.innerHTML = `🔢 ` + step.exercises.map(e => e.name).join(joiner);
+			dom.currentStepType.innerHTML = `🔢 ` + step.exercises.map(e => e.name).join(joiner) + muscleTagHtml;
 		} else {
-			dom.currentStepType.innerHTML = `🔢 ${targetReps} Reps`;
+			dom.currentStepType.innerHTML = `🔢 ${targetReps} Reps` + muscleTagHtml;
 		}
 
 		// Update progress ring to full
@@ -640,15 +648,21 @@ function executeTimerStep(step) {
 			startRepsStopwatch();
 		}
 	} else {
+		const linkedEx = (step.exercises && step.exercises[0]) || (step.exercise_id ? getExerciseById(step.exercise_id) : null);
+		const stepMuscles = inferMusclesForExercise(linkedEx || { name: step.label, description: step.description });
+		const priMuscle = (stepMuscles.primary || [])[0];
+		const priDef = (!isBreak && priMuscle) ? MUSCLE_DEFINITIONS[priMuscle] : null;
+		const muscleTagHtml = priDef ? ` <span class="player-hud-muscle-tag" style="color:${priDef.color}">${priDef.icon} ${priDef.label}</span>` : '';
+
 		timerRemaining = step.durationSeconds || 30;
 		dom.timerLabel.textContent = step.label || (isBreak ? 'Rest' : 'Timer');
 		dom.timerDisplay.textContent = formatTime(timerRemaining);
 		dom.currentStepLabel.textContent = step.label || (isBreak ? 'Rest' : 'Timer');
 		if (step.exercises && step.exercises.length > 0) {
 			const joiner = step.flow_type === 'alternating' ? ' ⮀ ' : ' + ';
-			dom.currentStepType.innerHTML = isBreak ? `${getBreakIcon(14)} Rest` : (getTimerIcon(14) + ' ' + step.exercises.map(e => e.name).join(joiner));
+			dom.currentStepType.innerHTML = isBreak ? `${getBreakIcon(14)} Rest` : (getTimerIcon(14) + ' ' + step.exercises.map(e => e.name).join(joiner) + muscleTagHtml);
 		} else {
-			dom.currentStepType.innerHTML = isBreak ? `${getBreakIcon(14)} Rest` : `${getTimerIcon(14)} Timer`;
+			dom.currentStepType.innerHTML = isBreak ? `${getBreakIcon(14)} Rest` : `${getTimerIcon(14)} Timer${muscleTagHtml}`;
 		}
 
 		// Update progress ring
