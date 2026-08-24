@@ -960,6 +960,9 @@ function showPlayerUI() {
 	if (dom.editorView) dom.editorView.classList.add('hidden');
 	if (dom.routineView) dom.routineView.classList.add('hidden');
 	if (dom.emptyView) dom.emptyView.classList.add('hidden');
+	if (dom.combosView) dom.combosView.classList.add('hidden');
+	if (dom.exercisesView) dom.exercisesView.classList.add('hidden');
+	if (dom.statsView) dom.statsView.classList.add('hidden');
 	if (dom.playerRoutineTitle) {
 		dom.playerRoutineTitle.textContent = currentRoutine?.title || 'Workout';
 	}

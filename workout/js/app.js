@@ -96,6 +96,9 @@ async function init() {
 			editorView: dom.editorView,
 			routineView: dom.routineView,
 			emptyView: dom.emptyView,
+			combosView: dom.combosView,
+			exercisesView: dom.exercisesView,
+			statsView: dom.statsView,
 			timerOverlay: dom.timerOverlay,
 			timerMediaContainer: dom.timerMediaContainer,
 			timerMediaImg: dom.timerMediaImg,
@@ -123,7 +126,12 @@ async function init() {
 		{
 			onStop: () => {
 				if (currentTab === 'stats') {
+					if (dom.statsView) dom.statsView.classList.remove('hidden');
 					renderStatsDashboard(dom.statsView);
+				} else if (currentTab === 'combos') {
+					if (dom.combosView) dom.combosView.classList.remove('hidden');
+				} else if (currentTab === 'exercises') {
+					if (dom.exercisesView) dom.exercisesView.classList.remove('hidden');
 				} else {
 					renderSelectedRoutine();
 				}
@@ -324,12 +332,15 @@ function switchTab(tab) {
 		dom.tabStatsBtn.classList.toggle('active', tab === 'stats');
 	}
 
+	if (dom.routineView) dom.routineView.classList.add('hidden');
+	if (dom.editorView) dom.editorView.classList.add('hidden');
+	if (dom.emptyView) dom.emptyView.classList.add('hidden');
+	if (dom.combosView) dom.combosView.classList.add('hidden');
+	if (dom.exercisesView) dom.exercisesView.classList.add('hidden');
+	if (dom.statsView) dom.statsView.classList.add('hidden');
+	if (dom.playerView) dom.playerView.classList.add('hidden');
+
 	if (tab === 'stats') {
-		if (dom.routineView) dom.routineView.classList.add('hidden');
-		if (dom.editorView) dom.editorView.classList.add('hidden');
-		if (dom.emptyView) dom.emptyView.classList.add('hidden');
-		if (dom.combosView) dom.combosView.classList.add('hidden');
-		if (dom.exercisesView) dom.exercisesView.classList.add('hidden');
 		if (dom.statsView) {
 			dom.statsView.classList.remove('hidden');
 			renderStatsDashboard(dom.statsView);
@@ -626,11 +637,7 @@ function bindEvents() {
 		routines = loadRoutines();
 		selectedRoutineId = routines.length > 0 ? routines[0].id : null;
 		renderRoutineList();
-		if (currentTab === 'stats') {
-			renderStatsDashboard(dom.statsView);
-		} else {
-			renderSelectedRoutine();
-		}
+		switchTab(currentTab);
 		await syncWithServerOnStartup();
 	});
 
@@ -875,7 +882,7 @@ function renderRoutineList() {
  * Render the active mode (View Mode or Edit Mode) for the selected routine.
  */
 function renderSelectedRoutine() {
-	if (currentTab === 'stats') return;
+	if (currentTab !== 'routines') return;
 
 	const routine = getSelectedRoutine();
 
@@ -1106,7 +1113,9 @@ function closeCompletionModal() {
 	if (dom.completionModalBackdrop) {
 		dom.completionModalBackdrop.classList.add('hidden');
 	}
-	renderSelectedRoutine();
+	if (currentTab === 'routines') {
+		renderSelectedRoutine();
+	}
 }
 
 async function showCompletionModal(session, completedRoutine) {
