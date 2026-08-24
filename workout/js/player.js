@@ -34,6 +34,10 @@ let currentRoutine = null;
 let currentStepIndex = -1;
 let isPlaying = false;
 let isPaused = false;
+let isPreviewMode = false;
+let isRepsMode = false;
+let repsElapsedSeconds = 0;
+let repsInterval = null;
 
 // Timer state
 let timerInterval = null;
@@ -121,12 +125,16 @@ export async function initPlayer(domRefs, callbacks) {
 		dom.playerBackBtn.addEventListener('click', stopPlayback);
 	}
 
-	// Click on stage/video to toggle play/pause
+	// Click on stage/video to toggle play/pause or done
 	if (dom.playerStage) {
 		dom.playerStage.addEventListener('click', (e) => {
 			if (e.target.closest('button') || e.target.closest('input') || e.target.closest('.step-indicator')) return;
 			if (isPlaying) {
-				togglePause();
+				if (isRepsMode) {
+					completeRepsStep();
+				} else {
+					togglePause();
+				}
 			}
 		});
 	}
@@ -177,9 +185,13 @@ export async function initPlayer(domRefs, callbacks) {
 
 		resetActivity();
 
-		if (e.code === 'Space') {
+		if (e.code === 'Space' || e.key === 'Enter') {
 			e.preventDefault();
-			togglePause();
+			if (isRepsMode) {
+				completeRepsStep();
+			} else {
+				togglePause();
+			}
 		} else if (e.key === 'ArrowRight') {
 			e.preventDefault();
 			skipStep();
@@ -410,21 +422,35 @@ function onYTError(event) {
  * Start playing a routine from the beginning or a specific step.
  * @param {Object} routine - The routine to play
  * @param {number} [startIndex=0] - Step index to start from
+ * @param {boolean} [isPreview=false] - If true, stats tracking is disabled
  */
-export function startRoutine(routine, startIndex = 0) {
+export function startRoutine(routine, startIndex = 0, isPreview = false) {
 	if (!routine || !routine.steps || routine.steps.length === 0) return;
 
 	currentRoutine = routine;
 	currentStepIndex = startIndex;
 	isPlaying = true;
 	isPaused = false;
+	isPreviewMode = Boolean(isPreview);
 
-	startSession(routine);
+	if (!isPreviewMode) {
+		startSession(routine);
+	}
 	requestWakeLock();
 
 	showPlayerUI();
 	executeCurrentStep();
 	resetHudIdleTimer();
+}
+
+/**
+ * Complete the current Reps set and advance to next step.
+ */
+export function completeRepsStep() {
+	if (!isPlaying || !isRepsMode) return;
+	playCountdownBeep(1);
+	clearRepsTimer();
+	advanceStep();
 }
 
 /**
@@ -437,9 +463,12 @@ function executeCurrentStep() {
 	}
 
 	clearTimer();
+	clearRepsTimer();
 	const step = currentRoutine.steps[currentStepIndex];
 	updateStepIndicator();
-	updateSessionStep(currentStepIndex);
+	if (!isPreviewMode) {
+		updateSessionStep(currentStepIndex);
+	}
 
 	if (step.type === 'clip') {
 		executeClipStep(step);
@@ -455,9 +484,11 @@ function executeCurrentStep() {
  */
 function executeClipStep(step) {
 	clearTimer();
+	clearRepsTimer();
 	clearClipMonitor();
 	clipHasStartedPlaying = false;
 	clipLoadedAt = Date.now();
+	isRepsMode = false;
 
 	dom.timerOverlay.classList.add('hidden');
 	dom.videoWrapper.classList.remove('hidden');
@@ -471,6 +502,7 @@ function executeClipStep(step) {
 		mediaImg.removeAttribute('src');
 	}
 	dom.timerOverlay?.querySelector('.timer-stage-content')?.classList.remove('has-media');
+	dom.timerOverlay?.classList.remove('is-reps-stage');
 
 	if (dom.upNextCard) {
 		dom.upNextCard.classList.add('hidden');
@@ -492,14 +524,21 @@ function executeClipStep(step) {
 	}
 
 	dom.currentStepLabel.textContent = step.label || 'Video Clip';
-	dom.currentStepType.innerHTML = `${getClipIcon(14)} Video`;
+	if (step.exercises && step.exercises.length > 0) {
+		const joiner = step.flow_type === 'alternating' ? ' ⮀ ' : ' + ';
+		dom.currentStepType.innerHTML = `${getClipIcon(14)} ` + step.exercises.map(e => e.name).join(joiner);
+	} else {
+		dom.currentStepType.innerHTML = `${getClipIcon(14)} Video`;
+	}
 }
 
 /**
- * Execute a timer/interval step.
+ * Execute a timer/interval step or reps step.
  */
 function executeTimerStep(step) {
 	clearClipMonitor();
+	clearTimer();
+	clearRepsTimer();
 	clipHasStartedPlaying = false;
 
 	// Stop YouTube playback and hide
@@ -510,9 +549,13 @@ function executeTimerStep(step) {
 	dom.timerOverlay.classList.remove('hidden');
 
 	const isBreak = isBreakStep(step);
-	dom.timerOverlay.classList.toggle('is-break', isBreak);
+	const isReps = !isBreak && (step.stepMode === 'reps' || (Boolean(step.targetReps) && Number(step.targetReps) > 0));
+	isRepsMode = isReps;
 
-	// Handle media/gif animation display
+	dom.timerOverlay.classList.toggle('is-break', isBreak);
+	dom.timerOverlay.classList.toggle('is-reps-stage', isReps);
+
+	// Handle media/gif animation display (Hero Layout)
 	const mediaUrl = resolveStepMediaUrl(step);
 	const mediaContainer = dom.timerMediaContainer || document.getElementById('timer-media-container');
 	const mediaImg = dom.timerMediaImg || document.getElementById('timer-media-img');
@@ -558,11 +601,63 @@ function executeTimerStep(step) {
 		}
 	}
 
-	timerRemaining = step.durationSeconds;
-	dom.timerLabel.textContent = step.label || (isBreak ? 'Rest' : 'Timer');
-	dom.timerDisplay.textContent = formatTime(timerRemaining);
-	dom.currentStepLabel.textContent = step.label || (isBreak ? 'Rest' : 'Timer');
-	dom.currentStepType.innerHTML = isBreak ? `${getBreakIcon(14)} Rest` : `${getTimerIcon(14)} Timer`;
+	// Remove any existing Done button
+	const existingDoneBtn = dom.timerOverlay.querySelector('.reps-done-action-btn');
+	if (existingDoneBtn) existingDoneBtn.remove();
+
+	if (isReps) {
+		const targetReps = step.targetReps || 20;
+		dom.timerDisplay.textContent = `${targetReps} REPS`;
+		dom.timerLabel.textContent = step.label || 'Complete Target Reps';
+
+		// Inject Hero Done Button in stage
+		const centerContainer = dom.timerOverlay.querySelector('.timer-center-text') || dom.timerOverlay.querySelector('.timer-ring-container');
+		if (centerContainer) {
+			const doneBtn = document.createElement('button');
+			doneBtn.type = 'button';
+			doneBtn.className = 'btn btn-primary reps-done-action-btn';
+			doneBtn.innerHTML = `✓ Done (Space / Enter)`;
+			doneBtn.title = 'Complete reps & advance';
+			doneBtn.addEventListener('click', (e) => {
+				e.stopPropagation();
+				completeRepsStep();
+			});
+			centerContainer.appendChild(doneBtn);
+		}
+
+		dom.currentStepLabel.textContent = `${step.label || 'Exercise'} (${targetReps} reps)`;
+		if (step.exercises && step.exercises.length > 0) {
+			const joiner = step.flow_type === 'alternating' ? ' ⮀ ' : ' + ';
+			dom.currentStepType.innerHTML = `🔢 ` + step.exercises.map(e => e.name).join(joiner);
+		} else {
+			dom.currentStepType.innerHTML = `🔢 ${targetReps} Reps`;
+		}
+
+		// Update progress ring to full
+		updateTimerProgress(100, 100);
+
+		if (!isPaused) {
+			startRepsStopwatch();
+		}
+	} else {
+		timerRemaining = step.durationSeconds || 30;
+		dom.timerLabel.textContent = step.label || (isBreak ? 'Rest' : 'Timer');
+		dom.timerDisplay.textContent = formatTime(timerRemaining);
+		dom.currentStepLabel.textContent = step.label || (isBreak ? 'Rest' : 'Timer');
+		if (step.exercises && step.exercises.length > 0) {
+			const joiner = step.flow_type === 'alternating' ? ' ⮀ ' : ' + ';
+			dom.currentStepType.innerHTML = isBreak ? `${getBreakIcon(14)} Rest` : (getTimerIcon(14) + ' ' + step.exercises.map(e => e.name).join(joiner));
+		} else {
+			dom.currentStepType.innerHTML = isBreak ? `${getBreakIcon(14)} Rest` : `${getTimerIcon(14)} Timer`;
+		}
+
+		// Update progress ring
+		updateTimerProgress(step.durationSeconds || 30, timerRemaining);
+
+		if (!isPaused) {
+			startTimer(step.durationSeconds || 30);
+		}
+	}
 
 	// Update Up Next preview card for break steps
 	if (dom.upNextCard) {
@@ -580,6 +675,8 @@ function executeTimerStep(step) {
 					dom.upNextMeta.textContent = `🎬 Next Video · ${formatFriendlyDuration(dur)} (${formatTime(start)} → ${formatTime(end)})`;
 				} else if (isBreakStep(next)) {
 					dom.upNextMeta.textContent = `☕ Rest (${formatFriendlyDuration(next.durationSeconds || 30)})`;
+				} else if (next.stepMode === 'reps' || next.targetReps) {
+					dom.upNextMeta.textContent = `🔢 Exercise (${next.targetReps || 20} reps)`;
 				} else {
 					dom.upNextMeta.textContent = `⏱ Exercise (${formatFriendlyDuration(next.durationSeconds || 30)})`;
 				}
@@ -603,13 +700,32 @@ function executeTimerStep(step) {
 			dom.upNextCard.classList.add('hidden');
 		}
 	}
+}
 
-	// Update progress ring
-	updateTimerProgress(step.durationSeconds, timerRemaining);
+/**
+ * Start stopwatch counting elapsed seconds for Reps steps.
+ */
+function startRepsStopwatch() {
+	clearRepsTimer();
+	const startTime = performance.now();
+	const initialSec = repsElapsedSeconds;
 
-	if (!isPaused) {
-		startTimer(step.durationSeconds);
+	repsInterval = setInterval(() => {
+		if (isPaused) return;
+		const elapsed = (performance.now() - startTime) / 1000;
+		repsElapsedSeconds = initialSec + elapsed;
+	}, 200);
+}
+
+/**
+ * Clear reps stopwatch timer.
+ */
+function clearRepsTimer() {
+	if (repsInterval) {
+		clearInterval(repsInterval);
+		repsInterval = null;
 	}
+	repsElapsedSeconds = 0;
 }
 
 /**
@@ -680,11 +796,17 @@ function advanceStep() {
 		// Routine complete
 		const completedRoutine = currentRoutine;
 		stopPlayback(true);
-		completeSession().then((session) => {
+		if (!isPreviewMode) {
+			completeSession().then((session) => {
+				if (playerCallbacks.onRoutineComplete) {
+					playerCallbacks.onRoutineComplete(session, completedRoutine);
+				}
+			});
+		} else {
 			if (playerCallbacks.onRoutineComplete) {
-				playerCallbacks.onRoutineComplete(session, completedRoutine);
+				playerCallbacks.onRoutineComplete(null, completedRoutine);
 			}
-		});
+		}
 		return;
 	}
 
@@ -717,7 +839,9 @@ export function togglePause() {
 	if (isPaused) {
 		// Resume
 		isPaused = false;
-		resumeSession();
+		if (!isPreviewMode) {
+			resumeSession();
+		}
 		requestWakeLock();
 		const step = currentRoutine.steps[currentStepIndex];
 
@@ -727,9 +851,13 @@ export function togglePause() {
 			}
 			startClipMonitor(step);
 		} else if (step.type === 'timer') {
-			// Restart timer from remaining
-			const totalDuration = step.durationSeconds;
-			startTimer(totalDuration);
+			if (isRepsMode) {
+				startRepsStopwatch();
+			} else {
+				// Restart timer from remaining
+				const totalDuration = step.durationSeconds;
+				startTimer(totalDuration);
+			}
 		}
 
 		// Resume background music
@@ -742,8 +870,11 @@ export function togglePause() {
 	} else {
 		// Pause
 		isPaused = true;
-		pauseSession();
+		if (!isPreviewMode) {
+			pauseSession();
+		}
 		clearTimer();
+		clearRepsTimer();
 		clearClipMonitor();
 		if (!isNativeFullscreen()) {
 			releaseWakeLock();
@@ -780,6 +911,7 @@ export function resetPlayback() {
  */
 export function stopPlayback(isCompleted = false) {
 	clearTimer();
+	clearRepsTimer();
 	clearClipMonitor();
 	clearHudIdleTimer();
 	if (!isNativeFullscreen()) {
@@ -787,6 +919,7 @@ export function stopPlayback(isCompleted = false) {
 	}
 	isPlaying = false;
 	isPaused = false;
+	isRepsMode = false;
 	clipHasStartedPlaying = false;
 	currentStepIndex = -1;
 
@@ -799,7 +932,7 @@ export function stopPlayback(isCompleted = false) {
 
 	hidePlayerUI();
 
-	if (!isCompleted) {
+	if (!isCompleted && !isPreviewMode) {
 		stopSession();
 	}
 
@@ -830,6 +963,22 @@ function showPlayerUI() {
 	if (dom.playerRoutineTitle) {
 		dom.playerRoutineTitle.textContent = currentRoutine?.title || 'Workout';
 	}
+
+	let previewBadge = dom.playerView.querySelector('#player-preview-badge');
+	if (!previewBadge) {
+		previewBadge = document.createElement('span');
+		previewBadge.id = 'player-preview-badge';
+		previewBadge.className = 'player-preview-badge';
+		previewBadge.innerHTML = '🔍 Preview Mode (Stats Disabled)';
+		const topBar = dom.playerView.querySelector('.player-top-bar');
+		if (topBar) {
+			topBar.insertBefore(previewBadge, dom.fullscreenTopBtn);
+		}
+	}
+	if (previewBadge) {
+		previewBadge.classList.toggle('hidden', !isPreviewMode);
+	}
+
 	updatePlayPauseBtn(false);
 }
 

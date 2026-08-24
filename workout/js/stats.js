@@ -1,10 +1,10 @@
-/**
- * Stats & Analytics module - Streaks, weekly charts, monthly heatmap, and session history log.
- */
-
 import { fetchStats, fetchSessions, deleteSession } from './storage.js';
 import { formatTime } from './utils.js';
 import { showConfirm, showAlert } from './modal.js';
+import {
+	CATEGORIES, DISCIPLINES,
+	getCategoryBadgeHtml, getDisciplineBadgeHtml
+} from './exercises.js';
 
 let cachedStats = null;
 
@@ -50,10 +50,15 @@ function renderStatsContent(container, stats) {
 	const totalMinutes = stats.total_minutes || 0;
 	const totalSessions = stats.total_sessions || 0;
 	const completedCount = stats.completed_count || 0;
+	const totalReps = stats.total_reps || 0;
 
 	// Calculate weekly total
 	const weeklyMinutes = (stats.weekly || []).reduce((sum, d) => sum + (d.minutes || 0), 0);
 	const maxDayMinutes = Math.max(...(stats.weekly || []).map(d => d.minutes || 0), 30);
+
+	const categories = stats.categories || {};
+	const disciplines = stats.disciplines || {};
+	const topExercises = stats.top_exercises || [];
 
 	// Render HTML
 	container.innerHTML = `
@@ -61,7 +66,7 @@ function renderStatsContent(container, stats) {
 			<div class="stats-header">
 				<div>
 					<h2 class="stats-title">Activity & Streaks</h2>
-					<p class="stats-subtitle">Track your consistency and workout milestones</p>
+					<p class="stats-subtitle">Track your consistency, movements, and volume milestones</p>
 				</div>
 				<button id="stats-refresh-btn" class="btn btn-ghost btn-sm" title="Refresh stats">🔄 Refresh</button>
 			</div>
@@ -87,10 +92,19 @@ function renderStatsContent(container, stats) {
 				</div>
 
 				<div class="stat-card">
+					<div class="stat-card-icon">🔢</div>
+					<div class="stat-card-body">
+						<div class="stat-value">${totalReps.toLocaleString()} <span class="stat-unit">reps</span></div>
+						<div class="stat-label">Total Reps</div>
+					</div>
+					<div class="stat-footer-badge">${Object.keys(categories).length} movement types</div>
+				</div>
+
+				<div class="stat-card">
 					<div class="stat-card-icon">🏆</div>
 					<div class="stat-card-body">
 						<div class="stat-value">${totalSessions}</div>
-						<div class="stat-label">Total Workouts</div>
+						<div class="stat-label">Workouts</div>
 					</div>
 					<div class="stat-footer-badge">${completedCount} completed</div>
 				</div>
@@ -132,6 +146,44 @@ function renderStatsContent(container, stats) {
 				</div>
 			</div>
 
+			<!-- Movement Taxonomy & Discipline Split -->
+			<div class="stats-visual-grid stats-taxonomy-grid">
+				<!-- Categories Distribution -->
+				<div class="stats-section-card">
+					<div class="section-card-header">
+						<h3>🎯 Movement Types</h3>
+						<span class="section-header-meta">Categories</span>
+					</div>
+					<div class="stats-categories-list">
+						${renderCategoriesList(categories)}
+					</div>
+				</div>
+
+				<!-- Disciplines Split & Top Leaderboard -->
+				<div class="stats-section-card">
+					<div class="section-card-header">
+						<h3>🥋 Disciplines & Top Movements</h3>
+						<span class="section-header-meta">Split</span>
+					</div>
+					<div class="stats-disciplines-list">
+						${renderDisciplinesList(disciplines)}
+					</div>
+					${topExercises.length > 0 ? `
+						<div class="stats-top-exercises-sub">
+							<div class="sub-header">Top Movements</div>
+							<div class="top-exercises-chips">
+								${topExercises.slice(0, 6).map(ex => `
+									<div class="top-ex-badge" title="${ex.name}: ${ex.count} sets${ex.reps > 0 ? ', ' + ex.reps + ' reps' : ''}">
+										<span class="top-ex-name">${escapeHtml(ex.name)}</span>
+										<span class="top-ex-count">${ex.reps > 0 ? ex.reps + 'r' : ex.count + ' sets'}</span>
+									</div>
+								`).join('')}
+							</div>
+						</div>
+					` : ''}
+				</div>
+			</div>
+
 			<!-- Recent Workout History Log -->
 			<div class="stats-section-card session-history-card">
 				<div class="section-card-header">
@@ -152,6 +204,69 @@ function renderStatsContent(container, stats) {
 	}
 
 	bindHistoryActions(container);
+}
+
+/**
+ * Render category progress rows.
+ */
+function renderCategoriesList(categories) {
+	const keys = Object.keys(categories);
+	if (keys.length === 0) {
+		return '<p class="text-muted empty-sub">No categorized exercises recorded yet.</p>';
+	}
+
+	const maxSets = Math.max(...keys.map(k => categories[k].sets || 0), 1);
+
+	return keys.map(k => {
+		const catInfo = CATEGORIES[k] || { label: k, icon: '💪', color: '#6366f1' };
+		const data = categories[k];
+		const sets = data.sets || 0;
+		const reps = data.reps || 0;
+		const pct = Math.min(100, Math.round((sets / maxSets) * 100));
+
+		return `
+			<div class="cat-stat-row">
+				<div class="cat-stat-header">
+					<span class="cat-stat-name"><span class="cat-icon">${catInfo.icon}</span> ${catInfo.label}</span>
+					<span class="cat-stat-nums"><strong>${sets}</strong> sets${reps > 0 ? ` · ${reps} reps` : ''}</span>
+				</div>
+				<div class="cat-stat-track">
+					<div class="cat-stat-fill" style="width: ${pct}%; background: ${catInfo.color};"></div>
+				</div>
+			</div>
+		`;
+	}).join('');
+}
+
+/**
+ * Render discipline progress tags.
+ */
+function renderDisciplinesList(disciplines) {
+	const keys = Object.keys(disciplines);
+	if (keys.length === 0) {
+		return '<p class="text-muted empty-sub">Tag your steps with Muay Thai, Boxing, or Calisthenics to see your split.</p>';
+	}
+
+	return `
+		<div class="discipline-chips-grid">
+			${keys.map(k => {
+				const discInfo = DISCIPLINES[k] || { label: k.replace('_', ' ').toUpperCase(), icon: '🏋️', color: '#9ea2bd' };
+				const data = disciplines[k];
+				const sets = data.sets || 0;
+				const reps = data.reps || 0;
+
+				return `
+					<div class="disc-stat-card">
+						<div class="disc-stat-icon">${discInfo.icon}</div>
+						<div class="disc-stat-body">
+							<div class="disc-stat-title">${discInfo.label}</div>
+							<div class="disc-stat-val">${sets} sets${reps > 0 ? ` · ${reps}r` : ''}</div>
+						</div>
+					</div>
+				`;
+			}).join('')}
+		</div>
+	`;
 }
 
 /**

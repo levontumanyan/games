@@ -18,7 +18,7 @@ import {
 import { initAudio } from './audio.js';
 import {
 	initMusic, setVolume as setMusicVolume, nextTrack, prevTrack,
-	muteMusic, unmuteMusic, isMuted as isMusicMuted
+	muteMusic, unmuteMusic, isMuted as isMusicMuted, unlockAudio
 } from './music.js';
 import { formatTime, formatFriendlyDuration, copyToClipboard, showToast } from './utils.js';
 import { getClipIcon, getTimerIcon, getBreakIcon } from './icons.js';
@@ -28,11 +28,13 @@ import {
 	fetchUsers, createUser
 } from './user.js';
 import { renderStatsDashboard } from './stats.js';
+import { loadExercises, renderExercisesCatalog } from './exercises.js';
+import { loadCombos, renderCombosCatalog } from './combos.js';
 
 let routines = [];
 let selectedRoutineId = null;
 let currentMode = 'view'; // 'view' | 'edit'
-let currentTab = 'routines'; // 'routines' | 'stats'
+let currentTab = 'routines'; // 'routines' | 'combos' | 'exercises' | 'stats'
 let syncTimeout = null;
 let sharedRoutine = null;
 let isViewingShared = false;
@@ -52,6 +54,10 @@ async function init() {
 	if (routines.length > 0) {
 		selectedRoutineId = routines[0].id;
 	}
+
+	// Warm up exercise and combos taxonomy caches
+	loadExercises().catch(() => {});
+	loadCombos().catch(() => {});
 
 	// Check if URL contains a shared routine
 	const incomingShared = await getSharedRoutineFromUrl();
@@ -142,6 +148,8 @@ function cacheDom() {
 	dom.routineView = document.getElementById('routine-view');
 	dom.routineOverviewContainer = document.getElementById('routine-overview-container');
 	dom.editorView = document.getElementById('editor-view');
+	dom.combosView = document.getElementById('combos-view');
+	dom.exercisesView = document.getElementById('exercises-view');
 	dom.statsView = document.getElementById('stats-view');
 	dom.playerView = document.getElementById('player-view');
 	dom.playerStage = document.querySelector('.player-stage');
@@ -163,6 +171,8 @@ function cacheDom() {
 	dom.userProfileBtn = document.getElementById('user-profile-btn');
 	dom.userProfileName = document.getElementById('user-profile-name');
 	dom.tabRoutinesBtn = document.getElementById('tab-routines-btn');
+	dom.tabCombosBtn = document.getElementById('tab-combos-btn');
+	dom.tabExercisesBtn = document.getElementById('tab-exercises-btn');
 	dom.tabStatsBtn = document.getElementById('tab-stats-btn');
 	dom.profileModalBackdrop = document.getElementById('profile-modal-backdrop');
 	dom.profileModalCloseBtn = document.getElementById('profile-modal-close-btn');
@@ -292,14 +302,20 @@ async function syncWithServerOnStartup() {
 }
 
 /**
- * Switch active navigation tab (Routines vs Stats).
- * @param {'routines' | 'stats'} tab
+ * Switch active navigation tab (Routines vs Combos vs Exercises vs Stats).
+ * @param {'routines' | 'combos' | 'exercises' | 'stats'} tab
  */
 function switchTab(tab) {
 	currentTab = tab;
 
 	if (dom.tabRoutinesBtn) {
 		dom.tabRoutinesBtn.classList.toggle('active', tab === 'routines');
+	}
+	if (dom.tabCombosBtn) {
+		dom.tabCombosBtn.classList.toggle('active', tab === 'combos');
+	}
+	if (dom.tabExercisesBtn) {
+		dom.tabExercisesBtn.classList.toggle('active', tab === 'exercises');
 	}
 	if (dom.tabStatsBtn) {
 		dom.tabStatsBtn.classList.toggle('active', tab === 'stats');
@@ -309,12 +325,183 @@ function switchTab(tab) {
 		if (dom.routineView) dom.routineView.classList.add('hidden');
 		if (dom.editorView) dom.editorView.classList.add('hidden');
 		if (dom.emptyView) dom.emptyView.classList.add('hidden');
+		if (dom.combosView) dom.combosView.classList.add('hidden');
+		if (dom.exercisesView) dom.exercisesView.classList.add('hidden');
 		if (dom.statsView) {
 			dom.statsView.classList.remove('hidden');
 			renderStatsDashboard(dom.statsView);
 		}
+	} else if (tab === 'combos') {
+		if (dom.routineView) dom.routineView.classList.add('hidden');
+		if (dom.editorView) dom.editorView.classList.add('hidden');
+		if (dom.emptyView) dom.emptyView.classList.add('hidden');
+		if (dom.statsView) dom.statsView.classList.add('hidden');
+		if (dom.exercisesView) dom.exercisesView.classList.add('hidden');
+		if (dom.combosView) {
+			dom.combosView.classList.remove('hidden');
+			renderCombosCatalog(dom.combosView, {
+				onPlayCombo: (combo) => {
+					const exList = (combo.exercise_ids || []).map(id => getExerciseById(id)).filter(Boolean);
+					const asset = (combo.media_assets || [])[0];
+					const isVideo = asset && (asset.type === 'video' || Boolean(asset.videoId));
+					const step = isVideo ? {
+						id: 'preview-combo-step',
+						type: 'clip',
+						videoId: asset.videoId || parseYouTubeId(asset.url || combo.media_url),
+						startSeconds: asset.startSeconds || 0,
+						endSeconds: asset.endSeconds || ((asset.startSeconds || 0) + (combo.default_quantity || 190)),
+						label: combo.name,
+						flow_type: combo.flow_type || 'alternating',
+						exercises: exList
+					} : {
+						id: 'preview-combo-step',
+						type: 'timer',
+						stepMode: combo.default_mode || 'time',
+						targetReps: combo.default_quantity || 20,
+						durationSeconds: combo.default_quantity || 190,
+						label: combo.name,
+						flow_type: combo.flow_type || 'alternating',
+						gifUrl: asset?.url || combo.media_url || '',
+						exercises: exList
+					};
+					const previewRoutine = {
+						id: 'preview-combo-routine',
+						title: `Preview: ${combo.name}`,
+						steps: [step]
+					};
+					unlockAudio();
+					startRoutine(previewRoutine, 0, true);
+				},
+				onBreakDownCombo: (combo) => {
+					const exList = (combo.exercise_ids || []).map(id => getExerciseById(id)).filter(Boolean);
+					if (exList.length === 0) {
+						showToast('No constituent exercises to break down.');
+						return;
+					}
+					const totalSec = combo.default_quantity || 190;
+					const perSec = Math.max(20, Math.floor(totalSec / exList.length));
+					const steps = exList.map(e => {
+						const isReps = (e.default_mode || 'time') === 'reps';
+						const s = createTimerStep(
+							e.name,
+							isReps ? 30 : (e.default_quantity || perSec),
+							e.media_url || ''
+						);
+						s.stepMode = e.default_mode || 'time';
+						if (isReps) s.targetReps = e.default_quantity || 20;
+						s.exercises = [e];
+						return s;
+					});
+					const previewRoutine = {
+						id: 'preview-breakdown-routine',
+						title: `Breakdown: ${combo.name}`,
+						steps
+					};
+					unlockAudio();
+					startRoutine(previewRoutine, 0, true);
+				},
+				onAddToRoutine: (combo) => {
+					let routine = getSelectedRoutine();
+					if (!routine) {
+						routine = createRoutine('New Workout');
+						routines.push(routine);
+						selectedRoutineId = routine.id;
+					}
+					const exList = (combo.exercise_ids || []).map(id => getExerciseById(id)).filter(Boolean);
+					const asset = (combo.media_assets || [])[0];
+					const isVideo = asset && (asset.type === 'video' || Boolean(asset.videoId));
+					let newStep;
+					if (isVideo) {
+						newStep = createClipStep(
+							combo.name,
+							asset.videoId || parseYouTubeId(asset.url || combo.media_url),
+							asset.startSeconds || 0,
+							asset.endSeconds || ((asset.startSeconds || 0) + (combo.default_quantity || 190))
+						);
+					} else {
+						const isReps = (combo.default_mode || 'time') === 'reps';
+						newStep = createTimerStep(
+							combo.name,
+							isReps ? 30 : (combo.default_quantity || 190),
+							combo.media_url || ''
+						);
+						newStep.stepMode = combo.default_mode || 'time';
+						if (isReps) newStep.targetReps = combo.default_quantity || 20;
+					}
+					newStep.flow_type = combo.flow_type || 'alternating';
+					newStep.exercises = exList;
+					routine.steps.push(newStep);
+					persist();
+					currentMode = 'edit';
+					switchTab('routines');
+					showToast(`Added "${combo.name}" to workout!`);
+				}
+			});
+		}
+	} else if (tab === 'exercises') {
+		if (dom.routineView) dom.routineView.classList.add('hidden');
+		if (dom.editorView) dom.editorView.classList.add('hidden');
+		if (dom.emptyView) dom.emptyView.classList.add('hidden');
+		if (dom.combosView) dom.combosView.classList.add('hidden');
+		if (dom.statsView) dom.statsView.classList.add('hidden');
+		if (dom.exercisesView) {
+			dom.exercisesView.classList.remove('hidden');
+			renderExercisesCatalog(dom.exercisesView, {
+				onPlayExercise: (exercise, asset) => {
+					const isVideo = asset && (asset.type === 'video' || Boolean(asset.videoId));
+					const step = isVideo ? {
+						id: 'preview-step',
+						type: 'clip',
+						videoId: asset.videoId || parseYouTubeId(asset.url),
+						startSeconds: asset.startSeconds || 0,
+						endSeconds: asset.endSeconds || ((asset.startSeconds || 0) + 60),
+						label: `${exercise.name}: ${asset.title || 'Instruction'}`
+					} : {
+						id: 'preview-step',
+						type: 'timer',
+						stepMode: exercise.default_mode || 'reps',
+						targetReps: exercise.default_quantity || 20,
+						durationSeconds: exercise.default_quantity || 30,
+						label: exercise.name,
+						gifUrl: asset?.url || exercise.media_url || '',
+						exercises: [exercise]
+					};
+					const previewRoutine = {
+						id: 'preview-routine',
+						title: `Preview: ${exercise.name}`,
+						steps: [step]
+					};
+					unlockAudio();
+					startRoutine(previewRoutine, 0, true);
+				},
+				onAddToRoutine: (exercise) => {
+					let routine = getSelectedRoutine();
+					if (!routine) {
+						routine = createRoutine('New Workout');
+						routines.push(routine);
+						selectedRoutineId = routine.id;
+					}
+					const isReps = (exercise.default_mode || 'reps') === 'reps';
+					const newStep = createTimerStep(
+						exercise.name,
+						isReps ? 30 : (exercise.default_quantity || 30),
+						exercise.media_url || ''
+					);
+					newStep.stepMode = exercise.default_mode || 'reps';
+					if (isReps) newStep.targetReps = exercise.default_quantity || 20;
+					newStep.exercises = [{ id: exercise.id, name: exercise.name, category: exercise.category, discipline: exercise.discipline }];
+					routine.steps.push(newStep);
+					persist();
+					currentMode = 'edit';
+					switchTab('routines');
+					showToast(`Added "${exercise.name}" to workout!`);
+				}
+			});
+		}
 	} else {
 		if (dom.statsView) dom.statsView.classList.add('hidden');
+		if (dom.combosView) dom.combosView.classList.add('hidden');
+		if (dom.exercisesView) dom.exercisesView.classList.add('hidden');
 		renderSelectedRoutine();
 	}
 }
@@ -376,6 +563,12 @@ function bindEvents() {
 	// Tab switcher
 	if (dom.tabRoutinesBtn) {
 		dom.tabRoutinesBtn.addEventListener('click', () => switchTab('routines'));
+	}
+	if (dom.tabCombosBtn) {
+		dom.tabCombosBtn.addEventListener('click', () => switchTab('combos'));
+	}
+	if (dom.tabExercisesBtn) {
+		dom.tabExercisesBtn.addEventListener('click', () => switchTab('exercises'));
 	}
 	if (dom.tabStatsBtn) {
 		dom.tabStatsBtn.addEventListener('click', () => switchTab('stats'));
@@ -687,8 +880,13 @@ function renderSelectedRoutine() {
 				currentMode = 'edit';
 				renderSelectedRoutine();
 			},
-			onPlay: (startIndex = 0) => {
-				startRoutine(routine, startIndex);
+			onPlay: (startIndex = 0, isPreview = false) => {
+				unlockAudio();
+				startRoutine(routine, startIndex, isPreview);
+			},
+			onPlayStep: (startIndex = 0) => {
+				unlockAudio();
+				startRoutine(routine, startIndex, true);
 			},
 			onShare: async () => {
 				const shareUrl = await encodeRoutineToShareUrl(routine);
@@ -709,10 +907,22 @@ function renderSelectedRoutine() {
 
 		const onStepUpdate = () => {
 			persist();
-			renderEditor(routine, dom.stepList, onStepUpdate);
+			renderEditor(routine, dom.stepList, {
+				onUpdate: onStepUpdate,
+				onTestStep: (stepIndex) => {
+					unlockAudio();
+					startRoutine(routine, stepIndex, true);
+				}
+			});
 			renderRoutineList();
 		};
-		renderEditor(routine, dom.stepList, onStepUpdate);
+		renderEditor(routine, dom.stepList, {
+			onUpdate: onStepUpdate,
+			onTestStep: (stepIndex) => {
+				unlockAudio();
+				startRoutine(routine, stepIndex, true);
+			}
+		});
 	}
 }
 

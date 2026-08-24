@@ -99,6 +99,17 @@ export async function initMusic(containerEl, callbacks) {
 }
 
 /**
+ * Unlock / prime audio on initial user gesture (Click, Start Workout).
+ */
+export function unlockAudio() {
+	if (audioElement) {
+		audioElement.play().then(() => {
+			audioElement.pause();
+		}).catch(() => {});
+	}
+}
+
+/**
  * Handle track end - advance to next track in playlist (loops).
  */
 function handleTrackEnded() {
@@ -129,7 +140,7 @@ export function setPlaylist(tracks) {
 		playlist.every((t, i) => t.source === newTracks[i].source && (t.videoId === newTracks[i].videoId || t.fileId === newTracks[i].fileId));
 	if (isSame) return;
 	playlist = newTracks;
-	if (currentTrackIndex >= playlist.length) {
+	if (currentTrackIndex < 0 || currentTrackIndex >= playlist.length) {
 		currentTrackIndex = playlist.length > 0 ? 0 : -1;
 	}
 }

@@ -1,6 +1,7 @@
-import { formatTime, formatFriendlyDuration } from './utils.js';
+import { formatTime, formatFriendlyDuration, escapeHtml } from './utils.js';
 import { isBreakStep, resolveStepMediaUrl } from './editor.js';
 import { getClipIcon, getTimerIcon, getBreakIcon, getStepsIcon, getShareIcon, getSaveIcon } from './icons.js';
+import { getCategoryBadgeHtml, getDisciplineBadgeHtml } from './exercises.js';
 
 /**
  * Render the read-only routine overview.
@@ -40,7 +41,8 @@ export function renderRoutineOverview(routine, container, actions = {}) {
 	const steps = routine.steps || [];
 	const clipCount = steps.filter(s => s.type === 'clip').length;
 	const breakCount = steps.filter(s => isBreakStep(s)).length;
-	const timerCount = steps.filter(s => s.type === 'timer' && !isBreakStep(s)).length;
+	const repsCount = steps.filter(s => s.stepMode === 'reps' || s.targetReps).length;
+	const timerCount = steps.filter(s => s.type === 'timer' && !isBreakStep(s) && s.stepMode !== 'reps' && !s.targetReps).length;
 	const totalSeconds = steps.reduce((sum, s) => {
 		if (s.type === 'timer') return sum + (s.durationSeconds || 0);
 		if (s.type === 'clip') {
@@ -68,9 +70,14 @@ export function renderRoutineOverview(routine, container, actions = {}) {
 		{ label: `${steps.length} Steps`, icon: getStepsIcon(14) },
 		{ label: `~${formatTime(totalSeconds)}`, icon: getTimerIcon(14) },
 		{ label: `${clipCount} Videos`, icon: getClipIcon(14) },
-		{ label: `${timerCount} Timers`, icon: getTimerIcon(14) },
 	];
 
+	if (repsCount > 0) {
+		stats.push({ label: `${repsCount} Rep Sets`, icon: '🔢' });
+	}
+	if (timerCount > 0) {
+		stats.push({ label: `${timerCount} Timers`, icon: getTimerIcon(14) });
+	}
 	if (breakCount > 0) {
 		stats.push({ label: `${breakCount} Breaks`, icon: getBreakIcon(14) });
 	}
@@ -115,7 +122,7 @@ export function renderRoutineOverview(routine, container, actions = {}) {
 	playBtn.className = 'btn btn-primary btn-hero-play';
 	playBtn.innerHTML = '▶ Start Workout';
 	playBtn.disabled = steps.length === 0;
-	playBtn.addEventListener('click', () => actions.onPlay?.(0));
+	playBtn.addEventListener('click', () => actions.onPlay?.(0, false));
 
 	if (actions.isShared) {
 		const headerSaveBtn = document.createElement('button');
@@ -130,7 +137,6 @@ export function renderRoutineOverview(routine, container, actions = {}) {
 
 	header.append(titleInfo, actionsGroup);
 	container.appendChild(header);
-
 
 	// ── Empty State ──────────────────────────────────────────────────────────
 	if (steps.length === 0) {
@@ -169,7 +175,7 @@ export function renderRoutineOverview(routine, container, actions = {}) {
 		const bottomPlayBtn = document.createElement('button');
 		bottomPlayBtn.className = 'btn btn-primary btn-hero-play';
 		bottomPlayBtn.innerHTML = '▶ Start Workout';
-		bottomPlayBtn.addEventListener('click', () => actions.onPlay?.(0));
+		bottomPlayBtn.addEventListener('click', () => actions.onPlay?.(0, false));
 
 		bottomBar.appendChild(bottomPlayBtn);
 		container.appendChild(bottomBar);
@@ -183,7 +189,7 @@ function createViewStepCard(step, index, steps, actions) {
 	if (isBreakStep(step)) {
 		const card = document.createElement('div');
 		card.className = 'view-step-card view-step-break';
-		card.title = `Click to start workout from step #${index + 1}`;
+		card.title = `Click to test this step in Preview Mode (Stats Disabled)`;
 
 		const indexBadge = document.createElement('div');
 		indexBadge.className = 'view-step-index';
@@ -221,13 +227,18 @@ function createViewStepCard(step, index, steps, actions) {
 
 		const playAction = document.createElement('button');
 		playAction.className = 'view-step-play-btn';
-		playAction.innerHTML = '▶';
-		playAction.title = `Start from Step ${index + 1}`;
+		playAction.innerHTML = '🔍';
+		playAction.title = `Preview Step ${index + 1}`;
 
 		card.append(indexBadge, iconBox, details, playAction);
 
+		// Single row click triggers Preview Mode so it does not count towards stats
 		card.addEventListener('click', () => {
-			actions.onPlay?.(index);
+			if (actions.onPlayStep) {
+				actions.onPlayStep(index);
+			} else {
+				actions.onPlay?.(index, true);
+			}
 		});
 
 		return card;
@@ -235,7 +246,7 @@ function createViewStepCard(step, index, steps, actions) {
 
 	const card = document.createElement('div');
 	card.className = `view-step-card view-step-${step.type}`;
-	card.title = `Click to start workout from step #${index + 1}`;
+	card.title = `Click to test this step in Preview Mode (Stats Disabled)`;
 
 	// Step index badge
 	const indexBadge = document.createElement('div');
@@ -247,6 +258,7 @@ function createViewStepCard(step, index, steps, actions) {
 	mediaBox.className = 'view-step-media';
 
 	const mediaUrl = resolveStepMediaUrl(step);
+	const isReps = step.stepMode === 'reps' || (step.targetReps && step.targetReps > 0);
 
 	if (step.type === 'clip') {
 		if (step.videoId) {
@@ -277,8 +289,8 @@ function createViewStepCard(step, index, steps, actions) {
 			img.style.display = 'none';
 			mediaBox.innerHTML = `
 				<div class="timer-visual-box">
-					<span class="timer-icon">${getTimerIcon(24)}</span>
-					<span class="timer-badge-sec">${formatTime(step.durationSeconds || 30)}</span>
+					<span class="timer-icon">${isReps ? '🔢' : getTimerIcon(24)}</span>
+					<span class="timer-badge-sec">${isReps ? `${step.targetReps || 20}r` : formatTime(step.durationSeconds || 30)}</span>
 				</div>
 			`;
 		};
@@ -289,11 +301,11 @@ function createViewStepCard(step, index, steps, actions) {
 		playOverlay.innerHTML = '▶';
 		mediaBox.appendChild(playOverlay);
 	} else {
-		// Timer visual box
+		// Timer / Reps visual box
 		mediaBox.innerHTML = `
-			<div class="timer-visual-box">
-				<span class="timer-icon">${getTimerIcon(24)}</span>
-				<span class="timer-badge-sec">${formatTime(step.durationSeconds || 30)}</span>
+			<div class="timer-visual-box ${isReps ? 'timer-visual-reps' : ''}">
+				<span class="timer-icon">${isReps ? '🔢' : getTimerIcon(24)}</span>
+				<span class="timer-badge-sec">${isReps ? `${step.targetReps || 20} reps` : formatTime(step.durationSeconds || 30)}</span>
 			</div>
 		`;
 	}
@@ -323,6 +335,25 @@ function createViewStepCard(step, index, steps, actions) {
 		durationTag.innerHTML = `${getTimerIcon(11)} ${formatFriendlyDuration(dur)} (${formatTime(start)} → ${formatTime(end)})`;
 
 		tagsRow.append(typeTag, durationTag);
+	} else if (isReps) {
+		const repsTag = document.createElement('span');
+		repsTag.className = 'view-tag view-tag-reps';
+		repsTag.innerHTML = `🔢 ${step.targetReps || 20} Reps`;
+		tagsRow.appendChild(repsTag);
+
+		if (mediaUrl) {
+			const animTag = document.createElement('span');
+			animTag.className = 'view-tag view-tag-anim';
+			animTag.textContent = '✨ Animation';
+			tagsRow.appendChild(animTag);
+		}
+
+		if (step.musicTracks && step.musicTracks.length > 0) {
+			const musicTag = document.createElement('span');
+			musicTag.className = 'view-tag view-tag-music';
+			musicTag.textContent = `🎵 ${step.musicTracks[0].label || 'Music'}`;
+			tagsRow.appendChild(musicTag);
+		}
 	} else {
 		const dur = step.durationSeconds || 30;
 
@@ -351,18 +382,33 @@ function createViewStepCard(step, index, steps, actions) {
 		}
 	}
 
+	// Attached exercise tags
+	if (step.exercises && step.exercises.length > 0) {
+		step.exercises.forEach(ex => {
+			const exTag = document.createElement('span');
+			exTag.className = 'view-tag view-tag-exercise-pill';
+			exTag.innerHTML = `${getCategoryBadgeHtml(ex.category)} <span class="ex-pill-name">${escapeHtml(ex.name)}</span>`;
+			tagsRow.appendChild(exTag);
+		});
+	}
+
 	details.append(title, tagsRow);
 
-	// Quick Play Action Button
+	// Quick Preview / Test Action Button
 	const playAction = document.createElement('button');
 	playAction.className = 'view-step-play-btn';
-	playAction.innerHTML = '▶';
-	playAction.title = `Start from Step ${index + 1}`;
+	playAction.innerHTML = '🔍';
+	playAction.title = `Preview Step ${index + 1} (Stats Disabled)`;
 
 	card.append(indexBadge, mediaBox, details, playAction);
 
+	// Single row click triggers Preview Mode so it does not count towards stats
 	card.addEventListener('click', () => {
-		actions.onPlay?.(index);
+		if (actions.onPlayStep) {
+			actions.onPlayStep(index);
+		} else {
+			actions.onPlay?.(index, true);
+		}
 	});
 
 	return card;

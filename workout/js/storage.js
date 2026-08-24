@@ -168,6 +168,130 @@ export async function deleteSession(sessionId) {
 	return true;
 }
 
+// ── Exercises API ───────────────────────────────────────────────────────────
+
+/**
+ * Fetch all available exercises from the server for the active user.
+ * @param {string} [category]
+ * @param {string} [discipline]
+ * @param {string} [search]
+ * @returns {Promise<Array>}
+ */
+export async function fetchServerExercises(category = '', discipline = '', search = '') {
+	const params = new URLSearchParams();
+	if (category) params.set('category', category);
+	if (discipline) params.set('discipline', discipline);
+	if (search) params.set('search', search);
+
+	const qs = params.toString() ? `?${params.toString()}` : '';
+	const res = await fetch(`${getApiBase()}/exercises${qs}`, {
+		headers: getHeaders({ 'Accept': 'application/json' })
+	});
+	if (!res.ok) {
+		throw new Error(`Failed to fetch exercises: HTTP ${res.status}`);
+	}
+	return await res.json();
+}
+
+/**
+ * Save or update a custom exercise on the server.
+ * @param {Object} exercise
+ * @returns {Promise<Object>}
+ */
+export async function saveCustomExerciseOnServer(exercise) {
+	const res = await fetch(`${getApiBase()}/exercises`, {
+		method: 'POST',
+		headers: getHeaders({
+			'Content-Type': 'application/json',
+			'Accept': 'application/json'
+		}),
+		body: JSON.stringify(exercise)
+	});
+	if (!res.ok) {
+		const err = await res.json().catch(() => ({}));
+		throw new Error(err.detail || `Failed to save exercise: HTTP ${res.status}`);
+	}
+	return await res.json();
+}
+
+/**
+ * Delete a custom exercise by ID on the server.
+ * @param {string} exerciseId
+ * @returns {Promise<boolean>}
+ */
+export async function deleteCustomExerciseOnServer(exerciseId) {
+	const res = await fetch(`${getApiBase()}/exercises/${encodeURIComponent(exerciseId)}`, {
+		method: 'DELETE',
+		headers: getHeaders({ 'Accept': 'application/json' })
+	});
+	if (!res.ok) {
+		throw new Error(`Failed to delete exercise: HTTP ${res.status}`);
+	}
+	return true;
+}
+
+// ── Combos API ────────────────────────────────────────────────────────────
+
+/**
+ * Fetch combos library from server.
+ * @param {string} [category]
+ * @param {string} [discipline]
+ * @param {string} [search]
+ * @returns {Promise<Array>}
+ */
+export async function fetchServerCombos(category = '', discipline = '', search = '') {
+	const params = new URLSearchParams();
+	if (category) params.set('category', category);
+	if (discipline) params.set('discipline', discipline);
+	if (search) params.set('search', search);
+
+	const qs = params.toString() ? `?${params.toString()}` : '';
+	const res = await fetch(`${getApiBase()}/combos${qs}`, {
+		headers: getHeaders({ 'Accept': 'application/json' })
+	});
+	if (!res.ok) {
+		throw new Error(`Failed to fetch combos: HTTP ${res.status}`);
+	}
+	return await res.json();
+}
+
+/**
+ * Save or update a custom combo on the server.
+ * @param {Object} combo
+ * @returns {Promise<Object>}
+ */
+export async function saveCustomComboOnServer(combo) {
+	const res = await fetch(`${getApiBase()}/combos`, {
+		method: 'POST',
+		headers: getHeaders({
+			'Content-Type': 'application/json',
+			'Accept': 'application/json'
+		}),
+		body: JSON.stringify(combo)
+	});
+	if (!res.ok) {
+		const err = await res.json().catch(() => ({}));
+		throw new Error(err.detail || `Failed to save combo: HTTP ${res.status}`);
+	}
+	return await res.json();
+}
+
+/**
+ * Delete a custom combo by ID on the server.
+ * @param {string} comboId
+ * @returns {Promise<boolean>}
+ */
+export async function deleteCustomComboOnServer(comboId) {
+	const res = await fetch(`${getApiBase()}/combos/${encodeURIComponent(comboId)}`, {
+		method: 'DELETE',
+		headers: getHeaders({ 'Accept': 'application/json' })
+	});
+	if (!res.ok) {
+		throw new Error(`Failed to delete combo: HTTP ${res.status}`);
+	}
+	return true;
+}
+
 // ── Import / Export & Sharing ───────────────────────────────────────────────
 
 /**
@@ -219,6 +343,16 @@ export async function encodeRoutineToShareUrl(routine) {
 				type: s.type,
 				label: s.label || ''
 			};
+			if (s.stepMode) clean.stepMode = s.stepMode;
+			if (s.targetReps) clean.targetReps = s.targetReps;
+			if (Array.isArray(s.exercises) && s.exercises.length > 0) {
+				clean.exercises = s.exercises.map(e => ({
+					id: e.id,
+					name: e.name,
+					category: e.category,
+					discipline: e.discipline
+				}));
+			}
 			if (s.type === 'clip') {
 				clean.videoId = s.videoId || '';
 				if (s.startSeconds) clean.startSeconds = s.startSeconds;
@@ -313,11 +447,16 @@ export async function fetchSharedRoutineFromServer(shareId) {
 			steps: data.steps.map(s => ({
 				id: generateId(),
 				type: s.type || 'timer',
+				stepMode: s.stepMode || (s.targetReps ? 'reps' : 'time'),
+				targetReps: s.targetReps || 0,
+				exercises: Array.isArray(s.exercises) ? s.exercises : [],
 				label: s.label || 'Step',
 				videoId: s.videoId || '',
 				startSeconds: s.startSeconds || 0,
 				endSeconds: s.endSeconds || 0,
 				durationSeconds: s.durationSeconds || 30,
+				gifUrl: s.gifUrl || s.mediaUrl || '',
+				mediaUrl: s.mediaUrl || s.gifUrl || '',
 				isBreak: Boolean(s.isBreak),
 				musicTracks: Array.isArray(s.musicTracks) ? s.musicTracks.map(t => ({
 					id: generateId(),
@@ -378,11 +517,16 @@ export async function decodeRoutineFromSharePayload(token) {
 			steps: parsed.steps.map(s => ({
 				id: generateId(),
 				type: s.type || 'timer',
+				stepMode: s.stepMode || (s.targetReps ? 'reps' : 'time'),
+				targetReps: s.targetReps || 0,
+				exercises: Array.isArray(s.exercises) ? s.exercises : [],
 				label: s.label || 'Step',
 				videoId: s.videoId || '',
 				startSeconds: s.startSeconds || 0,
 				endSeconds: s.endSeconds || 0,
 				durationSeconds: s.durationSeconds || 30,
+				gifUrl: s.gifUrl || s.mediaUrl || '',
+				mediaUrl: s.mediaUrl || s.gifUrl || '',
 				isBreak: Boolean(s.isBreak),
 				musicTracks: Array.isArray(s.musicTracks) ? s.musicTracks.map(t => ({
 					id: generateId(),
@@ -470,14 +614,20 @@ export function importRoutines() {
 						return {
 							id: routine.id || generateId(),
 							title: routine.title,
+							musicTracks: Array.isArray(routine.musicTracks) ? routine.musicTracks : [],
 							steps: routine.steps.map(step => ({
 								id: step.id || generateId(),
 								type: step.type || 'timer',
+								stepMode: step.stepMode || (step.targetReps ? 'reps' : 'time'),
+								targetReps: step.targetReps || 0,
+								exercises: Array.isArray(step.exercises) ? step.exercises : [],
 								label: step.label || 'Step',
 								videoId: step.videoId || '',
 								startSeconds: step.startSeconds || 0,
 								endSeconds: step.endSeconds || 0,
 								durationSeconds: step.durationSeconds || 30,
+								gifUrl: step.gifUrl || step.mediaUrl || '',
+								mediaUrl: step.mediaUrl || step.gifUrl || '',
 								isBreak: Boolean(step.isBreak),
 								musicTracks: Array.isArray(step.musicTracks) ? step.musicTracks : []
 							}))

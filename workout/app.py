@@ -119,6 +119,86 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 		tz_offset = int(request.query_params.get("tz_offset", 0))
 		return JSONResponse(content=db.get_stats(user_id, timezone_offset_minutes=tz_offset))
 
+	# ── Exercises API ─────────────────────────────────────────────────────────
+
+	@app.get("/api/exercises")
+	@app.get("/workout/api/exercises")
+	async def list_exercises(request: Request):
+		user_id = get_user_id(request)
+		cat = request.query_params.get("category")
+		disc = request.query_params.get("discipline")
+		search = request.query_params.get("search")
+		return JSONResponse(
+			content=db.list_exercises(user_id=user_id, category=cat, discipline=disc, search=search)
+		)
+
+	@app.post("/api/exercises")
+	@app.post("/workout/api/exercises")
+	async def create_exercise(request: Request):
+		user_id = get_user_id(request)
+		try:
+			data = await request.json()
+		except Exception:
+			raise HTTPException(status_code=400, detail="Invalid JSON body")
+		if not isinstance(data, dict):
+			raise HTTPException(status_code=400, detail="Expected a JSON object")
+		try:
+			created = db.create_exercise(user_id, data)
+			return JSONResponse(content=created)
+		except ValueError as e:
+			raise HTTPException(status_code=400, detail=str(e))
+		except Exception as e:
+			raise HTTPException(status_code=500, detail=str(e))
+
+	@app.delete("/api/exercises/{exercise_id}")
+	@app.delete("/workout/api/exercises/{exercise_id}")
+	async def delete_exercise(exercise_id: str, request: Request):
+		user_id = get_user_id(request)
+		success = db.delete_exercise(user_id, exercise_id)
+		if not success:
+			raise HTTPException(status_code=404, detail="Exercise not found or cannot be deleted")
+		return {"status": "ok"}
+
+	# ── Combos API ────────────────────────────────────────────────────────────
+
+	@app.get("/api/combos")
+	@app.get("/workout/api/combos")
+	async def list_combos(request: Request):
+		user_id = get_user_id(request)
+		cat = request.query_params.get("category")
+		disc = request.query_params.get("discipline")
+		search = request.query_params.get("search")
+		return JSONResponse(
+			content=db.list_combos(user_id=user_id, category=cat, discipline=disc, search=search)
+		)
+
+	@app.post("/api/combos")
+	@app.post("/workout/api/combos")
+	async def create_combo(request: Request):
+		user_id = get_user_id(request)
+		try:
+			data = await request.json()
+		except Exception:
+			raise HTTPException(status_code=400, detail="Invalid JSON body")
+		if not isinstance(data, dict):
+			raise HTTPException(status_code=400, detail="Expected a JSON object")
+		try:
+			created = db.create_combo(user_id, data)
+			return JSONResponse(content=created)
+		except ValueError as e:
+			raise HTTPException(status_code=400, detail=str(e))
+		except Exception as e:
+			raise HTTPException(status_code=500, detail=str(e))
+
+	@app.delete("/api/combos/{combo_id}")
+	@app.delete("/workout/api/combos/{combo_id}")
+	async def delete_combo(combo_id: str, request: Request):
+		user_id = get_user_id(request)
+		success = db.delete_combo(combo_id, user_id)
+		if not success:
+			raise HTTPException(status_code=404, detail="Combo not found or cannot be deleted")
+		return {"status": "ok"}
+
 	# ── Share API ─────────────────────────────────────────────────────────────
 
 	@app.post("/api/share")

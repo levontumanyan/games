@@ -220,4 +220,16 @@ export function showToast(message, duration = 3000) {
 	}, duration);
 }
 
+/**
+ * Escape HTML special characters to prevent XSS.
+ * @param {string} str
+ * @returns {string}
+ */
+export function escapeHtml(str) {
+	if (!str && str !== 0) return '';
+	const div = document.createElement('div');
+	div.textContent = String(str);
+	return div.innerHTML;
+}
+
 
