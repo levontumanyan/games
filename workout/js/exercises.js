@@ -499,9 +499,6 @@ export function renderExercisesCatalog(container, options = {}) {
 					<button class="btn btn-sm btn-ghost btn-play-ex" title="Test in Preview Mode">
 						▶ Preview
 					</button>
-					<button class="btn btn-sm btn-ghost btn-view-vars" title="View video tutorials and variations">
-						Variations (${assets.length})
-					</button>
 					<button class="btn btn-sm btn-primary btn-add-routine" title="Add to current workout">
 						+ Add to Workout
 					</button>
@@ -509,20 +506,14 @@ export function renderExercisesCatalog(container, options = {}) {
 			`;
 
 			const playBtn = card.querySelector('.btn-play-ex');
-			playBtn.addEventListener('click', () => {
+			playBtn.addEventListener('click', (e) => {
+				e.stopPropagation();
 				onPlayExercise(ex, assets[0] || null);
 			});
 
-			const varsBtn = card.querySelector('.btn-view-vars');
-			varsBtn.addEventListener('click', () => {
-				showExerciseVariationsModal(ex, {
-					onPlayAsset: (asset) => onPlayExercise(ex, asset),
-					onUpdated: () => renderGrid()
-				});
-			});
-
 			const addRoutineBtn = card.querySelector('.btn-add-routine');
-			addRoutineBtn.addEventListener('click', () => {
+			addRoutineBtn.addEventListener('click', (e) => {
+				e.stopPropagation();
 				onAddToRoutine(ex);
 			});
 
@@ -543,6 +534,15 @@ export function renderExercisesCatalog(container, options = {}) {
 				});
 			}
 
+			// Entire card is clickable to open top-layer detail & variations overlay
+			card.addEventListener('click', () => {
+				showExerciseVariationsModal(ex, {
+					onPlayAsset: (asset) => onPlayExercise(ex, asset),
+					onAddToRoutine: () => onAddToRoutine(ex),
+					onUpdated: () => renderGrid()
+				});
+			});
+
 			gridContainer.appendChild(card);
 		});
 	}
@@ -557,173 +557,251 @@ export function renderExercisesCatalog(container, options = {}) {
 }
 
 /**
- * Show a modal displaying all media variations for an exercise, with option to play or add more.
+ * Show a Split HUD modal displaying all media variations for an exercise, with option to play or add more.
  * @param {Object} exercise
  * @param {Object} [options]
  */
 export function showExerciseVariationsModal(exercise, options = {}) {
 	const onPlayAsset = options.onPlayAsset || (() => {});
+	const onAddToRoutine = options.onAddToRoutine || (() => {});
 	const onUpdated = options.onUpdated || (() => {});
 
 	const backdrop = document.createElement('div');
-	backdrop.className = 'modal-backdrop';
+	backdrop.className = 'modal-backdrop modal-exercise-backdrop';
 
 	const modal = document.createElement('div');
-	modal.className = 'modal modal-exercise-variations';
+	modal.className = 'modal modal-combo-hud-split';
+
+	const close = () => {
+		document.removeEventListener('keydown', handleEsc);
+		backdrop.remove();
+	};
+
+	const handleEsc = (e) => {
+		if (e.key === 'Escape' || e.keyCode === 27) {
+			close();
+		}
+	};
+	document.addEventListener('keydown', handleEsc);
 
 	function renderModalContent() {
 		const assets = getExerciseMediaAssets([exercise]);
+		const muscles = inferMusclesForExercise(exercise);
+		const primaryMuscles = (muscles.primary || []).map(m => getMuscleBadgeHtml(m, true));
+		const secondaryMuscles = (muscles.secondary || []).map(m => getMuscleBadgeHtml(m, false));
+
+		const primaryAsset = assets[0];
+		const isVid = primaryAsset && (primaryAsset.type === 'video' || Boolean(primaryAsset.videoId));
+		const vid = primaryAsset?.videoId || (primaryAsset?.url ? parseYouTubeId(primaryAsset.url) : null);
+
+		const modeStr = (exercise.default_mode || 'reps') === 'reps'
+			? `🔢 ${exercise.default_quantity || 20} Target Reps`
+			: `⏱️ ${formatTime(exercise.default_quantity || 30)}`;
 
 		modal.innerHTML = `
-			<div class="modal-header">
-				<div>
-					<div class="modal-badges-row">
-						${getCategoryBadgeHtml(exercise.category)}
-						${exercise.discipline ? getDisciplineBadgeHtml(exercise.discipline) : ''}
-					</div>
-					<h3 class="modal-title">${escapeHtml(exercise.name)} — Media Variations</h3>
+			<div class="hud-left-panel">
+				<div class="hud-badges-row">
+					${getCategoryBadgeHtml(exercise.category)}
+					${exercise.discipline ? getDisciplineBadgeHtml(exercise.discipline) : ''}
 				</div>
-				<button class="modal-close-btn" title="Close">✕</button>
+
+				<h2 class="hud-combo-title">${escapeHtml(exercise.name)}</h2>
+
+				<div class="hud-visual-card">
+					${isVid && vid ? `
+						<div class="hud-video-thumb">
+							<img src="https://img.youtube.com/vi/${vid}/mqdefault.jpg" alt="${escapeHtml(exercise.name)}">
+							<span class="modal-play-badge">▶</span>
+						</div>
+					` : `
+						<div class="hud-img-thumb">
+							<img src="${exercise.media_url || '/workout/media/pushups.svg'}" alt="${escapeHtml(exercise.name)}" onerror="this.src='/workout/media/pushups.svg'">
+						</div>
+					`}
+					<div class="hud-visual-caption">Form Reference & Execution</div>
+				</div>
+
+				<div class="hud-muscles-section">
+					<div class="hud-section-label">Target Anatomy</div>
+					<div class="hud-muscles-row">
+						${primaryMuscles.join('')}
+						${secondaryMuscles.slice(0, 3).join('')}
+					</div>
+				</div>
+
+				<div class="hud-left-actions">
+					<button class="btn btn-primary btn-hud-play-ex" style="width:100%;">▶ Preview Movement</button>
+					<button class="btn btn-ghost btn-hud-add-ex" style="width:100%;">+ Add to Workout</button>
+				</div>
 			</div>
 
-			<div class="modal-body">
-				<p class="modal-subtitle">${escapeHtml(exercise.description || 'Instruction breakdowns, demonstrations, and looping forms.')}</p>
+			<div class="hud-right-panel">
+				<div class="hud-right-header">
+					<div class="hud-stat-pills">
+						<span class="hud-stat-pill">${modeStr}</span>
+						<span class="hud-stat-pill">🎬 ${assets.length} Media Variation${assets.length !== 1 ? 's' : ''}</span>
+					</div>
+					<button class="modal-close-btn" title="Close (ESC)">✕</button>
+				</div>
 
-				<div class="modal-section-title">Attached Media Assets (${assets.length})</div>
-				<div class="modal-assets-list">
-					${assets.length === 0 ? '<p class="empty-chip-hint">No media attached yet. Add a tutorial video or looping GIF below!</p>' : ''}
-					${assets.map((a, idx) => {
-						const isVideo = a.type === 'video' || Boolean(a.videoId);
-						const vid = a.videoId || (a.url ? parseYouTubeId(a.url) : null);
-						const thumb = isVideo && vid
-							? `https://img.youtube.com/vi/${vid}/mqdefault.jpg`
-							: (a.url || '/workout/media/pushups.svg');
+				<div class="hud-description-box">
+					<p class="hud-desc-text">${escapeHtml(exercise.description || 'Movement execution, coaching cues, and form tutorials.')}</p>
+				</div>
 
-						return `
-							<div class="modal-asset-row" data-idx="${idx}">
-								<div class="modal-asset-thumb">
-									<img src="${thumb}" alt="${escapeHtml(a.title || '')}">
-									${isVideo ? '<span class="modal-play-badge">▶</span>' : ''}
-								</div>
-								<div class="modal-asset-info">
-									<div class="modal-asset-badge-row">
-										${getMediaKindBadgeHtml(a.kind)}
-										${a.startSeconds !== undefined && a.endSeconds ? `<span class="asset-timestamp">${formatTime(a.startSeconds)} - ${formatTime(a.endSeconds)}</span>` : ''}
+				<div class="hud-constituents-deck">
+					<div class="hud-section-label">🎬 Available Tutorials, Drills & Photo Guides (${assets.length})</div>
+					
+					<div class="modal-assets-list">
+						${assets.length === 0 ? '<p class="empty-chip-hint">No extra media attached yet. Add a tutorial video or looping visual below!</p>' : ''}
+						${assets.map((a, idx) => {
+							const isVideo = a.type === 'video' || Boolean(a.videoId);
+							const vid = a.videoId || (a.url ? parseYouTubeId(a.url) : null);
+							const thumb = isVideo && vid
+								? `https://img.youtube.com/vi/${vid}/mqdefault.jpg`
+								: (a.url || '/workout/media/pushups.svg');
+
+							return `
+								<div class="modal-asset-row" data-idx="${idx}">
+									<div class="modal-asset-thumb">
+										<img src="${thumb}" alt="${escapeHtml(a.title || '')}" onerror="this.src='/workout/media/pushups.svg'">
+										${isVideo ? '<span class="modal-play-badge">▶</span>' : ''}
 									</div>
-									<div class="modal-asset-title">${escapeHtml(a.title || 'Media Asset')}</div>
+									<div class="modal-asset-info">
+										<div class="modal-asset-badge-row">
+											${getMediaKindBadgeHtml(a.kind)}
+											${a.startSeconds !== undefined && a.endSeconds ? `<span class="asset-timestamp">${formatTime(a.startSeconds)} - ${formatTime(a.endSeconds)}</span>` : ''}
+										</div>
+										<div class="modal-asset-title">${escapeHtml(a.title || 'Media Asset')}</div>
+									</div>
+									<button class="btn btn-sm btn-primary btn-play-asset-now" data-idx="${idx}">▶ Play</button>
 								</div>
-								<button class="btn btn-sm btn-primary btn-play-asset-now" data-idx="${idx}">▶ Play</button>
-							</div>
-						`;
-					}).join('')}
-				</div>
+							`;
+						}).join('')}
+					</div>
 
-				<!-- Add Media Asset Form -->
-				<div class="add-asset-collapse-section">
-					<button id="toggle-add-asset-btn" class="btn btn-ghost btn-sm">+ Add New Video or Photo Asset</button>
-					<div id="add-asset-form" class="add-asset-form hidden">
-						<div class="field-group">
-							<label>Media Role / Kind</label>
-							<select id="new-asset-kind" class="input">
-								<option value="instruction">🎬 Instruction & Tutorial</option>
-								<option value="demonstration">⚡ Exercise Execution / Follow-Along</option>
-								<option value="animation">✨ Looping GIF / Animation</option>
-								<option value="photo">📷 Form Reference Photo</option>
-							</select>
-						</div>
-
-						<div class="field-group">
-							<label>Asset Title</label>
-							<input type="text" id="new-asset-title" class="input" placeholder="e.g., Coach Breakdown & Cueing">
-						</div>
-
-						<div class="field-group">
-							<label>Video URL or Image URL</label>
-							<input type="text" id="new-asset-url" class="input" placeholder="https://youtube.com/watch?v=... or /workout/media/...">
-						</div>
-
-						<div class="field-row" id="new-asset-time-row">
+					<!-- Add Media Asset Form -->
+					<div class="add-asset-collapse-section" style="margin-top:12px;">
+						<button id="toggle-add-asset-btn" class="btn btn-ghost btn-sm">+ Add New Video or Photo Variation</button>
+						<div id="add-asset-form" class="add-asset-form hidden">
 							<div class="field-group">
-								<label>Start Time (sec)</label>
-								<input type="number" id="new-asset-start" class="input" min="0" value="0">
+								<label>Media Role / Kind</label>
+								<select id="new-asset-kind" class="input">
+									<option value="instruction">🎬 Instruction & Tutorial</option>
+									<option value="demonstration">⚡ Exercise Execution / Follow-Along</option>
+									<option value="animation">✨ Looping GIF / Animation</option>
+									<option value="photo">📷 Form Reference Photo</option>
+								</select>
 							</div>
-							<div class="field-group">
-								<label>End Time (sec)</label>
-								<input type="number" id="new-asset-end" class="input" min="1" value="60">
-							</div>
-						</div>
 
-						<div class="add-asset-actions">
-							<button id="btn-save-new-asset" class="btn btn-sm btn-primary">Save Asset</button>
+							<div class="field-group">
+								<label>Asset Title</label>
+								<input type="text" id="new-asset-title" class="input" placeholder="e.g., Coach Breakdown & Cueing">
+							</div>
+
+							<div class="field-group">
+								<label>Video URL or Image URL</label>
+								<input type="text" id="new-asset-url" class="input" placeholder="https://youtube.com/watch?v=... or /workout/media/...">
+							</div>
+
+							<div class="field-row" id="new-asset-time-row">
+								<div class="field-group">
+									<label>Start Time (sec)</label>
+									<input type="number" id="new-asset-start" class="input" min="0" value="0">
+								</div>
+								<div class="field-group">
+									<label>End Time (sec)</label>
+									<input type="number" id="new-asset-end" class="input" min="1" value="60">
+								</div>
+							</div>
+
+							<div class="add-asset-actions">
+								<button id="btn-save-new-asset" class="btn btn-sm btn-primary">Save Asset</button>
+							</div>
 						</div>
 					</div>
 				</div>
-			</div>
-
-			<div class="modal-footer">
-				<button class="btn btn-ghost modal-btn-close">Close</button>
 			</div>
 		`;
 
-		modal.querySelectorAll('.modal-close-btn, .modal-btn-close').forEach(b => {
-			b.addEventListener('click', () => backdrop.remove());
+		modal.querySelectorAll('.modal-close-btn').forEach(b => {
+			b.addEventListener('click', close);
 		});
 
 		modal.querySelectorAll('.btn-play-asset-now').forEach(btn => {
 			btn.addEventListener('click', () => {
 				const idx = parseInt(btn.getAttribute('data-idx'), 10);
 				if (assets[idx]) {
-					backdrop.remove();
+					close();
 					onPlayAsset(assets[idx]);
 				}
 			});
 		});
 
+		const playExBtn = modal.querySelector('.btn-hud-play-ex');
+		if (playExBtn) {
+			playExBtn.addEventListener('click', () => {
+				close();
+				onPlayAsset(primaryAsset || null);
+			});
+		}
+
+		const addExBtn = modal.querySelector('.btn-hud-add-ex');
+		if (addExBtn) {
+			addExBtn.addEventListener('click', () => {
+				close();
+				onAddToRoutine();
+			});
+		}
+
 		const toggleAddBtn = modal.querySelector('#toggle-add-asset-btn');
 		const addForm = modal.querySelector('#add-asset-form');
-		toggleAddBtn.addEventListener('click', () => {
-			addForm.classList.toggle('hidden');
-		});
+		if (toggleAddBtn && addForm) {
+			toggleAddBtn.addEventListener('click', () => {
+				addForm.classList.toggle('hidden');
+			});
+		}
 
 		const saveAssetBtn = modal.querySelector('#btn-save-new-asset');
-		saveAssetBtn.addEventListener('click', async () => {
-			const kind = modal.querySelector('#new-asset-kind').value;
-			const title = modal.querySelector('#new-asset-title').value.trim() || 'Media Asset';
-			const url = modal.querySelector('#new-asset-url').value.trim();
-			const start = parseInt(modal.querySelector('#new-asset-start').value, 10) || 0;
-			const end = parseInt(modal.querySelector('#new-asset-end').value, 10) || 60;
+		if (saveAssetBtn) {
+			saveAssetBtn.addEventListener('click', async () => {
+				const kind = modal.querySelector('#new-asset-kind').value;
+				const title = modal.querySelector('#new-asset-title').value.trim() || 'Media Asset';
+				const url = modal.querySelector('#new-asset-url').value.trim();
+				const start = parseInt(modal.querySelector('#new-asset-start').value, 10) || 0;
+				const end = parseInt(modal.querySelector('#new-asset-end').value, 10) || 60;
 
-			if (!url) {
-				await showAlert({ title: 'Missing URL', message: 'Please enter a valid YouTube URL or image link.' });
-				return;
-			}
+				if (!url) {
+					await showAlert({ title: 'Missing URL', message: 'Please enter a valid YouTube URL or image link.' });
+					return;
+				}
 
-			const vid = parseYouTubeId(url);
-			const newAsset = {
-				id: `asset-${Date.now()}`,
-				kind,
-				type: vid ? 'video' : 'image',
-				title,
-				url,
-				videoId: vid || undefined,
-				startSeconds: vid ? start : undefined,
-				endSeconds: vid ? end : undefined,
-			};
+				const vid = parseYouTubeId(url);
+				const newAsset = {
+					id: `asset-${Date.now()}`,
+					kind,
+					type: vid ? 'video' : 'image',
+					title,
+					url,
+					videoId: vid || undefined,
+					startSeconds: vid ? start : undefined,
+					endSeconds: vid ? end : undefined,
+				};
 
-			try {
-				const updated = await addMediaAssetToExercise(exercise.id, newAsset);
-				exercise.media_assets = updated.media_assets;
-				renderModalContent();
-				onUpdated();
-			} catch (err) {
-				await showAlert({ title: 'Error', message: 'Could not add media asset: ' + err.message });
-			}
-		});
+				try {
+					const updated = await addMediaAssetToExercise(exercise.id, newAsset);
+					exercise.media_assets = updated.media_assets;
+					renderModalContent();
+					onUpdated();
+				} catch (err) {
+					await showAlert({ title: 'Error', message: 'Could not add media asset: ' + err.message });
+				}
+			});
+		}
 	}
 
 	backdrop.appendChild(modal);
 	backdrop.addEventListener('click', (e) => {
-		if (e.target === backdrop) backdrop.remove();
+		if (e.target === backdrop) close();
 	});
 
 	renderModalContent();
@@ -931,6 +1009,8 @@ function getDefaultFallbackExercises() {
 		{ id: 'ex-jab-cross', name: 'Jab-Cross Technique', category: 'technique', discipline: 'boxing', default_mode: 'time', default_quantity: 184, media_url: 'https://www.youtube.com/watch?v=7sLw5dHdRG4', primary_muscles: ['shoulders', 'core'], secondary_muscles: ['triceps', 'chest', 'calves'] },
 		{ id: 'ex-jab-knee', name: 'Jab + Rear Knee / Switch Knee', category: 'technique', discipline: 'muay_thai', default_mode: 'time', default_quantity: 244, media_url: 'https://www.youtube.com/watch?v=z37V3X6tPG4', primary_muscles: ['core', 'glutes', 'quads'], secondary_muscles: ['calves'] },
 		{ id: 'ex-jab-elbow', name: 'Jab + Lead Elbow + Rear Elbow', category: 'technique', discipline: 'muay_thai', default_mode: 'time', default_quantity: 243, media_url: 'https://www.youtube.com/watch?v=z37V3X6tPG4', primary_muscles: ['shoulders', 'core', 'back'], secondary_muscles: ['triceps', 'biceps'] },
+		{ id: 'ex-pike-pushups', name: 'Pike Pushups', category: 'strength', discipline: 'calisthenics', default_mode: 'reps', default_quantity: 10, media_url: '/workout/media/pushups.svg', primary_muscles: ['shoulders', 'triceps'], secondary_muscles: ['chest', 'core'] },
+		{ id: 'ex-decline-pushups', name: 'Decline Pushups', category: 'strength', discipline: 'calisthenics', default_mode: 'reps', default_quantity: 12, media_url: '/workout/media/pushups.svg', primary_muscles: ['chest', 'shoulders'], secondary_muscles: ['triceps', 'core'] },
 		{ id: 'ex-standard-pushups', name: 'Standard Pushups', category: 'strength', discipline: 'calisthenics', default_mode: 'reps', default_quantity: 20, media_url: '/workout/media/pushups.svg', primary_muscles: ['chest', 'triceps'], secondary_muscles: ['shoulders', 'core'] },
 		{ id: 'ex-diamond-pushups', name: 'Diamond Pushups', category: 'strength', discipline: 'calisthenics', default_mode: 'reps', default_quantity: 15, media_url: '/workout/media/diamond-pushups.svg', primary_muscles: ['triceps', 'chest'], secondary_muscles: ['shoulders', 'core'] },
 		{ id: 'ex-plank-shoulder-taps', name: 'Plank Shoulder Taps', category: 'strength', discipline: 'calisthenics', default_mode: 'reps', default_quantity: 20, media_url: '/workout/media/shoulder-taps.svg', primary_muscles: ['core', 'shoulders'], secondary_muscles: ['chest', 'triceps', 'glutes'] },

@@ -480,7 +480,8 @@ function createViewStepCard(step, index, steps, actions) {
 		tagsRow.appendChild(flowTag);
 	}
 
-	if (step.exercises && step.exercises.length > 0) {
+	// For single exercises, render the pill badge
+	if (step.exercises && step.exercises.length === 1) {
 		step.exercises.forEach(ex => {
 			const exTag = document.createElement('span');
 			exTag.className = 'view-tag view-tag-exercise-pill';
@@ -500,6 +501,29 @@ function createViewStepCard(step, index, steps, actions) {
 	});
 
 	details.append(title, tagsRow);
+
+	// Option 2: If this is a compound combo step with 2+ constituent movements, render the nested sequence deck
+	if (step.exercises && step.exercises.length >= 2) {
+		const nestedDeck = document.createElement('div');
+		nestedDeck.className = 'view-compound-nested-deck';
+		step.exercises.forEach((ex, sIdx) => {
+			const subRow = document.createElement('div');
+			subRow.className = 'view-compound-sub-row';
+			const exModeStr = (ex.default_mode || 'reps') === 'reps'
+				? `${ex.default_quantity || 10} Reps`
+				: formatTime(ex.default_quantity || 30);
+			subRow.innerHTML = `
+				<span class="sub-row-name">
+					<span class="sub-row-num">${sIdx + 1}.</span>
+					${getCategoryBadgeHtml(ex.category)}
+					<span class="sub-row-title">${escapeHtml(ex.name)}</span>
+				</span>
+				<span class="sub-row-target">${exModeStr}</span>
+			`;
+			nestedDeck.appendChild(subRow);
+		});
+		details.appendChild(nestedDeck);
+	}
 
 	// Quick Preview / Test Action Button
 	const playAction = document.createElement('button');

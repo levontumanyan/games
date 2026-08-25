@@ -13,28 +13,78 @@ def client(tmp_path: Path) -> TestClient:
 	return TestClient(app)
 
 
-def test_seed_exercises_loaded(client: TestClient):
+def test_exercises_filtering_and_taxonomy(client: TestClient):
+	sample_exercises = [
+		{
+			"name": "Standard Pushups",
+			"category": "strength",
+			"discipline": "calisthenics",
+			"default_mode": "reps",
+			"default_quantity": 20,
+			"primary_muscles": ["chest", "triceps"],
+			"secondary_muscles": ["shoulders", "abs"],
+		},
+		{
+			"name": "Diamond Pushups",
+			"category": "strength",
+			"discipline": "calisthenics",
+			"default_mode": "reps",
+			"default_quantity": 15,
+			"primary_muscles": ["triceps", "chest"],
+			"secondary_muscles": ["shoulders"],
+		},
+		{
+			"name": "Star Jumps",
+			"category": "drill",
+			"discipline": "general",
+			"default_mode": "time",
+			"default_quantity": 45,
+			"primary_muscles": ["calves", "quads", "groin"],
+			"secondary_muscles": ["shoulders"],
+		},
+		{
+			"name": "Check Repeats (Lead & Rear Block)",
+			"category": "technique",
+			"discipline": "muay_thai",
+			"default_mode": "time",
+			"default_quantity": 60,
+			"primary_muscles": ["hip_flexors", "obliques", "quads"],
+			"secondary_muscles": ["calves"],
+		},
+		{
+			"name": "Cobra Pose & Hip Opener",
+			"category": "stretch",
+			"discipline": "yoga",
+			"default_mode": "time",
+			"default_quantity": 45,
+			"primary_muscles": ["abs", "hip_flexors"],
+			"secondary_muscles": ["groin"],
+		},
+		{
+			"name": "Pigeon Pose Hip Opener",
+			"category": "stretch",
+			"discipline": "yoga",
+			"default_mode": "time",
+			"default_quantity": 45,
+			"primary_muscles": ["glutes", "groin", "hip_flexors"],
+			"secondary_muscles": ["hamstrings"],
+		},
+	]
+
+	for ex in sample_exercises:
+		r = client.post("/api/exercises", json=ex, headers={"X-User-Id": "levon"})
+		assert r.status_code == 200
+
 	res = client.get("/api/exercises", headers={"X-User-Id": "levon"})
 	assert res.status_code == 200
 	exercises = res.json()
-	assert len(exercises) == 18
-
-	# Check category & discipline coverage
-	names = [e["name"] for e in exercises]
-	assert "Standard Pushups" in names
-	assert "Diamond Pushups" in names
-	assert "Decline Pushups" in names
-	assert "Pike Pushups" in names
-	assert "Star Jumps" in names
-	assert "Coordination Footwork Drills" in names
-	assert "Check Repeats (Lead & Rear Block)" in names
-	assert "Jab-Cross Combo" in names
-	assert "Cobra Pose & Hip Opener" in names
+	assert len(exercises) == len(sample_exercises)
 
 	# Test category filter
 	res_stretch = client.get("/api/exercises?category=stretch", headers={"X-User-Id": "levon"})
 	assert res_stretch.status_code == 200
 	stretch_list = res_stretch.json()
+	assert len(stretch_list) == 2
 	assert all(e["category"] == "stretch" for e in stretch_list)
 	assert any(e["name"] == "Cobra Pose & Hip Opener" for e in stretch_list)
 
@@ -61,7 +111,6 @@ def test_seed_exercises_loaded(client: TestClient):
 	assert res_hip.status_code == 200
 	hip_list = res_hip.json()
 	assert any(e["name"] == "Check Repeats (Lead & Rear Block)" for e in hip_list)
-	assert any(e["name"] == "Mountain Climbers" for e in hip_list)
 
 
 def test_create_and_delete_custom_exercise(client: TestClient):
@@ -282,19 +331,6 @@ def test_stats_category_and_discipline_breakdown(client: TestClient):
 
 
 def test_exercise_multi_media_assets(client: TestClient):
-	# Test default seed exercises have media assets categorized into instruction, demonstration, animation
-	res = client.get("/api/exercises", headers={"X-User-Id": "levon"})
-	assert res.status_code == 200
-	exercises = res.json()
-	pushups = next(e for e in exercises if e["id"] == "ex-standard-pushups")
-	assert len(pushups["media_assets"]) >= 1
-
-	cobra = next(e for e in exercises if e["id"] == "ex-cobra-pose")
-	assert len(cobra["media_assets"]) >= 2
-	cobra_kinds = [a["kind"] for a in cobra["media_assets"]]
-	assert "photo" in cobra_kinds
-	assert "animation" in cobra_kinds
-
 	# Create a custom exercise with multiple categorized media assets
 	payload = {
 		"name": "Muay Thai Switch Kick",
@@ -340,52 +376,47 @@ def test_exercise_multi_media_assets(client: TestClient):
 	assert created["media_assets"][2]["kind"] == "photo"
 
 
-def test_combos_api_and_seeding(client: TestClient):
-	# Test default seed combos
-	res = client.get("/api/combos", headers={"X-User-Id": "levon"})
-	assert res.status_code == 200
-	combos = res.json()
-	assert len(combos) == 4
+def test_combos_api(client: TestClient):
+	# Create constituent exercises
+	ex1 = client.post(
+		"/api/exercises",
+		json={"name": "Star Jumps", "category": "drill", "discipline": "general"},
+		headers={"X-User-Id": "levon"},
+	).json()
+	ex2 = client.post(
+		"/api/exercises",
+		json={"name": "Footwork Drills", "category": "drill", "discipline": "general"},
+		headers={"X-User-Id": "levon"},
+	).json()
 
-	names = [c["name"] for c in combos]
-	assert "Star Jumps ⮀ Coordination Drills" in names
-	assert "Lateral Jumps ⮀ Plank Shoulder Taps" in names
-	assert "Jab + Rear Knee / Switch Knee" in names
-	assert "Jab + Lead Elbow + Rear Elbow" in names
-
-	# Check alternating flow
-	star_combo = next(c for c in combos if c["id"] == "combo-star-jumps-coord")
-	assert star_combo["flow_type"] == "alternating"
-	assert "ex-star-jumps" in star_combo["exercise_ids"]
-	assert "ex-coordination-drills" in star_combo["exercise_ids"]
-	assert len(star_combo["media_assets"]) >= 1
-
-	# Create a custom combo
-	payload = {
-		"name": "Muay Thai Teep + Switch Kick Combo",
-		"category": "technique",
-		"discipline": "muay_thai",
-		"flow_type": "sequence",
-		"exercise_ids": ["ex-check-repeats", "ex-knee-strike"],
+	# Create alternating combo
+	combo_payload = {
+		"name": "Star Jumps ⮀ Footwork Drills",
+		"category": "drill",
+		"discipline": "general",
+		"flow_type": "alternating",
+		"exercise_ids": [ex1["id"], ex2["id"]],
 		"default_mode": "time",
-		"default_quantity": 180,
-		"description": "Lead teep setup flowing directly into rear switch kick.",
+		"default_quantity": 190,
+		"media_assets": [
+			{"id": "asset-1", "kind": "demonstration", "type": "video", "videoId": "ZWZWzRnLpVM"}
+		],
 	}
-	create_res = client.post("/api/combos", json=payload, headers={"X-User-Id": "levon"})
-	assert create_res.status_code == 200
-	created = create_res.json()
-	assert created["name"] == "Muay Thai Teep + Switch Kick Combo"
-	assert created["flow_type"] == "sequence"
-	combo_id = created["id"]
+	res = client.post("/api/combos", json=combo_payload, headers={"X-User-Id": "levon"})
+	assert res.status_code == 200
+	created_combo = res.json()
+	assert created_combo["name"] == "Star Jumps ⮀ Footwork Drills"
+	assert created_combo["flow_type"] == "alternating"
+	assert ex1["id"] in created_combo["exercise_ids"]
+	assert ex2["id"] in created_combo["exercise_ids"]
+	assert len(created_combo["media_assets"]) == 1
 
-	# Verify in user list
-	res_list = client.get("/api/combos?discipline=muay_thai", headers={"X-User-Id": "levon"})
-	assert any(c["id"] == combo_id for c in res_list.json())
+	# List combos
+	list_res = client.get("/api/combos", headers={"X-User-Id": "levon"})
+	assert list_res.status_code == 200
+	assert len(list_res.json()) == 1
 
-	# Delete custom combo
-	del_res = client.delete(f"/api/combos/{combo_id}", headers={"X-User-Id": "levon"})
+	# Delete combo
+	del_res = client.delete(f"/api/combos/{created_combo['id']}", headers={"X-User-Id": "levon"})
 	assert del_res.status_code == 200
-
-	# Verify deleted
-	res_list2 = client.get("/api/combos", headers={"X-User-Id": "levon"})
-	assert not any(c["id"] == combo_id for c in res_list2.json())
+	assert len(client.get("/api/combos", headers={"X-User-Id": "levon"}).json()) == 0

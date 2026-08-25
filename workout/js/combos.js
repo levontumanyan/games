@@ -287,9 +287,6 @@ export function renderCombosCatalog(container, options = {}) {
 					<button class="btn btn-sm btn-ghost btn-play-combo" title="Play as continuous video flow">
 						▶ Play Flow
 					</button>
-					<button class="btn btn-sm btn-ghost btn-inspect-combo" title="View constituent movements, technique tutorials, and breakdown">
-						🔍 Breakdown (${exList.length})
-					</button>
 					<button class="btn btn-sm btn-primary btn-add-combo-routine" title="Add continuous combo to current workout">
 						+ Add to Workout
 					</button>
@@ -297,22 +294,14 @@ export function renderCombosCatalog(container, options = {}) {
 			`;
 
 			const playBtn = card.querySelector('.btn-play-combo');
-			playBtn.addEventListener('click', () => {
+			playBtn.addEventListener('click', (e) => {
+				e.stopPropagation();
 				onPlayCombo(combo, false); // continuous
 			});
 
-			const inspectBtn = card.querySelector('.btn-inspect-combo');
-			inspectBtn.addEventListener('click', () => {
-				showComboDetailModal(combo, {
-					onPlayCombo,
-					onBreakDownCombo,
-					onAddToRoutine,
-					onPlayExercise: options.onPlayExercise
-				});
-			});
-
 			const addRoutineBtn = card.querySelector('.btn-add-combo-routine');
-			addRoutineBtn.addEventListener('click', () => {
+			addRoutineBtn.addEventListener('click', (e) => {
+				e.stopPropagation();
 				onAddToRoutine(combo);
 			});
 
@@ -333,6 +322,16 @@ export function renderCombosCatalog(container, options = {}) {
 				});
 			}
 
+			// Entire card is clickable to open top-layer breakdown overlay
+			card.addEventListener('click', () => {
+				showComboDetailModal(combo, {
+					onPlayCombo,
+					onBreakDownCombo,
+					onAddToRoutine,
+					onPlayExercise: options.onPlayExercise
+				});
+			});
+
 			gridContainer.appendChild(card);
 		});
 	}
@@ -347,7 +346,7 @@ export function renderCombosCatalog(container, options = {}) {
 }
 
 /**
- * Show a modal detailing a combo, its primary flow video, and all constituent exercise instructions.
+ * Show a top-layer Split HUD modal detailing a combo, its visual flow, and all constituent exercise instructions.
  * @param {Object} combo
  * @param {Object} [options]
  */
@@ -358,10 +357,10 @@ export function showComboDetailModal(combo, options = {}) {
 	const onPlayExercise = options.onPlayExercise || (() => {});
 
 	const backdrop = document.createElement('div');
-	backdrop.className = 'modal-backdrop';
+	backdrop.className = 'modal-backdrop modal-combo-backdrop';
 
 	const modal = document.createElement('div');
-	modal.className = 'modal modal-combo-details';
+	modal.className = 'modal modal-combo-hud-split';
 
 	const exList = (combo.exercise_ids || []).map(id => getExerciseById(id)).filter(Boolean);
 	const primaryAsset = (combo.media_assets || [])[0];
@@ -372,102 +371,119 @@ export function showComboDetailModal(combo, options = {}) {
 		? `🔢 ${combo.default_quantity || 20} Total Reps`
 		: `⏱️ ${formatTime(combo.default_quantity || 190)}`;
 
+	// Collect aggregated muscles
+	const primarySet = new Set();
+	const secondarySet = new Set();
+	exList.forEach(e => {
+		const m = inferMusclesForExercise(e);
+		(m.primary || []).forEach(p => primarySet.add(p));
+		(m.secondary || []).forEach(s => secondarySet.add(s));
+	});
+	const primaryList = Array.from(primarySet).map(m => getMuscleBadgeHtml(m, true));
+	const secondaryList = Array.from(secondarySet).filter(m => !primarySet.has(m)).map(m => getMuscleBadgeHtml(m, false));
+
 	modal.innerHTML = `
-		<div class="modal-header">
-			<div>
-				<div class="modal-badges-row">
-					${getFlowTypeBadgeHtml(combo.flow_type)}
-					${getCategoryBadgeHtml(combo.category)}
-					${combo.discipline ? getDisciplineBadgeHtml(combo.discipline) : ''}
-				</div>
-				<h3 class="modal-title">${escapeHtml(combo.name)}</h3>
+		<div class="hud-left-panel">
+			<div class="hud-badges-row">
+				${getFlowTypeBadgeHtml(combo.flow_type)}
+				${getCategoryBadgeHtml(combo.category)}
+				${combo.discipline ? getDisciplineBadgeHtml(combo.discipline) : ''}
 			</div>
-			<button class="modal-close-btn" title="Close">✕</button>
+
+			<h2 class="hud-combo-title">${escapeHtml(combo.name)}</h2>
+
+			<div class="hud-visual-card">
+				${vid ? `
+					<div class="hud-video-thumb">
+						<img src="https://img.youtube.com/vi/${vid}/mqdefault.jpg" alt="${escapeHtml(combo.name)}">
+						<span class="modal-play-badge">▶</span>
+					</div>
+				` : `
+					<div class="hud-img-thumb">
+						<img src="${combo.media_url || '/workout/media/pushups.svg'}" alt="${escapeHtml(combo.name)}" onerror="this.src='/workout/media/pushups.svg'">
+					</div>
+				`}
+				<div class="hud-visual-caption">Continuous Flow & Movement Form</div>
+			</div>
+
+			<div class="hud-muscles-section">
+				<div class="hud-section-label">Target Anatomy</div>
+				<div class="hud-muscles-row">
+					${primaryList.join('')}
+					${secondaryList.slice(0, 3).join('')}
+				</div>
+			</div>
+
+			<div class="hud-left-actions">
+				<button class="btn btn-primary btn-hud-play" style="width:100%;">▶ Play Continuous Flow</button>
+				<button class="btn btn-ghost btn-hud-breakdown" style="width:100%;">⚡ Break Down into Steps</button>
+				<button class="btn btn-ghost btn-hud-add" style="width:100%;">+ Add to Workout</button>
+			</div>
 		</div>
 
-		<div class="modal-body">
-			<p class="modal-subtitle">${escapeHtml(combo.description || 'Compound movement flow and alternating cadence.')}</p>
-
-			<!-- Primary Continuous Flow Video Card -->
-			<div class="modal-section-title">⚡ Continuous Flow Cadence (${modeStr})</div>
-			<div class="combo-flow-primary-card">
-				<div class="combo-flow-video-thumb">
-					<img src="${vid ? `https://img.youtube.com/vi/${vid}/mqdefault.jpg` : '/workout/media/pushups.svg'}" alt="${escapeHtml(combo.name)}">
-					${isVideo ? '<span class="modal-play-badge">▶</span>' : ''}
-					${primaryAsset?.startSeconds !== undefined && primaryAsset?.endSeconds ? `<span class="asset-timestamp">${formatTime(primaryAsset.startSeconds)} – ${formatTime(primaryAsset.endSeconds)}</span>` : ''}
+		<div class="hud-right-panel">
+			<div class="hud-right-header">
+				<div class="hud-stat-pills">
+					<span class="hud-stat-pill">${modeStr}</span>
+					<span class="hud-stat-pill">🥋 ${exList.length} Constituents</span>
 				</div>
-				<div class="combo-flow-video-info">
-					<div class="combo-flow-title">${escapeHtml(primaryAsset?.title || `${combo.name} Continuous Flow`)}</div>
-					<div class="combo-flow-meta">Continuous interval execution • No mid-round cuts</div>
-					<button class="btn btn-sm btn-primary btn-play-flow-now" style="margin-top:6px;">▶ Play Continuous Flow</button>
-				</div>
+				<button class="modal-close-btn" title="Close (ESC)">✕</button>
 			</div>
 
-			<!-- Constituent Movements Breakdown -->
-			<div class="modal-section-title" style="margin-top:20px;">🥋 Constituent Movements (${exList.length})</div>
-			<p class="modal-detail-hint">Individual movement mechanics, target muscles, and coaching tutorials:</p>
+			<div class="hud-description-box">
+				<p class="hud-desc-text">${escapeHtml(combo.description || 'Compound movement flow and alternating cadence.')}</p>
+			</div>
 
-			<div class="combo-constituents-detail-list">
-				${exList.length === 0 ? '<p class="empty-chip-hint">No constituent exercises linked.</p>' : ''}
-				${exList.map(ex => {
-					const muscles = inferMusclesForExercise(ex);
-					const exAssets = getExerciseMediaAssets([ex]);
-					const instructionAssets = exAssets.filter(a => a.kind === 'instruction');
-					const demoAssets = exAssets.filter(a => a.kind === 'demonstration');
-					const animAssets = exAssets.filter(a => a.kind === 'animation' || a.kind === 'photo');
+			<div class="hud-constituents-deck">
+				<div class="hud-section-label">🥋 Constituent Movement Sequence (${exList.length} Steps)</div>
+				
+				<div class="hud-steps-list">
+					${exList.length === 0 ? '<p class="empty-chip-hint">No constituent exercises linked.</p>' : ''}
+					${exList.map((ex, idx) => {
+						const muscles = inferMusclesForExercise(ex);
+						const exModeStr = (ex.default_mode || 'reps') === 'reps'
+							? `${ex.default_quantity || 20} Reps`
+							: formatTime(ex.default_quantity || 30);
 
-					return `
-						<div class="combo-constituent-item-card">
-							<div class="constituent-header-row">
-								<div class="constituent-name-group">
-									${getCategoryBadgeHtml(ex.category)}
-									<h4 class="constituent-name">${escapeHtml(ex.name)}</h4>
-									${ex.discipline ? getDisciplineBadgeHtml(ex.discipline) : ''}
+						return `
+							<div class="hud-step-card">
+								<div class="hud-step-num">#${idx + 1}</div>
+								<div class="hud-step-body">
+									<div class="hud-step-header-row">
+										<div class="hud-step-name-group">
+											<h4 class="hud-step-name">${escapeHtml(ex.name)}</h4>
+											${getCategoryBadgeHtml(ex.category)}
+										</div>
+										<span class="hud-step-target-pill">${exModeStr}</span>
+									</div>
+
+									<div class="hud-step-muscles">
+										${(muscles.primary || []).map(m => getMuscleBadgeHtml(m, true)).join('')}
+									</div>
+
+									<p class="hud-step-desc">${escapeHtml(ex.description || 'Focus on controlled tempo and kinetic alignment.')}</p>
 								</div>
-								<span class="constituent-mode-pill">${(ex.default_mode || 'reps') === 'reps' ? `${ex.default_quantity || 20} Reps` : formatTime(ex.default_quantity || 30)}</span>
 							</div>
-
-							<div class="constituent-muscles-row">
-								${(muscles.primary || []).map(m => getMuscleBadgeHtml(m, true)).join('')}
-								${(muscles.secondary || []).map(m => getMuscleBadgeHtml(m, false)).join('')}
-							</div>
-
-							<p class="constituent-desc">${escapeHtml(ex.description || 'Movement and form execution.')}</p>
-
-							<!-- Attached tutorials & instruction clips -->
-							<div class="constituent-assets-row">
-								<span class="constituent-tutorials-label">Tutorials & Media:</span>
-								${instructionAssets.map(a => `
-									<button type="button" class="btn btn-xs btn-ghost btn-play-constituent-asset" data-ex-id="${ex.id}" data-asset-id="${a.id}" title="Watch Instruction Breakdown">
-										🎬 ${escapeHtml(a.title || 'Instruction Breakdown')}
-									</button>
-								`).join('')}
-								${demoAssets.map(a => `
-									<button type="button" class="btn btn-xs btn-ghost btn-play-constituent-asset" data-ex-id="${ex.id}" data-asset-id="${a.id}" title="Watch Drill Demonstration">
-										⚡ ${escapeHtml(a.title || 'Drill Execution')}
-									</button>
-								`).join('')}
-								${animAssets.map(() => `
-									<span class="constituent-anim-pill">✨ Visual Form</span>
-								`).join('')}
-								${exAssets.length === 0 ? '<span class="text-muted" style="font-size:0.75rem;">Standard form reference</span>' : ''}
-							</div>
-						</div>
-					`;
-				}).join('')}
+						`;
+					}).join('')}
+				</div>
 			</div>
-		</div>
-
-		<div class="modal-footer">
-			<button class="btn btn-ghost modal-btn-close">Close</button>
-			<button class="btn btn-ghost btn-modal-breakdown" title="Decompose into separate timer steps">⚡ Break Down into Steps</button>
-			<button class="btn btn-primary btn-modal-add-routine">+ Add to Workout</button>
 		</div>
 	`;
 
-	const close = () => backdrop.remove();
+	const close = () => {
+		document.removeEventListener('keydown', handleEsc);
+		backdrop.remove();
+	};
 
-	modal.querySelectorAll('.modal-close-btn, .modal-btn-close').forEach(b => {
+	const handleEsc = (e) => {
+		if (e.key === 'Escape' || e.keyCode === 27) {
+			close();
+		}
+	};
+	document.addEventListener('keydown', handleEsc);
+
+	modal.querySelectorAll('.modal-close-btn').forEach(b => {
 		b.addEventListener('click', close);
 	});
 
@@ -475,7 +491,7 @@ export function showComboDetailModal(combo, options = {}) {
 		if (e.target === backdrop) close();
 	});
 
-	const playFlowBtn = modal.querySelector('.btn-play-flow-now');
+	const playFlowBtn = modal.querySelector('.btn-hud-play');
 	if (playFlowBtn) {
 		playFlowBtn.addEventListener('click', () => {
 			close();
@@ -483,7 +499,7 @@ export function showComboDetailModal(combo, options = {}) {
 		});
 	}
 
-	const breakdownBtn = modal.querySelector('.btn-modal-breakdown');
+	const breakdownBtn = modal.querySelector('.btn-hud-breakdown');
 	if (breakdownBtn) {
 		breakdownBtn.addEventListener('click', () => {
 			close();
@@ -491,28 +507,13 @@ export function showComboDetailModal(combo, options = {}) {
 		});
 	}
 
-	const addRoutineBtn = modal.querySelector('.btn-modal-add-routine');
+	const addRoutineBtn = modal.querySelector('.btn-hud-add');
 	if (addRoutineBtn) {
 		addRoutineBtn.addEventListener('click', () => {
 			close();
 			onAddToRoutine(combo);
 		});
 	}
-
-	modal.querySelectorAll('.btn-play-constituent-asset').forEach(btn => {
-		btn.addEventListener('click', () => {
-			const exId = btn.getAttribute('data-ex-id');
-			const assetId = btn.getAttribute('data-asset-id');
-			const ex = getExerciseById(exId);
-			if (!ex) return;
-			const assets = getExerciseMediaAssets([ex]);
-			const targetAsset = assets.find(a => a.id === assetId) || assets[0];
-			if (targetAsset) {
-				close();
-				onPlayExercise(ex, targetAsset);
-			}
-		});
-	});
 
 	backdrop.appendChild(modal);
 	document.body.appendChild(backdrop);
@@ -697,6 +698,18 @@ export function showCreateComboModal(options = {}) {
  */
 function getDefaultFallbackCombos() {
 	return [
+		{
+			id: 'combo-pushup-cascade',
+			name: 'Complete Kinetic Pushup Cascade',
+			category: 'strength',
+			discipline: 'calisthenics',
+			flow_type: 'superset',
+			exercise_ids: ['ex-pike-pushups', 'ex-decline-pushups', 'ex-standard-pushups', 'ex-diamond-pushups'],
+			default_mode: 'reps',
+			default_quantity: 38,
+			description: 'Science-backed 4-stage mechanical drop-set targeting delts, clavicular chest, sternal chest, and triceps.',
+			media_assets: []
+		},
 		{
 			id: 'combo-star-jumps-coord',
 			name: 'Star Jumps ⮀ Coordination Drills',

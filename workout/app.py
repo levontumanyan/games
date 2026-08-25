@@ -18,10 +18,6 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 	db_path = data_dir / "workout.db"
 	db = Database(db_path)
 
-	# Auto-migrate legacy routines.json if exists
-	legacy_routines_file = data_dir / "routines.json"
-	db.migrate_legacy_routines(legacy_routines_file)
-
 	def get_user_id(request: Request) -> str:
 		user_id = request.headers.get("X-User-Id") or request.query_params.get("user_id") or "levon"
 		clean = user_id.strip().lower()
