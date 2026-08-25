@@ -87,7 +87,7 @@ async function init() {
 		const found = routines.find(r => r.id === urlTarget.routineId || r.title.toLowerCase().replace(/ /g, '-') === urlTarget.routineId.toLowerCase());
 		if (found) {
 			selectedRoutineId = found.id;
-			history.replaceState(null, '', buildRoutineUrl(found));
+			history.replaceState(null, '', window.location.pathname);
 		}
 	} else if (sharedRoutine) {
 		isViewingShared = true;
@@ -1003,12 +1003,14 @@ function renderRoutineList() {
 				isViewingShared = false;
 				sharedRoutine = null;
 			}
+			if (window.location.hash || window.location.search) {
+				history.replaceState(null, '', window.location.pathname);
+			}
 			if (currentTab !== 'routines') {
 				switchTab('routines');
 			}
 			selectedRoutineId = routine.id;
 			currentMode = 'view';
-			history.replaceState(null, '', buildRoutineUrl(routine));
 			renderRoutineList();
 			renderSelectedRoutine();
 		});
@@ -1110,7 +1112,7 @@ function handleSaveSharedToLibrary(notify = true) {
 	selectedRoutineId = routineToSave.id;
 	isViewingShared = false;
 	sharedRoutine = null;
-	history.replaceState(null, '', buildRoutineUrl(routineToSave));
+	history.replaceState(null, '', window.location.pathname);
 	persist(true);
 	renderRoutineList();
 	renderSelectedRoutine();
