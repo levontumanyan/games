@@ -101,9 +101,10 @@ def test_delete_all_routines(client: TestClient, tmp_path: Path):
 	assert client.get("/api/routines").json() == []
 
 
-def test_create_and_fetch_short_share_link(client: TestClient):
+def test_fetch_user_routine_as_guest(client: TestClient):
 	routine = {
-		"title": "Short Shared Workout",
+		"id": "morning-flow",
+		"title": "Morning Flow",
 		"steps": [
 			{
 				"id": "step-1",
@@ -115,29 +116,33 @@ def test_create_and_fetch_short_share_link(client: TestClient):
 		],
 	}
 
-	# Create share link via root API
-	res = client.post("/api/share", json=routine)
+	# Create routine under user levon
+	res = client.put(
+		"/workout/api/routines/morning-flow",
+		json=routine,
+		headers={"X-User-Id": "levon"},
+	)
 	assert res.status_code == 200
-	data = res.json()
-	assert data["status"] == "ok"
-	share_id = data["id"]
-	assert len(share_id) == 6
 
-	# Fetch share link via root API
-	get_res = client.get(f"/api/share/{share_id}")
+	# Fetch routine as another user (guest or aj) via ?user_id=levon query param
+	get_res = client.get(
+		"/workout/api/routines/morning-flow?user_id=levon",
+		headers={"X-User-Id": "guest"},
+	)
 	assert get_res.status_code == 200
 	fetched = get_res.json()
-	assert fetched["title"] == "Short Shared Workout"
+	assert fetched["title"] == "Morning Flow"
 	assert len(fetched["steps"]) == 1
 	assert fetched["steps"][0]["label"] == "Plank"
 
-	# Fetch via subpath API
-	get_subpath = client.get(f"/workout/api/share/{share_id}")
-	assert get_subpath.status_code == 200
-	assert get_subpath.json()["title"] == "Short Shared Workout"
-
-	# Non-existent share link returns 404
-	assert client.get("/api/share/nonexist").status_code == 404
+	# Non-existent routine returns 404
+	assert (
+		client.get(
+			"/workout/api/routines/nonexist?user_id=levon",
+			headers={"X-User-Id": "guest"},
+		).status_code
+		== 404
+	)
 
 
 def test_single_routine_crud_and_slug_lookup(client: TestClient):

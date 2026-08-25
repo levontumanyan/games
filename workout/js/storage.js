@@ -328,270 +328,83 @@ export function exportRoutines(routines) {
 }
 
 /**
- * Encode a workout routine into a short 6-character shareable URL.
+ * Build a canonical live URL for a routine.
  * @param {Object} routine
- * @returns {Promise<string>}
+ * @param {string|null} userId
+ * @returns {string}
  */
-export async function encodeRoutineToShareUrl(routine) {
-	if (!routine) return '';
-
-	// Clean payload to keep shared workouts clean and portable
-	const payload = {
-		title: routine.title || 'Shared Workout',
-		musicTracks: Array.isArray(routine.musicTracks) ? routine.musicTracks
-			.filter(t => t.source === 'youtube' && t.videoId)
-			.map(t => ({ source: 'youtube', videoId: t.videoId, label: t.label || '' })) : [],
-		steps: (routine.steps || []).map(s => {
-			const clean = {
-				type: s.type,
-				label: s.label || ''
-			};
-			if (s.stepMode) clean.stepMode = s.stepMode;
-			if (s.targetReps) clean.targetReps = s.targetReps;
-			if (Array.isArray(s.exercises) && s.exercises.length > 0) {
-				clean.exercises = s.exercises.map(e => ({
-					id: e.id,
-					name: e.name,
-					category: e.category,
-					discipline: e.discipline
-				}));
-			}
-			if (s.type === 'clip') {
-				clean.videoId = s.videoId || '';
-				if (s.startSeconds) clean.startSeconds = s.startSeconds;
-				if (s.endSeconds) clean.endSeconds = s.endSeconds;
-			} else if (s.type === 'timer') {
-				clean.durationSeconds = s.durationSeconds || 30;
-				if (s.isBreak) clean.isBreak = true;
-				if (s.gifUrl) clean.gifUrl = s.gifUrl;
-				if (s.mediaUrl) clean.mediaUrl = s.mediaUrl;
-				if (Array.isArray(s.musicTracks) && s.musicTracks.length > 0) {
-					const ytTracks = s.musicTracks
-						.filter(t => t.source === 'youtube' && t.videoId)
-						.map(t => ({ source: 'youtube', videoId: t.videoId, label: t.label || '' }));
-					if (ytTracks.length > 0) {
-						clean.musicTracks = ytTracks;
-					}
-				}
-			}
-			return clean;
-		})
-	};
-
-	try {
-		const res = await fetch(`${getApiBase()}/share`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				'Accept': 'application/json'
-			},
-			body: JSON.stringify(payload)
-		});
-
-		if (res.ok) {
-			const data = await res.json();
-			if (data && data.id) {
-				const url = new URL(window.location.href);
-				url.search = '';
-				url.hash = `s=${data.id}`;
-				return url.toString();
-			}
-		}
-	} catch (err) {
-		console.warn('Server share creation failed, using compressed URL fallback:', err);
-	}
-
-	// Fallback to compressed hash if server is offline
-	const jsonStr = JSON.stringify(payload);
-	let encodedToken = '';
-	if (typeof CompressionStream !== 'undefined') {
-		try {
-			const stream = new Blob([new TextEncoder().encode(jsonStr)]).stream().pipeThrough(new CompressionStream('deflate-raw'));
-			const buffer = await new Response(stream).arrayBuffer();
-			const bytes = new Uint8Array(buffer);
-			let binary = '';
-			const chunk = 8192;
-			for (let i = 0; i < bytes.length; i += chunk) {
-				binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
-			}
-			encodedToken = 'c.' + btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-		} catch (err) {
-			console.warn('CompressionStream fallback failed:', err);
-		}
-	}
-
-	if (!encodedToken) {
-		encodedToken = 'r.' + btoa(encodeURIComponent(jsonStr)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-	}
-
+export function buildRoutineUrl(routine, userId = null) {
+	if (!routine || !routine.id) return window.location.origin + window.location.pathname;
+	const user = (userId || getActiveUserId() || 'levon').trim().toLowerCase();
 	const url = new URL(window.location.href);
 	url.search = '';
-	url.hash = `share=${encodedToken}`;
+	url.hash = `u=${encodeURIComponent(user)}&r=${encodeURIComponent(routine.id)}`;
 	return url.toString();
 }
 
 /**
- * Fetch a shared workout from the server by 6-char ID.
- * @param {string} shareId
- * @returns {Promise<Object|null>}
+ * Resolve target routine from the current URL (hash or search params).
+ * Supports #u=levon&r=pushup-protocol or #r=pushup-protocol.
+ * @returns {Promise<{isOwner: boolean, routineId: string, userId: string, routine?: Object}|null>}
  */
-export async function fetchSharedRoutineFromServer(shareId) {
+export async function getRoutineTargetFromUrl() {
+	let routineId = null;
+	let userId = null;
+
+	if (window.location.hash) {
+		const raw = window.location.hash.replace(/^#/, '');
+		const params = new URLSearchParams(raw);
+		routineId = params.get('r');
+		userId = params.get('u');
+	}
+
+	if (!routineId && window.location.search) {
+		const params = new URLSearchParams(window.location.search);
+		routineId = params.get('r');
+		userId = params.get('u');
+	}
+
+	if (!routineId) return null;
+
+	const activeUser = getActiveUserId().trim().toLowerCase();
+	const targetUser = (userId || activeUser || 'levon').trim().toLowerCase();
+
+	if (targetUser === activeUser) {
+		return {
+			isOwner: true,
+			routineId,
+			userId: targetUser
+		};
+	}
+
+	// Fetch another user's public routine from server
 	try {
-		const res = await fetch(`${getApiBase()}/share/${encodeURIComponent(shareId)}`, {
+		const res = await fetch(`${getApiBase()}/routines/${encodeURIComponent(routineId)}?user_id=${encodeURIComponent(targetUser)}`, {
 			headers: { 'Accept': 'application/json' }
 		});
-		if (!res.ok) return null;
-		const data = await res.json();
-		if (!data || !data.title || !Array.isArray(data.steps)) return null;
-
-		return {
-			id: generateId(),
-			title: data.title,
-			musicTracks: Array.isArray(data.musicTracks) ? data.musicTracks.map(t => ({
-				id: generateId(),
-				source: 'youtube',
-				videoId: t.videoId,
-				label: t.label || ''
-			})) : [],
-			steps: data.steps.map(s => ({
-				id: generateId(),
-				type: s.type || 'timer',
-				stepMode: s.stepMode || (s.targetReps ? 'reps' : 'time'),
-				targetReps: s.targetReps || 0,
-				exercises: Array.isArray(s.exercises) ? s.exercises : [],
-				label: s.label || 'Step',
-				videoId: s.videoId || '',
-				startSeconds: s.startSeconds || 0,
-				endSeconds: s.endSeconds || 0,
-				durationSeconds: s.durationSeconds || 30,
-				gifUrl: s.gifUrl || s.mediaUrl || '',
-				mediaUrl: s.mediaUrl || s.gifUrl || '',
-				isBreak: Boolean(s.isBreak),
-				musicTracks: Array.isArray(s.musicTracks) ? s.musicTracks.map(t => ({
-					id: generateId(),
-					source: 'youtube',
-					videoId: t.videoId,
-					label: t.label || ''
-				})) : []
-			}))
-		};
-	} catch (err) {
-		console.error('Failed to fetch shared routine from server:', err);
-		return null;
-	}
-}
-
-/**
- * Decode a workout routine from a fallback compressed payload token.
- * @param {string} token
- * @returns {Promise<Object|null>}
- */
-export async function decodeRoutineFromSharePayload(token) {
-	if (!token) return null;
-	token = token.trim();
-
-	try {
-		let jsonStr = '';
-
-		if (token.startsWith('c.')) {
-			const base64 = token.slice(2).replace(/-/g, '+').replace(/_/g, '/');
-			const binary = atob(base64);
-			const bytes = new Uint8Array(binary.length);
-			for (let i = 0; i < binary.length; i++) {
-				bytes[i] = binary.charCodeAt(i);
+		if (res.ok) {
+			const routine = await res.json();
+			if (routine && routine.title) {
+				return {
+					isOwner: false,
+					routineId,
+					userId: targetUser,
+					routine: {
+						...routine,
+						creatorUser: targetUser
+					}
+				};
 			}
-			if (typeof DecompressionStream !== 'undefined') {
-				const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
-				const buffer = await new Response(stream).arrayBuffer();
-				jsonStr = new TextDecoder().decode(buffer);
-			} else {
-				throw new Error('DecompressionStream not supported');
-			}
-		} else if (token.startsWith('r.')) {
-			const base64 = token.slice(2).replace(/-/g, '+').replace(/_/g, '/');
-			jsonStr = decodeURIComponent(atob(base64));
-		} else {
-			const base64 = token.replace(/-/g, '+').replace(/_/g, '/');
-			jsonStr = decodeURIComponent(atob(base64));
 		}
-
-		const parsed = JSON.parse(jsonStr);
-		if (!parsed || !parsed.title || !Array.isArray(parsed.steps)) {
-			return null;
-		}
-
-		return {
-			id: generateId(),
-			title: parsed.title,
-			musicTracks: Array.isArray(parsed.musicTracks) ? parsed.musicTracks.map(t => ({
-				id: generateId(),
-				source: 'youtube',
-				videoId: t.videoId,
-				label: t.label || ''
-			})) : [],
-			steps: parsed.steps.map(s => ({
-				id: generateId(),
-				type: s.type || 'timer',
-				stepMode: s.stepMode || (s.targetReps ? 'reps' : 'time'),
-				targetReps: s.targetReps || 0,
-				exercises: Array.isArray(s.exercises) ? s.exercises : [],
-				label: s.label || 'Step',
-				videoId: s.videoId || '',
-				startSeconds: s.startSeconds || 0,
-				endSeconds: s.endSeconds || 0,
-				durationSeconds: s.durationSeconds || 30,
-				gifUrl: s.gifUrl || s.mediaUrl || '',
-				mediaUrl: s.mediaUrl || s.gifUrl || '',
-				isBreak: Boolean(s.isBreak),
-				musicTracks: Array.isArray(s.musicTracks) ? s.musicTracks.map(t => ({
-					id: generateId(),
-					source: 'youtube',
-					videoId: t.videoId,
-					label: t.label || ''
-				})) : []
-			}))
-		};
 	} catch (err) {
-		console.error('Failed to decode shared workout payload:', err);
-		return null;
-	}
-}
-
-/**
- * Extract and decode a shared routine from current window URL.
- * Supports both short codes (#s=abc123 or ?s=abc123) and full payloads (#share=... or ?share=...).
- * @returns {Promise<Object|null>}
- */
-export async function getSharedRoutineFromUrl() {
-	let shortCode = null;
-	let fullToken = null;
-
-	// Check hash: #s=<id> or #share=<payload>
-	if (window.location.hash) {
-		const sMatch = window.location.hash.match(/[#&]s=([A-Za-z0-9_-]+)/);
-		if (sMatch) shortCode = sMatch[1];
-
-		const shareMatch = window.location.hash.match(/[#&]share=([^&]+)/);
-		if (shareMatch) fullToken = shareMatch[1];
+		console.error('Failed to fetch remote shared routine:', err);
 	}
 
-	// Check query params: ?s=<id> or ?share=<payload>
-	if (window.location.search) {
-		const params = new URLSearchParams(window.location.search);
-		if (!shortCode && params.get('s')) shortCode = params.get('s');
-		if (!fullToken && params.get('share')) fullToken = params.get('share');
-	}
-
-	if (shortCode) {
-		const routine = await fetchSharedRoutineFromServer(shortCode);
-		if (routine) return routine;
-	}
-
-	if (fullToken) {
-		return await decodeRoutineFromSharePayload(fullToken);
-	}
-
-	return null;
+	return {
+		isOwner: false,
+		routineId,
+		userId: targetUser
+	};
 }
 
 /**

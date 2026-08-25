@@ -54,13 +54,6 @@ class Database:
 					FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 				);
 
-				CREATE TABLE IF NOT EXISTS shared_routines (
-					id TEXT PRIMARY KEY,
-					title TEXT NOT NULL,
-					routine_json TEXT NOT NULL,
-					created_at TEXT NOT NULL
-				);
-
 				CREATE TABLE IF NOT EXISTS exercises (
 					id TEXT PRIMARY KEY,
 					user_id TEXT,
@@ -1846,36 +1839,3 @@ class Database:
 			check_date -= timedelta(days=1)
 
 		return current_streak, longest
-
-	# ── Shared Routines ───────────────────────────────────────────────────────
-
-	def create_shared_routine(self, routine_data: dict[str, Any]) -> str:
-		chars = string.ascii_lowercase + string.digits
-		now = datetime.now().isoformat()
-		title = routine_data.get("title", "Shared Workout")
-		routine_json = json.dumps(routine_data, ensure_ascii=False)
-
-		with self.get_connection() as conn:
-			for _ in range(10):
-				code = "".join(secrets.choice(chars) for _ in range(6))
-				cursor = conn.execute("SELECT id FROM shared_routines WHERE id = ?", (code,))
-				if not cursor.fetchone():
-					conn.execute(
-						"INSERT INTO shared_routines (id, title, routine_json, created_at) VALUES (?, ?, ?, ?)",
-						(code, title, routine_json, now),
-					)
-					return code
-			raise RuntimeError("Could not generate unique share code")
-
-	def get_shared_routine(self, share_id: str) -> dict[str, Any] | None:
-		clean_id = share_id.strip().lower()
-		with self.get_connection() as conn:
-			row = conn.execute(
-				"SELECT routine_json FROM shared_routines WHERE id = ?", (clean_id,)
-			).fetchone()
-			if not row:
-				return None
-			try:
-				return json.loads(row["routine_json"])
-			except Exception:
-				return None

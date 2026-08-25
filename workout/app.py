@@ -78,7 +78,7 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 	@app.get("/api/routines/{routine_id}")
 	@app.get("/workout/api/routines/{routine_id}")
 	async def get_single_routine(routine_id: str, request: Request):
-		user_id = get_user_id(request)
+		user_id = (request.query_params.get("user_id") or get_user_id(request)).strip().lower()
 		routine = db.get_routine(user_id, routine_id)
 		if not routine:
 			raise HTTPException(status_code=404, detail="Routine not found")
@@ -236,34 +236,6 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 		if not success:
 			raise HTTPException(status_code=404, detail="Combo not found or cannot be deleted")
 		return {"status": "ok"}
-
-	# ── Share API ─────────────────────────────────────────────────────────────
-
-	@app.post("/api/share")
-	@app.post("/workout/api/share")
-	async def create_share_link(request: Request):
-		try:
-			data = await request.json()
-		except Exception:
-			raise HTTPException(status_code=400, detail="Invalid JSON body")
-		if not isinstance(data, dict) or "title" not in data or "steps" not in data:
-			raise HTTPException(
-				status_code=400, detail="Expected a routine object with title and steps"
-			)
-
-		try:
-			code = db.create_shared_routine(data)
-			return JSONResponse(content={"status": "ok", "id": code})
-		except Exception as e:
-			raise HTTPException(status_code=500, detail=str(e))
-
-	@app.get("/api/share/{share_id}")
-	@app.get("/workout/api/share/{share_id}")
-	async def get_shared_link(share_id: str):
-		routine = db.get_shared_routine(share_id)
-		if not routine:
-			raise HTTPException(status_code=404, detail="Shared workout not found")
-		return JSONResponse(content=routine)
 
 	# ── Static & HTML ─────────────────────────────────────────────────────────
 

@@ -5,7 +5,7 @@
 import {
 	loadRoutines, saveRoutines, fetchServerRoutines,
 	saveServerRoutines, exportRoutines, exportSingleRoutine,
-	importRoutines, encodeRoutineToShareUrl, getSharedRoutineFromUrl,
+	importRoutines, buildRoutineUrl, getRoutineTargetFromUrl,
 	fetchStats
 } from './storage.js';
 import {
@@ -63,11 +63,16 @@ async function init() {
 	loadExercises().catch(() => {});
 	loadCombos().catch(() => {});
 
-	// Check if URL contains a shared routine
-	const incomingShared = await getSharedRoutineFromUrl();
-	if (incomingShared) {
-		sharedRoutine = incomingShared;
-		isViewingShared = true;
+	// Check if URL specifies a target routine
+	const urlTarget = await getRoutineTargetFromUrl();
+	if (urlTarget) {
+		if (urlTarget.isOwner) {
+			const found = routines.find(r => r.id === urlTarget.routineId || r.title.toLowerCase().replace(/ /g, '-') === urlTarget.routineId.toLowerCase());
+			if (found) selectedRoutineId = found.id;
+		} else if (urlTarget.routine) {
+			sharedRoutine = urlTarget.routine;
+			isViewingShared = true;
+		}
 	}
 
 	renderRoutineList();
@@ -78,12 +83,17 @@ async function init() {
 	// Fetch server state as source of truth
 	await syncWithServerOnStartup();
 
-	// If a shared routine was loaded, keep it active after server sync
-	if (sharedRoutine) {
+	if (urlTarget && urlTarget.isOwner) {
+		const found = routines.find(r => r.id === urlTarget.routineId || r.title.toLowerCase().replace(/ /g, '-') === urlTarget.routineId.toLowerCase());
+		if (found) {
+			selectedRoutineId = found.id;
+			history.replaceState(null, '', buildRoutineUrl(found));
+		}
+	} else if (sharedRoutine) {
 		isViewingShared = true;
-		renderRoutineList();
-		renderSelectedRoutine();
 	}
+	renderRoutineList();
+	renderSelectedRoutine();
 
 	// Initialize audio on first interaction
 	document.addEventListener('click', () => initAudio(), { once: true });
@@ -992,13 +1002,13 @@ function renderRoutineList() {
 			if (isViewingShared) {
 				isViewingShared = false;
 				sharedRoutine = null;
-				history.replaceState(null, '', window.location.pathname);
 			}
 			if (currentTab !== 'routines') {
 				switchTab('routines');
 			}
 			selectedRoutineId = routine.id;
 			currentMode = 'view';
+			history.replaceState(null, '', buildRoutineUrl(routine));
 			renderRoutineList();
 			renderSelectedRoutine();
 		});
@@ -1048,9 +1058,9 @@ function renderSelectedRoutine() {
 				startRoutine(routine, startIndex, true);
 			},
 			onShare: async () => {
-				const shareUrl = await encodeRoutineToShareUrl(routine);
+				const shareUrl = buildRoutineUrl(routine);
 				await copyToClipboard(shareUrl);
-				showToast('📋 Link copied to clipboard!');
+				showToast('📋 Live routine link copied to clipboard!');
 				return true;
 			},
 			onSaveToLibrary: () => {
@@ -1089,19 +1099,25 @@ function renderSelectedRoutine() {
 
 function handleSaveSharedToLibrary(notify = true) {
 	if (!sharedRoutine) return;
-	const routineToSave = { ...sharedRoutine };
+	const clonedId = `routine_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+	const routineToSave = {
+		...sharedRoutine,
+		id: clonedId,
+		title: sharedRoutine.title
+	};
+	delete routineToSave.creatorUser;
 	routines.push(routineToSave);
 	selectedRoutineId = routineToSave.id;
 	isViewingShared = false;
 	sharedRoutine = null;
-	history.replaceState(null, '', window.location.pathname);
+	history.replaceState(null, '', buildRoutineUrl(routineToSave));
 	persist(true);
 	renderRoutineList();
 	renderSelectedRoutine();
 	if (notify) {
 		showAlert({
-			title: 'Saved!',
-			message: `"${routineToSave.title}" has been saved to your workouts.`
+			title: 'Saved to Library!',
+			message: `"${routineToSave.title}" has been saved to your workouts as a private editable copy.`
 		});
 	}
 }
