@@ -1,12 +1,15 @@
-.PHONY: help dev-workout dev-spelling test sync stop lint format check
+.PHONY: help dev-workout dev-spelling test sync stop lint format check pull-db backup backup-workout
 
 PORT_WORKOUT ?= 8766
 PORT_SPELLING ?= 8765
+GDRIVE_BACKUP_DIR ?= $(HOME)/Library/CloudStorage/GoogleDrive-ltfibonacci@gmail.com/My Drive/workout_backups
 
 help:
 	@echo "Available commands:"
-	@echo "  make dev-workout   - Start Workout app on http://localhost:8766/workout/"
+	@echo "  make dev-workout   - Pull live DB & start Workout app on http://localhost:8766/workout/"
 	@echo "  make dev-spelling  - Start Spelling Bee on http://localhost:8765/spelling/"
+	@echo "  make pull-db       - Sync latest workout.db from levon-box to local data/"
+	@echo "  make backup        - Pull live DB and create a timestamped backup in Google Drive"
 	@echo "  make lint          - Run Ruff linter on all projects"
 	@echo "  make format        - Format code with Ruff on all projects"
 	@echo "  make test          - Run tests for all game suites"
@@ -14,7 +17,22 @@ help:
 	@echo "  make sync          - Install dependencies across all projects"
 	@echo "  make stop          - Stop any running local dev servers (8765 & 8766)"
 
-dev-workout run-workout:
+pull-db:
+	@echo "==> Pulling live database from levon-box..."
+	@mkdir -p workout/data
+	@rm -f workout/data/workout.db
+	@scp levon-box:/home/levon/games/workout/data/workout.db workout/data/workout.db 2>/dev/null && echo "==> Successfully synced live workout.db from levon-box!" || echo "==> Warning: Could not pull live db (offline/unreachable), using local db."
+
+backup backup-workout: pull-db
+	@echo "==> Backing up workout.db to Google Drive..."
+	@mkdir -p "$(GDRIVE_BACKUP_DIR)"
+	@TS=$$(date +%Y%m%d_%H%M%S); \
+	cp workout/data/workout.db "$(GDRIVE_BACKUP_DIR)/workout_$${TS}.db" && \
+	cp workout/data/workout.db "$(GDRIVE_BACKUP_DIR)/workout_latest.db" && \
+	echo "==> Snapshot: $(GDRIVE_BACKUP_DIR)/workout_$${TS}.db" && \
+	echo "==> Latest:   $(GDRIVE_BACKUP_DIR)/workout_latest.db"
+
+dev-workout run-workout: pull-db
 	@cd workout && uv run uvicorn app:create_app --reload --host 127.0.0.1 --port $(PORT_WORKOUT) --factory
 
 dev-spelling run-spelling:
