@@ -17,12 +17,14 @@ def test_seed_exercises_loaded(client: TestClient):
 	res = client.get("/api/exercises", headers={"X-User-Id": "levon"})
 	assert res.status_code == 200
 	exercises = res.json()
-	assert len(exercises) == 16
+	assert len(exercises) == 18
 
 	# Check category & discipline coverage
 	names = [e["name"] for e in exercises]
 	assert "Standard Pushups" in names
 	assert "Diamond Pushups" in names
+	assert "Decline Pushups" in names
+	assert "Pike Pushups" in names
 	assert "Star Jumps" in names
 	assert "Coordination Footwork Drills" in names
 	assert "Check Repeats (Lead & Rear Block)" in names

@@ -75,6 +75,41 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 		db.save_routines(user_id, data)
 		return {"status": "ok", "count": len(data)}
 
+	@app.get("/api/routines/{routine_id}")
+	@app.get("/workout/api/routines/{routine_id}")
+	async def get_single_routine(routine_id: str, request: Request):
+		user_id = get_user_id(request)
+		routine = db.get_routine(user_id, routine_id)
+		if not routine:
+			raise HTTPException(status_code=404, detail="Routine not found")
+		return JSONResponse(content=routine)
+
+	@app.put("/api/routines/{routine_id}")
+	@app.put("/workout/api/routines/{routine_id}")
+	@app.post("/api/routines/{routine_id}")
+	@app.post("/workout/api/routines/{routine_id}")
+	async def upsert_single_routine(routine_id: str, request: Request):
+		user_id = get_user_id(request)
+		try:
+			data = await request.json()
+		except Exception:
+			raise HTTPException(status_code=400, detail="Invalid JSON body")
+		if not isinstance(data, dict):
+			raise HTTPException(status_code=400, detail="Expected a routine JSON object")
+		if "id" not in data or not data["id"]:
+			data["id"] = routine_id
+		saved = db.upsert_routine(user_id, data)
+		return JSONResponse(content={"status": "ok", "routine": saved})
+
+	@app.delete("/api/routines/{routine_id}")
+	@app.delete("/workout/api/routines/{routine_id}")
+	async def delete_single_routine(routine_id: str, request: Request):
+		user_id = get_user_id(request)
+		success = db.delete_routine(user_id, routine_id)
+		if not success:
+			raise HTTPException(status_code=404, detail="Routine not found")
+		return {"status": "ok"}
+
 	# ── Sessions API ──────────────────────────────────────────────────────────
 
 	@app.post("/api/sessions")
@@ -250,10 +285,10 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 	app.mount("/js", StaticFiles(directory=static_dir / "js"), name="js")
 	app.mount("/media", StaticFiles(directory=media_dir), name="media")
 
-	@app.api_route("/preview_icons.html", methods=["GET", "HEAD"])
-	@app.api_route("/workout/preview_icons.html", methods=["GET", "HEAD"])
-	async def preview_icons():
-		preview_path = static_dir / "preview_icons.html"
+	@app.api_route("/icons_preview.html", methods=["GET", "HEAD"])
+	@app.api_route("/workout/icons_preview.html", methods=["GET", "HEAD"])
+	async def icons_preview():
+		preview_path = static_dir / "icons_preview.html"
 		if preview_path.exists():
 			return FileResponse(preview_path)
 		raise HTTPException(status_code=404, detail="Preview page not found")

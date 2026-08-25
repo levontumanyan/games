@@ -138,3 +138,82 @@ def test_create_and_fetch_short_share_link(client: TestClient):
 
 	# Non-existent share link returns 404
 	assert client.get("/api/share/nonexist").status_code == 404
+
+
+def test_single_routine_crud_and_slug_lookup(client: TestClient):
+	pushup_routine = {
+		"id": "pushup-protocol",
+		"title": "Science Pushup Protocol",
+		"steps": [
+			{
+				"id": "step-1",
+				"type": "timer",
+				"durationSeconds": 45,
+				"label": "Standard Pushups",
+				"stepMode": "reps",
+				"targetReps": 15,
+			},
+			{
+				"id": "step-2",
+				"type": "timer",
+				"durationSeconds": 120,
+				"label": "Rest (ATP-CP Resynthesis)",
+				"isBreak": True,
+			},
+		],
+	}
+
+	# Create / Upsert via PUT /workout/api/routines/{id}
+	put_res = client.put(
+		"/workout/api/routines/pushup-protocol",
+		json=pushup_routine,
+		headers={"X-User-Id": "levon"},
+	)
+	assert put_res.status_code == 200
+	saved_routine = put_res.json()["routine"]
+	assert saved_routine["id"] == "pushup-protocol"
+	assert saved_routine["title"] == "Science Pushup Protocol"
+	assert len(saved_routine["steps"]) == 2
+
+	# Fetch by exact ID
+	get_res = client.get("/workout/api/routines/pushup-protocol", headers={"X-User-Id": "levon"})
+	assert get_res.status_code == 200
+	assert get_res.json()["title"] == "Science Pushup Protocol"
+
+	# Fetch by title slug
+	slug_res = client.get(
+		"/workout/api/routines/science-pushup-protocol", headers={"X-User-Id": "levon"}
+	)
+	assert slug_res.status_code == 200
+	assert slug_res.json()["id"] == "pushup-protocol"
+
+	# Modify single routine via PUT
+	pushup_routine["steps"].append(
+		{
+			"id": "step-3",
+			"type": "timer",
+			"durationSeconds": 45,
+			"label": "Diamond Pushups",
+			"stepMode": "reps",
+			"targetReps": 10,
+		}
+	)
+	update_res = client.put(
+		"/api/routines/pushup-protocol",
+		json=pushup_routine,
+		headers={"X-User-Id": "levon"},
+	)
+	assert update_res.status_code == 200
+	assert len(update_res.json()["routine"]["steps"]) == 3
+
+	# Delete single routine
+	del_res = client.delete("/workout/api/routines/pushup-protocol", headers={"X-User-Id": "levon"})
+	assert del_res.status_code == 200
+
+	# Ensure 404 after deletion
+	assert (
+		client.get(
+			"/workout/api/routines/pushup-protocol", headers={"X-User-Id": "levon"}
+		).status_code
+		== 404
+	)

@@ -285,6 +285,100 @@ class Database:
 					(r_id, user_id, title, steps_json, music_json, now),
 				)
 
+	def get_routine(self, user_id: str, routine_id: str) -> dict[str, Any] | None:
+		clean_user = user_id.strip().lower()
+		clean_id = routine_id.strip()
+		with self.get_connection() as conn:
+			row = conn.execute(
+				"SELECT id, title, steps_json, music_tracks_json FROM routines WHERE user_id = ? AND id = ?",
+				(clean_user, clean_id),
+			).fetchone()
+			if not row:
+				# Also check title match or slug match (case insensitive)
+				rows = conn.execute(
+					"SELECT id, title, steps_json, music_tracks_json FROM routines WHERE user_id = ?",
+					(clean_user,),
+				).fetchall()
+				for r in rows:
+					slug = r["title"].lower().replace(" ", "-").replace("_", "-")
+					if r["title"].lower() == clean_id.lower() or slug == clean_id.lower():
+						row = r
+						break
+			if not row:
+				return None
+			try:
+				steps = json.loads(row["steps_json"])
+			except Exception:
+				steps = []
+			try:
+				music = json.loads(row["music_tracks_json"])
+			except Exception:
+				music = []
+			return {
+				"id": row["id"],
+				"title": row["title"],
+				"steps": steps,
+				"musicTracks": music,
+			}
+
+	def upsert_routine(self, user_id: str, routine: dict[str, Any]) -> dict[str, Any]:
+		clean_user = user_id.strip().lower()
+		self.get_or_create_user(clean_user)
+		r_id = str(routine.get("id", "")).strip()
+		if not r_id:
+			chars = string.ascii_lowercase + string.digits
+			r_id = f"routine_{int(datetime.now().timestamp())}_{''.join(secrets.choice(chars) for _ in range(6))}"
+		title = routine.get("title", "Untitled Workout")
+		steps = routine.get("steps", [])
+		music = routine.get("musicTracks", [])
+		steps_json = json.dumps(steps, ensure_ascii=False)
+		music_json = json.dumps(music, ensure_ascii=False)
+		now = datetime.now().isoformat()
+		with self.get_connection() as conn:
+			conn.execute(
+				"""
+				INSERT INTO routines (id, user_id, title, steps_json, music_tracks_json, updated_at)
+				VALUES (?, ?, ?, ?, ?, ?)
+				ON CONFLICT(id, user_id) DO UPDATE SET
+					title=excluded.title,
+					steps_json=excluded.steps_json,
+					music_tracks_json=excluded.music_tracks_json,
+					updated_at=excluded.updated_at
+				""",
+				(r_id, clean_user, title, steps_json, music_json, now),
+			)
+		return {
+			"id": r_id,
+			"title": title,
+			"steps": steps,
+			"musicTracks": music,
+		}
+
+	def delete_routine(self, user_id: str, routine_id: str) -> bool:
+		clean_user = user_id.strip().lower()
+		clean_id = routine_id.strip()
+		with self.get_connection() as conn:
+			cursor = conn.execute(
+				"DELETE FROM routines WHERE user_id = ? AND id = ?",
+				(clean_user, clean_id),
+			)
+			if cursor.rowcount == 0:
+				# Check slug or title match
+				rows = conn.execute(
+					"SELECT id, title FROM routines WHERE user_id = ?",
+					(clean_user,),
+				).fetchall()
+				for r in rows:
+					slug = r["title"].lower().replace(" ", "-").replace("_", "-")
+					if r["title"].lower() == clean_id.lower() or slug == clean_id.lower():
+						conn.execute(
+							"DELETE FROM routines WHERE user_id = ? AND id = ?",
+							(clean_user, r["id"]),
+						)
+						return True
+				return False
+			return True
+
 	def _seed_default_exercises(self, conn: sqlite3.Connection) -> None:
 		now = datetime.now().isoformat()
 		conn.execute("DELETE FROM exercises WHERE user_id IS NULL OR user_id = 'system'")
@@ -535,6 +629,52 @@ class Database:
 				],
 				["triceps", "chest"],
 				["shoulders", "abs", "forearms"],
+			),
+			# Decline Pushups
+			(
+				"ex-decline-pushups",
+				None,
+				"Decline Pushups",
+				"strength",
+				"calisthenics",
+				"reps",
+				15,
+				"Feet-elevated pushups shifting bodyweight load upward to emphasize clavicular head (upper chest) and anterior delts.",
+				"/workout/media/pushups.svg",
+				[
+					{
+						"id": "asset-decline-pushups-anim",
+						"kind": "animation",
+						"type": "image",
+						"title": "Decline Push-up Form Animation",
+						"url": "/workout/media/pushups.svg",
+					}
+				],
+				["chest", "shoulders"],
+				["triceps", "abs", "forearms"],
+			),
+			# Pike Pushups
+			(
+				"ex-pike-pushups",
+				None,
+				"Pike Pushups",
+				"strength",
+				"calisthenics",
+				"reps",
+				12,
+				"Inverted V-shape pushups creating a vertical pressing angle to build shoulder and overhead pushing power.",
+				"/workout/media/pushups.svg",
+				[
+					{
+						"id": "asset-pike-pushups-anim",
+						"kind": "animation",
+						"type": "image",
+						"title": "Pike Push-up Form Animation",
+						"url": "/workout/media/pushups.svg",
+					}
+				],
+				["shoulders", "triceps"],
+				["chest", "traps", "abs"],
 			),
 			# Plank Shoulder Taps
 			(
