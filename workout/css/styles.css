@@ -84,9 +84,109 @@ html, body {
 
 .app-container {
 	display: flex;
+	flex-direction: column;
 	height: 100vh;
 	overflow: hidden;
 	background: radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.05) 0%, transparent 60%);
+}
+
+/* ── Top Navigation Bar ─────────────────────────────────────────────────── */
+
+.app-topbar {
+	height: 52px;
+	min-height: 52px;
+	background: var(--bg-secondary);
+	border-bottom: 1px solid var(--border);
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 0 18px;
+	z-index: 30;
+	user-select: none;
+}
+
+.topbar-left {
+	display: flex;
+	align-items: center;
+	gap: 22px;
+}
+
+.topbar-brand {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-weight: 800;
+	font-size: 1.05rem;
+}
+
+.topbar-logo {
+	font-size: 1.25rem;
+	line-height: 1;
+}
+
+.topbar-title {
+	font-size: 1.05rem;
+	font-weight: 800;
+	letter-spacing: -0.02em;
+	background: linear-gradient(135deg, #ffffff 0%, #c4c7db 100%);
+	-webkit-background-clip: text;
+	-webkit-text-fill-color: transparent;
+	margin: 0;
+	white-space: nowrap;
+}
+
+.topbar-nav {
+	display: flex;
+	align-items: center;
+	gap: 5px;
+}
+
+.topbar-tab {
+	background: transparent;
+	border: 1px solid transparent;
+	color: var(--text-muted);
+	padding: 6px 13px;
+	border-radius: var(--radius-sm);
+	font-size: 0.82rem;
+	font-weight: 600;
+	cursor: pointer;
+	display: inline-flex;
+	align-items: center;
+	gap: 7px;
+	transition: all var(--transition-fast);
+	white-space: nowrap;
+}
+
+.topbar-tab svg {
+	flex-shrink: 0;
+}
+
+.topbar-tab:hover {
+	background: var(--bg-hover);
+	color: var(--text-primary);
+}
+
+.topbar-tab.active {
+	background: var(--accent-subtle);
+	color: #a5b4fc;
+	border-color: rgba(99, 102, 241, 0.4);
+	box-shadow: 0 2px 10px rgba(99, 102, 241, 0.15);
+}
+
+.topbar-right {
+	display: flex;
+	align-items: center;
+	gap: 14px;
+}
+
+/* ── App Body Area (Sidebar + Main) ─────────────────────────────────────── */
+
+.app-body {
+	display: flex;
+	flex: 1;
+	overflow: hidden;
+	position: relative;
+	width: 100%;
 }
 
 /* ── Sidebar ─────────────────────────────────────────────────────────────── */
@@ -108,6 +208,15 @@ html, body {
 	margin-left: -280px;
 	opacity: 0;
 	pointer-events: none;
+}
+
+/* Hide sidebar and reclaim 100% space on non-routines tabs (Exercises, Anatomy, Stats, Combos) */
+.app-container.non-routines-tab .sidebar {
+	display: none !important;
+}
+
+.app-container.non-routines-tab .sidebar-expand-btn {
+	display: none !important;
 }
 
 /* Sidebar Expand Floating Button (Minimal Icon Button) */
@@ -147,7 +256,7 @@ html, body {
 
 /* Ensure clean clearance from the floating expand button when sidebar is collapsed */
 @media (min-width: 769px) {
-	.app-container.sidebar-hidden .main-content > div:not(.hidden):not(#player-view) {
+	.app-container.sidebar-hidden:not(.non-routines-tab) .main-content > div:not(.hidden):not(#player-view) {
 		padding-left: 58px;
 	}
 }
@@ -162,7 +271,14 @@ html, body {
 	align-items: center;
 	justify-content: space-between;
 	gap: 8px;
-	margin-bottom: 8px;
+}
+
+.sidebar-title-badge {
+	font-size: 0.8rem;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: var(--text-secondary);
 }
 
 .brand-left {
@@ -3638,7 +3754,21 @@ html, body {
 }
 
 @media (max-width: 768px) {
-	.app-container {
+	.topbar-nav {
+		display: none;
+	}
+
+	.app-topbar {
+		padding: 0 12px;
+		height: 48px;
+		min-height: 48px;
+	}
+
+	.topbar-title {
+		font-size: 0.95rem;
+	}
+
+	.app-body {
 		flex-direction: column;
 	}
 
@@ -4359,7 +4489,9 @@ html, body {
 /* ── Exercises Library & Anatomy View ────────────────────────────────────── */
 
 #exercises-view,
-#anatomy-view {
+#combos-view,
+#anatomy-view,
+#stats-view {
 	flex: 1;
 	overflow-y: auto;
 	padding: 36px 40px;
@@ -4368,13 +4500,18 @@ html, body {
 	width: 100%;
 }
 
-.exercises-catalog-container {
+.exercises-catalog-container,
+.combos-catalog-container,
+.catalog-container {
 	display: flex;
 	flex-direction: column;
 	gap: 20px;
+	width: 100%;
 }
 
-.exercises-catalog-header {
+.exercises-catalog-header,
+.combos-catalog-header,
+.catalog-header {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
@@ -4382,30 +4519,39 @@ html, body {
 	flex-wrap: wrap;
 }
 
-.exercises-title {
+.exercises-title,
+.combos-title,
+.catalog-title {
 	font-size: 1.6rem;
 	font-weight: 800;
 	letter-spacing: -0.02em;
 	color: var(--text-primary);
-	margin-bottom: 4px;
+	margin: 0 0 4px 0;
+	line-height: 1.2;
 }
 
-.exercises-subtitle {
+.exercises-subtitle,
+.combos-subtitle,
+.catalog-subtitle {
 	font-size: 0.88rem;
 	color: var(--text-secondary);
+	margin: 0;
 }
 
-.exercises-filter-bar {
+.exercises-filter-bar,
+.combos-filter-bar,
+.catalog-filter-bar {
 	display: flex;
 	flex-direction: column;
 	gap: 12px;
-	background: var(--bg-surface-elevated);
+	background: var(--bg-surface-elevated, #161824);
 	border: 1px solid var(--border);
 	padding: 14px 18px;
 	border-radius: var(--radius-lg);
 }
 
-.search-box-wrapper {
+.search-box-wrapper,
+.catalog-search-wrapper {
 	display: flex;
 	align-items: center;
 	gap: 10px;
@@ -4415,33 +4561,44 @@ html, body {
 	padding: 8px 14px;
 }
 
-.search-box-wrapper .search-icon {
+.search-box-wrapper .search-icon,
+.catalog-search-wrapper .search-icon {
 	font-size: 0.95rem;
 	opacity: 0.7;
 }
 
-.exercise-search-input {
+.exercise-search-input,
+.combo-search-input,
+.catalog-search-input {
 	border: none !important;
 	background: transparent !important;
 	padding: 0 !important;
 	font-size: 0.9rem;
 	width: 100%;
+	color: var(--text-primary);
 }
 
-.exercise-search-input:focus {
+.exercise-search-input:focus,
+.combo-search-input:focus,
+.catalog-search-input:focus {
 	outline: none !important;
 	box-shadow: none !important;
 }
 
-.exercise-filter-chips {
+.exercise-filter-chips,
+.combo-filter-chips,
+.catalog-filter-chips {
 	display: flex;
 	align-items: center;
 	gap: 6px;
 	overflow-x: auto;
 	padding-bottom: 2px;
+	flex-wrap: wrap;
 }
 
-.ex-chip-btn {
+.ex-chip-btn,
+.combo-chip-btn,
+.catalog-chip-btn {
 	display: inline-flex;
 	align-items: center;
 	gap: 6px;
@@ -4457,20 +4614,26 @@ html, body {
 	transition: all var(--transition-fast);
 }
 
-.ex-chip-btn:hover {
+.ex-chip-btn:hover,
+.combo-chip-btn:hover,
+.catalog-chip-btn:hover {
 	background: rgba(255, 255, 255, 0.06);
 	color: var(--text-primary);
 	border-color: rgba(255, 255, 255, 0.14);
 }
 
-.ex-chip-btn.active {
+.ex-chip-btn.active,
+.combo-chip-btn.active,
+.catalog-chip-btn.active {
 	background: var(--accent);
 	color: #ffffff;
 	border-color: var(--accent);
 	box-shadow: 0 0 10px var(--accent-glow);
 }
 
-.exercises-cards-grid {
+.exercises-cards-grid,
+.combos-cards-grid,
+.catalog-cards-grid {
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
 	gap: 16px;
@@ -4863,101 +5026,7 @@ html, body {
 	border: 1px solid rgba(168, 85, 247, 0.2);
 }
 
-/* ── Combos & Flow Library Styles ────────────────────────────────────────── */
-
-#combos-view {
-	height: 100%;
-	overflow-y: auto;
-	padding: 24px 28px;
-	background: var(--bg-base);
-}
-
-.combos-catalog-container {
-	max-width: 1200px;
-	margin: 0 auto;
-	display: flex;
-	flex-direction: column;
-	gap: 20px;
-}
-
-.combos-catalog-header {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 16px;
-	flex-wrap: wrap;
-	padding-bottom: 12px;
-	border-bottom: 1px solid var(--border-subtle);
-}
-
-.combos-title {
-	font-size: 1.4rem;
-	font-weight: 800;
-	color: var(--text-primary);
-	margin: 0;
-}
-
-.combos-subtitle {
-	font-size: 0.85rem;
-	color: var(--text-muted);
-	margin: 4px 0 0 0;
-}
-
-.combos-filter-bar {
-	display: flex;
-	flex-direction: column;
-	gap: 12px;
-}
-
-.combo-search-input {
-	width: 100%;
-	padding-left: 36px;
-	border-radius: var(--radius-md);
-	background: var(--bg-surface);
-	border: 1px solid var(--border);
-	color: var(--text-primary);
-	font-size: 0.9rem;
-}
-
-.combo-filter-chips {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 8px;
-}
-
-.combo-chip-btn {
-	display: inline-flex;
-	align-items: center;
-	gap: 6px;
-	padding: 6px 14px;
-	border-radius: 20px;
-	font-size: 0.78rem;
-	font-weight: 500;
-	background: rgba(255, 255, 255, 0.02);
-	color: var(--text-secondary);
-	border: 1px solid rgba(255, 255, 255, 0.08);
-	cursor: pointer;
-	transition: all 0.15s ease;
-}
-
-.combo-chip-btn:hover {
-	background: rgba(255, 255, 255, 0.06);
-	color: var(--text-primary);
-	border-color: rgba(255, 255, 255, 0.14);
-}
-
-.combo-chip-btn.active {
-	background: var(--accent);
-	color: #ffffff;
-	border-color: var(--accent);
-	box-shadow: 0 0 10px var(--accent-glow);
-}
-
-.combos-cards-grid {
-	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-	gap: 16px;
-}
+/* ── Combos & Flow Card Styles ───────────────────────────────────────────── */
 
 .combo-library-card {
 	display: flex;

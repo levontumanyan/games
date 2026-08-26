@@ -10,69 +10,86 @@
 <body>
 	<div class="app-container">
 
-		<!-- ── Sidebar ────────────────────────────────────────────────── -->
-		<aside class="sidebar" id="app-sidebar">
-			<div class="sidebar-header">
-				<div class="sidebar-brand-row">
-					<button id="user-profile-btn" class="btn-profile-compact" title="Switch or create profile">
-						<span class="user-avatar-pill">👤</span>
-						<span id="user-profile-name" class="user-name">Levon</span>
-						<span class="user-dropdown-caret">▾</span>
-					</button>
-					<button id="sidebar-toggle-btn" class="btn btn-ghost btn-xs btn-sidebar-toggle" title="Hide Sidebar (reclaim space)" aria-label="Hide Sidebar">
-						<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><path d="M9 3v18"/><path d="m14 9-3 3 3 3"/></svg>
-					</button>
+		<!-- ── Top Navigation Bar ──────────────────────────────────────── -->
+		<header class="app-topbar" id="app-topbar">
+			<div class="topbar-left">
+				<div class="topbar-brand">
+					<span class="topbar-logo">💪</span>
+					<span class="topbar-title">Workout Player</span>
 				</div>
 
-				<!-- Sidebar Navigation Tabs -->
-				<div class="sidebar-nav-tabs">
-					<button id="tab-routines-btn" class="sidebar-tab active" title="Workouts">
-						<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+				<!-- Top Navigation Tabs (Desktop / Tablet) -->
+				<nav class="topbar-nav" id="topbar-nav" aria-label="Main Navigation">
+					<button id="tab-routines-btn" class="topbar-tab active" title="Workouts">
+						<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
 						<span>Workouts</span>
 					</button>
-					<button id="tab-combos-btn" class="sidebar-tab" title="Combos">
-						<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+					<button id="tab-combos-btn" class="topbar-tab" title="Combos">
+						<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
 						<span>Combos</span>
 					</button>
-					<button id="tab-exercises-btn" class="sidebar-tab" title="Exercises">
-						<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6.5 6.5 11 11"/><path d="m21 21-1-1a5 5 0 0 0-7.07 0l-.93.93a5 5 0 0 1-7.07 0l-1.86-1.86a5 5 0 0 1 0-7.07l.93-.93a5 5 0 0 0 0-7.07l-1-1"/><path d="m3 3 1 1a5 5 0 0 0 7.07 0l.93-.93a5 5 0 0 1 7.07 0l1.86 1.86a5 5 0 0 1 0 7.07l-.93.93a5 5 0 0 0 0 7.07l1 1"/></svg>
+					<button id="tab-exercises-btn" class="topbar-tab" title="Exercises">
+						<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6.5 6.5 11 11"/><path d="m21 21-1-1a5 5 0 0 0-7.07 0l-.93.93a5 5 0 0 1-7.07 0l-1.86-1.86a5 5 0 0 1 0-7.07l.93-.93a5 5 0 0 0 0-7.07l-1-1"/><path d="m3 3 1 1a5 5 0 0 0 7.07 0l.93-.93a5 5 0 0 1 7.07 0l1.86 1.86a5 5 0 0 1 0 7.07l-.93.93a5 5 0 0 0 0 7.07l1 1"/></svg>
 						<span>Exercises</span>
 					</button>
-					<button id="tab-anatomy-btn" class="sidebar-tab" title="Anatomy">
-						<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a4 4 0 0 0-4 4c0 1.5.8 2.8 2 3.5V14l-3 4v4h2v-3.5l2-3.5 2 3.5V22h2v-4l-3-4V9.5c1.2-.7 2-2 2-3.5a4 4 0 0 0-4-4Z"/><path d="M8 8H5a2 2 0 0 0-2 2v2"/><path d="M16 8h3a2 2 0 0 1 2 2v2"/></svg>
+					<button id="tab-anatomy-btn" class="topbar-tab" title="Anatomy">
+						<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a4 4 0 0 0-4 4c0 1.5.8 2.8 2 3.5V14l-3 4v4h2v-3.5l2-3.5 2 3.5V22h2v-4l-3-4V9.5c1.2-.7 2-2 2-3.5a4 4 0 0 0-4-4Z"/><path d="M8 8H5a2 2 0 0 0-2 2v2"/><path d="M16 8h3a2 2 0 0 1 2 2v2"/></svg>
 						<span>Anatomy</span>
 					</button>
-					<button id="tab-stats-btn" class="sidebar-tab" title="Stats">
-						<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+					<button id="tab-stats-btn" class="topbar-tab" title="Stats">
+						<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
 						<span>Stats</span>
 					</button>
-				</div>
+				</nav>
 			</div>
 
-			<div class="sidebar-actions">
-				<button id="add-workout-btn" class="btn btn-primary btn-sm">+ Add Workout</button>
-			</div>
-
-			<div class="routine-list-container">
-				<ul id="routine-list"></ul>
-			</div>
-
-			<div class="sidebar-footer">
-				<div class="sidebar-footer-buttons">
-					<button id="export-btn" class="btn btn-ghost btn-sm">📤 Export</button>
-					<button id="import-btn" class="btn btn-ghost btn-sm">📥 Import</button>
-				</div>
+			<div class="topbar-right">
 				<div id="sync-status" class="sync-status" title="Server Sync Status">☁️ Synced</div>
+				<button id="user-profile-btn" class="btn-profile-compact" title="Switch or create profile">
+					<span class="user-avatar-pill">👤</span>
+					<span id="user-profile-name" class="user-name">Levon</span>
+					<span class="user-dropdown-caret">▾</span>
+				</button>
 			</div>
-		</aside>
+		</header>
 
-		<!-- ── Main Content ──────────────────────────────────────────── -->
-		<main class="main-content">
+		<!-- ── App Body Area ───────────────────────────────────────────── -->
+		<div class="app-body">
 
-			<!-- Sidebar Expand / Show Button (displayed when sidebar is hidden) -->
-			<button id="sidebar-expand-btn" class="sidebar-expand-btn hidden" title="Show Sidebar" aria-label="Show Sidebar">
-				<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><path d="M9 3v18"/><path d="m12 9 3 3-3 3"/></svg>
-			</button>
+			<!-- ── Dedicated Workouts Sidebar ──────────────────────────── -->
+			<aside class="sidebar" id="app-sidebar">
+				<div class="sidebar-header">
+					<div class="sidebar-brand-row">
+						<span class="sidebar-title-badge">My Routines</span>
+						<button id="sidebar-toggle-btn" class="btn btn-ghost btn-xs btn-sidebar-toggle" title="Hide Sidebar (reclaim space)" aria-label="Hide Sidebar">
+							<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><path d="M9 3v18"/><path d="m14 9-3 3 3 3"/></svg>
+						</button>
+					</div>
+				</div>
+
+				<div class="sidebar-actions">
+					<button id="add-workout-btn" class="btn btn-primary btn-sm">+ Add Workout</button>
+				</div>
+
+				<div class="routine-list-container">
+					<ul id="routine-list"></ul>
+				</div>
+
+				<div class="sidebar-footer">
+					<div class="sidebar-footer-buttons">
+						<button id="export-btn" class="btn btn-ghost btn-sm">📤 Export</button>
+						<button id="import-btn" class="btn btn-ghost btn-sm">📥 Import</button>
+					</div>
+				</div>
+			</aside>
+
+			<!-- ── Main Content ──────────────────────────────────────────── -->
+			<main class="main-content">
+
+				<!-- Sidebar Expand / Show Button (displayed when sidebar is hidden on Workouts tab) -->
+				<button id="sidebar-expand-btn" class="sidebar-expand-btn hidden" title="Show Sidebar" aria-label="Show Sidebar">
+					<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><path d="M9 3v18"/><path d="m12 9 3 3-3 3"/></svg>
+				</button>
 
 			<!-- ── Combos & Flows Library Catalog View ───────────────── -->
 			<div id="combos-view" class="hidden"></div>
@@ -260,6 +277,7 @@
 			</div>
 
 		</main>
+		</div> <!-- .app-body -->
 
 		<!-- ── Mobile Bottom Navigation Bar ──────────────────────────── -->
 		<nav class="mobile-bottom-nav" id="mobile-bottom-nav" aria-label="Mobile Navigation">

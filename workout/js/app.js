@@ -359,6 +359,20 @@ function switchTab(tab) {
 	if (dom.mTabAnatomyBtn) dom.mTabAnatomyBtn.classList.toggle('active', tab === 'anatomy');
 	if (dom.mTabStatsBtn) dom.mTabStatsBtn.classList.toggle('active', tab === 'stats');
 
+	// Manage sidebar visibility for routines tab vs full-width catalogs
+	const isRoutines = tab === 'routines';
+	if (dom.appContainer) {
+		dom.appContainer.classList.toggle('non-routines-tab', !isRoutines);
+	}
+	if (dom.sidebarExpandBtn) {
+		if (!isRoutines) {
+			dom.sidebarExpandBtn.classList.add('hidden');
+		} else {
+			const isManuallyHidden = dom.appContainer && dom.appContainer.classList.contains('sidebar-hidden');
+			dom.sidebarExpandBtn.classList.toggle('hidden', !isManuallyHidden);
+		}
+	}
+
 	if (dom.routineView) dom.routineView.classList.add('hidden');
 	if (dom.editorView) dom.editorView.classList.add('hidden');
 	if (dom.emptyView) dom.emptyView.classList.add('hidden');
