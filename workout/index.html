@@ -40,6 +40,11 @@
 
 			<div class="topbar-right">
 				<div id="sync-status" class="sync-status hidden" title="Server Sync Status"></div>
+				<button id="theme-switcher-btn" class="btn-theme-switcher" title="Switch Theme & Palette" aria-label="Switch Theme">
+					<span id="active-theme-icon" class="theme-avatar-pill">🍵</span>
+					<span id="active-theme-name" class="theme-name">Matcha</span>
+					<span class="user-dropdown-caret">▾</span>
+				</button>
 				<button id="user-profile-btn" class="btn-profile-compact" title="Switch or create profile">
 					<span class="user-avatar-pill">👤</span>
 					<span id="user-profile-name" class="user-name">Levon</span>
@@ -390,6 +395,51 @@
 		</div>
 	</div>
 
-	<script type="module" src="js/app.js?v=20"></script>
+	<!-- Theme Switcher Modal (Concept 4 Visual Preview Cards) -->
+	<div id="theme-modal-backdrop" class="modal-backdrop hidden">
+		<div class="modal-window theme-modal-window">
+			<div class="modal-header theme-modal-header">
+				<div class="theme-modal-header-left">
+					<span class="theme-modal-emoji">🎨</span>
+					<div>
+						<h3 class="modal-title">Color Themes & Zen Palettes</h3>
+						<p class="theme-modal-subtitle">Select a calming theme for day or evening training sessions</p>
+					</div>
+				</div>
+				<button id="theme-modal-close-btn" class="modal-close-btn" title="Close">✕</button>
+			</div>
+			<div class="modal-body theme-modal-body">
+				<div class="theme-split-columns">
+					<!-- Dark Zen Section -->
+					<div class="theme-group-section">
+						<div class="theme-group-header">
+							<span>🌙 Dark Zen Moods</span>
+							<span class="theme-group-tag">4 Themes</span>
+						</div>
+						<div id="theme-dark-grid" class="theme-cards-grid"></div>
+					</div>
+
+					<!-- Light Zen Section -->
+					<div class="theme-group-section">
+						<div class="theme-group-header">
+							<span>☀️ Daylight & Washi Zen</span>
+							<span class="theme-group-tag">4 Themes</span>
+						</div>
+						<div id="theme-light-grid" class="theme-cards-grid"></div>
+					</div>
+				</div>
+
+				<!-- Baseline Section -->
+				<div class="theme-group-section theme-group-baseline">
+					<div class="theme-group-header">
+						<span>⚡ Legacy Baseline</span>
+					</div>
+					<div id="theme-baseline-grid" class="theme-cards-grid"></div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<script type="module" src="js/app.js?v=21"></script>
 </body>
 </html>

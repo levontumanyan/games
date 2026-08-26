@@ -8,9 +8,9 @@ import { escapeHtml, formatTime, parseYouTubeId } from './utils.js';
 import { showConfirm, showAlert } from './modal.js';
 
 export const FLOW_TYPES = {
-	alternating: { label: 'Alternating Cadence', icon: '⮀', color: '#06b6d4', bg: 'rgba(6, 182, 212, 0.15)' },
-	sequence: { label: 'Combination Flow', icon: '➔', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.15)' },
-	superset: { label: 'Burnout Superset', icon: '⚡', color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.15)' },
+	alternating: { label: 'Alternating Cadence', icon: '⮀', color: '#6aa3a9', bg: 'rgba(106, 163, 169, 0.14)' },
+	sequence: { label: 'Combination Flow', icon: '➔', color: '#cbb07a', bg: 'rgba(203, 176, 122, 0.14)' },
+	superset: { label: 'Burnout Superset', icon: '⚡', color: '#c77953', bg: 'rgba(199, 121, 83, 0.14)' },
 };
 
 let cachedCombos = [];

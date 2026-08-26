@@ -10,27 +10,27 @@ import { createBodyMap, MUSCLE_DEFINITIONS } from './body_map.js';
 export const MUSCLE_GROUPS = MUSCLE_DEFINITIONS;
 
 export const CATEGORIES = {
-	strength: { label: 'Strength / Force', icon: '💪', color: '#6366f1', bg: 'rgba(99, 102, 241, 0.15)' },
-	drill: { label: 'Drills & Speed', icon: '⚡', color: '#06b6d4', bg: 'rgba(6, 182, 212, 0.15)' },
-	technique: { label: 'Technique & Form', icon: '🥋', color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.15)' },
-	stretch: { label: 'Stretch & Recovery', icon: '🧘', color: '#10b981', bg: 'rgba(16, 185, 129, 0.15)' },
-	cardio: { label: 'Cardio & HIIT', icon: '🫀', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.15)' },
-	mobility: { label: 'Mobility & Joints', icon: '🔄', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.15)' },
+	strength: { label: 'Strength / Force', icon: '💪', color: '#5fa778', bg: 'rgba(95, 167, 120, 0.14)' },
+	drill: { label: 'Drills & Speed', icon: '⚡', color: '#6aa3a9', bg: 'rgba(106, 163, 169, 0.14)' },
+	technique: { label: 'Technique & Form', icon: '🥋', color: '#8195a2', bg: 'rgba(129, 149, 162, 0.14)' },
+	stretch: { label: 'Stretch & Recovery', icon: '🧘', color: '#78a88a', bg: 'rgba(120, 168, 138, 0.14)' },
+	cardio: { label: 'Cardio & HIIT', icon: '🫀', color: '#c46860', bg: 'rgba(196, 104, 96, 0.14)' },
+	mobility: { label: 'Mobility & Joints', icon: '🔄', color: '#cbb07a', bg: 'rgba(203, 176, 122, 0.14)' },
 };
 
 export const DISCIPLINES = {
-	muay_thai: { label: 'Muay Thai', icon: '🥊', color: '#f43f5e' },
-	boxing: { label: 'Boxing', icon: '🥊', color: '#ef4444' },
-	calisthenics: { label: 'Calisthenics', icon: '🤸', color: '#3b82f6' },
-	general: { label: 'General Fitness', icon: '🏋️', color: '#10b981' },
-	yoga: { label: 'Yoga & Recovery', icon: '🧘', color: '#8b5cf6' },
+	muay_thai: { label: 'Muay Thai', icon: '🥊', color: '#c46860' },
+	boxing: { label: 'Boxing', icon: '🥊', color: '#c77953' },
+	calisthenics: { label: 'Calisthenics', icon: '🤸', color: '#6aa3a9' },
+	general: { label: 'General Fitness', icon: '🏋️', color: '#5fa778' },
+	yoga: { label: 'Yoga & Recovery', icon: '🧘', color: '#78a88a' },
 };
 
 export const MEDIA_KINDS = {
-	instruction: { label: 'Instruction & Tutorial', icon: '🎬', color: '#38bdf8', bg: 'rgba(6, 182, 212, 0.15)' },
-	demonstration: { label: 'Exercise Execution', icon: '⚡', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.15)' },
-	animation: { label: 'Looping GIF / SVG', icon: '✨', color: '#a855f7', bg: 'rgba(168, 85, 247, 0.15)' },
-	photo: { label: 'Form Photo & Cue', icon: '📷', color: '#10b981', bg: 'rgba(16, 185, 129, 0.15)' },
+	instruction: { label: 'Instruction & Tutorial', icon: '🎬', color: '#6aa3a9', bg: 'rgba(106, 163, 169, 0.14)' },
+	demonstration: { label: 'Exercise Execution', icon: '⚡', color: '#cbb07a', bg: 'rgba(203, 176, 122, 0.14)' },
+	animation: { label: 'Looping GIF / SVG', icon: '✨', color: '#8195a2', bg: 'rgba(129, 149, 162, 0.14)' },
+	photo: { label: 'Form Photo & Cue', icon: '📷', color: '#78a88a', bg: 'rgba(120, 168, 138, 0.14)' },
 };
 
 let cachedExercises = [];

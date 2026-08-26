@@ -26,7 +26,7 @@ export const MUSCLE_DEFINITIONS = {
 		label: 'Chest (Pectorals)',
 		icon: '🫁',
 		region: 'upper',
-		color: '#f43f5e',
+		color: '#c46860',
 		paths: {
 			front: ['path-chest-left', 'path-chest-right'],
 			back: [],
@@ -37,7 +37,7 @@ export const MUSCLE_DEFINITIONS = {
 		label: 'Shoulders (Deltoids)',
 		icon: '🥋',
 		region: 'upper',
-		color: '#fb7185',
+		color: '#c77953',
 		paths: {
 			front: ['path-delt-front-left', 'path-delt-front-right'],
 			back: ['path-delt-back-left', 'path-delt-back-right'],
@@ -48,7 +48,7 @@ export const MUSCLE_DEFINITIONS = {
 		label: 'Biceps',
 		icon: '💪',
 		region: 'upper',
-		color: '#ec4899',
+		color: '#cbb07a',
 		paths: {
 			front: ['path-bicep-left', 'path-bicep-right'],
 			back: [],
@@ -59,7 +59,7 @@ export const MUSCLE_DEFINITIONS = {
 		label: 'Triceps',
 		icon: '🦾',
 		region: 'upper',
-		color: '#a855f7',
+		color: '#d19e5b',
 		paths: {
 			front: [],
 			back: ['path-tricep-left', 'path-tricep-right'],
@@ -70,7 +70,7 @@ export const MUSCLE_DEFINITIONS = {
 		label: 'Forearms & Wrists',
 		icon: '✊',
 		region: 'upper',
-		color: '#818cf8',
+		color: '#8195a2',
 		paths: {
 			front: ['path-forearm-front-left', 'path-forearm-front-right'],
 			back: ['path-forearm-back-left', 'path-forearm-back-right'],
@@ -81,7 +81,7 @@ export const MUSCLE_DEFINITIONS = {
 		label: 'Trapezius & Neck',
 		icon: '👔',
 		region: 'upper',
-		color: '#6366f1',
+		color: '#9e8b7d',
 		paths: {
 			front: [],
 			back: ['path-traps'],
@@ -92,7 +92,7 @@ export const MUSCLE_DEFINITIONS = {
 		label: 'Lats (Latissimus Dorsi)',
 		icon: '🛡️',
 		region: 'upper',
-		color: '#3b82f6',
+		color: '#6aa3a9',
 		paths: {
 			front: [],
 			back: ['path-lats-left', 'path-lats-right'],
@@ -103,7 +103,7 @@ export const MUSCLE_DEFINITIONS = {
 		label: 'Lower Back (Lumbar)',
 		icon: '🦴',
 		region: 'upper',
-		color: '#0ea5e9',
+		color: '#7e8db5',
 		paths: {
 			front: [],
 			back: ['path-lower-back'],
@@ -114,7 +114,7 @@ export const MUSCLE_DEFINITIONS = {
 		label: 'Abs (Six-Pack Core)',
 		icon: '🧱',
 		region: 'core',
-		color: '#06b6d4',
+		color: '#5fa778',
 		paths: {
 			front: ['path-abs-upper', 'path-abs-mid', 'path-abs-lower'],
 			back: [],
@@ -125,7 +125,7 @@ export const MUSCLE_DEFINITIONS = {
 		label: 'Obliques (Side Core)',
 		icon: '🌀',
 		region: 'core',
-		color: '#14b8a6',
+		color: '#6ca396',
 		paths: {
 			front: ['path-oblique-left', 'path-oblique-right'],
 			back: [],
@@ -136,7 +136,7 @@ export const MUSCLE_DEFINITIONS = {
 		label: 'Hip Flexors (Psoas)',
 		icon: '⚡',
 		region: 'core',
-		color: '#10b981',
+		color: '#78a88a',
 		paths: {
 			front: ['path-hip-flexor-left', 'path-hip-flexor-right'],
 			back: [],
@@ -147,7 +147,7 @@ export const MUSCLE_DEFINITIONS = {
 		label: 'Pelvic Floor (Deep Core)',
 		icon: '🪷',
 		region: 'core',
-		color: '#2dd4bf',
+		color: '#82967e',
 		paths: {
 			front: ['path-pelvic-front'],
 			back: ['path-pelvic-back'],
@@ -158,7 +158,7 @@ export const MUSCLE_DEFINITIONS = {
 		label: 'Groin & Adductors (Inner Thigh)',
 		icon: '🦵',
 		region: 'lower',
-		color: '#84cc16',
+		color: '#849c89',
 		paths: {
 			front: ['path-groin-left', 'path-groin-right'],
 			back: [],
@@ -169,7 +169,7 @@ export const MUSCLE_DEFINITIONS = {
 		label: 'Glutes & Hips',
 		icon: '🍑',
 		region: 'lower',
-		color: '#f59e0b',
+		color: '#b85d39',
 		paths: {
 			front: [],
 			back: ['path-glute-left', 'path-glute-right'],
@@ -180,7 +180,7 @@ export const MUSCLE_DEFINITIONS = {
 		label: 'Quads (Front Thigh)',
 		icon: '🍗',
 		region: 'lower',
-		color: '#eab308',
+		color: '#9e782f',
 		paths: {
 			front: ['path-quad-left', 'path-quad-right'],
 			back: [],
@@ -191,7 +191,7 @@ export const MUSCLE_DEFINITIONS = {
 		label: 'Hamstrings (Rear Thigh)',
 		icon: '🦵',
 		region: 'lower',
-		color: '#f97316',
+		color: '#a87232',
 		paths: {
 			front: [],
 			back: ['path-hamstring-left', 'path-hamstring-right'],
@@ -202,7 +202,7 @@ export const MUSCLE_DEFINITIONS = {
 		label: 'Calves & Shins',
 		icon: '🦶',
 		region: 'lower',
-		color: '#d946ef',
+		color: '#556b78',
 		paths: {
 			front: ['path-calf-front-left', 'path-calf-front-right'],
 			back: ['path-calf-back-left', 'path-calf-back-right'],

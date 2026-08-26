@@ -34,6 +34,7 @@ import { renderStatsDashboard } from './stats.js';
 import { loadExercises, renderExercisesCatalog } from './exercises.js';
 import { loadCombos, renderCombosCatalog } from './combos.js';
 import { renderAnatomyExplorer } from './body_map.js';
+import { initTheme } from './theme.js';
 
 let routines = [];
 let selectedRoutineId = null;
@@ -51,6 +52,7 @@ const dom = {};
  */
 async function init() {
 	cacheDom();
+	initTheme();
 	updateProfileButtonLabel();
 
 	// Fast initial render from localStorage cache
