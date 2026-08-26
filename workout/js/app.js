@@ -290,10 +290,13 @@ function setSyncStatus(state, message) {
 	if (!dom.syncStatus) return;
 	dom.syncStatus.className = `sync-status ${state}`;
 	if (state === 'syncing') {
+		dom.syncStatus.classList.remove('hidden');
 		dom.syncStatus.textContent = '🔄 ' + (message || 'Saving...');
 	} else if (state === 'synced') {
-		dom.syncStatus.textContent = '☁️ ' + (message || 'Synced');
+		dom.syncStatus.classList.add('hidden');
+		dom.syncStatus.textContent = '';
 	} else if (state === 'error') {
+		dom.syncStatus.classList.remove('hidden');
 		dom.syncStatus.textContent = '⚠️ ' + (message || 'Offline');
 	}
 }

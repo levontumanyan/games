@@ -97,10 +97,10 @@ html, body {
 	min-height: 52px;
 	background: var(--bg-secondary);
 	border-bottom: 1px solid var(--border);
-	display: flex;
+	display: grid;
+	grid-template-columns: 1fr auto 1fr;
 	align-items: center;
-	justify-content: space-between;
-	padding: 0 18px;
+	padding: 0 20px;
 	z-index: 30;
 	user-select: none;
 }
@@ -108,75 +108,78 @@ html, body {
 .topbar-left {
 	display: flex;
 	align-items: center;
-	gap: 22px;
-}
-
-.topbar-brand {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	font-weight: 800;
-	font-size: 1.05rem;
-}
-
-.topbar-logo {
-	font-size: 1.25rem;
-	line-height: 1;
-}
-
-.topbar-title {
-	font-size: 1.05rem;
-	font-weight: 800;
-	letter-spacing: -0.02em;
-	background: linear-gradient(135deg, #ffffff 0%, #c4c7db 100%);
-	-webkit-background-clip: text;
-	-webkit-text-fill-color: transparent;
-	margin: 0;
-	white-space: nowrap;
 }
 
 .topbar-nav {
+	grid-column: 2;
 	display: flex;
 	align-items: center;
-	gap: 5px;
+	gap: 4px;
+	height: 100%;
 }
 
 .topbar-tab {
 	background: transparent;
-	border: 1px solid transparent;
+	border: none;
 	color: var(--text-muted);
-	padding: 6px 13px;
-	border-radius: var(--radius-sm);
-	font-size: 0.82rem;
+	padding: 0 16px;
+	height: 52px;
+	font-size: 0.84rem;
 	font-weight: 600;
 	cursor: pointer;
 	display: inline-flex;
 	align-items: center;
 	gap: 7px;
-	transition: all var(--transition-fast);
+	transition: color var(--transition-fast), background var(--transition-fast);
 	white-space: nowrap;
+	position: relative;
 }
 
 .topbar-tab svg {
 	flex-shrink: 0;
+	opacity: 0.7;
+	transition: opacity var(--transition-fast), stroke var(--transition-fast);
 }
 
 .topbar-tab:hover {
-	background: var(--bg-hover);
+	background: transparent;
 	color: var(--text-primary);
 }
 
+.topbar-tab:hover svg {
+	opacity: 1;
+}
+
 .topbar-tab.active {
-	background: var(--accent-subtle);
-	color: #a5b4fc;
-	border-color: rgba(99, 102, 241, 0.4);
-	box-shadow: 0 2px 10px rgba(99, 102, 241, 0.15);
+	background: transparent;
+	color: #ffffff;
+	border: none;
+	box-shadow: none;
+}
+
+.topbar-tab.active svg {
+	opacity: 1;
+	stroke: #a5b4fc;
+}
+
+.topbar-tab.active::after {
+	content: '';
+	position: absolute;
+	bottom: 0;
+	left: 12px;
+	right: 12px;
+	height: 2px;
+	background: var(--accent);
+	box-shadow: 0 0 10px var(--accent);
+	border-radius: 2px;
 }
 
 .topbar-right {
+	grid-column: 3;
 	display: flex;
 	align-items: center;
-	gap: 14px;
+	justify-content: flex-end;
+	gap: 12px;
 }
 
 /* ── App Body Area (Sidebar + Main) ─────────────────────────────────────── */
@@ -438,22 +441,24 @@ html, body {
 	font-size: 0.75rem;
 	font-weight: 600;
 	color: var(--text-muted);
-	display: flex;
+	display: none;
 	align-items: center;
 	gap: 6px;
 	user-select: none;
-	transition: color var(--transition);
+	transition: all var(--transition);
 }
 
 .sync-status.syncing {
+	display: inline-flex;
 	color: var(--warning);
 }
 
 .sync-status.synced {
-	color: var(--success);
+	display: none;
 }
 
 .sync-status.error {
+	display: inline-flex;
 	color: var(--danger);
 }
 
