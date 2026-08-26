@@ -174,31 +174,37 @@ export function inferMusclesForExercise(ex) {
 	const desc = (ex.description || '').toLowerCase();
 	const combined = `${name} ${desc}`;
 
+	if (combined.includes('pelvic') || combined.includes('kegel') || combined.includes('perineal') || combined.includes('diaphragm')) {
+		return { primary: ['pelvic_floor', 'abs'], secondary: ['glutes', 'lower_back', 'groin'] };
+	}
+	if (combined.includes('bridge')) {
+		return { primary: ['glutes', 'pelvic_floor'], secondary: ['hamstrings', 'abs', 'groin'] };
+	}
 	if (combined.includes('pushup') || combined.includes('push-up') || combined.includes('press')) {
 		return { primary: ['chest', 'triceps'], secondary: ['shoulders', 'abs', 'forearms'] };
 	}
 	if (combined.includes('jump') || combined.includes('squat') || combined.includes('lunge')) {
-		return { primary: ['quads', 'calves', 'groin'], secondary: ['glutes', 'abs'] };
+		return { primary: ['quads', 'calves', 'groin'], secondary: ['glutes', 'abs', 'pelvic_floor'] };
 	}
 	if (combined.includes('knee') || combined.includes('kick')) {
-		return { primary: ['hip_flexors', 'abs', 'quads'], secondary: ['glutes', 'calves', 'groin'] };
+		return { primary: ['hip_flexors', 'abs', 'quads'], secondary: ['glutes', 'calves', 'groin', 'pelvic_floor'] };
 	}
 	if (combined.includes('jab') || combined.includes('cross') || combined.includes('punch') || combined.includes('elbow')) {
 		return { primary: ['shoulders', 'obliques'], secondary: ['triceps', 'forearms', 'calves'] };
 	}
-	if (combined.includes('plank') || combined.includes('climber') || combined.includes('tap')) {
-		return { primary: ['abs', 'obliques', 'shoulders'], secondary: ['chest', 'triceps', 'forearms'] };
+	if (combined.includes('plank') || combined.includes('climber') || combined.includes('tap') || combined.includes('bird-dog')) {
+		return { primary: ['abs', 'obliques', 'shoulders'], secondary: ['chest', 'triceps', 'forearms', 'pelvic_floor'] };
 	}
 	if (combined.includes('cobra') || combined.includes('child') || combined.includes('pose') || combined.includes('stretch')) {
-		return { primary: ['abs', 'hip_flexors', 'lower_back'], secondary: ['groin', 'shoulders', 'lats'] };
+		return { primary: ['abs', 'hip_flexors', 'lower_back'], secondary: ['groin', 'shoulders', 'lats', 'pelvic_floor'] };
 	}
 	if (combined.includes('pigeon')) {
-		return { primary: ['glutes', 'groin', 'hip_flexors'], secondary: ['hamstrings', 'lower_back'] };
+		return { primary: ['glutes', 'groin', 'hip_flexors'], secondary: ['hamstrings', 'lower_back', 'pelvic_floor'] };
 	}
 	if (combined.includes('fold') || combined.includes('hamstring')) {
 		return { primary: ['hamstrings', 'lower_back'], secondary: ['calves', 'groin'] };
 	}
-	return { primary: ['abs'], secondary: ['shoulders', 'core'] };
+	return { primary: ['abs'], secondary: ['shoulders', 'pelvic_floor'] };
 }
 
 /**
@@ -1018,6 +1024,9 @@ function getDefaultFallbackExercises() {
 		{ id: 'ex-overhead-tricep-stretch', name: 'Overhead Tricep & Shoulder Stretch', category: 'stretch', discipline: 'general', default_mode: 'time', default_quantity: 30, media_url: '/workout/media/overhead-tricep-stretch.jpg', primary_muscles: ['triceps', 'shoulders'], secondary_muscles: ['back'] },
 		{ id: 'ex-pigeon-pose', name: 'Pigeon Pose Hip Opener', category: 'stretch', discipline: 'yoga', default_mode: 'time', default_quantity: 45, media_url: '/workout/media/pigeon-pose.jpg', primary_muscles: ['glutes'], secondary_muscles: ['hamstrings', 'back'] },
 		{ id: 'ex-seated-hamstring-fold', name: 'Seated Forward Hamstring Fold', category: 'stretch', discipline: 'yoga', default_mode: 'time', default_quantity: 45, media_url: '/workout/media/seated-hamstring-fold.jpg', primary_muscles: ['hamstrings'], secondary_muscles: ['back', 'calves'] },
-		{ id: 'ex-childs-pose', name: 'Extended Child’s Pose Spine & Lat Stretch', category: 'stretch', discipline: 'yoga', default_mode: 'time', default_quantity: 60, media_url: '/workout/media/childs-pose.jpg', primary_muscles: ['back', 'shoulders'], secondary_muscles: ['glutes'] },
+		{ id: 'ex-glute-bridge-pelvic', name: 'Glute Bridge & Pelvic Squeeze', category: 'strength', discipline: 'general', default_mode: 'time', default_quantity: 45, media_url: '/workout/media/pigeon-pose.svg', primary_muscles: ['glutes', 'pelvic_floor'], secondary_muscles: ['hamstrings', 'abs'] },
+		{ id: 'ex-diaphragmatic-pelvic', name: 'Diaphragmatic Breathing & Pelvic Reset', category: 'stretch', discipline: 'yoga', default_mode: 'time', default_quantity: 60, media_url: '/workout/media/childs-pose.jpg', primary_muscles: ['pelvic_floor', 'abs'], secondary_muscles: ['lower_back'] },
+		{ id: 'ex-deep-squat-pelvic', name: 'Deep Squat to Pelvic Ascent', category: 'strength', discipline: 'general', default_mode: 'reps', default_quantity: 15, media_url: '/workout/media/pushups.svg', primary_muscles: ['quads', 'glutes', 'pelvic_floor'], secondary_muscles: ['groin', 'calves'] },
+		{ id: 'ex-childs-pose', name: 'Extended Child’s Pose Spine & Lat Stretch', category: 'stretch', discipline: 'yoga', default_mode: 'time', default_quantity: 60, media_url: '/workout/media/childs-pose.jpg', primary_muscles: ['back', 'shoulders'], secondary_muscles: ['glutes', 'pelvic_floor'] },
 	];
 }

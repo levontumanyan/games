@@ -142,6 +142,17 @@ export const MUSCLE_DEFINITIONS = {
 			back: [],
 		},
 	},
+	pelvic_floor: {
+		id: 'pelvic_floor',
+		label: 'Pelvic Floor (Deep Core)',
+		icon: '🪷',
+		region: 'core',
+		color: '#2dd4bf',
+		paths: {
+			front: ['path-pelvic-front'],
+			back: ['path-pelvic-back'],
+		},
+	},
 	groin: {
 		id: 'groin',
 		label: 'Groin & Adductors (Inner Thigh)',
@@ -247,6 +258,9 @@ function getFrontBodySvg() {
 			<path id="path-hip-flexor-left" data-muscle="hip_flexors" class="muscle-group-path" d="M 87 140 C 81 146 76 156 75 166 L 86 162 C 90 154 90 144 87 140 Z" />
 			<path id="path-hip-flexor-right" data-muscle="hip_flexors" class="muscle-group-path" d="M 113 140 C 119 146 124 156 125 166 L 114 162 C 110 154 110 144 113 140 Z" />
 
+			<!-- Pelvic Floor (Anterior Sub-Pubic Basin) -->
+			<path id="path-pelvic-front" data-muscle="pelvic_floor" class="muscle-group-path" d="M 91 140 L 109 140 C 108 152 105 167 100 172 C 95 167 92 152 91 140 Z" />
+
 			<!-- Groin & Adductors (Inner Thigh) -->
 			<path id="path-groin-left" data-muscle="groin" class="muscle-group-path" d="M 92 175 C 93 195 91 220 89 240 L 96 210 C 95 195 94 180 92 175 Z" />
 			<path id="path-groin-right" data-muscle="groin" class="muscle-group-path" d="M 108 175 C 107 195 109 220 111 240 L 104 210 C 105 195 106 180 108 175 Z" />
@@ -307,6 +321,9 @@ function getBackBodySvg() {
 			<!-- Glutes & Hips -->
 			<path id="path-glute-left" data-muscle="glutes" class="muscle-group-path" d="M 76 146 C 70 165 72 188 85 194 C 95 195 97 175 97 148 Z" />
 			<path id="path-glute-right" data-muscle="glutes" class="muscle-group-path" d="M 124 146 C 130 165 128 188 115 194 C 105 195 103 175 103 148 Z" />
+
+			<!-- Pelvic Floor (Posterior Coccygeal / Perineal Basin) -->
+			<path id="path-pelvic-back" data-muscle="pelvic_floor" class="muscle-group-path" d="M 96 172 C 98 166 102 166 104 172 C 105 186 103 198 100 206 C 97 198 95 186 96 172 Z" />
 
 			<!-- Hamstrings -->
 			<path id="path-hamstring-left" data-muscle="hamstrings" class="muscle-group-path" d="M 76 200 C 70 225 72 255 76 268 C 84 268 92 245 94 204 Z" />
