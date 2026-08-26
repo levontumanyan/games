@@ -331,8 +331,9 @@ function createViewStepCard(step, index, steps, actions) {
 		return card;
 	}
 
+	const isCombo = Boolean((step.exercises && step.exercises.length >= 2) || step.flow_type);
 	const card = document.createElement('div');
-	card.className = `view-step-card view-step-${step.type}`;
+	card.className = `view-step-card view-step-${step.type}` + (isCombo ? ' view-step-combo-card' : '');
 	card.title = `Click to test this step in Preview Mode (Stats Disabled)`;
 
 	// Step index badge
@@ -425,7 +426,7 @@ function createViewStepCard(step, index, steps, actions) {
 	} else if (isReps) {
 		const repsTag = document.createElement('span');
 		repsTag.className = 'view-tag view-tag-reps';
-		repsTag.innerHTML = `🔢 ${step.targetReps || 20} Reps`;
+		repsTag.innerHTML = `🔢 ${step.targetReps || 20} Reps Total`;
 		tagsRow.appendChild(repsTag);
 
 		if (mediaUrl) {
@@ -502,23 +503,34 @@ function createViewStepCard(step, index, steps, actions) {
 
 	details.append(title, tagsRow);
 
-	// Option 2: If this is a compound combo step with 2+ constituent movements, render the nested sequence deck
+	// If this is a compound combo step with 2+ constituent movements, render the nested sequence deck
 	if (step.exercises && step.exercises.length >= 2) {
 		const nestedDeck = document.createElement('div');
 		nestedDeck.className = 'view-compound-nested-deck';
 		step.exercises.forEach((ex, sIdx) => {
 			const subRow = document.createElement('div');
 			subRow.className = 'view-compound-sub-row';
-			const exModeStr = (ex.default_mode || 'reps') === 'reps'
-				? `${ex.default_quantity || 10} Reps`
-				: formatTime(ex.default_quantity || 30);
+			const isSubReps = ex.stepMode === 'reps' || ex.default_mode === 'reps' || Boolean(ex.targetReps) || (!ex.durationSeconds && step.stepMode === 'reps');
+			const subReps = ex.targetReps || ex.reps || (ex.default_mode === 'reps' ? ex.default_quantity : 10);
+			const subDur = ex.durationSeconds || (ex.default_mode === 'time' ? ex.default_quantity : 30);
+			const exTargetStr = isSubReps ? `${subReps} reps` : formatFriendlyDuration(subDur);
+
+			const linkedSubEx = (ex.id ? getExerciseById(ex.id) : null) || ex;
+			const subMuscles = inferMusclesForExercise(linkedSubEx);
+			const priSubM = (subMuscles.primary || [])[0];
+			const priDef = priSubM ? MUSCLE_DEFINITIONS[priSubM] : null;
+			const muscleHtml = priDef ? `<span class="sub-row-muscle" style="color:${priDef.color}">${priDef.icon} ${priDef.label}</span>` : '';
+
 			subRow.innerHTML = `
 				<span class="sub-row-name">
 					<span class="sub-row-num">${sIdx + 1}.</span>
 					${getCategoryBadgeHtml(ex.category)}
 					<span class="sub-row-title">${escapeHtml(ex.name)}</span>
 				</span>
-				<span class="sub-row-target">${exModeStr}</span>
+				<span class="sub-row-meta">
+					${muscleHtml}
+					<span class="sub-row-target">${exTargetStr}</span>
+				</span>
 			`;
 			nestedDeck.appendChild(subRow);
 		});

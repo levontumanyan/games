@@ -6356,3 +6356,47 @@ html, body {
 	white-space: nowrap;
 	flex-shrink: 0;
 }
+
+.sub-row-meta {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-shrink: 0;
+}
+
+.sub-row-muscle {
+	font-size: 0.72rem;
+	font-weight: 600;
+	background: rgba(255, 255, 255, 0.05);
+	padding: 2px 6px;
+	border-radius: 6px;
+	display: inline-flex;
+	align-items: center;
+	gap: 3px;
+}
+
+.view-step-combo-card {
+	border-left: 4px solid #8b5cf6 !important;
+	background: linear-gradient(135deg, rgba(139, 92, 246, 0.04) 0%, var(--bg-card) 100%);
+}
+
+.view-step-combo-card:hover {
+	border-left-color: #a78bfa !important;
+	background: linear-gradient(135deg, rgba(139, 92, 246, 0.08) 0%, var(--bg-card-elevated) 100%);
+}
+
+.player-hud-substep-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	background: rgba(139, 92, 246, 0.2);
+	border: 1px solid rgba(139, 92, 246, 0.4);
+	color: #c4b5fd;
+	padding: 2px 8px;
+	border-radius: 12px;
+	font-size: 0.76rem;
+	font-weight: 700;
+	letter-spacing: 0.2px;
+	margin-right: 6px;
+}
+

@@ -34,6 +34,7 @@ let playerCallbacks = {};
 // Playback state
 let currentRoutine = null;
 let currentStepIndex = -1;
+let currentSubStepIndex = 0;
 let isPlaying = false;
 let isPaused = false;
 let isPreviewMode = false;
@@ -446,12 +447,30 @@ export function startRoutine(routine, startIndex = 0, isPreview = false) {
 }
 
 /**
- * Complete the current Reps set and advance to next step.
+ * Complete the current Reps set and advance to next step or sub-step.
  */
 export function completeRepsStep() {
 	if (!isPlaying || !isRepsMode) return;
 	playCountdownBeep(1);
 	clearRepsTimer();
+	advanceStepOrSubStep();
+}
+
+/**
+ * Advance to next sub-step within a combo or next step in routine.
+ */
+function advanceStepOrSubStep() {
+	if (!currentRoutine) return;
+	const currentStep = currentRoutine.steps[currentStepIndex];
+	const hasSubSteps = currentStep && !isBreakStep(currentStep) && Array.isArray(currentStep.exercises) && currentStep.exercises.length > 1;
+
+	if (hasSubSteps && currentSubStepIndex < currentStep.exercises.length - 1) {
+		currentSubStepIndex++;
+		executeCurrentStep();
+		return;
+	}
+
+	currentSubStepIndex = 0;
 	advanceStep();
 }
 
@@ -551,21 +570,41 @@ function executeTimerStep(step) {
 	dom.timerOverlay.classList.remove('hidden');
 
 	const isBreak = isBreakStep(step);
-	const isReps = !isBreak && (step.stepMode === 'reps' || (Boolean(step.targetReps) && Number(step.targetReps) > 0));
-	isRepsMode = isReps;
+	const hasSubSteps = !isBreak && Array.isArray(step.exercises) && step.exercises.length > 1;
+	const totalSubSteps = hasSubSteps ? step.exercises.length : 1;
+	if (hasSubSteps) {
+		if (currentSubStepIndex < 0) currentSubStepIndex = 0;
+		if (currentSubStepIndex >= totalSubSteps) currentSubStepIndex = 0;
+	} else {
+		currentSubStepIndex = 0;
+	}
+
+	const activeSubEx = hasSubSteps ? step.exercises[currentSubStepIndex] : null;
+	const resolvedSubEx = activeSubEx ? ((activeSubEx.id ? getExerciseById(activeSubEx.id) : null) || activeSubEx) : null;
+
+	const isSubReps = hasSubSteps
+		? (activeSubEx.stepMode === 'reps' || activeSubEx.default_mode === 'reps' || (Boolean(activeSubEx.targetReps) && Number(activeSubEx.targetReps) > 0) || (!activeSubEx.durationSeconds && step.stepMode === 'reps'))
+		: (!isBreak && (step.stepMode === 'reps' || (Boolean(step.targetReps) && Number(step.targetReps) > 0)));
+	isRepsMode = isSubReps;
 
 	dom.timerOverlay.classList.toggle('is-break', isBreak);
-	dom.timerOverlay.classList.toggle('is-reps-stage', isReps);
+	dom.timerOverlay.classList.toggle('is-reps-stage', isSubReps);
 
 	// Handle media/gif animation display (Hero Layout)
-	const mediaUrl = resolveStepMediaUrl(step);
+	let mediaUrl = null;
+	if (hasSubSteps && activeSubEx) {
+		mediaUrl = activeSubEx.media_url || activeSubEx.mediaUrl || activeSubEx.gifUrl || resolveStepMediaUrl({ label: activeSubEx.name, type: 'timer' }) || resolveStepMediaUrl(step);
+	} else {
+		mediaUrl = resolveStepMediaUrl(step);
+	}
+
 	const mediaContainer = dom.timerMediaContainer || document.getElementById('timer-media-container');
 	const mediaImg = dom.timerMediaImg || document.getElementById('timer-media-img');
 	const contentEl = dom.timerOverlay?.querySelector('.timer-stage-content');
 	if (mediaUrl) {
 		if (mediaImg) {
 			mediaImg.src = mediaUrl;
-			mediaImg.alt = step.label || 'Exercise animation';
+			mediaImg.alt = (activeSubEx?.name || step.label) || 'Exercise animation';
 		}
 		if (mediaContainer) {
 			mediaContainer.classList.remove('hidden');
@@ -610,10 +649,12 @@ function executeTimerStep(step) {
 	const existingDoneBtn = dom.timerOverlay.querySelector('.reps-done-action-btn');
 	if (existingDoneBtn) existingDoneBtn.remove();
 
-	if (isReps) {
-		const targetReps = step.targetReps || 20;
+	if (isSubReps) {
+		const targetReps = hasSubSteps
+			? (activeSubEx.targetReps || (activeSubEx.default_mode === 'reps' ? activeSubEx.default_quantity : (step.targetReps || 20)))
+			: (step.targetReps || 20);
 		dom.timerDisplay.textContent = `${targetReps} REPS`;
-		dom.timerLabel.textContent = step.label || 'Complete Target Reps';
+		dom.timerLabel.textContent = hasSubSteps ? (activeSubEx.name || step.label) : (step.label || 'Complete Target Reps');
 
 		// Inject Hero Done Button in stage
 		const centerContainer = dom.timerOverlay.querySelector('.timer-center-text') || dom.timerOverlay.querySelector('.timer-ring-container');
@@ -630,18 +671,25 @@ function executeTimerStep(step) {
 			centerContainer.appendChild(doneBtn);
 		}
 
-		const linkedEx = (step.exercises && step.exercises[0]) || (step.exercise_id ? getExerciseById(step.exercise_id) : null);
-		const stepMuscles = inferMusclesForExercise(linkedEx || { name: step.label, description: step.description });
+		const linkedEx = resolvedSubEx || (step.exercises && step.exercises[0]) || (step.exercise_id ? getExerciseById(step.exercise_id) : null);
+		const stepMuscles = inferMusclesForExercise(linkedEx || { name: (activeSubEx?.name || step.label), description: step.description });
 		const priMuscle = (stepMuscles.primary || [])[0];
 		const priDef = priMuscle ? MUSCLE_DEFINITIONS[priMuscle] : null;
 		const muscleTagHtml = priDef ? ` <span class="player-hud-muscle-tag" style="color:${priDef.color}">${priDef.icon} ${priDef.label}</span>` : '';
 
-		dom.currentStepLabel.textContent = `${step.label || 'Exercise'} (${targetReps} reps)`;
-		if (step.exercises && step.exercises.length > 0) {
-			const joiner = step.flow_type === 'alternating' ? ' ⮀ ' : ' + ';
-			dom.currentStepType.innerHTML = `🔢 ` + step.exercises.map(e => e.name).join(joiner) + muscleTagHtml;
+		if (hasSubSteps) {
+			const flowIcon = step.flow_type === 'alternating' ? '⮀' : (step.flow_type === 'sequence' ? '➔' : '⚡');
+			const flowLabel = step.flow_type === 'alternating' ? 'Alternating' : (step.flow_type === 'sequence' ? 'Flow' : 'Superset');
+			dom.currentStepLabel.textContent = `${activeSubEx.name} (${step.label || 'Combo'})`;
+			dom.currentStepType.innerHTML = `<span class="player-hud-substep-badge">${flowIcon} ${flowLabel} · Move ${currentSubStepIndex + 1}/${totalSubSteps}</span> 🔢 ${targetReps} Reps${muscleTagHtml}`;
 		} else {
-			dom.currentStepType.innerHTML = `🔢 ${targetReps} Reps` + muscleTagHtml;
+			dom.currentStepLabel.textContent = `${step.label || 'Exercise'} (${targetReps} reps)`;
+			if (step.exercises && step.exercises.length > 0) {
+				const joiner = step.flow_type === 'alternating' ? ' ⮀ ' : ' + ';
+				dom.currentStepType.innerHTML = `🔢 ` + step.exercises.map(e => e.name).join(joiner) + muscleTagHtml;
+			} else {
+				dom.currentStepType.innerHTML = `🔢 ${targetReps} Reps` + muscleTagHtml;
+			}
 		}
 
 		// Update progress ring to full
@@ -651,28 +699,39 @@ function executeTimerStep(step) {
 			startRepsStopwatch();
 		}
 	} else {
-		const linkedEx = (step.exercises && step.exercises[0]) || (step.exercise_id ? getExerciseById(step.exercise_id) : null);
-		const stepMuscles = inferMusclesForExercise(linkedEx || { name: step.label, description: step.description });
+		const targetDuration = hasSubSteps
+			? (activeSubEx.durationSeconds || (activeSubEx.default_mode === 'time' ? activeSubEx.default_quantity : (step.durationSeconds || 30)))
+			: (step.durationSeconds || 30);
+		const linkedEx = resolvedSubEx || (step.exercises && step.exercises[0]) || (step.exercise_id ? getExerciseById(step.exercise_id) : null);
+		const stepMuscles = inferMusclesForExercise(linkedEx || { name: (activeSubEx?.name || step.label), description: step.description });
 		const priMuscle = (stepMuscles.primary || [])[0];
 		const priDef = (!isBreak && priMuscle) ? MUSCLE_DEFINITIONS[priMuscle] : null;
 		const muscleTagHtml = priDef ? ` <span class="player-hud-muscle-tag" style="color:${priDef.color}">${priDef.icon} ${priDef.label}</span>` : '';
 
-		timerRemaining = step.durationSeconds || 30;
-		dom.timerLabel.textContent = step.label || (isBreak ? 'Rest' : 'Timer');
+		timerRemaining = targetDuration;
+		dom.timerLabel.textContent = hasSubSteps ? (activeSubEx.name || step.label) : (step.label || (isBreak ? 'Rest' : 'Timer'));
 		dom.timerDisplay.textContent = formatTime(timerRemaining);
-		dom.currentStepLabel.textContent = step.label || (isBreak ? 'Rest' : 'Timer');
-		if (step.exercises && step.exercises.length > 0) {
-			const joiner = step.flow_type === 'alternating' ? ' ⮀ ' : ' + ';
-			dom.currentStepType.innerHTML = isBreak ? `${getBreakIcon(14)} Rest` : (getTimerIcon(14) + ' ' + step.exercises.map(e => e.name).join(joiner) + muscleTagHtml);
+
+		if (hasSubSteps) {
+			const flowIcon = step.flow_type === 'alternating' ? '⮀' : (step.flow_type === 'sequence' ? '➔' : '⚡');
+			const flowLabel = step.flow_type === 'alternating' ? 'Alternating' : (step.flow_type === 'sequence' ? 'Flow' : 'Superset');
+			dom.currentStepLabel.textContent = `${activeSubEx.name} (${step.label || 'Combo'})`;
+			dom.currentStepType.innerHTML = `<span class="player-hud-substep-badge">${flowIcon} ${flowLabel} · Move ${currentSubStepIndex + 1}/${totalSubSteps}</span> ${getTimerIcon(14)} ${formatTime(timerRemaining)}${muscleTagHtml}`;
 		} else {
-			dom.currentStepType.innerHTML = isBreak ? `${getBreakIcon(14)} Rest` : `${getTimerIcon(14)} Timer${muscleTagHtml}`;
+			dom.currentStepLabel.textContent = step.label || (isBreak ? 'Rest' : 'Timer');
+			if (step.exercises && step.exercises.length > 0) {
+				const joiner = step.flow_type === 'alternating' ? ' ⮀ ' : ' + ';
+				dom.currentStepType.innerHTML = isBreak ? `${getBreakIcon(14)} Rest` : (getTimerIcon(14) + ' ' + step.exercises.map(e => e.name).join(joiner) + muscleTagHtml);
+			} else {
+				dom.currentStepType.innerHTML = isBreak ? `${getBreakIcon(14)} Rest` : `${getTimerIcon(14)} Timer${muscleTagHtml}`;
+			}
 		}
 
 		// Update progress ring
-		updateTimerProgress(step.durationSeconds || 30, timerRemaining);
+		updateTimerProgress(targetDuration, timerRemaining);
 
 		if (!isPaused) {
-			startTimer(step.durationSeconds || 30);
+			startTimer(targetDuration);
 		}
 	}
 
@@ -774,7 +833,7 @@ function startTimer(totalDuration) {
 
 		if (timerRemaining <= 0) {
 			clearTimer();
-			advanceStep();
+			advanceStepOrSubStep();
 		}
 	}, 100);
 }
@@ -809,6 +868,7 @@ function advanceStep() {
 	if (!currentRoutine) return;
 
 	currentStepIndex++;
+	currentSubStepIndex = 0;
 	if (currentStepIndex >= currentRoutine.steps.length) {
 		// Routine complete
 		const completedRoutine = currentRoutine;
@@ -831,20 +891,36 @@ function advanceStep() {
 }
 
 /**
- * Go to previous step.
+ * Go to previous step or sub-step.
  */
 export function previousStep() {
-	if (!currentRoutine || currentStepIndex <= 0) return;
+	if (!currentRoutine) return;
+	const currentStep = currentRoutine.steps[currentStepIndex];
+	const hasSubSteps = currentStep && !isBreakStep(currentStep) && Array.isArray(currentStep.exercises) && currentStep.exercises.length > 1;
+
+	if (hasSubSteps && currentSubStepIndex > 0) {
+		currentSubStepIndex--;
+		executeCurrentStep();
+		return;
+	}
+
+	if (currentStepIndex <= 0) return;
 	currentStepIndex--;
+	const prevStep = currentRoutine.steps[currentStepIndex];
+	if (prevStep && !isBreakStep(prevStep) && Array.isArray(prevStep.exercises) && prevStep.exercises.length > 1) {
+		currentSubStepIndex = prevStep.exercises.length - 1;
+	} else {
+		currentSubStepIndex = 0;
+	}
 	executeCurrentStep();
 }
 
 /**
- * Skip to next step.
+ * Skip to next step or sub-step.
  */
 export function skipStep() {
 	if (!currentRoutine) return;
-	advanceStep();
+	advanceStepOrSubStep();
 }
 
 /**
@@ -917,6 +993,7 @@ export function togglePause() {
 export function resetPlayback() {
 	if (!currentRoutine) return;
 	currentStepIndex = 0;
+	currentSubStepIndex = 0;
 	isPaused = false;
 	updatePlayPauseBtn(false);
 	executeCurrentStep();
@@ -939,6 +1016,7 @@ export function stopPlayback(isCompleted = false) {
 	isRepsMode = false;
 	clipHasStartedPlaying = false;
 	currentStepIndex = -1;
+	currentSubStepIndex = 0;
 
 	if (ytReady && ytPlayer) {
 		try { ytPlayer.stopVideo(); } catch {}
@@ -964,6 +1042,7 @@ export function stopPlayback(isCompleted = false) {
 export function jumpToStep(index) {
 	if (!currentRoutine || index < 0 || index >= currentRoutine.steps.length) return;
 	currentStepIndex = index;
+	currentSubStepIndex = 0;
 	isPaused = false;
 	updatePlayPauseBtn(false);
 	executeCurrentStep();
@@ -1035,18 +1114,30 @@ function updateStepIndicator() {
 		dom.stepTimeline.appendChild(indicator);
 	});
 
-	// Update step counter
+	// Update step counter with sub-step move indicator if applicable
 	if (dom.stepCounter) {
-		dom.stepCounter.textContent = `Step ${currentStepIndex + 1} / ${currentRoutine.steps.length}`;
+		const curStep = currentRoutine.steps[currentStepIndex];
+		const hasSubSteps = curStep && !isBreakStep(curStep) && Array.isArray(curStep.exercises) && curStep.exercises.length > 1;
+		const subSuffix = hasSubSteps ? ` · Move ${currentSubStepIndex + 1}/${curStep.exercises.length}` : '';
+		dom.stepCounter.textContent = `Step ${currentStepIndex + 1} / ${currentRoutine.steps.length}${subSuffix}`;
 	}
 
 	// Update next step preview
 	if (dom.nextStepPreview) {
-		const next = currentRoutine.steps[currentStepIndex + 1];
-		if (next) {
-			dom.nextStepPreview.textContent = `Next: ${next.label}`;
+		const curStep = currentRoutine.steps[currentStepIndex];
+		const hasSubSteps = curStep && !isBreakStep(curStep) && Array.isArray(curStep.exercises) && curStep.exercises.length > 1;
+		if (hasSubSteps && currentSubStepIndex < curStep.exercises.length - 1) {
+			const nextSub = curStep.exercises[currentSubStepIndex + 1];
+			const nextReps = nextSub.targetReps || (nextSub.default_mode === 'reps' ? nextSub.default_quantity : '');
+			const repsText = nextReps ? ` (${nextReps} ${nextSub.default_mode === 'time' ? 's' : 'reps'})` : '';
+			dom.nextStepPreview.textContent = `Next in ${curStep.flow_type || 'combo'}: ${nextSub.name}${repsText}`;
 		} else {
-			dom.nextStepPreview.textContent = 'Last step';
+			const next = currentRoutine.steps[currentStepIndex + 1];
+			if (next) {
+				dom.nextStepPreview.textContent = `Next: ${next.label}`;
+			} else {
+				dom.nextStepPreview.textContent = 'Last step';
+			}
 		}
 	}
 }
