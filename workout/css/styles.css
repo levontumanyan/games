@@ -1498,7 +1498,7 @@ html, body {
 }
 
 .step-card-compact {
-	background: rgba(22, 24, 36, 0.7);
+	background: var(--bg-card);
 }
 
 .step-card-compact .step-header {
@@ -1637,8 +1637,8 @@ html, body {
 
 .step-break .step-type-badge {
 	background: var(--break-subtle);
-	color: #34d399;
-	border: 1px solid rgba(16, 185, 129, 0.25);
+	color: var(--break-color);
+	border: 1px solid var(--break-color);
 }
 
 .step-header .btn-danger {
@@ -1733,8 +1733,8 @@ html, body {
 	font-size: 0.72rem;
 	font-weight: 700;
 	color: var(--text-muted);
-	background: #12141f;
-	border: 1px dashed rgba(255, 255, 255, 0.15);
+	background: var(--bg-card-elevated);
+	border: 1px dashed var(--border);
 	border-radius: 20px;
 	cursor: pointer;
 	opacity: 0.35;
@@ -1747,10 +1747,10 @@ html, body {
 .btn-insert-divider:focus {
 	opacity: 1;
 	transform: scale(1);
-	color: #ffffff;
-	background: #181b2a;
-	border: 1px solid rgba(99, 102, 241, 0.5);
-	box-shadow: 0 0 14px rgba(99, 102, 241, 0.4), 0 2px 6px rgba(0, 0, 0, 0.4);
+	color: var(--text-primary);
+	background: var(--bg-hover);
+	border: 1px solid var(--accent);
+	box-shadow: 0 0 14px var(--accent-glow), var(--shadow-sm);
 }
 
 .btn-insert-divider span {
@@ -1764,10 +1764,10 @@ html, body {
 	align-items: center;
 	gap: 6px;
 	padding: 4px 10px;
-	background: #131624;
-	border: 1px solid rgba(99, 102, 241, 0.4);
+	background: var(--bg-card-elevated);
+	border: 1px solid var(--border-hover);
 	border-radius: 30px;
-	box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6), 0 0 16px rgba(99, 102, 241, 0.3);
+	box-shadow: var(--shadow-lg), 0 0 16px var(--accent-glow);
 	animation: fadeInScale 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -1987,21 +1987,83 @@ html, body {
 
 .break-preset-chip.active {
 	background: var(--break-subtle);
-	color: #34d399;
+	color: var(--break-color);
 	border-color: var(--break-color);
-	box-shadow: 0 0 12px var(--break-glow);
+	box-shadow: 0 0 10px var(--break-glow);
 }
 
-.break-custom-group {
-	width: 75px;
-	margin-bottom: 0;
+.break-stepper-group,
+.time-stepper-control,
+.reps-stepper-control {
+	display: inline-flex;
+	align-items: center;
+	background: var(--bg-input);
+	border: 1px solid var(--border);
+	border-radius: var(--radius-sm);
+	overflow: hidden;
+	transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
-.break-custom-input {
-	padding: 6px 8px;
-	font-size: 0.88rem;
+.time-stepper-control:focus-within,
+.reps-stepper-control:focus-within {
+	border-color: var(--accent);
+	box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.break-stepper-group:focus-within {
+	border-color: var(--break-color);
+	box-shadow: 0 0 0 3px var(--break-glow);
+}
+
+.break-stepper-btn,
+.stepper-btn {
+	background: transparent;
+	border: none;
+	color: var(--text-secondary);
+	font-size: 1.1rem;
+	font-weight: 700;
+	width: 30px;
+	height: 34px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	user-select: none;
+	transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.break-stepper-btn:hover,
+.stepper-btn:hover {
+	background: var(--bg-hover);
+	color: var(--text-primary);
+}
+
+.break-stepper-btn:active {
+	background: var(--bg-active);
+	color: var(--break-color);
+}
+
+.stepper-btn:active {
+	background: var(--bg-active);
+	color: var(--accent);
+}
+
+.break-custom-input,
+.stepper-input {
+	width: 62px;
+	padding: 6px 4px;
+	font-size: 0.9rem;
 	font-weight: 700;
 	text-align: center;
+	border: none !important;
+	background: transparent !important;
+	color: var(--text-primary) !important;
+	box-shadow: none !important;
+	outline: none !important;
+}
+
+.reps-stepper-control .stepper-input {
+	width: 54px;
 }
 
 .step-move-bar {
@@ -2010,7 +2072,7 @@ html, body {
 	padding: 6px 14px;
 	justify-content: flex-end;
 	background: rgba(0, 0, 0, 0.12);
-	border-top: 1px solid rgba(255, 255, 255, 0.04);
+	border-top: 1px solid var(--border);
 }
 
 /* ── Inputs ──────────────────────────────────────────────────────────────── */
@@ -2030,7 +2092,7 @@ html, body {
 	outline: none;
 	border-color: var(--accent);
 	box-shadow: 0 0 0 3px var(--accent-glow);
-	background: #0e101a;
+	background: var(--bg-input);
 }
 
 .input::placeholder {
@@ -2181,8 +2243,8 @@ html, body {
 
 .preset-chip:active, .preset-chip.active {
 	background: var(--accent-subtle);
-	color: #a5b4fc;
-	border-color: rgba(99, 102, 241, 0.4);
+	color: var(--accent);
+	border-color: var(--accent);
 	box-shadow: 0 0 10px var(--accent-glow);
 }
 
@@ -3327,7 +3389,7 @@ html, body {
 	outline: none;
 	border-color: var(--accent);
 	box-shadow: 0 0 0 3px var(--accent-glow);
-	background: #0e101a;
+	background: var(--bg-input);
 }
 
 .modal-footer {
@@ -4805,7 +4867,7 @@ html, body {
 	position: relative;
 	width: 100%;
 	height: 96px;
-	background: #0b0d17;
+	background: var(--bg-card-elevated);
 	overflow: hidden;
 	display: flex;
 	align-items: center;
@@ -5227,7 +5289,7 @@ html, body {
 	height: 44px;
 	border-radius: var(--radius-sm);
 	overflow: hidden;
-	background: #0b0d17;
+	background: var(--bg-card-elevated);
 	flex-shrink: 0;
 }
 
@@ -5329,7 +5391,7 @@ html, body {
 	height: 70px;
 	border-radius: var(--radius-sm);
 	overflow: hidden;
-	background: #0b0d17;
+	background: var(--bg-card-elevated);
 	flex-shrink: 0;
 }
 
@@ -5785,7 +5847,7 @@ html, body {
 }
 
 .sub-reps-box {
-	background: var(--bg-secondary);
+	background: var(--bg-card-elevated);
 	border: 1px solid var(--border);
 	border-radius: var(--radius-md);
 	padding: 20px;
@@ -5820,7 +5882,7 @@ html, body {
 .btn-sub-step:hover {
 	background: var(--accent-subtle);
 	border-color: var(--accent);
-	color: #ffffff;
+	color: var(--accent);
 }
 
 .sub-reps-input {
@@ -5829,10 +5891,10 @@ html, body {
 	font-size: 1.75rem;
 	font-weight: 800;
 	text-align: center;
-	background: var(--bg-card);
+	background: var(--bg-input);
 	border: 2px solid var(--accent);
 	border-radius: var(--radius-sm);
-	color: #ffffff;
+	color: var(--text-primary);
 	outline: none;
 	box-shadow: 0 0 14px var(--accent-glow);
 }
@@ -5853,7 +5915,7 @@ html, body {
 .sub-chip-pill {
 	padding: 4px 10px;
 	border-radius: var(--radius-pill);
-	background: rgba(255, 255, 255, 0.05);
+	background: var(--bg-hover);
 	border: 1px solid var(--border);
 	color: var(--text-secondary);
 	font-size: 0.8rem;
@@ -5864,8 +5926,8 @@ html, body {
 
 .sub-chip-pill:hover {
 	background: var(--accent-subtle);
-	color: #a5b4fc;
-	border-color: rgba(99, 102, 241, 0.4);
+	color: var(--accent);
+	border-color: var(--accent);
 }
 
 /* ── Interactive Muscle Anatomy Map Component ───────────────────────────── */

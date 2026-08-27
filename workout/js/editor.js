@@ -876,11 +876,65 @@ function createVideoRangeTrimmer(step, onUpdate) {
 
 	startInput.addEventListener('change', commitStart);
 	startInput.addEventListener('blur', commitStart);
-	startInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') startInput.blur(); });
+	startInput.addEventListener('wheel', (e) => {
+		e.preventDefault();
+		const delta = e.shiftKey ? 5 : 1;
+		startSec = Math.max(0, e.deltaY < 0 ? startSec + delta : startSec - delta);
+		if (endSec <= startSec) endSec = startSec + 5;
+		step.startSeconds = startSec;
+		step.endSeconds = endSec;
+		updateVisuals();
+		onUpdate();
+	}, { passive: false });
+	startInput.addEventListener('keydown', (e) => {
+		const delta = e.shiftKey ? 5 : 1;
+		if (e.key === 'ArrowUp') {
+			e.preventDefault();
+			startSec = Math.max(0, startSec + delta);
+			if (endSec <= startSec) endSec = startSec + 5;
+			step.startSeconds = startSec;
+			step.endSeconds = endSec;
+			updateVisuals();
+			onUpdate();
+		} else if (e.key === 'ArrowDown') {
+			e.preventDefault();
+			startSec = Math.max(0, startSec - delta);
+			step.startSeconds = startSec;
+			updateVisuals();
+			onUpdate();
+		} else if (e.key === 'Enter') {
+			startInput.blur();
+		}
+	});
 
 	endInput.addEventListener('change', commitEnd);
 	endInput.addEventListener('blur', commitEnd);
-	endInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') endInput.blur(); });
+	endInput.addEventListener('wheel', (e) => {
+		e.preventDefault();
+		const delta = e.shiftKey ? 5 : 1;
+		endSec = Math.max(startSec + 1, e.deltaY < 0 ? endSec + delta : endSec - delta);
+		step.endSeconds = endSec;
+		updateVisuals();
+		onUpdate();
+	}, { passive: false });
+	endInput.addEventListener('keydown', (e) => {
+		const delta = e.shiftKey ? 5 : 1;
+		if (e.key === 'ArrowUp') {
+			e.preventDefault();
+			endSec = Math.max(startSec + 1, endSec + delta);
+			step.endSeconds = endSec;
+			updateVisuals();
+			onUpdate();
+		} else if (e.key === 'ArrowDown') {
+			e.preventDefault();
+			endSec = Math.max(startSec + 1, endSec - delta);
+			step.endSeconds = endSec;
+			updateVisuals();
+			onUpdate();
+		} else if (e.key === 'Enter') {
+			endInput.blur();
+		}
+	});
 
 	return container;
 }
@@ -964,11 +1018,12 @@ function createBreakFields(step, onUpdate) {
 	});
 	labelGroup.appendChild(labelInput);
 
-	// Quick Duration Presets: 30s, 1min, 2mins
+	// Quick Duration Presets: 5s, 30s, 1m, 2m
 	const presetsGroup = document.createElement('div');
 	presetsGroup.className = 'break-presets-group';
 
 	const breakPresets = [
+		{ label: '5s', sec: 5 },
 		{ label: '30s', sec: 30 },
 		{ label: '1m', sec: 60 },
 		{ label: '2m', sec: 120 },
@@ -976,15 +1031,28 @@ function createBreakFields(step, onUpdate) {
 
 	const curSec = step.durationSeconds || 30;
 
-	// Custom duration field
-	const customGroup = document.createElement('div');
-	customGroup.className = 'break-custom-group';
+	// Custom duration & stepper group
+	const stepperGroup = document.createElement('div');
+	stepperGroup.className = 'break-stepper-group';
+
+	const decBtn = document.createElement('button');
+	decBtn.type = 'button';
+	decBtn.className = 'break-stepper-btn';
+	decBtn.title = 'Decrease rest time (-5s, Shift for -15s)';
+	decBtn.innerHTML = '−';
+
 	const customInput = document.createElement('input');
 	customInput.type = 'text';
-	customInput.className = 'input break-custom-input';
+	customInput.className = 'break-custom-input';
 	customInput.placeholder = '0:30';
 	customInput.value = formatTime(curSec);
-	customInput.title = 'Custom duration (MM:SS or sec)';
+	customInput.title = 'Rest duration (scroll wheel, up/down arrows, or type MM:SS)';
+
+	const incBtn = document.createElement('button');
+	incBtn.type = 'button';
+	incBtn.className = 'break-stepper-btn';
+	incBtn.title = 'Increase rest time (+5s, Shift for +15s)';
+	incBtn.innerHTML = '+';
 
 	customInput.addEventListener('focus', () => {
 		customInput.select();
@@ -1002,6 +1070,58 @@ function createBreakFields(step, onUpdate) {
 		});
 	}
 
+	const setDuration = (newSec) => {
+		const clamped = Math.max(1, newSec);
+		step.durationSeconds = clamped;
+		customInput.value = formatTime(clamped);
+		updateActivePreset(clamped);
+		onUpdate();
+	};
+
+	decBtn.addEventListener('click', (e) => {
+		const delta = e.shiftKey ? 15 : 5;
+		const cur = parseTime(customInput.value) || step.durationSeconds || 30;
+		setDuration(cur - delta);
+	});
+
+	incBtn.addEventListener('click', (e) => {
+		const delta = e.shiftKey ? 15 : 5;
+		const cur = parseTime(customInput.value) || step.durationSeconds || 30;
+		setDuration(cur + delta);
+	});
+
+	customInput.addEventListener('wheel', (e) => {
+		e.preventDefault();
+		const delta = e.shiftKey ? 15 : 5;
+		const cur = parseTime(customInput.value) || step.durationSeconds || 30;
+		setDuration(e.deltaY < 0 ? cur + delta : cur - delta);
+	}, { passive: false });
+
+	customInput.addEventListener('keydown', (e) => {
+		if (e.key === 'ArrowUp') {
+			e.preventDefault();
+			const delta = e.shiftKey ? 15 : 5;
+			const cur = parseTime(customInput.value) || step.durationSeconds || 30;
+			setDuration(cur + delta);
+		} else if (e.key === 'ArrowDown') {
+			e.preventDefault();
+			const delta = e.shiftKey ? 15 : 5;
+			const cur = parseTime(customInput.value) || step.durationSeconds || 30;
+			setDuration(cur - delta);
+		} else if (e.key === 'Enter') {
+			customInput.blur();
+		}
+	});
+
+	const commitCustom = () => {
+		const parsed = parseTime(customInput.value);
+		const newSec = Math.max(1, parsed || 30);
+		setDuration(newSec);
+	};
+
+	customInput.addEventListener('change', commitCustom);
+	customInput.addEventListener('blur', commitCustom);
+
 	breakPresets.forEach(p => {
 		const btn = document.createElement('button');
 		btn.type = 'button';
@@ -1009,33 +1129,14 @@ function createBreakFields(step, onUpdate) {
 		if (curSec === p.sec) btn.classList.add('active');
 		btn.textContent = p.label;
 		btn.addEventListener('click', () => {
-			step.durationSeconds = p.sec;
-			customInput.value = formatTime(p.sec);
-			updateActivePreset(p.sec);
-			onUpdate();
+			setDuration(p.sec);
 		});
 		presetsGroup.appendChild(btn);
 		presetButtons.push({ btn, sec: p.sec });
 	});
 
-	const commitCustom = () => {
-		const parsed = parseTime(customInput.value);
-		const newSec = Math.max(1, parsed || 30);
-		step.durationSeconds = newSec;
-		customInput.value = formatTime(newSec);
-		updateActivePreset(newSec);
-		onUpdate();
-	};
-
-	customInput.addEventListener('change', commitCustom);
-	customInput.addEventListener('blur', commitCustom);
-	customInput.addEventListener('keydown', (e) => {
-		if (e.key === 'Enter') customInput.blur();
-	});
-
-	customGroup.appendChild(customInput);
-
-	row.append(labelGroup, presetsGroup, customGroup);
+	stepperGroup.append(decBtn, customInput, incBtn);
+	row.append(labelGroup, presetsGroup, stepperGroup);
 	container.appendChild(row);
 
 	return container;
@@ -1432,22 +1533,84 @@ function createTimerFields(step, onUpdate) {
 		repsGroup.className = 'field-group';
 		const repsLbl = document.createElement('label');
 		repsLbl.textContent = 'Target Reps (Quantity)';
+
+		const stepper = document.createElement('div');
+		stepper.className = 'reps-stepper-control';
+
+		const decBtn = document.createElement('button');
+		decBtn.type = 'button';
+		decBtn.className = 'stepper-btn stepper-btn-dec';
+		decBtn.innerHTML = '−';
+		decBtn.title = 'Decrease reps (-5, Shift for -10)';
+
 		const repsInp = document.createElement('input');
 		repsInp.type = 'number';
 		repsInp.min = '1';
-		repsInp.className = 'input';
+		repsInp.className = 'stepper-input';
 		repsInp.value = step.targetReps || 20;
-		repsInp.addEventListener('change', (e) => {
-			step.targetReps = Math.max(1, parseInt(e.target.value, 10) || 20);
-			onUpdate();
-		});
-		repsGroup.append(repsLbl, repsInp);
-		repsContainer.appendChild(repsGroup);
 
-		// Quick Reps Presets
+		const incBtn = document.createElement('button');
+		incBtn.type = 'button';
+		incBtn.className = 'stepper-btn stepper-btn-inc';
+		incBtn.innerHTML = '+';
+		incBtn.title = 'Increase reps (+5, Shift for +10)';
+
 		const repsPresetsRow = document.createElement('div');
 		repsPresetsRow.className = 'preset-chips-row';
-		const repsPresets = [10, 15, 20, 25, 30, 50, 100];
+		const repsPresets = [5, 10, 15, 20, 25, 30, 50, 100];
+		const presetChips = [];
+
+		function updateActiveRepsChip(val) {
+			presetChips.forEach(({ chip, r }) => {
+				if (val === r) chip.classList.add('active');
+				else chip.classList.remove('active');
+			});
+		}
+
+		const setReps = (val) => {
+			const clamped = Math.max(1, parseInt(val, 10) || 20);
+			step.targetReps = clamped;
+			repsInp.value = clamped;
+			updateActiveRepsChip(clamped);
+			onUpdate();
+		};
+
+		decBtn.addEventListener('click', (e) => {
+			const delta = e.shiftKey ? 10 : 5;
+			setReps((step.targetReps || 20) - delta);
+		});
+
+		incBtn.addEventListener('click', (e) => {
+			const delta = e.shiftKey ? 10 : 5;
+			setReps((step.targetReps || 20) + delta);
+		});
+
+		repsInp.addEventListener('focus', () => repsInp.select());
+
+		repsInp.addEventListener('wheel', (e) => {
+			e.preventDefault();
+			const delta = e.shiftKey ? 10 : 1;
+			setReps((step.targetReps || 20) + (e.deltaY < 0 ? delta : -delta));
+		}, { passive: false });
+
+		repsInp.addEventListener('keydown', (e) => {
+			if (e.key === 'ArrowUp') {
+				e.preventDefault();
+				const delta = e.shiftKey ? 10 : 1;
+				setReps((step.targetReps || 20) + delta);
+			} else if (e.key === 'ArrowDown') {
+				e.preventDefault();
+				const delta = e.shiftKey ? 10 : 1;
+				setReps((step.targetReps || 20) - delta);
+			} else if (e.key === 'Enter') {
+				repsInp.blur();
+			}
+		});
+
+		repsInp.addEventListener('change', () => {
+			setReps(repsInp.value);
+		});
+
 		repsPresets.forEach(r => {
 			const chip = document.createElement('button');
 			chip.type = 'button';
@@ -1455,24 +1618,21 @@ function createTimerFields(step, onUpdate) {
 			if ((step.targetReps || 20) === r) chip.classList.add('active');
 			chip.textContent = `${r} reps`;
 			chip.addEventListener('click', () => {
-				step.targetReps = r;
-				onUpdate();
+				setReps(r);
 			});
 			repsPresetsRow.appendChild(chip);
+			presetChips.push({ chip, r });
 		});
-		repsContainer.appendChild(repsPresetsRow);
+
+		stepper.append(decBtn, repsInp, incBtn);
+		repsGroup.append(repsLbl, stepper);
+		repsContainer.append(repsGroup, repsPresetsRow);
 		frag.appendChild(repsContainer);
 	} else {
 		// Timed inputs
 		const durationContainer = document.createElement('div');
 		durationContainer.className = 'timer-duration-container';
 
-		durationContainer.appendChild(createTimeField('Duration (MM:SS or sec)', step.durationSeconds || 30, (val) => {
-			step.durationSeconds = Math.max(1, val);
-			onUpdate();
-		}, '0:30', false));
-
-		// Quick Duration Presets for Timers
 		const presetsRow = document.createElement('div');
 		presetsRow.className = 'preset-chips-row';
 
@@ -1487,6 +1647,20 @@ function createTimerFields(step, onUpdate) {
 			{ label: '5m', sec: 300 },
 		];
 
+		const presetChips = [];
+		function updateActiveTimerChip(sec) {
+			presetChips.forEach(({ chip, p }) => {
+				if (sec === p.sec) chip.classList.add('active');
+				else chip.classList.remove('active');
+			});
+		}
+
+		const timeField = createTimeField('Duration (MM:SS or sec)', step.durationSeconds || 30, (val) => {
+			step.durationSeconds = Math.max(1, val);
+			updateActiveTimerChip(step.durationSeconds);
+			onUpdate();
+		}, '0:30', false);
+
 		presets.forEach(p => {
 			const chip = document.createElement('button');
 			chip.type = 'button';
@@ -1495,12 +1669,16 @@ function createTimerFields(step, onUpdate) {
 			chip.textContent = p.label;
 			chip.addEventListener('click', () => {
 				step.durationSeconds = p.sec;
+				const inputEl = timeField.querySelector('input');
+				if (inputEl) inputEl.value = formatTime(p.sec);
+				updateActiveTimerChip(p.sec);
 				onUpdate();
 			});
 			presetsRow.appendChild(chip);
+			presetChips.push({ chip, p });
 		});
 
-		durationContainer.appendChild(presetsRow);
+		durationContainer.append(timeField, presetsRow);
 		frag.appendChild(durationContainer);
 	}
 
@@ -1689,23 +1867,63 @@ function createTimerFields(step, onUpdate) {
  * Auto-selects on focus so user can immediately type a new number without backspacing.
  * Supports typing seconds ("45", "90") or MM:SS ("1:30") and formats cleanly on blur/Enter.
  */
-function createTimeField(labelText, valueSeconds, onChange, placeholder = '0:00', emptyWhenZero = false) {
+function createTimeField(labelText, valueSeconds, onChange, placeholder = '0:00', emptyWhenZero = false, stepSeconds = 5) {
 	const group = document.createElement('div');
 	group.className = 'field-group';
 
 	const label = document.createElement('label');
 	label.textContent = labelText;
 
+	const stepper = document.createElement('div');
+	stepper.className = 'time-stepper-control';
+
+	const decBtn = document.createElement('button');
+	decBtn.type = 'button';
+	decBtn.className = 'stepper-btn stepper-btn-dec';
+	decBtn.innerHTML = '−';
+	decBtn.title = `Decrease (-${stepSeconds}s, Shift for -15s)`;
+
 	const input = document.createElement('input');
 	input.type = 'text';
-	input.className = 'input';
+	input.className = 'stepper-input';
 	input.placeholder = placeholder;
 	input.value = (valueSeconds === 0 && emptyWhenZero) ? '' : (valueSeconds > 0 ? formatTime(valueSeconds) : '');
+
+	const incBtn = document.createElement('button');
+	incBtn.type = 'button';
+	incBtn.className = 'stepper-btn stepper-btn-inc';
+	incBtn.innerHTML = '+';
+	incBtn.title = `Increase (+${stepSeconds}s, Shift for +15s)`;
 
 	// Select all on focus so user can immediately type over the existing value
 	input.addEventListener('focus', () => {
 		input.select();
 	});
+
+	const setVal = (newSec) => {
+		const clamped = emptyWhenZero ? Math.max(0, newSec) : Math.max(1, newSec);
+		input.value = (clamped === 0 && emptyWhenZero) ? '' : formatTime(clamped);
+		onChange(clamped);
+	};
+
+	decBtn.addEventListener('click', (e) => {
+		const delta = e.shiftKey ? 15 : stepSeconds;
+		const cur = parseTime(input.value) || valueSeconds || 30;
+		setVal(cur - delta);
+	});
+
+	incBtn.addEventListener('click', (e) => {
+		const delta = e.shiftKey ? 15 : stepSeconds;
+		const cur = parseTime(input.value) || valueSeconds || 30;
+		setVal(cur + delta);
+	});
+
+	input.addEventListener('wheel', (e) => {
+		e.preventDefault();
+		const delta = e.shiftKey ? 15 : stepSeconds;
+		const cur = parseTime(input.value) || valueSeconds || 30;
+		setVal(e.deltaY < 0 ? cur + delta : cur - delta);
+	}, { passive: false });
 
 	const commit = () => {
 		const parsed = parseTime(input.value);
@@ -1716,12 +1934,23 @@ function createTimeField(labelText, valueSeconds, onChange, placeholder = '0:00'
 	input.addEventListener('change', commit);
 	input.addEventListener('blur', commit);
 	input.addEventListener('keydown', (e) => {
-		if (e.key === 'Enter') {
+		if (e.key === 'ArrowUp') {
+			e.preventDefault();
+			const delta = e.shiftKey ? 15 : stepSeconds;
+			const cur = parseTime(input.value) || valueSeconds || 30;
+			setVal(cur + delta);
+		} else if (e.key === 'ArrowDown') {
+			e.preventDefault();
+			const delta = e.shiftKey ? 15 : stepSeconds;
+			const cur = parseTime(input.value) || valueSeconds || 30;
+			setVal(cur - delta);
+		} else if (e.key === 'Enter') {
 			input.blur();
 		}
 	});
 
-	group.append(label, input);
+	stepper.append(decBtn, input, incBtn);
+	group.append(label, stepper);
 	return group;
 }
 
@@ -2075,8 +2304,26 @@ export function showAddExerciseModal(routine, onUpdate, insertIndex = -1) {
 		numInput.value = val + (isReps ? 5 : 5);
 	});
 
+	numInput.addEventListener('wheel', (e) => {
+		e.preventDefault();
+		const isReps = (activeEx?.default_mode || 'reps') === 'reps';
+		const step = e.shiftKey ? 10 : (isReps ? 5 : 5);
+		let val = parseInt(numInput.value, 10) || 10;
+		numInput.value = Math.max(1, e.deltaY < 0 ? val + step : val - step);
+	}, { passive: false });
+
 	numInput.addEventListener('keydown', (e) => {
-		if (e.key === 'Enter') {
+		const isReps = (activeEx?.default_mode || 'reps') === 'reps';
+		const step = e.shiftKey ? 10 : (isReps ? 5 : 5);
+		if (e.key === 'ArrowUp') {
+			e.preventDefault();
+			let val = parseInt(numInput.value, 10) || 10;
+			numInput.value = Math.max(1, val + step);
+		} else if (e.key === 'ArrowDown') {
+			e.preventDefault();
+			let val = parseInt(numInput.value, 10) || 10;
+			numInput.value = Math.max(1, val - step);
+		} else if (e.key === 'Enter') {
 			commitAdd();
 		} else if (e.key === 'Escape') {
 			closeSubwindow();
