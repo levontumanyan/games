@@ -2,7 +2,7 @@
  * Player module - YouTube IFrame API integration and timer countdown engine.
  */
 
-import { formatTime, formatFriendlyDuration } from './utils.js';
+import { formatTime, formatFriendlyDuration, parseYouTubeId, escapeHtml } from './utils.js';
 import { isBreakStep, resolveStepMediaUrl } from './editor.js';
 import { playCountdownBeep } from './audio.js';
 import { getClipIcon, getTimerIcon, getBreakIcon } from './icons.js';
@@ -14,7 +14,7 @@ import {
 	startSession, updateSessionStep, pauseSession,
 	resumeSession, completeSession, stopSession
 } from './session.js';
-import { inferMusclesForExercise, getExerciseById } from './exercises.js';
+import { inferMusclesForExercise, getExerciseById, getExerciseInstructionMedia, getExerciseFollowAlongMedia } from './exercises.js';
 import { MUSCLE_DEFINITIONS } from './body_map.js';
 
 const PLAY_ICON = `<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><polygon points="7,4 19,12 7,20"/></svg>`;
@@ -544,12 +544,15 @@ function executeClipStep(step) {
 		disableCaptions();
 	}
 
-	dom.currentStepLabel.textContent = step.label || 'Video Clip';
-	if (step.exercises && step.exercises.length > 0) {
+	const isTutorial = Boolean(step.isTutorial || (step.label && step.label.includes('[Tutorial]')));
+	dom.currentStepLabel.textContent = step.label || (isTutorial ? 'Tutorial Breakdown' : 'Video Clip');
+	if (isTutorial) {
+		dom.currentStepType.innerHTML = `🎬 Tutorial Breakdown · ` + (step.exercises && step.exercises.length > 0 ? step.exercises.map(e => e.name).join(', ') : 'Instruction');
+	} else if (step.exercises && step.exercises.length > 0) {
 		const joiner = step.flow_type === 'alternating' ? ' ⮀ ' : ' + ';
 		dom.currentStepType.innerHTML = `${getClipIcon(14)} ` + step.exercises.map(e => e.name).join(joiner);
 	} else {
-		dom.currentStepType.innerHTML = `${getClipIcon(14)} Video`;
+		dom.currentStepType.innerHTML = `${getClipIcon(14)} Follow-Along Video`;
 	}
 }
 
@@ -618,6 +621,27 @@ function executeTimerStep(step) {
 			mediaImg.removeAttribute('src');
 		}
 		if (contentEl) contentEl.classList.remove('has-media');
+	}
+
+	// Remove any existing tutorial buttons
+	dom.timerOverlay?.querySelectorAll('.player-hud-tutorial-btn')?.forEach(b => b.remove());
+
+	const linkedEx = resolvedSubEx || (step.exercises && step.exercises[0]) || (step.exercise_id ? getExerciseById(step.exercise_id) : null);
+	const instructionAsset = linkedEx ? getExerciseInstructionMedia(linkedEx) : null;
+	if (instructionAsset && (instructionAsset.type === 'video' || Boolean(instructionAsset.videoId) || instructionAsset.url)) {
+		const targetContainer = mediaContainer || dom.timerOverlay?.querySelector('.timer-stage-content');
+		if (targetContainer) {
+			const tutBtn = document.createElement('button');
+			tutBtn.type = 'button';
+			tutBtn.className = 'btn btn-ghost btn-xs player-hud-tutorial-btn';
+			tutBtn.innerHTML = `🎬 Form Guide`;
+			tutBtn.title = `Pause and review ${instructionAsset.title || linkedEx.name} coaching tutorial`;
+			tutBtn.addEventListener('click', (e) => {
+				e.stopPropagation();
+				openWorkoutTutorial(instructionAsset, linkedEx);
+			});
+			targetContainer.appendChild(tutBtn);
+		}
 	}
 
 	// Set and start music playlist specifically for this timer step or routine-level tracks
@@ -1140,6 +1164,88 @@ function updateStepIndicator() {
 			}
 		}
 	}
+}
+
+/**
+ * Open tutorial popup during workout and pause timer.
+ * @param {Object} instructionAsset
+ * @param {Object} exercise
+ */
+function openWorkoutTutorial(instructionAsset, exercise) {
+	const wasPaused = isPaused;
+	if (!isPaused) {
+		togglePause();
+	}
+
+	const backdrop = document.createElement('div');
+	backdrop.className = 'modal-backdrop workout-tutorial-backdrop';
+
+	const modal = document.createElement('div');
+	modal.className = 'modal workout-tutorial-modal';
+
+	const vid = instructionAsset.videoId || (instructionAsset.url ? parseYouTubeId(instructionAsset.url) : null);
+	const startSec = instructionAsset.startSeconds || 0;
+
+	modal.innerHTML = `
+		<div class="modal-header">
+			<div class="workout-tut-header-info">
+				<span class="workout-tut-badge">🎬 Technique Tutorial & Breakdown</span>
+				<h3 class="modal-title">${escapeHtml(exercise?.name || instructionAsset.exerciseName || 'Form Guide')}</h3>
+			</div>
+			<button class="modal-close-btn" title="Close (ESC)">✕</button>
+		</div>
+
+		<div class="modal-body workout-tutorial-body">
+			${vid ? `
+				<div class="workout-tutorial-video-wrapper">
+					<iframe
+						src="https://www.youtube-nocookie.com/embed/${vid}?autoplay=1&start=${startSec}"
+						title="${escapeHtml(instructionAsset.title || 'Tutorial')}"
+						frameborder="0"
+						allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+						allowfullscreen
+					></iframe>
+				</div>
+			` : `
+				<div class="workout-tutorial-img-wrapper">
+					<img src="${instructionAsset.url || '/workout/media/pushups.svg'}" alt="Tutorial Photo">
+				</div>
+			`}
+
+			<div class="workout-tutorial-notes">
+				<h4>${escapeHtml(instructionAsset.title || 'Coaching Cues')}</h4>
+				<p>${escapeHtml(exercise?.description || 'Review biomechanical cues, posture alignment, and cadence.')}</p>
+			</div>
+		</div>
+
+		<div class="modal-footer workout-tutorial-footer">
+			<button class="btn btn-primary btn-resume-workout-btn">◀ Resume Workout</button>
+		</div>
+	`;
+
+	const close = () => {
+		document.removeEventListener('keydown', handleEsc);
+		backdrop.remove();
+		if (!wasPaused && isPaused) {
+			togglePause();
+		}
+	};
+
+	const handleEsc = (e) => {
+		if (e.key === 'Escape' || e.keyCode === 27) close();
+	};
+	document.addEventListener('keydown', handleEsc);
+
+	modal.querySelectorAll('.modal-close-btn, .btn-resume-workout-btn').forEach(b => {
+		b.addEventListener('click', close);
+	});
+
+	backdrop.addEventListener('click', (e) => {
+		if (e.target === backdrop) close();
+	});
+
+	backdrop.appendChild(modal);
+	document.body.appendChild(backdrop);
 }
 
 /**

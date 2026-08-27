@@ -9,8 +9,8 @@ import { getClipIcon, getTimerIcon, getBreakIcon, getComboIcon, getExerciseIcon,
 import {
 	getExercises, getExerciseById, filterExercises, createCustomExercise,
 	getCategoryBadgeHtml, getDisciplineBadgeHtml,
-	getExerciseMediaAssets, getMediaKindBadgeHtml,
-	addMediaAssetToExercise, showExerciseVariationsModal, MEDIA_KINDS
+	getExerciseMediaAssets, getExerciseFollowAlongMedia, getExerciseInstructionMedia,
+	getMediaKindBadgeHtml, addMediaAssetToExercise, showExerciseVariationsModal, MEDIA_KINDS
 } from './exercises.js';
 import { getCombos } from './combos.js';
 
@@ -962,7 +962,23 @@ export function isBreakStep(step) {
 export function resolveStepMediaUrl(step) {
 	if (!step) return null;
 	const direct = step.gifUrl || step.mediaUrl || step.imageUrl;
-	if (direct && typeof direct === 'string' && direct.trim()) return direct.trim();
+	if (direct && typeof direct === 'string' && direct.trim()) {
+		const trimmed = direct.trim();
+		// If direct is a YouTube link, do not return as direct image URL
+		if (!trimmed.includes('youtube.com') && !trimmed.includes('youtu.be')) {
+			return trimmed;
+		}
+	}
+
+	// Check attached exercises for visual image/animation asset
+	if (Array.isArray(step.exercises) && step.exercises.length > 0) {
+		for (const ex of step.exercises) {
+			const visual = getExerciseFollowAlongMedia(ex.id || ex);
+			if (visual && visual.type === 'image' && visual.url && !visual.url.includes('youtube') && !visual.url.includes('youtu.be')) {
+				return visual.url;
+			}
+		}
+	}
 
 	if (step.type === 'timer' && step.label) {
 		const l = step.label.toLowerCase();
@@ -1350,13 +1366,18 @@ function createExerciseMediaSelector(step, onUpdate) {
 	header.appendChild(title);
 	container.appendChild(header);
 
-	// Tabs: All, Instructions, Demonstrations, Animations, Photos
+	// Tabs: All, Follow-Along Drills, Animations, Photos, Coaching Tutorials
 	const tabsRow = document.createElement('div');
 	tabsRow.className = 'media-selector-tabs';
 
 	let activeFilter = 'all';
 
-	const kindsPresent = ['all', ...new Set(assets.map(a => a.kind || 'demonstration'))];
+	const kindOrder = ['all', 'demonstration', 'animation', 'photo', 'instruction'];
+	const rawKinds = new Set(assets.map(a => a.kind || 'demonstration'));
+	const kindsPresent = kindOrder.filter(k => k === 'all' || rawKinds.has(k));
+	rawKinds.forEach(k => {
+		if (!kindsPresent.includes(k)) kindsPresent.push(k);
+	});
 
 	function renderMediaGrid() {
 		const existingGrid = container.querySelector('.media-assets-grid');
@@ -1389,7 +1410,7 @@ function createExerciseMediaSelector(step, onUpdate) {
 				thumbHtml = `
 					<div class="asset-thumb-box">
 						<img src="https://img.youtube.com/vi/${vid}/mqdefault.jpg" alt="${escapeHtml(asset.title || '')}" loading="lazy">
-						<div class="asset-play-overlay">▶</div>
+						<div class="asset-play-overlay">${asset.kind === 'instruction' ? '🎬' : '▶'}</div>
 						${asset.startSeconds !== undefined && asset.endSeconds ? `<span class="asset-timestamp">${formatTime(asset.startSeconds)} - ${formatTime(asset.endSeconds)}</span>` : ''}
 					</div>
 				`;
@@ -1420,16 +1441,19 @@ function createExerciseMediaSelector(step, onUpdate) {
 					step.videoId = asset.videoId || parseYouTubeId(asset.url);
 					step.startSeconds = asset.startSeconds || 0;
 					step.endSeconds = asset.endSeconds || (step.startSeconds + 60);
-					if (asset.kind === 'instruction' && (!step.label || step.label === 'Exercise' || step.label === 'Video Clip')) {
-						step.label = `${asset.exerciseName || 'Exercise'}: Instruction`;
-					} else if (asset.kind === 'demonstration' && (!step.label || step.label === 'Exercise' || step.label === 'Video Clip')) {
+					if (asset.kind === 'instruction') {
+						step.isTutorial = true;
+						step.label = `${asset.exerciseName || 'Exercise'}: [Tutorial] ${asset.title || 'Instruction'}`;
+					} else {
+						delete step.isTutorial;
 						step.label = `${asset.exerciseName || 'Exercise'}: Follow-Along`;
 					}
 				} else {
 					step.type = 'timer';
+					delete step.isTutorial;
 					step.gifUrl = asset.url;
 					step.mediaUrl = asset.url;
-					if (!step.label || step.label === 'Exercise' || step.label === 'Video Clip') {
+					if (!step.label || step.label === 'Exercise' || step.label === 'Video Clip' || step.label.includes('[Tutorial]') || step.label.includes('Follow-Along')) {
 						step.label = asset.exerciseName || 'Exercise';
 					}
 				}

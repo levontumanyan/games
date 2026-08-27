@@ -110,6 +110,39 @@ export function getExerciseMediaAssets(exercisesOrIds = []) {
 }
 
 /**
+ * Retrieve the primary follow-along execution media for an exercise.
+ * Prioritizes demonstration videos -> looping animations -> form photos.
+ * Explicitly ignores instruction tutorials for workout execution.
+ * @param {Object|string} exerciseOrId
+ * @returns {Object|null}
+ */
+export function getExerciseFollowAlongMedia(exerciseOrId) {
+	if (!exerciseOrId) return null;
+	const assets = getExerciseMediaAssets([exerciseOrId]);
+	// 1. Prefer explicit demonstration follow-along video
+	const demo = assets.find(a => (a.kind === 'demonstration' || a.kind === 'drill') && (a.type === 'video' || Boolean(a.videoId)));
+	if (demo) return demo;
+	// 2. Prefer looping visual animation or photo
+	const visual = assets.find(a => a.kind === 'animation' || a.kind === 'photo');
+	if (visual) return visual;
+	// 3. Fallback: Any non-instruction video asset
+	const nonInst = assets.find(a => a.kind !== 'instruction');
+	if (nonInst) return nonInst;
+	return null;
+}
+
+/**
+ * Retrieve any instructional tutorial / coaching breakdown asset for an exercise.
+ * @param {Object|string} exerciseOrId
+ * @returns {Object|null}
+ */
+export function getExerciseInstructionMedia(exerciseOrId) {
+	if (!exerciseOrId) return null;
+	const assets = getExerciseMediaAssets([exerciseOrId]);
+	return assets.find(a => a.kind === 'instruction') || null;
+}
+
+/**
  * Add a new media asset to an exercise and persist to server.
  * @param {string} exerciseId
  * @param {Object} asset
@@ -560,7 +593,8 @@ export function renderExercisesCatalog(container, options = {}) {
 			const playBtn = card.querySelector('.btn-play-ex');
 			playBtn.addEventListener('click', (e) => {
 				e.stopPropagation();
-				onPlayExercise(ex, assets[0] || null);
+				const followAlong = getExerciseFollowAlongMedia(ex);
+				onPlayExercise(ex, followAlong || null);
 			});
 
 			const addRoutineBtn = card.querySelector('.btn-add-routine');
@@ -729,7 +763,7 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 		const primaryMuscles = (muscles.primary || []).map(m => getMuscleBadgeHtml(m, true));
 		const secondaryMuscles = (muscles.secondary || []).map(m => getMuscleBadgeHtml(m, false));
 
-		const primaryAsset = assets[0];
+		const primaryAsset = getExerciseFollowAlongMedia(exercise) || assets[0];
 		const isVid = primaryAsset && (primaryAsset.type === 'video' || Boolean(primaryAsset.videoId));
 		const vid = primaryAsset?.videoId || (primaryAsset?.url ? parseYouTubeId(primaryAsset.url) : null);
 
@@ -770,7 +804,7 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 				</div>
 
 				<div class="hud-left-actions">
-					<button class="btn btn-primary btn-hud-play-ex" style="width:100%;">▶ Preview Movement</button>
+					<button class="btn btn-primary btn-hud-play-ex" style="width:100%;">▶ Preview Follow-Along</button>
 					<button class="btn btn-ghost btn-hud-add-ex" style="width:100%;">+ Add to Workout</button>
 					${onOpenInLibrary ? `<button class="btn btn-ghost btn-hud-open-lib" style="width:100%;">📂 Open in Exercises Tab ➔</button>` : ''}
 				</div>
@@ -801,6 +835,13 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 								? `https://img.youtube.com/vi/${vid}/mqdefault.jpg`
 								: (a.url || '/workout/media/pushups.svg');
 
+							let actionBtnLabel = '📷 View';
+							if (a.kind === 'instruction') {
+								actionBtnLabel = '🎬 Tutorial';
+							} else if (a.kind === 'demonstration' || isVideo) {
+								actionBtnLabel = '⚡ Follow-Along';
+							}
+
 							return `
 								<div class="modal-asset-row" data-idx="${idx}">
 									<div class="modal-asset-thumb">
@@ -815,7 +856,7 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 										<div class="modal-asset-title">${escapeHtml(a.title || (isVideo ? 'Video Variation' : 'Form Image'))}</div>
 									</div>
 									<div class="modal-asset-actions">
-										<button class="btn btn-sm btn-primary btn-play-asset-now" data-idx="${idx}" title="${isVideo ? 'Preview video' : 'View image reference'}">${isVideo ? '▶ Play' : '📷 View'}</button>
+										<button class="btn btn-sm btn-primary btn-play-asset-now" data-idx="${idx}" title="${isVideo ? (a.kind === 'instruction' ? 'Watch technique tutorial' : 'Preview follow-along video') : 'View image reference'}">${actionBtnLabel}</button>
 										<button class="btn btn-sm btn-ghost btn-remove-asset-now" data-idx="${idx}" title="Remove this media variation">🗑️</button>
 									</div>
 								</div>

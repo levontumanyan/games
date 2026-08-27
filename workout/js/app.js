@@ -31,7 +31,7 @@ import {
 	fetchUsers, createUser
 } from './user.js';
 import { renderStatsDashboard } from './stats.js';
-import { loadExercises, renderExercisesCatalog, getExerciseById, showExerciseVariationsModal, highlightExerciseCard } from './exercises.js';
+import { loadExercises, renderExercisesCatalog, getExerciseById, getExerciseFollowAlongMedia, showExerciseVariationsModal, highlightExerciseCard } from './exercises.js';
 import { loadCombos, renderCombosCatalog } from './combos.js';
 import { renderAnatomyExplorer } from './body_map.js';
 import { initTheme } from './theme.js';
@@ -391,14 +391,17 @@ function switchTab(tab) {
 			dom.anatomyView.classList.remove('hidden');
 			renderAnatomyExplorer(dom.anatomyView, {
 				onPlayExercise: (exercise, asset) => {
-					const isVideo = asset && (asset.type === 'video' || Boolean(asset.videoId));
+					const chosenAsset = asset || getExerciseFollowAlongMedia(exercise);
+					const isVideo = chosenAsset && (chosenAsset.type === 'video' || Boolean(chosenAsset.videoId));
+					const isTutorial = chosenAsset && chosenAsset.kind === 'instruction';
 					const step = isVideo ? {
 						id: 'preview-step',
 						type: 'clip',
-						videoId: asset.videoId || parseYouTubeId(asset.url),
-						startSeconds: asset.startSeconds || 0,
-						endSeconds: asset.endSeconds || ((asset.startSeconds || 0) + 60),
-						label: `${exercise.name}: ${asset.title || 'Instruction'}`
+						isTutorial: isTutorial,
+						videoId: chosenAsset.videoId || parseYouTubeId(chosenAsset.url),
+						startSeconds: chosenAsset.startSeconds || 0,
+						endSeconds: chosenAsset.endSeconds || ((chosenAsset.startSeconds || 0) + 60),
+						label: isTutorial ? `${exercise.name}: [Tutorial] ${chosenAsset.title || 'Instruction'}` : `${exercise.name}: ${chosenAsset.title || 'Follow-Along'}`
 					} : {
 						id: 'preview-step',
 						type: 'timer',
@@ -406,12 +409,12 @@ function switchTab(tab) {
 						targetReps: exercise.default_quantity || 20,
 						durationSeconds: exercise.default_quantity || 30,
 						label: exercise.name,
-						gifUrl: asset?.url || exercise.media_url || '',
+						gifUrl: (chosenAsset && chosenAsset.type === 'image' ? chosenAsset.url : '') || (exercise.media_url && !exercise.media_url.includes('youtube') && !exercise.media_url.includes('youtu.be') ? exercise.media_url : ''),
 						exercises: [exercise]
 					};
 					const previewRoutine = {
 						id: 'preview-routine',
-						title: `Preview: ${exercise.name}`,
+						title: isTutorial ? `Tutorial: ${exercise.name}` : `Preview: ${exercise.name}`,
 						steps: [step]
 					};
 					unlockAudio();
@@ -425,10 +428,15 @@ function switchTab(tab) {
 						selectedRoutineId = routine.id;
 					}
 					const isReps = (exercise.default_mode || 'reps') === 'reps';
+					const followAlong = getExerciseFollowAlongMedia(exercise);
+					const visualUrl = (followAlong && followAlong.type === 'image' && followAlong.url)
+						? followAlong.url
+						: (exercise.media_url && !exercise.media_url.includes('youtube') && !exercise.media_url.includes('youtu.be') ? exercise.media_url : '');
+
 					const newStep = createTimerStep(
 						exercise.name,
 						isReps ? 30 : (exercise.default_quantity || 30),
-						exercise.media_url || ''
+						visualUrl
 					);
 					newStep.stepMode = exercise.default_mode || 'reps';
 					if (isReps) newStep.targetReps = exercise.default_quantity || 20;
@@ -594,14 +602,17 @@ function switchTab(tab) {
 			renderExercisesCatalog(dom.exercisesView, {
 				onOpenAnatomy: () => switchTab('anatomy'),
 				onPlayExercise: (exercise, asset) => {
-					const isVideo = asset && (asset.type === 'video' || Boolean(asset.videoId));
+					const chosenAsset = asset || getExerciseFollowAlongMedia(exercise);
+					const isVideo = chosenAsset && (chosenAsset.type === 'video' || Boolean(chosenAsset.videoId));
+					const isTutorial = chosenAsset && chosenAsset.kind === 'instruction';
 					const step = isVideo ? {
 						id: 'preview-step',
 						type: 'clip',
-						videoId: asset.videoId || parseYouTubeId(asset.url),
-						startSeconds: asset.startSeconds || 0,
-						endSeconds: asset.endSeconds || ((asset.startSeconds || 0) + 60),
-						label: `${exercise.name}: ${asset.title || 'Instruction'}`
+						isTutorial: isTutorial,
+						videoId: chosenAsset.videoId || parseYouTubeId(chosenAsset.url),
+						startSeconds: chosenAsset.startSeconds || 0,
+						endSeconds: chosenAsset.endSeconds || ((chosenAsset.startSeconds || 0) + 60),
+						label: isTutorial ? `${exercise.name}: [Tutorial] ${chosenAsset.title || 'Instruction'}` : `${exercise.name}: ${chosenAsset.title || 'Follow-Along'}`
 					} : {
 						id: 'preview-step',
 						type: 'timer',
@@ -609,12 +620,12 @@ function switchTab(tab) {
 						targetReps: exercise.default_quantity || 20,
 						durationSeconds: exercise.default_quantity || 30,
 						label: exercise.name,
-						gifUrl: asset?.url || exercise.media_url || '',
+						gifUrl: (chosenAsset && chosenAsset.type === 'image' ? chosenAsset.url : '') || (exercise.media_url && !exercise.media_url.includes('youtube') && !exercise.media_url.includes('youtu.be') ? exercise.media_url : ''),
 						exercises: [exercise]
 					};
 					const previewRoutine = {
 						id: 'preview-routine',
-						title: `Preview: ${exercise.name}`,
+						title: isTutorial ? `Tutorial: ${exercise.name}` : `Preview: ${exercise.name}`,
 						steps: [step]
 					};
 					unlockAudio();
@@ -628,10 +639,15 @@ function switchTab(tab) {
 						selectedRoutineId = routine.id;
 					}
 					const isReps = (exercise.default_mode || 'reps') === 'reps';
+					const followAlong = getExerciseFollowAlongMedia(exercise);
+					const visualUrl = (followAlong && followAlong.type === 'image' && followAlong.url)
+						? followAlong.url
+						: (exercise.media_url && !exercise.media_url.includes('youtube') && !exercise.media_url.includes('youtu.be') ? exercise.media_url : '');
+
 					const newStep = createTimerStep(
 						exercise.name,
 						isReps ? 30 : (exercise.default_quantity || 30),
-						exercise.media_url || ''
+						visualUrl
 					);
 					newStep.stepMode = exercise.default_mode || 'reps';
 					if (isReps) newStep.targetReps = exercise.default_quantity || 20;

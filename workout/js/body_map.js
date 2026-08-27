@@ -11,6 +11,7 @@ import {
 	getDisciplineBadgeHtml,
 	getMuscleBadgeHtml,
 	getExerciseMediaAssets,
+	getExerciseFollowAlongMedia,
 	inferMusclesForExercise,
 	filterExercises,
 	showExerciseVariationsModal,
@@ -747,7 +748,8 @@ export function renderAnatomyExplorer(container, options = {}) {
 
 			const playBtn = card.querySelector('.btn-play-ex');
 			playBtn.addEventListener('click', () => {
-				onPlayExercise(ex, assets[0] || null);
+				const followAlong = getExerciseFollowAlongMedia(ex);
+				onPlayExercise(ex, followAlong || null);
 			});
 
 			const varsBtn = card.querySelector('.btn-view-vars');

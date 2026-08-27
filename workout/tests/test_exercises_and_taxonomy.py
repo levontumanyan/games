@@ -517,3 +517,71 @@ def test_upload_image_endpoint(client: TestClient):
 		headers={"X-User-Id": "levon"},
 	)
 	assert bad_res.status_code == 400
+
+
+def test_exercise_media_kinds_and_roles(client: TestClient):
+	# Test creating exercise with all 4 functional media kinds
+	payload = {
+		"name": "Muay Thai Roundhouse Kick",
+		"category": "technique",
+		"discipline": "muay_thai",
+		"default_mode": "reps",
+		"default_quantity": 20,
+		"media_assets": [
+			{
+				"id": "asset-rhk-inst",
+				"kind": "instruction",
+				"type": "video",
+				"title": "Kick Biomechanics & Hip Turn Breakdown",
+				"url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+				"startSeconds": 15,
+				"endSeconds": 75,
+			},
+			{
+				"id": "asset-rhk-demo",
+				"kind": "demonstration",
+				"type": "video",
+				"title": "Padwork Continuous Kicking Drill",
+				"url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+				"startSeconds": 120,
+				"endSeconds": 180,
+			},
+			{
+				"id": "asset-rhk-anim",
+				"kind": "animation",
+				"type": "image",
+				"title": "Looping Kick Form Visual",
+				"url": "/workout/media/pushups.svg",
+			},
+			{
+				"id": "asset-rhk-photo",
+				"kind": "photo",
+				"type": "image",
+				"title": "Hip Elevation & Guard Hand Reference",
+				"url": "/workout/media/cobra-stretch.jpg",
+			},
+		],
+		"primary_muscles": ["hip_flexors", "quads", "obliques"],
+		"secondary_muscles": ["glutes", "calves"],
+	}
+
+	create_res = client.post("/api/exercises", json=payload, headers={"X-User-Id": "levon"})
+	assert create_res.status_code == 200
+	created = create_res.json()
+
+	assert len(created["media_assets"]) == 4
+	kinds = [a["kind"] for a in created["media_assets"]]
+	assert "instruction" in kinds
+	assert "demonstration" in kinds
+	assert "animation" in kinds
+	assert "photo" in kinds
+
+	# Query exercise
+	get_res = client.get("/api/exercises", headers={"X-User-Id": "levon"})
+	assert get_res.status_code == 200
+	found = next(e for e in get_res.json() if e["id"] == created["id"])
+	assert len(found["media_assets"]) == 4
+	instruction_asset = next(a for a in found["media_assets"] if a["kind"] == "instruction")
+	demonstration_asset = next(a for a in found["media_assets"] if a["kind"] == "demonstration")
+	assert instruction_asset["title"] == "Kick Biomechanics & Hip Turn Breakdown"
+	assert demonstration_asset["title"] == "Padwork Continuous Kicking Drill"
