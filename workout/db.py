@@ -559,12 +559,13 @@ class Database:
 				except Exception:
 					d["secondary_muscles"] = []
 				if not d["media_assets"] and d.get("media_url"):
+					is_video = "youtube.com" in d["media_url"] or "youtu.be" in d["media_url"]
 					d["media_assets"] = [
 						{
 							"id": f"{d['id']}-default",
-							"kind": "animation",
-							"type": "image",
-							"title": "Animation",
+							"kind": "demonstration" if is_video else "animation",
+							"type": "video" if is_video else "image",
+							"title": "Demonstration" if is_video else "Animation",
 							"url": d["media_url"],
 						}
 					]
@@ -590,12 +591,13 @@ class Database:
 			except Exception:
 				d["secondary_muscles"] = []
 			if not d["media_assets"] and d.get("media_url"):
+				is_video = "youtube.com" in d["media_url"] or "youtu.be" in d["media_url"]
 				d["media_assets"] = [
 					{
 						"id": f"{d['id']}-default",
-						"kind": "animation",
-						"type": "image",
-						"title": "Animation",
+						"kind": "demonstration" if is_video else "animation",
+						"type": "video" if is_video else "image",
+						"title": "Demonstration" if is_video else "Animation",
 						"url": d["media_url"],
 					}
 				]
@@ -621,13 +623,16 @@ class Database:
 		description = str(data.get("description", "")).strip()
 		media_url = str(data.get("media_url", "")).strip()
 		media_assets = data.get("media_assets", [])
+		if not isinstance(media_assets, list):
+			media_assets = []
 		if not media_assets and media_url:
+			is_video = "youtube.com" in media_url or "youtu.be" in media_url
 			media_assets = [
 				{
 					"id": f"{ex_id}-default",
-					"kind": "animation",
-					"type": "image",
-					"title": "Animation",
+					"kind": "demonstration" if is_video else "animation",
+					"type": "video" if is_video else "image",
+					"title": "Demonstration" if is_video else "Animation",
 					"url": media_url,
 				}
 			]

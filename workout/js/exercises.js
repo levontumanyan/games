@@ -3,7 +3,7 @@
  */
 
 import { fetchServerExercises, saveCustomExerciseOnServer, deleteCustomExerciseOnServer } from './storage.js';
-import { escapeHtml, formatTime, parseYouTubeId } from './utils.js';
+import { escapeHtml, formatTime, parseYouTubeId, showToast } from './utils.js';
 import { showConfirm, showAlert } from './modal.js';
 import { createBodyMap, MUSCLE_DEFINITIONS } from './body_map.js';
 
@@ -89,12 +89,15 @@ export function getExerciseMediaAssets(exercisesOrIds = []) {
 			const fallbackId = `fb-${ex.id}`;
 			if (!seenIds.has(fallbackId)) {
 				seenIds.add(fallbackId);
+				const isYt = ex.media_url.includes('youtube') || ex.media_url.includes('youtu.be');
+				const vid = isYt ? parseYouTubeId(ex.media_url) : null;
 				assets.push({
 					id: fallbackId,
-					kind: 'animation',
-					type: 'image',
-					title: `${ex.name} Animation`,
+					kind: isYt ? 'demonstration' : 'animation',
+					type: isYt ? 'video' : 'image',
+					title: isYt ? `${ex.name} Video` : `${ex.name} Animation`,
 					url: ex.media_url,
+					videoId: vid || undefined,
 					exerciseName: ex.name,
 					exerciseCategory: ex.category,
 					exerciseDiscipline: ex.discipline,
@@ -119,9 +122,55 @@ export async function addMediaAssetToExercise(exerciseId, asset) {
 	const existingAssets = Array.isArray(ex.media_assets) ? [...ex.media_assets] : [];
 	existingAssets.push(asset);
 
+	let media_url = ex.media_url;
+	if (!media_url && asset.url) {
+		media_url = asset.url;
+	}
+
 	const updated = await createCustomExercise({
 		...ex,
+		media_url: media_url,
 		media_assets: existingAssets
+	});
+
+	return updated;
+}
+
+/**
+ * Remove a media asset from an exercise and persist to server.
+ * @param {string} exerciseId
+ * @param {string} assetId
+ * @returns {Promise<Object>}
+ */
+export async function removeMediaAssetFromExercise(exerciseId, assetId) {
+	const ex = getExerciseById(exerciseId);
+	if (!ex) throw new Error('Exercise not found');
+
+	let existingAssets = Array.isArray(ex.media_assets) ? [...ex.media_assets] : [];
+
+	// If existingAssets is empty but ex.media_url exists (legacy fallback)
+	if (existingAssets.length === 0 && (assetId === `fb-${ex.id}` || assetId === `${ex.id}-default` || ex.media_url)) {
+		const updated = await createCustomExercise({
+			...ex,
+			media_url: '',
+			media_assets: []
+		});
+		return updated;
+	}
+
+	const filteredAssets = existingAssets.filter(a => a.id !== assetId && a.url !== assetId);
+
+	let media_url = ex.media_url || '';
+	if (filteredAssets.length === 0) {
+		media_url = '';
+	} else if (!filteredAssets.some(a => a.url === media_url)) {
+		media_url = filteredAssets[0].url || '';
+	}
+
+	const updated = await createCustomExercise({
+		...ex,
+		media_url: media_url,
+		media_assets: filteredAssets
 	});
 
 	return updated;
@@ -467,13 +516,17 @@ export function renderExercisesCatalog(container, options = {}) {
 			}
 			const muscleBadgesHtml = displayedBadges.join('') + (moreCount > 0 ? `<span class="ex-muscle-more-pill">+${moreCount} more</span>` : '');
 
+			card.dataset.id = ex.id;
 			card.innerHTML = `
 				<div class="ex-lib-header">
 					<div class="ex-lib-badges">
 						${getCategoryBadgeHtml(ex.category)}
 						${ex.discipline ? getDisciplineBadgeHtml(ex.discipline) : ''}
 					</div>
-					<button class="btn btn-ghost btn-xs btn-del-ex" title="Delete exercise" data-id="${ex.id}">✕</button>
+					<div class="ex-lib-header-actions">
+						<button class="btn btn-ghost btn-xs btn-edit-ex" title="Edit exercise details & videos" data-id="${ex.id}">✏️</button>
+						<button class="btn btn-ghost btn-xs btn-del-ex" title="Delete exercise" data-id="${ex.id}">✕</button>
+					</div>
 				</div>
 
 				<div class="ex-lib-title-row">
@@ -516,6 +569,16 @@ export function renderExercisesCatalog(container, options = {}) {
 				onAddToRoutine(ex);
 			});
 
+			const editBtn = card.querySelector('.btn-edit-ex');
+			if (editBtn) {
+				editBtn.addEventListener('click', (e) => {
+					e.stopPropagation();
+					showEditExerciseModal(ex, {
+						onUpdated: () => renderGrid()
+					});
+				});
+			}
+
 			const delBtn = card.querySelector('.btn-del-ex');
 			if (delBtn) {
 				delBtn.addEventListener('click', async (e) => {
@@ -556,7 +619,29 @@ export function renderExercisesCatalog(container, options = {}) {
 }
 
 /**
- * Show a Split HUD modal displaying all media variations for an exercise, with option to play or add more.
+ * Highlight a specific exercise card in the library catalog and scroll to it.
+ * @param {string} exerciseIdOrName
+ */
+export function highlightExerciseCard(exerciseIdOrName) {
+	if (!exerciseIdOrName) return;
+	const clean = String(exerciseIdOrName).toLowerCase();
+	const cards = document.querySelectorAll('.exercise-library-card');
+	for (const card of cards) {
+		const id = (card.dataset.id || '').toLowerCase();
+		const title = (card.querySelector('.ex-lib-title')?.textContent || '').toLowerCase();
+		if (id === clean || title === clean || title.includes(clean)) {
+			card.classList.add('card-highlighted-pulse');
+			card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+			setTimeout(() => {
+				card.classList.remove('card-highlighted-pulse');
+			}, 2500);
+			break;
+		}
+	}
+}
+
+/**
+ * Show a Split HUD modal displaying all media variations for an exercise, with option to play, remove, or add more.
  * @param {Object} exercise
  * @param {Object} [options]
  */
@@ -564,6 +649,7 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 	const onPlayAsset = options.onPlayAsset || (() => {});
 	const onAddToRoutine = options.onAddToRoutine || (() => {});
 	const onUpdated = options.onUpdated || (() => {});
+	const onOpenInLibrary = options.onOpenInLibrary || null;
 
 	const backdrop = document.createElement('div');
 	backdrop.className = 'modal-backdrop modal-exercise-backdrop';
@@ -584,6 +670,10 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 	document.addEventListener('keydown', handleEsc);
 
 	function renderModalContent() {
+		// Sync exercise object from memory cache if available
+		const freshEx = getExerciseById(exercise.id) || exercise;
+		Object.assign(exercise, freshEx);
+
 		const assets = getExerciseMediaAssets([exercise]);
 		const muscles = inferMusclesForExercise(exercise);
 		const primaryMuscles = (muscles.primary || []).map(m => getMuscleBadgeHtml(m, true));
@@ -602,6 +692,7 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 				<div class="hud-badges-row">
 					${getCategoryBadgeHtml(exercise.category)}
 					${exercise.discipline ? getDisciplineBadgeHtml(exercise.discipline) : ''}
+					<button class="btn btn-ghost btn-xs btn-edit-this-ex" title="Edit exercise name, category, muscles, or cues" style="margin-left:auto;">✏️ Edit Details</button>
 				</div>
 
 				<h2 class="hud-combo-title">${escapeHtml(exercise.name)}</h2>
@@ -631,6 +722,7 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 				<div class="hud-left-actions">
 					<button class="btn btn-primary btn-hud-play-ex" style="width:100%;">▶ Preview Movement</button>
 					<button class="btn btn-ghost btn-hud-add-ex" style="width:100%;">+ Add to Workout</button>
+					${onOpenInLibrary ? `<button class="btn btn-ghost btn-hud-open-lib" style="width:100%;">📂 Open in Exercises Tab ➔</button>` : ''}
 				</div>
 			</div>
 
@@ -651,7 +743,7 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 					<div class="hud-section-label">🎬 Available Tutorials, Drills & Photo Guides (${assets.length})</div>
 					
 					<div class="modal-assets-list">
-						${assets.length === 0 ? '<p class="empty-chip-hint">No extra media attached yet. Add a tutorial video or looping visual below!</p>' : ''}
+						${assets.length === 0 ? '<p class="empty-chip-hint">No extra media attached yet. Add a tutorial video or photo guide below!</p>' : ''}
 						${assets.map((a, idx) => {
 							const isVideo = a.type === 'video' || Boolean(a.videoId);
 							const vid = a.videoId || (a.url ? parseYouTubeId(a.url) : null);
@@ -663,16 +755,19 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 								<div class="modal-asset-row" data-idx="${idx}">
 									<div class="modal-asset-thumb">
 										<img src="${thumb}" alt="${escapeHtml(a.title || '')}" onerror="this.src='/workout/media/pushups.svg'">
-										${isVideo ? '<span class="modal-play-badge">▶</span>' : ''}
+										${isVideo ? '<span class="modal-play-badge">▶</span>' : '<span class="modal-play-badge" style="font-size:0.75rem;">📷</span>'}
 									</div>
 									<div class="modal-asset-info">
 										<div class="modal-asset-badge-row">
 											${getMediaKindBadgeHtml(a.kind)}
-											${a.startSeconds !== undefined && a.endSeconds ? `<span class="asset-timestamp">${formatTime(a.startSeconds)} - ${formatTime(a.endSeconds)}</span>` : ''}
+											${isVideo && a.startSeconds !== undefined && a.endSeconds ? `<span class="asset-timestamp">${formatTime(a.startSeconds)} - ${formatTime(a.endSeconds)}</span>` : ''}
 										</div>
-										<div class="modal-asset-title">${escapeHtml(a.title || 'Media Asset')}</div>
+										<div class="modal-asset-title">${escapeHtml(a.title || (isVideo ? 'Video Variation' : 'Form Image'))}</div>
 									</div>
-									<button class="btn btn-sm btn-primary btn-play-asset-now" data-idx="${idx}">▶ Play</button>
+									<div class="modal-asset-actions">
+										<button class="btn btn-sm btn-primary btn-play-asset-now" data-idx="${idx}" title="${isVideo ? 'Preview video' : 'View image reference'}">${isVideo ? '▶ Play' : '📷 View'}</button>
+										<button class="btn btn-sm btn-ghost btn-remove-asset-now" data-idx="${idx}" title="Remove this media variation">🗑️</button>
+									</div>
 								</div>
 							`;
 						}).join('')}
@@ -685,21 +780,21 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 							<div class="field-group">
 								<label>Media Role / Kind</label>
 								<select id="new-asset-kind" class="input">
-									<option value="instruction">🎬 Instruction & Tutorial</option>
-									<option value="demonstration">⚡ Exercise Execution / Follow-Along</option>
-									<option value="animation">✨ Looping GIF / Animation</option>
-									<option value="photo">📷 Form Reference Photo</option>
+									<option value="instruction">🎬 Instruction & Tutorial (YouTube Video)</option>
+									<option value="demonstration">⚡ Exercise Execution / Follow-Along (YouTube Video)</option>
+									<option value="photo">📷 Form Reference Photo (Image / Path)</option>
+									<option value="animation">✨ Looping GIF / Visual (Image / GIF)</option>
 								</select>
 							</div>
 
 							<div class="field-group">
-								<label>Asset Title</label>
+								<label id="new-asset-title-label">Asset Title</label>
 								<input type="text" id="new-asset-title" class="input" placeholder="e.g., Coach Breakdown & Cueing">
 							</div>
 
 							<div class="field-group">
-								<label>Video URL or Image URL</label>
-								<input type="text" id="new-asset-url" class="input" placeholder="https://youtube.com/watch?v=... or /workout/media/...">
+								<label id="new-asset-url-label">YouTube Video URL</label>
+								<input type="text" id="new-asset-url" class="input" placeholder="https://youtube.com/watch?v=... or https://youtu.be/...">
 							</div>
 
 							<div class="field-row" id="new-asset-time-row">
@@ -726,12 +821,53 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 			b.addEventListener('click', close);
 		});
 
+		const editExBtn = modal.querySelector('.btn-edit-this-ex');
+		if (editExBtn) {
+			editExBtn.addEventListener('click', () => {
+				close();
+				showEditExerciseModal(exercise, {
+					onUpdated: (updatedEx) => {
+						Object.assign(exercise, updatedEx);
+						onUpdated();
+						showExerciseVariationsModal(exercise, options);
+					}
+				});
+			});
+		}
+
 		modal.querySelectorAll('.btn-play-asset-now').forEach(btn => {
 			btn.addEventListener('click', () => {
 				const idx = parseInt(btn.getAttribute('data-idx'), 10);
 				if (assets[idx]) {
 					close();
 					onPlayAsset(assets[idx]);
+				}
+			});
+		});
+
+		modal.querySelectorAll('.btn-remove-asset-now').forEach(btn => {
+			btn.addEventListener('click', async (e) => {
+				e.stopPropagation();
+				const idx = parseInt(btn.getAttribute('data-idx'), 10);
+				const assetToRemove = assets[idx];
+				if (!assetToRemove) return;
+
+				const confirmed = await showConfirm({
+					title: 'Remove Video / Media',
+					message: `Are you sure you want to remove "${assetToRemove.title || 'this video'}" from ${exercise.name}?`,
+					confirmText: 'Remove',
+					danger: true
+				});
+				if (!confirmed) return;
+
+				try {
+					const updated = await removeMediaAssetFromExercise(exercise.id, assetToRemove.id);
+					Object.assign(exercise, updated);
+					renderModalContent();
+					onUpdated();
+					showToast(`Removed media from "${exercise.name}".`);
+				} catch (err) {
+					await showAlert({ title: 'Error', message: 'Could not remove video: ' + err.message });
 				}
 			});
 		});
@@ -752,6 +888,14 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 			});
 		}
 
+		const openLibBtn = modal.querySelector('.btn-hud-open-lib');
+		if (openLibBtn && onOpenInLibrary) {
+			openLibBtn.addEventListener('click', () => {
+				close();
+				onOpenInLibrary(exercise);
+			});
+		}
+
 		const toggleAddBtn = modal.querySelector('#toggle-add-asset-btn');
 		const addForm = modal.querySelector('#add-asset-form');
 		if (toggleAddBtn && addForm) {
@@ -760,37 +904,90 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 			});
 		}
 
+		const kindSelect = modal.querySelector('#new-asset-kind');
+		const urlLabel = modal.querySelector('#new-asset-url-label');
+		const urlInput = modal.querySelector('#new-asset-url');
+		const titleInput = modal.querySelector('#new-asset-title');
+		const timeRow = modal.querySelector('#new-asset-time-row');
+
+		function updateAddFormFields() {
+			if (!kindSelect || !urlLabel || !urlInput || !titleInput || !timeRow) return;
+			const kind = kindSelect.value;
+			const isImage = kind === 'photo' || kind === 'animation';
+
+			if (isImage) {
+				timeRow.classList.add('hidden');
+				if (kind === 'photo') {
+					urlLabel.textContent = 'Photo / Image URL or Path';
+					urlInput.placeholder = 'https://example.com/photo.jpg or /workout/media/exercise.jpg';
+					titleInput.placeholder = 'e.g., Stance & Setup Reference Photo';
+				} else {
+					urlLabel.textContent = 'Looping GIF / Animation URL';
+					urlInput.placeholder = 'https://example.com/animation.gif or /workout/media/pushups.svg';
+					titleInput.placeholder = 'e.g., Looping Execution Visual';
+				}
+			} else {
+				timeRow.classList.remove('hidden');
+				if (kind === 'instruction') {
+					urlLabel.textContent = 'YouTube Video URL (Tutorial & Breakdown)';
+					urlInput.placeholder = 'https://youtube.com/watch?v=... or https://youtu.be/...';
+					titleInput.placeholder = 'e.g., Coach Breakdown & Form Cues';
+				} else {
+					urlLabel.textContent = 'YouTube Video URL (Follow-Along Drill)';
+					urlInput.placeholder = 'https://youtube.com/watch?v=... or https://youtu.be/...';
+					titleInput.placeholder = 'e.g., Full Speed Follow-Along Drill';
+				}
+			}
+		}
+
+		if (kindSelect) {
+			kindSelect.addEventListener('change', updateAddFormFields);
+			updateAddFormFields();
+		}
+
 		const saveAssetBtn = modal.querySelector('#btn-save-new-asset');
 		if (saveAssetBtn) {
 			saveAssetBtn.addEventListener('click', async () => {
 				const kind = modal.querySelector('#new-asset-kind').value;
-				const title = modal.querySelector('#new-asset-title').value.trim() || 'Media Asset';
+				const isImage = kind === 'photo' || kind === 'animation';
+				const defaultTitle = isImage
+					? (kind === 'photo' ? 'Form Reference Photo' : 'Looping Form Visual')
+					: (kind === 'instruction' ? 'Instruction Tutorial' : 'Exercise Demonstration');
+				const title = modal.querySelector('#new-asset-title').value.trim() || defaultTitle;
 				const url = modal.querySelector('#new-asset-url').value.trim();
-				const start = parseInt(modal.querySelector('#new-asset-start').value, 10) || 0;
-				const end = parseInt(modal.querySelector('#new-asset-end').value, 10) || 60;
+				const start = parseInt(modal.querySelector('#new-asset-start')?.value, 10) || 0;
+				const end = parseInt(modal.querySelector('#new-asset-end')?.value, 10) || 60;
 
 				if (!url) {
-					await showAlert({ title: 'Missing URL', message: 'Please enter a valid YouTube URL or image link.' });
+					await showAlert({
+						title: 'Missing URL',
+						message: isImage
+							? 'Please enter a valid image URL or path (e.g. /workout/media/photo.jpg or https://...)'
+							: 'Please enter a valid YouTube video link.'
+					});
 					return;
 				}
 
-				const vid = parseYouTubeId(url);
+				const vid = isImage ? null : parseYouTubeId(url);
+				const finalType = isImage ? 'image' : (vid ? 'video' : 'image');
+
 				const newAsset = {
 					id: `asset-${Date.now()}`,
 					kind,
-					type: vid ? 'video' : 'image',
+					type: finalType,
 					title,
 					url,
 					videoId: vid || undefined,
-					startSeconds: vid ? start : undefined,
-					endSeconds: vid ? end : undefined,
+					startSeconds: finalType === 'video' ? start : undefined,
+					endSeconds: finalType === 'video' ? end : undefined,
 				};
 
 				try {
 					const updated = await addMediaAssetToExercise(exercise.id, newAsset);
-					exercise.media_assets = updated.media_assets;
+					Object.assign(exercise, updated);
 					renderModalContent();
 					onUpdated();
+					showToast(`Added "${title}" to ${exercise.name}!`);
 				} catch (err) {
 					await showAlert({ title: 'Error', message: 'Could not add media asset: ' + err.message });
 				}
@@ -808,11 +1005,13 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 }
 
 /**
- * Show modal to create a new custom exercise.
+ * Show modal to create or edit a custom exercise.
+ * @param {Object} [exercise] - Exercise object if editing, null if creating
  * @param {Object} [options]
  */
-export function showCreateExerciseModal(options = {}) {
-	const onCreated = options.onCreated || (() => {});
+export function showEditExerciseModal(exercise = null, options = {}) {
+	const isEdit = Boolean(exercise && exercise.id);
+	const onSaved = options.onUpdated || options.onCreated || (() => {});
 
 	const backdrop = document.createElement('div');
 	backdrop.className = 'modal-backdrop';
@@ -820,39 +1019,48 @@ export function showCreateExerciseModal(options = {}) {
 	const modal = document.createElement('div');
 	modal.className = 'modal modal-create-exercise';
 
+	const currentPri = isEdit
+		? new Set(exercise.primary_muscles || inferMusclesForExercise(exercise).primary || ['core'])
+		: new Set(['core']);
+	const currentSec = isEdit
+		? new Set(exercise.secondary_muscles || inferMusclesForExercise(exercise).secondary || [])
+		: new Set();
+
+	const currentMediaUrl = isEdit ? (exercise.media_url || (exercise.media_assets?.[0]?.url || '')) : '';
+
 	modal.innerHTML = `
 		<div class="modal-header">
-			<h3 class="modal-title">➕ Create Custom Exercise</h3>
+			<h3 class="modal-title">${isEdit ? '✏️ Edit Custom Exercise' : '➕ Create Custom Exercise'}</h3>
 			<button class="modal-close-btn" title="Close">✕</button>
 		</div>
 
 		<div class="modal-body">
 			<div class="field-group">
 				<label>Exercise Name</label>
-				<input type="text" id="create-ex-name" class="input" placeholder="e.g., Muay Thai Switch Kick, Diamond Push-ups...">
+				<input type="text" id="create-ex-name" class="input" placeholder="e.g., Muay Thai Switch Kick, Diamond Push-ups..." value="${isEdit ? escapeHtml(exercise.name || '') : ''}">
 			</div>
 
 			<div class="field-row">
 				<div class="field-group">
 					<label>Category</label>
 					<select id="create-ex-category" class="input">
-						<option value="strength">💪 Strength / Force</option>
-						<option value="drill">⚡ Drills & Speed</option>
-						<option value="technique">🥋 Technique & Form</option>
-						<option value="stretch">🧘 Stretch & Recovery</option>
-						<option value="cardio">🫀 Cardio & HIIT</option>
-						<option value="mobility">🔄 Mobility & Joints</option>
+						<option value="strength" ${isEdit && exercise.category === 'strength' ? 'selected' : ''}>💪 Strength / Force</option>
+						<option value="drill" ${isEdit && exercise.category === 'drill' ? 'selected' : ''}>⚡ Drills & Speed</option>
+						<option value="technique" ${isEdit && exercise.category === 'technique' ? 'selected' : ''}>🥋 Technique & Form</option>
+						<option value="stretch" ${isEdit && exercise.category === 'stretch' ? 'selected' : ''}>🧘 Stretch & Recovery</option>
+						<option value="cardio" ${isEdit && exercise.category === 'cardio' ? 'selected' : ''}>🫀 Cardio & HIIT</option>
+						<option value="mobility" ${isEdit && exercise.category === 'mobility' ? 'selected' : ''}>🔄 Mobility & Joints</option>
 					</select>
 				</div>
 
 				<div class="field-group">
 					<label>Discipline</label>
 					<select id="create-ex-discipline" class="input">
-						<option value="general">🏋️ General Fitness</option>
-						<option value="muay_thai">🥊 Muay Thai</option>
-						<option value="boxing">🥊 Boxing</option>
-						<option value="calisthenics">🤸 Calisthenics</option>
-						<option value="yoga">🧘 Yoga & Mobility</option>
+						<option value="general" ${isEdit && exercise.discipline === 'general' ? 'selected' : ''}>🏋️ General Fitness</option>
+						<option value="muay_thai" ${isEdit && exercise.discipline === 'muay_thai' ? 'selected' : ''}>🥊 Muay Thai</option>
+						<option value="boxing" ${isEdit && exercise.discipline === 'boxing' ? 'selected' : ''}>🥊 Boxing</option>
+						<option value="calisthenics" ${isEdit && exercise.discipline === 'calisthenics' ? 'selected' : ''}>🤸 Calisthenics</option>
+						<option value="yoga" ${isEdit && exercise.discipline === 'yoga' ? 'selected' : ''}>🧘 Yoga & Mobility</option>
 					</select>
 				</div>
 			</div>
@@ -861,14 +1069,14 @@ export function showCreateExerciseModal(options = {}) {
 				<div class="field-group">
 					<label>Default Execution Mode</label>
 					<select id="create-ex-mode" class="input">
-						<option value="reps">🔢 Target Reps</option>
-						<option value="time">⏱️ Timed Interval</option>
+						<option value="reps" ${isEdit && exercise.default_mode === 'reps' ? 'selected' : ''}>🔢 Target Reps</option>
+						<option value="time" ${isEdit && exercise.default_mode === 'time' ? 'selected' : ''}>⏱️ Timed Interval</option>
 					</select>
 				</div>
 
 				<div class="field-group">
 					<label>Default Quantity (reps or sec)</label>
-					<input type="number" id="create-ex-quantity" class="input" min="1" value="20">
+					<input type="number" id="create-ex-quantity" class="input" min="1" value="${isEdit ? (exercise.default_quantity || 20) : 20}">
 				</div>
 			</div>
 
@@ -884,18 +1092,21 @@ export function showCreateExerciseModal(options = {}) {
 
 			<div class="field-group">
 				<label>Description & Technical Cues</label>
-				<textarea id="create-ex-desc" class="input" rows="2" placeholder="Key form cues, tempo, or setup instructions..."></textarea>
+				<textarea id="create-ex-desc" class="input" rows="2" placeholder="Key form cues, tempo, or setup instructions...">${isEdit ? escapeHtml(exercise.description || '') : ''}</textarea>
 			</div>
 
 			<div class="field-group">
-				<label>Video or Image URL (Optional)</label>
-				<input type="text" id="create-ex-media" class="input" placeholder="https://youtube.com/watch?v=... or image URL">
+				<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+					<label style="margin-bottom:0;">Video or Image URL (Optional)</label>
+					${isEdit && currentMediaUrl ? '<button type="button" id="btn-clear-ex-media" class="btn btn-ghost btn-xs" style="color:var(--text-danger,#ef4444);padding:1px 6px;">✕ Clear Video/Media</button>' : ''}
+				</div>
+				<input type="text" id="create-ex-media" class="input" placeholder="https://youtube.com/watch?v=... or image URL" value="${escapeHtml(currentMediaUrl)}">
 			</div>
 		</div>
 
 		<div class="modal-footer">
 			<button class="btn btn-ghost modal-btn-cancel">Cancel</button>
-			<button id="btn-submit-create-ex" class="btn btn-primary">Create Exercise</button>
+			<button id="btn-submit-create-ex" class="btn btn-primary">${isEdit ? '✓ Save Changes' : 'Create Exercise'}</button>
 		</div>
 	`;
 
@@ -909,11 +1120,19 @@ export function showCreateExerciseModal(options = {}) {
 		if (e.target === backdrop) close();
 	});
 
+	const clearMediaBtn = modal.querySelector('#btn-clear-ex-media');
+	if (clearMediaBtn) {
+		clearMediaBtn.addEventListener('click', () => {
+			modal.querySelector('#create-ex-media').value = '';
+			clearMediaBtn.style.display = 'none';
+		});
+	}
+
 	const priContainer = modal.querySelector('#create-ex-primary-muscles');
 	const secContainer = modal.querySelector('#create-ex-secondary-muscles');
 
-	const selectedPrimary = new Set(['core']);
-	const selectedSecondary = new Set();
+	const selectedPrimary = new Set(currentPri);
+	const selectedSecondary = new Set(currentSec);
 
 	function renderMusclePickers() {
 		priContainer.innerHTML = '';
@@ -973,8 +1192,24 @@ export function showCreateExerciseModal(options = {}) {
 			return;
 		}
 
+		let media_assets = isEdit ? (Array.isArray(exercise.media_assets) ? [...exercise.media_assets] : []) : [];
+		if (!media_url) {
+			media_assets = [];
+		} else if (media_url !== currentMediaUrl) {
+			const isYt = media_url.includes('youtube') || media_url.includes('youtu.be');
+			const vid = isYt ? parseYouTubeId(media_url) : null;
+			media_assets = [{
+				id: `asset-${Date.now()}`,
+				kind: isYt ? 'demonstration' : 'animation',
+				type: isYt ? 'video' : 'image',
+				title: `${name} ${isYt ? 'Video' : 'Visual'}`,
+				url: media_url,
+				videoId: vid || undefined,
+			}];
+		}
+
 		try {
-			const created = await createCustomExercise({
+			const payload = {
 				name,
 				category,
 				discipline,
@@ -982,16 +1217,30 @@ export function showCreateExerciseModal(options = {}) {
 				default_quantity,
 				description,
 				media_url,
+				media_assets,
 				primary_muscles,
 				secondary_muscles,
-			});
+			};
+			if (isEdit) {
+				payload.id = exercise.id;
+			}
+			const saved = await createCustomExercise(payload);
 			close();
-			onCreated(created);
+			onSaved(saved);
+			showToast(isEdit ? `Saved changes to "${name}".` : `Created "${name}"!`);
 		} catch (err) {
-			await showAlert({ title: 'Error', message: 'Could not create exercise: ' + err.message });
+			await showAlert({ title: 'Error', message: `Could not save exercise: ${err.message}` });
 		}
 	});
 
 	backdrop.appendChild(modal);
 	document.body.appendChild(backdrop);
+}
+
+/**
+ * Show modal to create a new custom exercise.
+ * @param {Object} [options]
+ */
+export function showCreateExerciseModal(options = {}) {
+	showEditExerciseModal(null, options);
 }

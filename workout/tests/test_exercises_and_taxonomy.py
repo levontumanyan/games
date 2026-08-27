@@ -420,3 +420,72 @@ def test_combos_api(client: TestClient):
 	del_res = client.delete(f"/api/combos/{created_combo['id']}", headers={"X-User-Id": "levon"})
 	assert del_res.status_code == 200
 	assert len(client.get("/api/combos", headers={"X-User-Id": "levon"}).json()) == 0
+
+
+def test_exercise_video_removal_and_updates(client: TestClient):
+	# Create exercise with a YouTube video URL
+	payload = {
+		"name": "Muay Thai Teep Drill",
+		"category": "technique",
+		"discipline": "muay_thai",
+		"media_url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+		"media_assets": [
+			{
+				"id": "asset-teep-1",
+				"kind": "demonstration",
+				"type": "video",
+				"title": "Teep Tutorial Video",
+				"url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+			},
+			{
+				"id": "asset-teep-2",
+				"kind": "instruction",
+				"type": "video",
+				"title": "Teep Footwork Breakdown",
+				"url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+			},
+		],
+	}
+	create_res = client.post("/api/exercises", json=payload, headers={"X-User-Id": "levon"})
+	assert create_res.status_code == 200
+	ex = create_res.json()
+	assert len(ex["media_assets"]) == 2
+	assert ex["media_url"] == "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+
+	# Remove one video asset
+	updated_assets = [a for a in ex["media_assets"] if a["id"] != "asset-teep-1"]
+	update_payload = {
+		"id": ex["id"],
+		"name": "Muay Thai Teep Drill",
+		"category": "technique",
+		"discipline": "muay_thai",
+		"media_url": updated_assets[0]["url"],
+		"media_assets": updated_assets,
+	}
+	update_res = client.post("/api/exercises", json=update_payload, headers={"X-User-Id": "levon"})
+	assert update_res.status_code == 200
+	updated_ex = update_res.json()
+	assert len(updated_ex["media_assets"]) == 1
+	assert updated_ex["media_assets"][0]["id"] == "asset-teep-2"
+
+	# Remove all video assets and clear media_url
+	clear_payload = {
+		"id": ex["id"],
+		"name": "Muay Thai Teep Drill",
+		"category": "technique",
+		"discipline": "muay_thai",
+		"media_url": "",
+		"media_assets": [],
+	}
+	clear_res = client.post("/api/exercises", json=clear_payload, headers={"X-User-Id": "levon"})
+	assert clear_res.status_code == 200
+	cleared_ex = clear_res.json()
+	assert cleared_ex["media_url"] == ""
+	assert cleared_ex["media_assets"] == []
+
+	# Get exercise by ID directly to verify persistence
+	get_res = client.get("/api/exercises", headers={"X-User-Id": "levon"})
+	assert get_res.status_code == 200
+	found = next(e for e in get_res.json() if e["id"] == ex["id"])
+	assert found["media_url"] == ""
+	assert found["media_assets"] == []

@@ -7,10 +7,10 @@ import { saveAudioFile, deleteAudioFile } from './musicdb.js';
 import { showPrompt, showAlert } from './modal.js';
 import { getClipIcon, getTimerIcon, getBreakIcon, getComboIcon, getExerciseIcon, getDuplicateIcon, getPlusIcon } from './icons.js';
 import {
-	getExercises, filterExercises, createCustomExercise,
+	getExercises, getExerciseById, filterExercises, createCustomExercise,
 	getCategoryBadgeHtml, getDisciplineBadgeHtml,
 	getExerciseMediaAssets, getMediaKindBadgeHtml,
-	addMediaAssetToExercise, MEDIA_KINDS
+	addMediaAssetToExercise, showExerciseVariationsModal, MEDIA_KINDS
 } from './exercises.js';
 import { getCombos } from './combos.js';
 
@@ -1076,12 +1076,23 @@ function createExercisePicker(step, onUpdate) {
 		step.exercises.forEach((ex, i) => {
 			const chip = document.createElement('div');
 			chip.className = 'step-ex-chip';
+			chip.title = `Click to view "${ex.name}" exercise guide & videos`;
+			chip.style.cursor = 'pointer';
 			chip.innerHTML = `
 				${getCategoryBadgeHtml(ex.category)}
 				<span class="step-ex-name">${escapeHtml(ex.name)}</span>
 				${ex.discipline ? getDisciplineBadgeHtml(ex.discipline) : ''}
 				<button type="button" class="btn-remove-ex-chip" title="Remove exercise">✕</button>
 			`;
+			chip.addEventListener('click', () => {
+				const fullEx = (ex.id ? getExerciseById(ex.id) : null) || ex;
+				showExerciseVariationsModal(fullEx, {
+					onUpdated: () => {
+						renderChips();
+						onUpdate();
+					}
+				});
+			});
 			const removeBtn = chip.querySelector('.btn-remove-ex-chip');
 			removeBtn.addEventListener('click', (e) => {
 				e.stopPropagation();

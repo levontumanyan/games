@@ -3,7 +3,7 @@
  */
 
 import { fetchServerCombos, saveCustomComboOnServer, deleteCustomComboOnServer } from './storage.js';
-import { getExerciseById, getExercises, getCategoryBadgeHtml, getDisciplineBadgeHtml, inferMusclesForExercise, getMuscleBadgeHtml } from './exercises.js';
+import { getExerciseById, getExercises, getCategoryBadgeHtml, getDisciplineBadgeHtml, inferMusclesForExercise, getMuscleBadgeHtml, showExerciseVariationsModal } from './exercises.js';
 import { escapeHtml, formatTime, parseYouTubeId } from './utils.js';
 import { showConfirm, showAlert } from './modal.js';
 
@@ -440,7 +440,7 @@ export function showComboDetailModal(combo, options = {}) {
 							: formatTime(ex.default_quantity || 30);
 
 						return `
-							<div class="hud-step-card">
+							<div class="hud-step-card hud-step-card-clickable" data-idx="${idx}" title="Click to view ${escapeHtml(ex.name)} exercise guide & videos" style="cursor:pointer;">
 								<div class="hud-step-num">#${idx + 1}</div>
 								<div class="hud-step-body">
 									<div class="hud-step-header-row">
@@ -457,6 +457,7 @@ export function showComboDetailModal(combo, options = {}) {
 
 									<p class="hud-step-desc">${escapeHtml(ex.description || 'Focus on controlled tempo and kinetic alignment.')}</p>
 								</div>
+								<span class="hud-step-goto-icon" title="View Exercise">🥋 ↗</span>
 							</div>
 						`;
 					}).join('')}
@@ -483,6 +484,20 @@ export function showComboDetailModal(combo, options = {}) {
 
 	backdrop.addEventListener('click', (e) => {
 		if (e.target === backdrop) close();
+	});
+
+	modal.querySelectorAll('.hud-step-card-clickable').forEach(card => {
+		card.addEventListener('click', () => {
+			const idx = parseInt(card.getAttribute('data-idx'), 10);
+			const ex = exList[idx];
+			if (ex) {
+				const fullEx = getExerciseById(ex.id) || ex;
+				showExerciseVariationsModal(fullEx, {
+					onPlayAsset: (asset) => onPlayExercise(fullEx, asset),
+					onAddToRoutine: () => onAddToRoutine(combo),
+				});
+			}
+		});
 	});
 
 	const playFlowBtn = modal.querySelector('.btn-hud-play');

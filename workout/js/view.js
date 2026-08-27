@@ -1,15 +1,37 @@
 import { formatTime, formatFriendlyDuration, escapeHtml } from './utils.js';
 import { isBreakStep, resolveStepMediaUrl } from './editor.js';
 import { getClipIcon, getTimerIcon, getBreakIcon, getStepsIcon, getShareIcon, getSaveIcon } from './icons.js';
-import { getCategoryBadgeHtml, getDisciplineBadgeHtml, inferMusclesForExercise, getMuscleBadgeHtml, getExerciseById } from './exercises.js';
+import { getCategoryBadgeHtml, getDisciplineBadgeHtml, inferMusclesForExercise, getMuscleBadgeHtml, getExerciseById, getExercises } from './exercises.js';
 import { getFlowTypeBadgeHtml } from './combos.js';
 import { MUSCLE_DEFINITIONS } from './body_map.js';
+
+/**
+ * Helper to resolve an exercise definition for a step.
+ * @param {Object} step
+ * @returns {Object|null}
+ */
+export function resolveExerciseForStep(step) {
+	if (!step) return null;
+	if (Array.isArray(step.exercises) && step.exercises.length === 1) {
+		const ex = step.exercises[0];
+		return (ex.id ? getExerciseById(ex.id) : null) || ex;
+	}
+	if (step.exercise_id) {
+		return getExerciseById(step.exercise_id);
+	}
+	if (step.label) {
+		const name = String(step.label).trim().toLowerCase();
+		const match = getExercises().find(e => e.name.toLowerCase() === name || String(e.id).toLowerCase() === name);
+		if (match) return match;
+	}
+	return null;
+}
 
 /**
  * Render the read-only routine overview.
  * @param {Object} routine - The routine to render
  * @param {HTMLElement} container - The container element
- * @param {Object} actions - Action callbacks: { onEdit, onPlay, onPlayStep, onShare, onSaveToLibrary, isShared }
+ * @param {Object} actions - Action callbacks: { onEdit, onPlay, onPlayStep, onShare, onSaveToLibrary, isShared, onGoToExercise, onOpenAnatomy }
  */
 export function renderRoutineOverview(routine, container, actions = {}) {
 	container.innerHTML = '';
@@ -226,12 +248,20 @@ export function renderRoutineOverview(routine, container, actions = {}) {
 				${sortedMuscles.map(([mId, count]) => {
 					const def = MUSCLE_DEFINITIONS[mId];
 					if (!def) return '';
-					return `<span class="muscle-tag-chip" style="--chip-color:${def.color}">
+					return `<button type="button" class="muscle-tag-chip clickable-muscle-chip" data-muscle="${mId}" style="--chip-color:${def.color}" title="View ${def.label} in Anatomy Map">
 						<span>${def.icon}</span> <span>${def.label}</span>
-					</span>`;
+					</button>`;
 				}).join('')}
 			</div>
 		`;
+
+		muscleCard.querySelectorAll('.clickable-muscle-chip').forEach(chip => {
+			chip.addEventListener('click', () => {
+				const m = chip.getAttribute('data-muscle');
+				if (m) actions.onOpenAnatomy?.(m);
+			});
+		});
+
 		container.appendChild(muscleCard);
 	}
 
@@ -471,24 +501,29 @@ function createViewStepCard(step, index, steps, actions) {
 	}
 
 	// Attached exercise tags & muscle badges
-	const linkedEx = (step.exercises && step.exercises[0]) || (step.exercise_id ? getExerciseById(step.exercise_id) : null);
+	const linkedEx = resolveExerciseForStep(step);
 	const stepMuscles = inferMusclesForExercise(linkedEx || { name: step.label, description: step.description });
+	const isCompound = Boolean(step.exercises && step.exercises.length >= 2);
 
-	if (step.flow_type || (step.exercises && step.exercises.length >= 2)) {
+	if (step.flow_type || isCompound) {
 		const flowTag = document.createElement('span');
 		flowTag.className = 'view-tag view-tag-flow-pill';
 		flowTag.innerHTML = getFlowTypeBadgeHtml(step.flow_type || 'alternating');
 		tagsRow.appendChild(flowTag);
 	}
 
-	// For single exercises, render the pill badge
-	if (step.exercises && step.exercises.length === 1) {
-		step.exercises.forEach(ex => {
-			const exTag = document.createElement('span');
-			exTag.className = 'view-tag view-tag-exercise-pill';
-			exTag.innerHTML = `${getCategoryBadgeHtml(ex.category)} <span class="ex-pill-name">${escapeHtml(ex.name)}</span>`;
-			tagsRow.appendChild(exTag);
+	// For single exercises, render the clickable pill badge
+	if (linkedEx && !isCompound) {
+		const exTag = document.createElement('button');
+		exTag.type = 'button';
+		exTag.className = 'view-tag view-tag-exercise-pill view-clickable-pill';
+		exTag.title = `View "${linkedEx.name}" movement guide & videos`;
+		exTag.innerHTML = `${getCategoryBadgeHtml(linkedEx.category)} <span class="ex-pill-name">${escapeHtml(linkedEx.name)}</span> <span class="view-pill-arrow">↗</span>`;
+		exTag.addEventListener('click', (e) => {
+			e.stopPropagation();
+			actions.onGoToExercise?.(linkedEx);
 		});
+		tagsRow.appendChild(exTag);
 	}
 
 	(stepMuscles.primary || []).slice(0, 2).forEach(m => {
@@ -504,12 +539,16 @@ function createViewStepCard(step, index, steps, actions) {
 	details.append(title, tagsRow);
 
 	// If this is a compound combo step with 2+ constituent movements, render the nested sequence deck
-	if (step.exercises && step.exercises.length >= 2) {
+	if (isCompound) {
 		const nestedDeck = document.createElement('div');
 		nestedDeck.className = 'view-compound-nested-deck';
 		step.exercises.forEach((ex, sIdx) => {
 			const subRow = document.createElement('div');
-			subRow.className = 'view-compound-sub-row';
+			subRow.className = 'view-compound-sub-row view-clickable-sub-row';
+			subRow.setAttribute('role', 'button');
+			subRow.setAttribute('tabindex', '0');
+			subRow.title = `Click to view "${ex.name}" exercise guide & videos`;
+
 			const isSubReps = ex.stepMode === 'reps' || ex.default_mode === 'reps' || Boolean(ex.targetReps) || (!ex.durationSeconds && step.stepMode === 'reps');
 			const subReps = ex.targetReps || ex.reps || (ex.default_mode === 'reps' ? ex.default_quantity : 10);
 			const subDur = ex.durationSeconds || (ex.default_mode === 'time' ? ex.default_quantity : 30);
@@ -530,20 +569,53 @@ function createViewStepCard(step, index, steps, actions) {
 				<span class="sub-row-meta">
 					${muscleHtml}
 					<span class="sub-row-target">${exTargetStr}</span>
+					<span class="sub-row-goto-icon" title="View Exercise">🥋 ↗</span>
 				</span>
 			`;
+
+			const handleSubClick = (e) => {
+				e.stopPropagation();
+				actions.onGoToExercise?.(linkedSubEx);
+			};
+
+			subRow.addEventListener('click', handleSubClick);
+			subRow.addEventListener('keydown', (e) => {
+				if (e.key === 'Enter' || e.key === ' ') {
+					e.preventDefault();
+					handleSubClick(e);
+				}
+			});
+
 			nestedDeck.appendChild(subRow);
 		});
 		details.appendChild(nestedDeck);
 	}
 
-	// Quick Preview / Test Action Button
+	// Actions column (View Exercise + Quick Preview)
+	const actionsWrap = document.createElement('div');
+	actionsWrap.className = 'view-step-card-actions';
+
+	if (linkedEx) {
+		const viewExBtn = document.createElement('button');
+		viewExBtn.type = 'button';
+		viewExBtn.className = 'view-step-ex-btn';
+		viewExBtn.innerHTML = '🥋';
+		viewExBtn.title = `View "${linkedEx.name}" movement guide & videos`;
+		viewExBtn.addEventListener('click', (e) => {
+			e.stopPropagation();
+			actions.onGoToExercise?.(linkedEx);
+		});
+		actionsWrap.appendChild(viewExBtn);
+	}
+
 	const playAction = document.createElement('button');
+	playAction.type = 'button';
 	playAction.className = 'view-step-play-btn';
 	playAction.innerHTML = '🔍';
 	playAction.title = `Preview Step ${index + 1} (Stats Disabled)`;
 
-	card.append(indexBadge, mediaBox, details, playAction);
+	actionsWrap.appendChild(playAction);
+	card.append(indexBadge, mediaBox, details, actionsWrap);
 
 	// Single row click triggers Preview Mode so it does not count towards stats
 	card.addEventListener('click', () => {

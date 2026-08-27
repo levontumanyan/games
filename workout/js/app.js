@@ -23,7 +23,7 @@ import {
 	initMusic, setVolume as setMusicVolume, nextTrack, prevTrack,
 	muteMusic, unmuteMusic, isMuted as isMusicMuted, unlockAudio
 } from './music.js';
-import { formatTime, formatFriendlyDuration, copyToClipboard, showToast } from './utils.js';
+import { formatTime, formatFriendlyDuration, copyToClipboard, showToast, parseYouTubeId } from './utils.js';
 import { getClipIcon, getTimerIcon, getBreakIcon } from './icons.js';
 import { showPrompt, showConfirm, showAlert } from './modal.js';
 import {
@@ -31,7 +31,7 @@ import {
 	fetchUsers, createUser
 } from './user.js';
 import { renderStatsDashboard } from './stats.js';
-import { loadExercises, renderExercisesCatalog } from './exercises.js';
+import { loadExercises, renderExercisesCatalog, getExerciseById, showExerciseVariationsModal, highlightExerciseCard } from './exercises.js';
 import { loadCombos, renderCombosCatalog } from './combos.js';
 import { renderAnatomyExplorer } from './body_map.js';
 import { initTheme } from './theme.js';
@@ -1038,6 +1038,80 @@ function renderRoutineList() {
 }
 
 /**
+ * Navigate to and open an exercise's Split HUD modal from anywhere (workout view, combos, anatomy).
+ * @param {Object|string} exerciseOrId
+ */
+function goToExercise(exerciseOrId) {
+	if (!exerciseOrId) return;
+	const fullEx = typeof exerciseOrId === 'string'
+		? getExerciseById(exerciseOrId)
+		: ((exerciseOrId.id ? getExerciseById(exerciseOrId.id) : null) || exerciseOrId);
+	if (!fullEx) return;
+
+	showExerciseVariationsModal(fullEx, {
+		onPlayAsset: (asset) => {
+			const isVideo = asset && (asset.type === 'video' || Boolean(asset.videoId));
+			const step = isVideo ? {
+				id: 'preview-step',
+				type: 'clip',
+				videoId: asset.videoId || parseYouTubeId(asset.url),
+				startSeconds: asset.startSeconds || 0,
+				endSeconds: asset.endSeconds || ((asset.startSeconds || 0) + 60),
+				label: `${fullEx.name}: ${asset.title || 'Instruction'}`
+			} : {
+				id: 'preview-step',
+				type: 'timer',
+				stepMode: fullEx.default_mode || 'reps',
+				targetReps: fullEx.default_quantity || 20,
+				durationSeconds: fullEx.default_quantity || 30,
+				label: fullEx.name,
+				gifUrl: asset?.url || fullEx.media_url || '',
+				exercises: [fullEx]
+			};
+			const previewRoutine = {
+				id: 'preview-routine',
+				title: `Preview: ${fullEx.name}`,
+				steps: [step]
+			};
+			unlockAudio();
+			startRoutine(previewRoutine, 0, true);
+		},
+		onAddToRoutine: () => {
+			let routine = getSelectedRoutine();
+			if (!routine) {
+				routine = createRoutine('New Workout');
+				routines.push(routine);
+				selectedRoutineId = routine.id;
+			}
+			const isReps = (fullEx.default_mode || 'reps') === 'reps';
+			const newStep = createTimerStep(
+				fullEx.name,
+				isReps ? 30 : (fullEx.default_quantity || 30),
+				fullEx.media_url || ''
+			);
+			newStep.stepMode = fullEx.default_mode || 'reps';
+			if (isReps) newStep.targetReps = fullEx.default_quantity || 20;
+			newStep.exercises = [{ id: fullEx.id, name: fullEx.name, category: fullEx.category, discipline: fullEx.discipline }];
+			routine.steps.push(newStep);
+			expandStep(newStep.id);
+			persist();
+			currentMode = 'edit';
+			switchTab('routines');
+			showToast(`Added "${fullEx.name}" to workout!`);
+		},
+		onOpenInLibrary: (ex) => {
+			switchTab('exercises');
+			setTimeout(() => {
+				highlightExerciseCard(ex.id || ex.name);
+			}, 60);
+		},
+		onUpdated: () => {
+			renderSelectedRoutine();
+		}
+	});
+}
+
+/**
  * Render the active mode (View Mode or Edit Mode) for the selected routine.
  */
 function renderSelectedRoutine() {
@@ -1085,6 +1159,12 @@ function renderSelectedRoutine() {
 			},
 			onSaveToLibrary: () => {
 				handleSaveSharedToLibrary(true);
+			},
+			onGoToExercise: (exercise) => {
+				goToExercise(exercise);
+			},
+			onOpenAnatomy: (muscleId) => {
+				switchTab('anatomy');
 			}
 		});
 	} else if (currentMode === 'edit') {
