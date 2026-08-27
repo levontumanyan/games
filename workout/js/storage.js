@@ -474,3 +474,33 @@ export function importRoutines() {
 	});
 }
 
+/**
+ * Upload an image file (PNG, JPG, WEBP, GIF, SVG) to the server.
+ * @param {File|Blob} file
+ * @returns {Promise<{url: string, filename: string, size: number, type: string}>}
+ */
+export async function uploadImageFile(file) {
+	const formData = new FormData();
+	const filename = file.name || `screenshot_${Date.now()}.png`;
+	formData.append('file', file, filename);
+
+	const res = await fetch(`${getApiBase()}/upload`, {
+		method: 'POST',
+		headers: {
+			'X-User-Id': getActiveUserId(),
+		},
+		body: formData
+	});
+
+	if (!res.ok) {
+		let errMsg = `Upload failed (HTTP ${res.status})`;
+		try {
+			const errData = await res.json();
+			if (errData && errData.detail) errMsg = errData.detail;
+		} catch (_) {}
+		throw new Error(errMsg);
+	}
+
+	return await res.json();
+}
+

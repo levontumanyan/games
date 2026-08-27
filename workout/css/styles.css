@@ -7344,3 +7344,115 @@ html, body {
 	border-color: #6aa3a9 !important;
 	z-index: 10;
 }
+
+/* ── Media Upload & Dropzone ────────────────────────────────────────────── */
+
+.hidden-file-input {
+	display: none !important;
+}
+
+.media-upload-dropzone {
+	border: 2px dashed var(--border-hover, rgba(255, 255, 255, 0.2));
+	border-radius: var(--radius-md);
+	background: rgba(0, 0, 0, 0.2);
+	transition: all var(--transition-fast);
+	overflow: hidden;
+	cursor: pointer;
+}
+
+.media-upload-dropzone:hover,
+.media-upload-dropzone.dragover {
+	border-color: var(--accent);
+	background: var(--accent-subtle);
+}
+
+.dropzone-inner {
+	padding: 16px;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	text-align: center;
+	gap: 4px;
+}
+
+.dropzone-icon {
+	font-size: 1.6rem;
+	margin-bottom: 2px;
+}
+
+.dropzone-text {
+	font-size: 0.85rem;
+	color: var(--text-primary);
+}
+
+.dropzone-hint {
+	font-size: 0.72rem;
+	color: var(--text-muted);
+}
+
+.dropzone-preview {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 8px 12px;
+	background: rgba(0, 0, 0, 0.35);
+}
+
+.dropzone-preview img {
+	width: 60px;
+	height: 48px;
+	object-fit: cover;
+	border-radius: var(--radius-sm);
+	border: 1px solid var(--border);
+}
+
+.dropzone-preview-meta {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	min-width: 0;
+}
+
+.preview-filename {
+	font-size: 0.8rem;
+	color: var(--text-secondary);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.media-input-with-upload {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+}
+
+.media-input-with-upload input {
+	flex: 1;
+}
+
+.create-upload-preview {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	margin-top: 6px;
+	padding: 6px 10px;
+	background: rgba(0, 0, 0, 0.2);
+	border-radius: var(--radius-sm);
+	border: 1px solid var(--border);
+}
+
+.create-upload-preview img {
+	width: 44px;
+	height: 36px;
+	object-fit: cover;
+	border-radius: 4px;
+}
+
+.create-upload-preview .preview-hint {
+	font-size: 0.75rem;
+	color: var(--text-muted);
+}

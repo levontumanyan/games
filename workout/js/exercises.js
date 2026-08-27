@@ -2,7 +2,7 @@
  * Exercises module - Taxonomy, definitions, local caching, and custom exercise creation.
  */
 
-import { fetchServerExercises, saveCustomExerciseOnServer, deleteCustomExerciseOnServer } from './storage.js';
+import { fetchServerExercises, saveCustomExerciseOnServer, deleteCustomExerciseOnServer, uploadImageFile } from './storage.js';
 import { escapeHtml, formatTime, parseYouTubeId, showToast } from './utils.js';
 import { showConfirm, showAlert } from './modal.js';
 import { createBodyMap, MUSCLE_DEFINITIONS } from './body_map.js';
@@ -659,6 +659,7 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 
 	const close = () => {
 		document.removeEventListener('keydown', handleEsc);
+		document.removeEventListener('paste', handleGlobalPaste);
 		backdrop.remove();
 	};
 
@@ -668,6 +669,55 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 		}
 	};
 	document.addEventListener('keydown', handleEsc);
+
+	const handleGlobalPaste = (e) => {
+		const items = e.clipboardData?.items;
+		if (!items) return;
+		for (let i = 0; i < items.length; i++) {
+			if (items[i].type.startsWith('image/')) {
+				const file = items[i].getAsFile();
+				if (file) {
+					e.preventDefault();
+					const kindSelect = modal.querySelector('#new-asset-kind');
+					if (kindSelect && kindSelect.value !== 'photo' && kindSelect.value !== 'animation') {
+						kindSelect.value = 'photo';
+						const timeRow = modal.querySelector('#new-asset-time-row');
+						const uploadZone = modal.querySelector('#new-asset-upload-zone');
+						const urlLabel = modal.querySelector('#new-asset-url-label');
+						const urlInput = modal.querySelector('#new-asset-url');
+						const titleInput = modal.querySelector('#new-asset-title');
+						if (timeRow) timeRow.classList.add('hidden');
+						if (uploadZone) uploadZone.classList.remove('hidden');
+						if (urlLabel) urlLabel.textContent = 'Or Enter Direct Image URL / Path';
+						if (urlInput) urlInput.placeholder = 'https://example.com/photo.jpg or /workout/media/exercise.jpg';
+						if (titleInput && !titleInput.value) titleInput.placeholder = 'e.g., Stance & Setup Reference Photo';
+					}
+					const addForm = modal.querySelector('#add-asset-form');
+					if (addForm) addForm.classList.remove('hidden');
+					const dropzoneInner = modal.querySelector('#new-asset-dropzone-inner');
+					const previewBox = modal.querySelector('#new-asset-preview-box');
+					const previewImg = modal.querySelector('#new-asset-preview-img');
+					const previewFilename = modal.querySelector('#new-asset-preview-filename');
+					const urlInput = modal.querySelector('#new-asset-url');
+					const titleInput = modal.querySelector('#new-asset-title');
+
+					uploadImageFile(file).then((uploaded) => {
+						if (urlInput) urlInput.value = uploaded.url;
+						if (previewImg) previewImg.src = uploaded.url;
+						if (previewFilename) previewFilename.textContent = 'Pasted Screenshot';
+						if (dropzoneInner) dropzoneInner.classList.add('hidden');
+						if (previewBox) previewBox.classList.remove('hidden');
+						if (titleInput && !titleInput.value) titleInput.value = 'Form Reference Photo';
+						showToast('📷 Screenshot pasted & uploaded!');
+					}).catch((err) => {
+						showAlert({ title: 'Upload Failed', message: err.message });
+					});
+					break;
+				}
+			}
+		}
+	};
+	document.addEventListener('paste', handleGlobalPaste);
 
 	function renderModalContent() {
 		// Sync exercise object from memory cache if available
@@ -782,17 +832,38 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 								<select id="new-asset-kind" class="input">
 									<option value="instruction">🎬 Instruction & Tutorial (YouTube Video)</option>
 									<option value="demonstration">⚡ Exercise Execution / Follow-Along (YouTube Video)</option>
-									<option value="photo">📷 Form Reference Photo (Image / Path)</option>
-									<option value="animation">✨ Looping GIF / Visual (Image / GIF)</option>
+									<option value="photo">📷 Form Reference Photo (Upload / Screenshot / URL)</option>
+									<option value="animation">✨ Looping GIF / Visual (Upload / URL)</option>
 								</select>
 							</div>
 
-							<div class="field-group">
+							<!-- Image Upload & Dropzone Area (shown for photo/animation) -->
+							<div id="new-asset-upload-zone" class="media-upload-dropzone hidden">
+								<input type="file" id="new-asset-file-input" accept="image/*" class="hidden-file-input">
+								<div class="dropzone-inner" id="new-asset-dropzone-inner">
+									<span class="dropzone-icon">📷</span>
+									<div class="dropzone-text">
+										<strong>Choose photo / screenshot</strong> or drag & drop here
+									</div>
+									<div class="dropzone-hint">
+										Or paste screenshot directly from clipboard (⌘V / Ctrl+V)
+									</div>
+								</div>
+								<div id="new-asset-preview-box" class="dropzone-preview hidden">
+									<img id="new-asset-preview-img" src="" alt="Preview">
+									<div class="dropzone-preview-meta">
+										<span id="new-asset-preview-filename" class="preview-filename"></span>
+										<button type="button" id="btn-clear-uploaded-asset" class="btn btn-ghost btn-xs">✕ Remove</button>
+									</div>
+								</div>
+							</div>
+
+							<div class="field-group" id="new-asset-title-group">
 								<label id="new-asset-title-label">Asset Title</label>
 								<input type="text" id="new-asset-title" class="input" placeholder="e.g., Coach Breakdown & Cueing">
 							</div>
 
-							<div class="field-group">
+							<div class="field-group" id="new-asset-url-group">
 								<label id="new-asset-url-label">YouTube Video URL</label>
 								<input type="text" id="new-asset-url" class="input" placeholder="https://youtube.com/watch?v=... or https://youtu.be/...">
 							</div>
@@ -905,6 +976,13 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 		}
 
 		const kindSelect = modal.querySelector('#new-asset-kind');
+		const uploadZone = modal.querySelector('#new-asset-upload-zone');
+		const dropzoneInner = modal.querySelector('#new-asset-dropzone-inner');
+		const fileInput = modal.querySelector('#new-asset-file-input');
+		const previewBox = modal.querySelector('#new-asset-preview-box');
+		const previewImg = modal.querySelector('#new-asset-preview-img');
+		const previewFilename = modal.querySelector('#new-asset-preview-filename');
+		const clearUploadBtn = modal.querySelector('#btn-clear-uploaded-asset');
 		const urlLabel = modal.querySelector('#new-asset-url-label');
 		const urlInput = modal.querySelector('#new-asset-url');
 		const titleInput = modal.querySelector('#new-asset-title');
@@ -917,27 +995,88 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 
 			if (isImage) {
 				timeRow.classList.add('hidden');
+				if (uploadZone) uploadZone.classList.remove('hidden');
 				if (kind === 'photo') {
-					urlLabel.textContent = 'Photo / Image URL or Path';
+					urlLabel.textContent = 'Or Enter Direct Image URL / Path';
 					urlInput.placeholder = 'https://example.com/photo.jpg or /workout/media/exercise.jpg';
-					titleInput.placeholder = 'e.g., Stance & Setup Reference Photo';
+					if (!titleInput.value) titleInput.placeholder = 'e.g., Stance & Setup Reference Photo';
 				} else {
-					urlLabel.textContent = 'Looping GIF / Animation URL';
+					urlLabel.textContent = 'Or Enter Looping GIF / Animation URL';
 					urlInput.placeholder = 'https://example.com/animation.gif or /workout/media/pushups.svg';
-					titleInput.placeholder = 'e.g., Looping Execution Visual';
+					if (!titleInput.value) titleInput.placeholder = 'e.g., Looping Execution Visual';
 				}
 			} else {
 				timeRow.classList.remove('hidden');
+				if (uploadZone) uploadZone.classList.add('hidden');
 				if (kind === 'instruction') {
 					urlLabel.textContent = 'YouTube Video URL (Tutorial & Breakdown)';
 					urlInput.placeholder = 'https://youtube.com/watch?v=... or https://youtu.be/...';
-					titleInput.placeholder = 'e.g., Coach Breakdown & Form Cues';
+					if (!titleInput.value) titleInput.placeholder = 'e.g., Coach Breakdown & Form Cues';
 				} else {
 					urlLabel.textContent = 'YouTube Video URL (Follow-Along Drill)';
 					urlInput.placeholder = 'https://youtube.com/watch?v=... or https://youtu.be/...';
-					titleInput.placeholder = 'e.g., Full Speed Follow-Along Drill';
+					if (!titleInput.value) titleInput.placeholder = 'e.g., Full Speed Follow-Along Drill';
 				}
 			}
+		}
+
+		async function handleUploadedFile(file) {
+			if (!file || !file.type.startsWith('image/')) {
+				await showAlert({ title: 'Invalid File', message: 'Please select or paste an image file (PNG, JPG, WEBP, GIF, SVG).' });
+				return;
+			}
+			try {
+				if (uploadZone) uploadZone.classList.add('uploading');
+				const uploaded = await uploadImageFile(file);
+				urlInput.value = uploaded.url;
+				if (previewImg) previewImg.src = uploaded.url;
+				if (previewFilename) previewFilename.textContent = file.name || 'Uploaded photo';
+				if (dropzoneInner) dropzoneInner.classList.add('hidden');
+				if (previewBox) previewBox.classList.remove('hidden');
+				if (!titleInput.value) {
+					titleInput.value = (kindSelect.value === 'photo') ? 'Form Reference Photo' : 'Looping Form Visual';
+				}
+				showToast('📷 Photo uploaded successfully!');
+			} catch (err) {
+				await showAlert({ title: 'Upload Failed', message: err.message });
+			} finally {
+				if (uploadZone) uploadZone.classList.remove('uploading');
+			}
+		}
+
+		if (dropzoneInner && fileInput) {
+			dropzoneInner.addEventListener('click', () => fileInput.click());
+			fileInput.addEventListener('change', (e) => {
+				const file = e.target.files?.[0];
+				if (file) handleUploadedFile(file);
+			});
+		}
+
+		if (uploadZone) {
+			uploadZone.addEventListener('dragover', (e) => {
+				e.preventDefault();
+				uploadZone.classList.add('dragover');
+			});
+			uploadZone.addEventListener('dragleave', () => {
+				uploadZone.classList.remove('dragover');
+			});
+			uploadZone.addEventListener('drop', (e) => {
+				e.preventDefault();
+				uploadZone.classList.remove('dragover');
+				const file = e.dataTransfer.files?.[0];
+				if (file) handleUploadedFile(file);
+			});
+		}
+
+		if (clearUploadBtn) {
+			clearUploadBtn.addEventListener('click', (e) => {
+				e.stopPropagation();
+				urlInput.value = '';
+				if (previewImg) previewImg.src = '';
+				if (previewBox) previewBox.classList.add('hidden');
+				if (dropzoneInner) dropzoneInner.classList.remove('hidden');
+				if (fileInput) fileInput.value = '';
+			});
 		}
 
 		if (kindSelect) {
@@ -960,9 +1099,9 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 
 				if (!url) {
 					await showAlert({
-						title: 'Missing URL',
+						title: 'Missing URL or Photo',
 						message: isImage
-							? 'Please enter a valid image URL or path (e.g. /workout/media/photo.jpg or https://...)'
+							? 'Please choose/paste a photo or enter an image URL.'
 							: 'Please enter a valid YouTube video link.'
 					});
 					return;
@@ -1097,10 +1236,18 @@ export function showEditExerciseModal(exercise = null, options = {}) {
 
 			<div class="field-group">
 				<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-					<label style="margin-bottom:0;">Video or Image URL (Optional)</label>
+					<label style="margin-bottom:0;">Exercise Visual / Media (YouTube Link, Photo, or Screenshot)</label>
 					${isEdit && currentMediaUrl ? '<button type="button" id="btn-clear-ex-media" class="btn btn-ghost btn-xs" style="color:var(--text-danger,#ef4444);padding:1px 6px;">✕ Clear Video/Media</button>' : ''}
 				</div>
-				<input type="text" id="create-ex-media" class="input" placeholder="https://youtube.com/watch?v=... or image URL" value="${escapeHtml(currentMediaUrl)}">
+				<div class="media-input-with-upload">
+					<input type="text" id="create-ex-media" class="input" placeholder="YouTube URL, image link, or upload/paste screenshot..." value="${escapeHtml(currentMediaUrl)}">
+					<input type="file" id="create-ex-file-input" accept="image/*" class="hidden-file-input">
+					<button type="button" id="btn-browse-ex-photo" class="btn btn-ghost btn-sm" title="Upload local image / screenshot">📷 Upload</button>
+				</div>
+				<div id="create-ex-upload-preview" class="create-upload-preview ${currentMediaUrl && !currentMediaUrl.includes('youtube') && !currentMediaUrl.includes('youtu.be') ? '' : 'hidden'}">
+					<img id="create-ex-preview-img" src="${escapeHtml(currentMediaUrl || '')}" onerror="this.parentElement.classList.add('hidden')">
+					<span class="preview-hint">Image / Screenshot Preview</span>
+				</div>
 			</div>
 		</div>
 
@@ -1110,7 +1257,10 @@ export function showEditExerciseModal(exercise = null, options = {}) {
 		</div>
 	`;
 
-	const close = () => backdrop.remove();
+	const close = () => {
+		document.removeEventListener('paste', handleEditPaste);
+		backdrop.remove();
+	};
 
 	modal.querySelectorAll('.modal-close-btn, .modal-btn-cancel').forEach(b => {
 		b.addEventListener('click', close);
@@ -1120,10 +1270,57 @@ export function showEditExerciseModal(exercise = null, options = {}) {
 		if (e.target === backdrop) close();
 	});
 
+	const mediaInput = modal.querySelector('#create-ex-media');
+	const fileInput = modal.querySelector('#create-ex-file-input');
+	const browseBtn = modal.querySelector('#btn-browse-ex-photo');
+	const previewBox = modal.querySelector('#create-ex-upload-preview');
+	const previewImg = modal.querySelector('#create-ex-preview-img');
+
+	async function handleEditUploadedFile(file) {
+		if (!file || !file.type.startsWith('image/')) {
+			await showAlert({ title: 'Invalid File', message: 'Please select an image file.' });
+			return;
+		}
+		try {
+			const uploaded = await uploadImageFile(file);
+			mediaInput.value = uploaded.url;
+			if (previewImg) previewImg.src = uploaded.url;
+			if (previewBox) previewBox.classList.remove('hidden');
+			showToast('📷 Photo uploaded successfully!');
+		} catch (err) {
+			await showAlert({ title: 'Upload Failed', message: err.message });
+		}
+	}
+
+	if (browseBtn && fileInput) {
+		browseBtn.addEventListener('click', () => fileInput.click());
+		fileInput.addEventListener('change', (e) => {
+			const file = e.target.files?.[0];
+			if (file) handleEditUploadedFile(file);
+		});
+	}
+
+	const handleEditPaste = (e) => {
+		const items = e.clipboardData?.items;
+		if (!items) return;
+		for (let i = 0; i < items.length; i++) {
+			if (items[i].type.startsWith('image/')) {
+				const file = items[i].getAsFile();
+				if (file) {
+					e.preventDefault();
+					handleEditUploadedFile(file);
+					break;
+				}
+			}
+		}
+	};
+	document.addEventListener('paste', handleEditPaste);
+
 	const clearMediaBtn = modal.querySelector('#btn-clear-ex-media');
 	if (clearMediaBtn) {
 		clearMediaBtn.addEventListener('click', () => {
-			modal.querySelector('#create-ex-media').value = '';
+			mediaInput.value = '';
+			if (previewBox) previewBox.classList.add('hidden');
 			clearMediaBtn.style.display = 'none';
 		});
 	}

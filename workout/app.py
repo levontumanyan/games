@@ -1,6 +1,8 @@
+import secrets
+from datetime import datetime
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -14,6 +16,9 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 	if data_dir is None:
 		data_dir = static_dir / "data"
 	data_dir.mkdir(parents=True, exist_ok=True)
+
+	uploads_dir = data_dir / "uploads"
+	uploads_dir.mkdir(parents=True, exist_ok=True)
 
 	db_path = data_dir / "workout.db"
 	db = Database(db_path)
@@ -233,6 +238,57 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 			raise HTTPException(status_code=404, detail="Combo not found or cannot be deleted")
 		return {"status": "ok"}
 
+	# ── Uploads API ───────────────────────────────────────────────────────────
+
+	@app.post("/api/upload")
+	@app.post("/workout/api/upload")
+	async def upload_media_file(file: UploadFile = File(...)):
+		if not file.filename:
+			raise HTTPException(status_code=400, detail="No file uploaded")
+
+		content_type = (file.content_type or "").lower()
+		allowed_types = {
+			"image/jpeg": ".jpg",
+			"image/jpg": ".jpg",
+			"image/png": ".png",
+			"image/webp": ".webp",
+			"image/gif": ".gif",
+			"image/svg+xml": ".svg",
+		}
+
+		ext = Path(file.filename).suffix.lower()
+		if content_type not in allowed_types and ext not in [
+			".jpg",
+			".jpeg",
+			".png",
+			".webp",
+			".gif",
+			".svg",
+		]:
+			raise HTTPException(
+				status_code=400,
+				detail="Unsupported file format. Please upload an image (PNG, JPG, WEBP, GIF, SVG).",
+			)
+
+		target_ext = allowed_types.get(content_type, ".jpg" if ext == ".jpeg" else ext)
+		unique_name = f"img_{int(datetime.now().timestamp())}_{secrets.token_hex(4)}{target_ext}"
+		dest = uploads_dir / unique_name
+
+		contents = await file.read()
+		if len(contents) > 25 * 1024 * 1024:  # 25MB limit
+			raise HTTPException(status_code=400, detail="File too large (maximum size is 25MB)")
+
+		dest.write_bytes(contents)
+
+		return JSONResponse(
+			content={
+				"url": f"/workout/uploads/{unique_name}",
+				"filename": unique_name,
+				"size": len(contents),
+				"type": "image",
+			}
+		)
+
 	# ── Static & HTML ─────────────────────────────────────────────────────────
 
 	@app.middleware("http")
@@ -249,9 +305,11 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 	app.mount("/workout/css", StaticFiles(directory=static_dir / "css"), name="workout_css")
 	app.mount("/workout/js", StaticFiles(directory=static_dir / "js"), name="workout_js")
 	app.mount("/workout/media", StaticFiles(directory=media_dir), name="workout_media")
+	app.mount("/workout/uploads", StaticFiles(directory=uploads_dir), name="workout_uploads")
 	app.mount("/css", StaticFiles(directory=static_dir / "css"), name="css")
 	app.mount("/js", StaticFiles(directory=static_dir / "js"), name="js")
 	app.mount("/media", StaticFiles(directory=media_dir), name="media")
+	app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
 
 	@app.api_route("/icons_preview.html", methods=["GET", "HEAD"])
 	@app.api_route("/workout/icons_preview.html", methods=["GET", "HEAD"])

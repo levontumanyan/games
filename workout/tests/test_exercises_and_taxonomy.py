@@ -489,3 +489,31 @@ def test_exercise_video_removal_and_updates(client: TestClient):
 	found = next(e for e in get_res.json() if e["id"] == ex["id"])
 	assert found["media_url"] == ""
 	assert found["media_assets"] == []
+
+
+def test_upload_image_endpoint(client: TestClient):
+	# Test uploading a valid PNG image
+	file_content = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15c4"
+	res = client.post(
+		"/api/upload",
+		files={"file": ("screenshot.png", file_content, "image/png")},
+		headers={"X-User-Id": "levon"},
+	)
+	assert res.status_code == 200
+	data = res.json()
+	assert "url" in data
+	assert data["url"].startswith("/workout/uploads/img_")
+	assert data["url"].endswith(".png")
+
+	# Verify uploaded image is reachable via static endpoint
+	fetch_res = client.get(data["url"])
+	assert fetch_res.status_code == 200
+	assert fetch_res.content == file_content
+
+	# Test invalid file type
+	bad_res = client.post(
+		"/api/upload",
+		files={"file": ("script.sh", b"echo hello", "text/plain")},
+		headers={"X-User-Id": "levon"},
+	)
+	assert bad_res.status_code == 400
