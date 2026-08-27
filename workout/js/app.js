@@ -61,9 +61,8 @@ async function init() {
 		selectedRoutineId = routines[0].id;
 	}
 
-	// Warm up exercise and combos taxonomy caches
-	loadExercises().catch(() => {});
-	loadCombos().catch(() => {});
+	// Warm up exercise and combos taxonomy caches from server
+	await Promise.all([loadExercises(), loadCombos()]).catch(() => {});
 
 	// Check if URL specifies a target routine
 	const urlTarget = await getRoutineTargetFromUrl();

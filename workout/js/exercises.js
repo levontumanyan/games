@@ -138,10 +138,9 @@ export async function loadExercises() {
 		isLoaded = true;
 		return cachedExercises;
 	} catch (err) {
-		console.warn('Failed to fetch exercises from server, using local fallback:', err);
-		if (cachedExercises.length === 0) {
-			cachedExercises = getDefaultFallbackExercises();
-		}
+		console.warn('Failed to fetch exercises from server:', err);
+		cachedExercises = [];
+		isLoaded = false;
 		return cachedExercises;
 	}
 }
@@ -151,9 +150,6 @@ export async function loadExercises() {
  * @returns {Array}
  */
 export function getExercises() {
-	if (cachedExercises.length === 0) {
-		cachedExercises = getDefaultFallbackExercises();
-	}
 	return cachedExercises;
 }
 
@@ -448,7 +444,6 @@ export function renderExercisesCatalog(container, options = {}) {
 		gridContainer.innerHTML = '';
 		list.forEach(ex => {
 			const assets = getExerciseMediaAssets([ex]);
-			const isCustom = Boolean(ex.user_id && ex.user_id !== 'system');
 			const muscles = inferMusclesForExercise(ex);
 
 			const card = document.createElement('div');
@@ -478,9 +473,7 @@ export function renderExercisesCatalog(container, options = {}) {
 						${getCategoryBadgeHtml(ex.category)}
 						${ex.discipline ? getDisciplineBadgeHtml(ex.discipline) : ''}
 					</div>
-					${isCustom ? `
-						<button class="btn btn-ghost btn-xs btn-del-ex" title="Delete custom exercise" data-id="${ex.id}">✕</button>
-					` : ''}
+					<button class="btn btn-ghost btn-xs btn-del-ex" title="Delete exercise" data-id="${ex.id}">✕</button>
 				</div>
 
 				<div class="ex-lib-title-row">
@@ -1001,32 +994,4 @@ export function showCreateExerciseModal(options = {}) {
 
 	backdrop.appendChild(modal);
 	document.body.appendChild(backdrop);
-}
-
-/**
- * Default fallback exercises if server is offline on first cold boot.
- */
-function getDefaultFallbackExercises() {
-	return [
-		{ id: 'ex-star-jumps', name: 'Star Jumps + Coordination Drills', category: 'drill', discipline: 'general', default_mode: 'time', default_quantity: 190, media_url: 'https://www.youtube.com/watch?v=ZWZWzRnLpVM', primary_muscles: ['calves', 'quads'], secondary_muscles: ['shoulders', 'core'] },
-		{ id: 'ex-check-repeats', name: 'Check Repeats (Lead & Rear Block)', category: 'technique', discipline: 'muay_thai', default_mode: 'time', default_quantity: 60, media_url: 'https://www.youtube.com/watch?v=wPGC3uFIOBA', primary_muscles: ['core', 'quads'], secondary_muscles: ['glutes', 'calves'] },
-		{ id: 'ex-lateral-jumps', name: 'Lateral Jumps + Shoulder Taps', category: 'drill', discipline: 'general', default_mode: 'time', default_quantity: 185, media_url: 'https://www.youtube.com/watch?v=ZWZWzRnLpVM', primary_muscles: ['quads', 'calves'], secondary_muscles: ['glutes', 'core'] },
-		{ id: 'ex-mountain-climbers', name: 'Mountain Climbers', category: 'cardio', discipline: 'general', default_mode: 'time', default_quantity: 60, media_url: 'https://www.youtube.com/watch?v=7sLw5dHdRG4', primary_muscles: ['core', 'shoulders'], secondary_muscles: ['quads', 'chest'] },
-		{ id: 'ex-jab-cross', name: 'Jab-Cross Technique', category: 'technique', discipline: 'boxing', default_mode: 'time', default_quantity: 184, media_url: 'https://www.youtube.com/watch?v=7sLw5dHdRG4', primary_muscles: ['shoulders', 'core'], secondary_muscles: ['triceps', 'chest', 'calves'] },
-		{ id: 'ex-jab-knee', name: 'Jab + Rear Knee / Switch Knee', category: 'technique', discipline: 'muay_thai', default_mode: 'time', default_quantity: 244, media_url: 'https://www.youtube.com/watch?v=z37V3X6tPG4', primary_muscles: ['core', 'glutes', 'quads'], secondary_muscles: ['calves'] },
-		{ id: 'ex-jab-elbow', name: 'Jab + Lead Elbow + Rear Elbow', category: 'technique', discipline: 'muay_thai', default_mode: 'time', default_quantity: 243, media_url: 'https://www.youtube.com/watch?v=z37V3X6tPG4', primary_muscles: ['shoulders', 'core', 'back'], secondary_muscles: ['triceps', 'biceps'] },
-		{ id: 'ex-pike-pushups', name: 'Pike Pushups', category: 'strength', discipline: 'calisthenics', default_mode: 'reps', default_quantity: 10, media_url: '/workout/media/pushups.svg', primary_muscles: ['shoulders', 'triceps'], secondary_muscles: ['chest', 'core'] },
-		{ id: 'ex-decline-pushups', name: 'Decline Pushups', category: 'strength', discipline: 'calisthenics', default_mode: 'reps', default_quantity: 12, media_url: '/workout/media/pushups.svg', primary_muscles: ['chest', 'shoulders'], secondary_muscles: ['triceps', 'core'] },
-		{ id: 'ex-standard-pushups', name: 'Standard Pushups', category: 'strength', discipline: 'calisthenics', default_mode: 'reps', default_quantity: 20, media_url: '/workout/media/pushups.svg', primary_muscles: ['chest', 'triceps'], secondary_muscles: ['shoulders', 'core'] },
-		{ id: 'ex-diamond-pushups', name: 'Diamond Pushups', category: 'strength', discipline: 'calisthenics', default_mode: 'reps', default_quantity: 15, media_url: '/workout/media/diamond-pushups.svg', primary_muscles: ['triceps', 'chest'], secondary_muscles: ['shoulders', 'core'] },
-		{ id: 'ex-plank-shoulder-taps', name: 'Plank Shoulder Taps', category: 'strength', discipline: 'calisthenics', default_mode: 'reps', default_quantity: 20, media_url: '/workout/media/shoulder-taps.svg', primary_muscles: ['core', 'shoulders'], secondary_muscles: ['chest', 'triceps', 'glutes'] },
-		{ id: 'ex-cobra-pose', name: 'Cobra Pose & Hip Opener', category: 'stretch', discipline: 'yoga', default_mode: 'time', default_quantity: 45, media_url: '/workout/media/cobra-stretch.jpg', primary_muscles: ['back', 'core'], secondary_muscles: ['chest', 'shoulders'] },
-		{ id: 'ex-overhead-tricep-stretch', name: 'Overhead Tricep & Shoulder Stretch', category: 'stretch', discipline: 'general', default_mode: 'time', default_quantity: 30, media_url: '/workout/media/overhead-tricep-stretch.jpg', primary_muscles: ['triceps', 'shoulders'], secondary_muscles: ['back'] },
-		{ id: 'ex-pigeon-pose', name: 'Pigeon Pose Hip Opener', category: 'stretch', discipline: 'yoga', default_mode: 'time', default_quantity: 45, media_url: '/workout/media/pigeon-pose.jpg', primary_muscles: ['glutes'], secondary_muscles: ['hamstrings', 'back'] },
-		{ id: 'ex-seated-hamstring-fold', name: 'Seated Forward Hamstring Fold', category: 'stretch', discipline: 'yoga', default_mode: 'time', default_quantity: 45, media_url: '/workout/media/seated-hamstring-fold.jpg', primary_muscles: ['hamstrings'], secondary_muscles: ['back', 'calves'] },
-		{ id: 'ex-glute-bridge-pelvic', name: 'Glute Bridge & Pelvic Squeeze', category: 'strength', discipline: 'general', default_mode: 'time', default_quantity: 45, media_url: '/workout/media/pigeon-pose.svg', primary_muscles: ['glutes', 'pelvic_floor'], secondary_muscles: ['hamstrings', 'abs'] },
-		{ id: 'ex-diaphragmatic-pelvic', name: 'Diaphragmatic Breathing & Pelvic Reset', category: 'stretch', discipline: 'yoga', default_mode: 'time', default_quantity: 60, media_url: '/workout/media/childs-pose.jpg', primary_muscles: ['pelvic_floor', 'abs'], secondary_muscles: ['lower_back'] },
-		{ id: 'ex-deep-squat-pelvic', name: 'Deep Squat to Pelvic Ascent', category: 'strength', discipline: 'general', default_mode: 'reps', default_quantity: 15, media_url: '/workout/media/pushups.svg', primary_muscles: ['quads', 'glutes', 'pelvic_floor'], secondary_muscles: ['groin', 'calves'] },
-		{ id: 'ex-childs-pose', name: 'Extended Child’s Pose Spine & Lat Stretch', category: 'stretch', discipline: 'yoga', default_mode: 'time', default_quantity: 60, media_url: '/workout/media/childs-pose.jpg', primary_muscles: ['back', 'shoulders'], secondary_muscles: ['glutes', 'pelvic_floor'] },
-	];
 }

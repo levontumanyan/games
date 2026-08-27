@@ -27,10 +27,9 @@ export async function loadCombos() {
 		isCombosLoaded = true;
 		return cachedCombos;
 	} catch (err) {
-		console.warn('Failed to fetch combos from server, using local fallback:', err);
-		if (cachedCombos.length === 0) {
-			cachedCombos = getDefaultFallbackCombos();
-		}
+		console.warn('Failed to fetch combos from server:', err);
+		cachedCombos = [];
+		isCombosLoaded = false;
 		return cachedCombos;
 	}
 }
@@ -40,9 +39,6 @@ export async function loadCombos() {
  * @returns {Array}
  */
 export function getCombos() {
-	if (cachedCombos.length === 0) {
-		cachedCombos = getDefaultFallbackCombos();
-	}
 	return cachedCombos;
 }
 
@@ -259,9 +255,7 @@ export function renderCombosCatalog(container, options = {}) {
 						${getCategoryBadgeHtml(combo.category)}
 						${combo.discipline ? getDisciplineBadgeHtml(combo.discipline) : ''}
 					</div>
-					${isCustom ? `
-						<button class="btn btn-ghost btn-xs btn-del-combo" title="Delete custom combo" data-id="${combo.id}">✕</button>
-					` : ''}
+					<button class="btn btn-ghost btn-xs btn-del-combo" title="Delete combo" data-id="${combo.id}">✕</button>
 				</div>
 
 				<div class="combo-card-title-row">
@@ -691,112 +685,4 @@ export function showCreateComboModal(options = {}) {
 
 	backdrop.appendChild(modal);
 	document.body.appendChild(backdrop);
-}
-
-/**
- * Fallback combos if server is cold booting.
- */
-function getDefaultFallbackCombos() {
-	return [
-		{
-			id: 'combo-pushup-cascade',
-			name: 'Complete Kinetic Pushup Cascade',
-			category: 'strength',
-			discipline: 'calisthenics',
-			flow_type: 'superset',
-			exercise_ids: ['ex-pike-pushups', 'ex-decline-pushups', 'ex-standard-pushups', 'ex-diamond-pushups'],
-			default_mode: 'reps',
-			default_quantity: 38,
-			description: 'Science-backed 4-stage mechanical drop-set targeting delts, clavicular chest, sternal chest, and triceps.',
-			media_assets: []
-		},
-		{
-			id: 'combo-star-jumps-coord',
-			name: 'Star Jumps ⮀ Coordination Drills',
-			category: 'drill',
-			discipline: 'general',
-			flow_type: 'alternating',
-			exercise_ids: ['ex-star-jumps', 'ex-coordination-drills'],
-			default_mode: 'time',
-			default_quantity: 190,
-			description: 'Continuous 5-round alternating cadence of explosive star jumps and fast coordination footwork.',
-			media_assets: [
-				{
-					id: 'asset-combo-star-coord',
-					kind: 'demonstration',
-					type: 'video',
-					title: '5x Alternating Star Jumps & Footwork Cadence',
-					videoId: 'ZWZWzRnLpVM',
-					startSeconds: 60,
-					endSeconds: 250
-				}
-			]
-		},
-		{
-			id: 'combo-lateral-taps',
-			name: 'Lateral Jumps ⮀ Plank Shoulder Taps',
-			category: 'drill',
-			discipline: 'general',
-			flow_type: 'alternating',
-			exercise_ids: ['ex-lateral-jumps', 'ex-plank-shoulder-taps'],
-			default_mode: 'time',
-			default_quantity: 185,
-			description: 'Explosive lateral bounding intervals paired with core anti-rotation high plank shoulder touches.',
-			media_assets: [
-				{
-					id: 'asset-combo-lat-taps',
-					kind: 'demonstration',
-					type: 'video',
-					title: 'Alternating Lateral Jumps & Plank Taps Flow',
-					videoId: 'ZWZWzRnLpVM',
-					startSeconds: 585,
-					endSeconds: 770
-				}
-			]
-		},
-		{
-			id: 'combo-jab-knee',
-			name: 'Jab + Rear Knee / Switch Knee',
-			category: 'technique',
-			discipline: 'muay_thai',
-			flow_type: 'sequence',
-			exercise_ids: ['ex-jab-cross', 'ex-knee-strike'],
-			default_mode: 'time',
-			default_quantity: 244,
-			description: 'Straight punch entry flowing directly into rear knee thrust or switch lead knee strike.',
-			media_assets: [
-				{
-					id: 'asset-combo-jab-knee',
-					kind: 'demonstration',
-					type: 'video',
-					title: 'Jab to Knee Strike Transition Drill',
-					videoId: 'z37V3X6tPG4',
-					startSeconds: 694,
-					endSeconds: 938
-				}
-			]
-		},
-		{
-			id: 'combo-jab-elbow',
-			name: 'Jab + Lead Elbow + Rear Elbow',
-			category: 'technique',
-			discipline: 'muay_thai',
-			flow_type: 'sequence',
-			exercise_ids: ['ex-jab-cross', 'ex-elbow-strikes'],
-			default_mode: 'time',
-			default_quantity: 243,
-			description: 'Close-quarters entry jab followed by lead and rear slashing elbow strikes.',
-			media_assets: [
-				{
-					id: 'asset-combo-jab-elbow',
-					kind: 'demonstration',
-					type: 'video',
-					title: 'Jab & Double Elbow Strike Combo Flow',
-					videoId: 'z37V3X6tPG4',
-					startSeconds: 1000,
-					endSeconds: 1243
-				}
-			]
-		}
-	];
 }

@@ -693,7 +693,6 @@ export function renderAnatomyExplorer(container, options = {}) {
 		gridContainer.innerHTML = '';
 		list.forEach(ex => {
 			const assets = getExerciseMediaAssets([ex]);
-			const isCustom = Boolean(ex.user_id && ex.user_id !== 'system');
 			const muscles = inferMusclesForExercise(ex);
 
 			const card = document.createElement('div');
@@ -714,9 +713,7 @@ export function renderAnatomyExplorer(container, options = {}) {
 						${getCategoryBadgeHtml(ex.category)}
 						${ex.discipline ? getDisciplineBadgeHtml(ex.discipline) : ''}
 					</div>
-					${isCustom ? `
-						<button class="btn btn-ghost btn-xs btn-del-ex" title="Delete custom exercise" data-id="${ex.id}">✕</button>
-					` : ''}
+					<button class="btn btn-ghost btn-xs btn-del-ex" title="Delete exercise" data-id="${ex.id}">✕</button>
 				</div>
 
 				<div class="ex-lib-title-row">

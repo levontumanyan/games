@@ -349,7 +349,7 @@ class Database:
 		query = """
 			SELECT id, user_id, name, category, discipline, flow_type, exercise_ids_json, default_mode, default_quantity, description, media_url, media_assets_json, created_at
 			FROM combos
-			WHERE (user_id IS NULL OR user_id = 'system' OR user_id = ?)
+			WHERE (user_id IS NULL OR user_id = ?)
 		"""
 		params: list[Any] = [clean_user]
 
@@ -366,7 +366,7 @@ class Database:
 			term = f"%{search.strip().lower()}%"
 			params.extend([term, term])
 
-		query += " ORDER BY CASE WHEN user_id IS NOT NULL AND user_id != 'system' THEN 0 ELSE 1 END, name ASC"
+		query += " ORDER BY name ASC"
 
 		with self.get_connection() as conn:
 			rows = conn.execute(query, params).fetchall()
@@ -496,7 +496,7 @@ class Database:
 		clean_user = user_id.strip().lower() if user_id else "levon"
 		with self.get_connection() as conn:
 			cur = conn.execute(
-				"DELETE FROM combos WHERE id = ? AND (user_id = ? OR user_id IS NULL OR user_id = 'system')",
+				"DELETE FROM combos WHERE id = ? AND (user_id = ? OR user_id IS NULL)",
 				(combo_id, clean_user),
 			)
 			return cur.rowcount > 0
@@ -515,7 +515,7 @@ class Database:
 		query = """
 			SELECT id, user_id, name, category, discipline, default_mode, default_quantity, description, media_url, media_assets_json, primary_muscles_json, secondary_muscles_json, created_at
 			FROM exercises
-			WHERE (user_id IS NULL OR user_id = 'system' OR user_id = ?)
+			WHERE (user_id IS NULL OR user_id = ?)
 		"""
 		params: list[Any] = [clean_user]
 
@@ -539,7 +539,7 @@ class Database:
 			)
 			params.extend([m, m])
 
-		query += " ORDER BY CASE WHEN user_id IS NOT NULL AND user_id != 'system' THEN 0 ELSE 1 END, name ASC"
+		query += " ORDER BY name ASC"
 
 		with self.get_connection() as conn:
 			rows = conn.execute(query, params).fetchall()
@@ -697,7 +697,7 @@ class Database:
 		clean_user = user_id.strip().lower() if user_id else "levon"
 		with self.get_connection() as conn:
 			cursor = conn.execute(
-				"DELETE FROM exercises WHERE id = ? AND user_id = ?",
+				"DELETE FROM exercises WHERE id = ? AND (user_id = ? OR user_id IS NULL)",
 				(exercise_id, clean_user),
 			)
 			return cursor.rowcount > 0
