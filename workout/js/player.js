@@ -547,10 +547,10 @@ function executeClipStep(step) {
 	const isTutorial = Boolean(step.isTutorial || (step.label && step.label.includes('[Tutorial]')));
 	dom.currentStepLabel.textContent = step.label || (isTutorial ? 'Tutorial Breakdown' : 'Video Clip');
 	if (isTutorial) {
-		dom.currentStepType.innerHTML = `🎬 Tutorial Breakdown · ` + (step.exercises && step.exercises.length > 0 ? step.exercises.map(e => e.name).join(', ') : 'Instruction');
+		dom.currentStepType.innerHTML = `🎬 Tutorial Breakdown · ` + (step.exercises && step.exercises.length > 0 ? step.exercises.map(e => (getExerciseById(e.id || e)?.name || e.name || 'Instruction')).join(', ') : 'Instruction');
 	} else if (step.exercises && step.exercises.length > 0) {
 		const joiner = step.flow_type === 'alternating' ? ' ⮀ ' : ' + ';
-		dom.currentStepType.innerHTML = `${getClipIcon(14)} ` + step.exercises.map(e => e.name).join(joiner);
+		dom.currentStepType.innerHTML = `${getClipIcon(14)} ` + step.exercises.map(e => (getExerciseById(e.id || e)?.name || e.name || 'Exercise')).join(joiner);
 	} else {
 		dom.currentStepType.innerHTML = `${getClipIcon(14)} Follow-Along Video`;
 	}
@@ -582,8 +582,9 @@ function executeTimerStep(step) {
 		currentSubStepIndex = 0;
 	}
 
-	const activeSubEx = hasSubSteps ? step.exercises[currentSubStepIndex] : null;
-	const resolvedSubEx = activeSubEx ? ((activeSubEx.id ? getExerciseById(activeSubEx.id) : null) || activeSubEx) : null;
+	const rawSubEx = hasSubSteps ? step.exercises[currentSubStepIndex] : null;
+	const resolvedSubEx = rawSubEx ? ((rawSubEx.id ? getExerciseById(rawSubEx.id) : null) || rawSubEx) : null;
+	const activeSubEx = (rawSubEx && resolvedSubEx) ? { ...resolvedSubEx, ...rawSubEx, name: rawSubEx.name || resolvedSubEx.name || '' } : (resolvedSubEx || rawSubEx);
 
 	const isSubReps = hasSubSteps
 		? (activeSubEx.stepMode === 'reps' || activeSubEx.default_mode === 'reps' || (Boolean(activeSubEx.targetReps) && Number(activeSubEx.targetReps) > 0) || (!activeSubEx.durationSeconds && step.stepMode === 'reps'))
@@ -675,7 +676,7 @@ function executeTimerStep(step) {
 
 	if (isSubReps) {
 		const targetReps = hasSubSteps
-			? (activeSubEx.targetReps || (activeSubEx.default_mode === 'reps' ? activeSubEx.default_quantity : (step.targetReps || 20)))
+			? (activeSubEx.targetReps || activeSubEx.reps || (activeSubEx.default_mode === 'reps' ? activeSubEx.default_quantity : (step.targetReps || 20)))
 			: (step.targetReps || 20);
 		dom.timerDisplay.textContent = `${targetReps} REPS`;
 		dom.timerLabel.textContent = hasSubSteps ? (activeSubEx.name || step.label) : (step.label || 'Complete Target Reps');
@@ -704,13 +705,13 @@ function executeTimerStep(step) {
 		if (hasSubSteps) {
 			const flowIcon = step.flow_type === 'alternating' ? '⮀' : (step.flow_type === 'sequence' ? '➔' : '⚡');
 			const flowLabel = step.flow_type === 'alternating' ? 'Alternating' : (step.flow_type === 'sequence' ? 'Flow' : 'Superset');
-			dom.currentStepLabel.textContent = `${activeSubEx.name} (${step.label || 'Combo'})`;
+			dom.currentStepLabel.textContent = `${activeSubEx.name || 'Exercise'} (${step.label || 'Combo'})`;
 			dom.currentStepType.innerHTML = `<span class="player-hud-substep-badge">${flowIcon} ${flowLabel} · Move ${currentSubStepIndex + 1}/${totalSubSteps}</span> 🔢 ${targetReps} Reps${muscleTagHtml}`;
 		} else {
 			dom.currentStepLabel.textContent = `${step.label || 'Exercise'} (${targetReps} reps)`;
 			if (step.exercises && step.exercises.length > 0) {
 				const joiner = step.flow_type === 'alternating' ? ' ⮀ ' : ' + ';
-				dom.currentStepType.innerHTML = `🔢 ` + step.exercises.map(e => e.name).join(joiner) + muscleTagHtml;
+				dom.currentStepType.innerHTML = `🔢 ` + step.exercises.map(e => (getExerciseById(e.id || e)?.name || e.name || 'Exercise')).join(joiner) + muscleTagHtml;
 			} else {
 				dom.currentStepType.innerHTML = `🔢 ${targetReps} Reps` + muscleTagHtml;
 			}
@@ -739,13 +740,13 @@ function executeTimerStep(step) {
 		if (hasSubSteps) {
 			const flowIcon = step.flow_type === 'alternating' ? '⮀' : (step.flow_type === 'sequence' ? '➔' : '⚡');
 			const flowLabel = step.flow_type === 'alternating' ? 'Alternating' : (step.flow_type === 'sequence' ? 'Flow' : 'Superset');
-			dom.currentStepLabel.textContent = `${activeSubEx.name} (${step.label || 'Combo'})`;
+			dom.currentStepLabel.textContent = `${activeSubEx.name || 'Exercise'} (${step.label || 'Combo'})`;
 			dom.currentStepType.innerHTML = `<span class="player-hud-substep-badge">${flowIcon} ${flowLabel} · Move ${currentSubStepIndex + 1}/${totalSubSteps}</span> ${getTimerIcon(14)} ${formatTime(timerRemaining)}${muscleTagHtml}`;
 		} else {
 			dom.currentStepLabel.textContent = step.label || (isBreak ? 'Rest' : 'Timer');
 			if (step.exercises && step.exercises.length > 0) {
 				const joiner = step.flow_type === 'alternating' ? ' ⮀ ' : ' + ';
-				dom.currentStepType.innerHTML = isBreak ? `${getBreakIcon(14)} Rest` : (getTimerIcon(14) + ' ' + step.exercises.map(e => e.name).join(joiner) + muscleTagHtml);
+				dom.currentStepType.innerHTML = isBreak ? `${getBreakIcon(14)} Rest` : (getTimerIcon(14) + ' ' + step.exercises.map(e => (getExerciseById(e.id || e)?.name || e.name || 'Exercise')).join(joiner) + muscleTagHtml);
 			} else {
 				dom.currentStepType.innerHTML = isBreak ? `${getBreakIcon(14)} Rest` : `${getTimerIcon(14)} Timer${muscleTagHtml}`;
 			}
@@ -1151,10 +1152,12 @@ function updateStepIndicator() {
 		const curStep = currentRoutine.steps[currentStepIndex];
 		const hasSubSteps = curStep && !isBreakStep(curStep) && Array.isArray(curStep.exercises) && curStep.exercises.length > 1;
 		if (hasSubSteps && currentSubStepIndex < curStep.exercises.length - 1) {
-			const nextSub = curStep.exercises[currentSubStepIndex + 1];
-			const nextReps = nextSub.targetReps || (nextSub.default_mode === 'reps' ? nextSub.default_quantity : '');
-			const repsText = nextReps ? ` (${nextReps} ${nextSub.default_mode === 'time' ? 's' : 'reps'})` : '';
-			dom.nextStepPreview.textContent = `Next in ${curStep.flow_type || 'combo'}: ${nextSub.name}${repsText}`;
+			const rawNext = curStep.exercises[currentSubStepIndex + 1];
+			const resolvedNext = rawNext ? ((rawNext.id ? getExerciseById(rawNext.id) : null) || rawNext) : null;
+			const nextSub = (rawNext && resolvedNext) ? { ...resolvedNext, ...rawNext, name: rawNext.name || resolvedNext.name || '' } : (resolvedNext || rawNext);
+			const nextReps = nextSub?.targetReps || nextSub?.reps || (nextSub?.default_mode === 'reps' ? nextSub?.default_quantity : '');
+			const repsText = nextReps ? ` (${nextReps} ${nextSub?.default_mode === 'time' ? 's' : 'reps'})` : '';
+			dom.nextStepPreview.textContent = `Next in ${curStep.flow_type || 'combo'}: ${nextSub?.name || 'Exercise'}${repsText}`;
 		} else {
 			const next = currentRoutine.steps[currentStepIndex + 1];
 			if (next) {

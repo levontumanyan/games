@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" width="100%" height="100%">
+	<defs>
+		<linearGradient id="climberGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+			<stop offset="0%" stop-color="#f43f5e" />
+			<stop offset="100%" stop-color="#fb923c" />
+		</linearGradient>
+		<filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+			<feGaussianBlur stdDeviation="3" result="blur" />
+			<feComposite in="SourceGraphic" in2="blur" operator="over" />
+		</filter>
+	</defs>
+	<style>
+		.ground { stroke: rgba(255,255,255,0.15); stroke-width: 3; stroke-dasharray: 6 6; }
+		.torso-plank {
+			animation: plank-bob 0.7s ease-in-out infinite alternate;
+		}
+		.leg-left {
+			animation: drive-leg-1 0.7s ease-in-out infinite alternate;
+		}
+		.leg-right {
+			animation: drive-leg-2 0.7s ease-in-out infinite alternate;
+		}
+		@keyframes plank-bob {
+			0% { transform: translateY(0); }
+			100% { transform: translateY(-3px); }
+		}
+		@keyframes drive-leg-1 {
+			0% { d: path('M 60 148 L 110 130 L 140 100'); }
+			100% { d: path('M 175 140 L 170 115 L 140 100'); }
+		}
+		@keyframes drive-leg-2 {
+			0% { d: path('M 175 140 L 170 115 L 140 100'); }
+			100% { d: path('M 60 148 L 110 130 L 140 100'); }
+		}
+		.core-flash {
+			animation: core-pulse 0.7s ease-in-out infinite alternate;
+		}
+		@keyframes core-pulse {
+			0% { opacity: 0.5; }
+			100% { opacity: 1; filter: drop-shadow(0 0 6px #f43f5e); }
+		}
+	</style>
+	<rect width="320" height="200" rx="16" fill="#0b0d17" />
+	<!-- Floor line -->
+	<line x1="20" y1="150" x2="300" y2="150" class="ground" />
+	<line x1="30" y1="150" x2="290" y2="150" stroke="#f43f5e" stroke-width="2" opacity="0.3" />
+
+	<!-- Base Plank Body -->
+	<g class="torso-plank">
+		<!-- Head -->
+		<circle cx="265" cy="80" r="14" fill="#fecdd3" filter="url(#glow)" />
+		<!-- Torso / Spine -->
+		<line x1="140" y1="100" x2="250" y2="90" stroke="url(#climberGrad)" stroke-width="12" stroke-linecap="round" filter="url(#glow)" />
+		<!-- High Plank Arms -->
+		<line x1="240" y1="92" x2="240" y2="150" stroke="#fecdd3" stroke-width="8" stroke-linecap="round" />
+		<!-- Core tension circle -->
+		<circle cx="195" cy="95" r="5" fill="#fb7185" class="core-flash" />
+	</g>
+
+	<!-- Alternating Cycling Legs -->
+	<!-- Left Leg (Rear to Chest Drive) -->
+	<path class="leg-left" d="M 60 148 L 110 130 L 140 100" fill="none" stroke="#f43f5e" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)" />
+	<!-- Right Leg (Opposite Phase) -->
+	<path class="leg-right" d="M 175 140 L 170 115 L 140 100" fill="none" stroke="#fb923c" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" opacity="0.85" />
+
+	<!-- Exercise Tag -->
+	<rect x="18" y="18" width="145" height="26" rx="6" fill="rgba(244,63,94,0.15)" stroke="rgba(244,63,94,0.4)" stroke-width="1" />
+	<text x="90" y="35" fill="#fecdd3" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" font-weight="700" text-anchor="middle" letter-spacing="0.5">MOUNTAIN CLIMBERS</text>
+</svg>

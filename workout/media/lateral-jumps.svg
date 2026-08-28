@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" width="100%" height="100%">
+	<defs>
+		<linearGradient id="lateralGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+			<stop offset="0%" stop-color="#f59e0b" />
+			<stop offset="100%" stop-color="#ef4444" />
+		</linearGradient>
+		<filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+			<feGaussianBlur stdDeviation="3" result="blur" />
+			<feComposite in="SourceGraphic" in2="blur" operator="over" />
+		</filter>
+	</defs>
+	<style>
+		.ground { stroke: rgba(255,255,255,0.15); stroke-width: 3; stroke-dasharray: 6 6; }
+		.skater-figure {
+			animation: skater-bound 1.6s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite alternate;
+			transform-origin: 160px 145px;
+		}
+		@keyframes skater-bound {
+			0% { transform: translateX(-55px) translateY(0) rotate(-6deg); }
+			45% { transform: translateX(-10px) translateY(-25px) rotate(0deg); }
+			55% { transform: translateX(10px) translateY(-25px) rotate(0deg); }
+			100% { transform: translateX(55px) translateY(0) rotate(6deg); }
+		}
+		.lateral-trail {
+			animation: trail-fade 1.6s ease-in-out infinite alternate;
+		}
+		@keyframes trail-fade {
+			0% { opacity: 0.8; }
+			100% { opacity: 0.2; }
+		}
+	</style>
+	<rect width="320" height="200" rx="16" fill="#0b0d17" />
+	<!-- Floor line & bounds targets -->
+	<line x1="20" y1="155" x2="300" y2="155" class="ground" />
+	<ellipse cx="105" cy="155" rx="16" ry="4" fill="rgba(245,158,11,0.2)" stroke="#f59e0b" stroke-width="1.5" />
+	<ellipse cx="215" cy="155" rx="16" ry="4" fill="rgba(239,68,68,0.2)" stroke="#ef4444" stroke-width="1.5" />
+
+	<!-- Trajectory Arc -->
+	<path d="M 105 150 Q 160 90 215 150" fill="none" stroke="rgba(245,158,11,0.3)" stroke-width="2" stroke-dasharray="4 4" />
+
+	<!-- Leaping Skater Athlete -->
+	<g class="skater-figure">
+		<!-- Head -->
+		<circle cx="160" cy="65" r="13" fill="#fef3c7" filter="url(#glow)" />
+		<!-- Torso / Athletic Lean -->
+		<line x1="160" y1="78" x2="160" y2="118" stroke="url(#lateralGrad)" stroke-width="11" stroke-linecap="round" filter="url(#glow)" />
+		<!-- Driving Arms -->
+		<line x1="160" y1="88" x2="135" y2="105" stroke="#fef3c7" stroke-width="7" stroke-linecap="round" />
+		<line x1="160" y1="88" x2="190" y2="75" stroke="#fde68a" stroke-width="7" stroke-linecap="round" />
+
+		<!-- Planted / Landing Leg -->
+		<line x1="160" y1="118" x2="155" y2="155" stroke="url(#lateralGrad)" stroke-width="10" stroke-linecap="round" />
+		<!-- Trailing Skater Leg -->
+		<line x1="160" y1="118" x2="195" y2="140" stroke="#f59e0b" stroke-width="8" stroke-linecap="round" opacity="0.8" />
+	</g>
+
+	<!-- Exercise Tag -->
+	<rect x="18" y="18" width="130" height="26" rx="6" fill="rgba(245,158,11,0.15)" stroke="rgba(245,158,11,0.4)" stroke-width="1" />
+	<text x="83" y="35" fill="#fef3c7" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" font-weight="700" text-anchor="middle" letter-spacing="0.5">LATERAL JUMPS</text>
+</svg>

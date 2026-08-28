@@ -543,19 +543,21 @@ function createViewStepCard(step, index, steps, actions) {
 		const nestedDeck = document.createElement('div');
 		nestedDeck.className = 'view-compound-nested-deck';
 		step.exercises.forEach((ex, sIdx) => {
+			const linkedSubEx = (ex.id ? getExerciseById(ex.id) : null) || ex;
+			const resolvedEx = (linkedSubEx && ex) ? { ...linkedSubEx, ...ex, name: ex.name || linkedSubEx.name || 'Exercise', category: ex.category || linkedSubEx.category || 'strength' } : (linkedSubEx || ex);
+
 			const subRow = document.createElement('div');
 			subRow.className = 'view-compound-sub-row view-clickable-sub-row';
 			subRow.setAttribute('role', 'button');
 			subRow.setAttribute('tabindex', '0');
-			subRow.title = `Click to view "${ex.name}" exercise guide & videos`;
+			subRow.title = `Click to view "${resolvedEx.name}" exercise guide & videos`;
 
-			const isSubReps = ex.stepMode === 'reps' || ex.default_mode === 'reps' || Boolean(ex.targetReps) || (!ex.durationSeconds && step.stepMode === 'reps');
-			const subReps = ex.targetReps || ex.reps || (ex.default_mode === 'reps' ? ex.default_quantity : 10);
-			const subDur = ex.durationSeconds || (ex.default_mode === 'time' ? ex.default_quantity : 30);
+			const isSubReps = resolvedEx.stepMode === 'reps' || resolvedEx.default_mode === 'reps' || Boolean(resolvedEx.targetReps) || (!resolvedEx.durationSeconds && step.stepMode === 'reps');
+			const subReps = resolvedEx.targetReps || resolvedEx.reps || (resolvedEx.default_mode === 'reps' ? resolvedEx.default_quantity : (step.targetReps || 10));
+			const subDur = resolvedEx.durationSeconds || (resolvedEx.default_mode === 'time' ? resolvedEx.default_quantity : (step.durationSeconds || 30));
 			const exTargetStr = isSubReps ? `${subReps} reps` : formatFriendlyDuration(subDur);
 
-			const linkedSubEx = (ex.id ? getExerciseById(ex.id) : null) || ex;
-			const subMuscles = inferMusclesForExercise(linkedSubEx);
+			const subMuscles = inferMusclesForExercise(resolvedEx);
 			const priSubM = (subMuscles.primary || [])[0];
 			const priDef = priSubM ? MUSCLE_DEFINITIONS[priSubM] : null;
 			const muscleHtml = priDef ? `<span class="sub-row-muscle" style="color:${priDef.color}">${priDef.icon} ${priDef.label}</span>` : '';
@@ -563,8 +565,8 @@ function createViewStepCard(step, index, steps, actions) {
 			subRow.innerHTML = `
 				<span class="sub-row-name">
 					<span class="sub-row-num">${sIdx + 1}.</span>
-					${getCategoryBadgeHtml(ex.category)}
-					<span class="sub-row-title">${escapeHtml(ex.name)}</span>
+					${getCategoryBadgeHtml(resolvedEx.category)}
+					<span class="sub-row-title">${escapeHtml(resolvedEx.name)}</span>
 				</span>
 				<span class="sub-row-meta">
 					${muscleHtml}

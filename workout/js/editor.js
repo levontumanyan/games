@@ -982,6 +982,12 @@ export function resolveStepMediaUrl(step) {
 
 	if (step.type === 'timer' && step.label) {
 		const l = step.label.toLowerCase();
+		if (l.includes('pike pushup') || l.includes('pike push-up') || l.includes('pike-pushup') || l.includes('pike')) {
+			return '/workout/media/pike-pushups.svg';
+		}
+		if (l.includes('decline pushup') || l.includes('decline push-up') || l.includes('decline-pushup') || l.includes('decline')) {
+			return '/workout/media/decline-pushups.svg';
+		}
 		if (l.includes('diamond pushup') || l.includes('diamond push-up') || l.includes('diamond-pushup')) {
 			return '/workout/media/diamond-pushups.svg';
 		}
@@ -2547,11 +2553,12 @@ export function showAddComboModal(routine, onUpdate, insertIndex = -1) {
 			const item = document.createElement('div');
 			item.className = 'add-picker-item';
 
-			const modeStr = `⏱️ ${formatTime(combo.default_quantity || 190)}`;
+			const flowIcon = combo.flow_type === 'alternating' ? '⮀ Alternating' : (combo.flow_type === 'sequence' ? '➔ Flow' : '⚡ Superset');
+			const modeStr = combo.default_mode === 'reps' ? `🔢 ${combo.default_quantity || 20} Reps` : `⏱️ ${formatTime(combo.default_quantity || 190)}`;
 
 			item.innerHTML = `
 				<div class="add-picker-item-left">
-					<span class="combo-flow-badge" style="font-size:0.7rem;padding:2px 6px;">${combo.flow_type === 'alternating' ? '⮀ Alternating' : '➔ Sequence'}</span>
+					<span class="combo-flow-badge" style="font-size:0.7rem;padding:2px 6px;">${flowIcon}</span>
 					<span class="add-picker-name">${escapeHtml(combo.name)}</span>
 				</div>
 				<div class="add-picker-item-right">
@@ -2575,7 +2582,12 @@ export function showAddComboModal(routine, onUpdate, insertIndex = -1) {
 				} else {
 					newStep = createTimerStep();
 					newStep.label = combo.name;
-					newStep.durationSeconds = combo.default_quantity || 190;
+					if (combo.default_mode === 'reps') {
+						newStep.stepMode = 'reps';
+						newStep.targetReps = combo.default_quantity || 20;
+					} else {
+						newStep.durationSeconds = combo.default_quantity || 190;
+					}
 				}
 
 				newStep.flow_type = combo.flow_type || 'alternating';

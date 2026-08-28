@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" width="100%" height="100%">
+	<defs>
+		<linearGradient id="foldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+			<stop offset="0%" stop-color="#3b82f6" />
+			<stop offset="100%" stop-color="#10b981" />
+		</linearGradient>
+		<filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+			<feGaussianBlur stdDeviation="3" result="blur" />
+			<feComposite in="SourceGraphic" in2="blur" operator="over" />
+		</filter>
+	</defs>
+	<style>
+		.ground { stroke: rgba(255,255,255,0.15); stroke-width: 3; stroke-dasharray: 6 6; }
+		.torso-hinge {
+			animation: fold-hinge 3.6s ease-in-out infinite;
+			transform-origin: 90px 148px;
+		}
+		@keyframes fold-hinge {
+			0%, 100% { transform: rotate(0deg); }
+			50% { transform: rotate(24deg); }
+		}
+		.hamstring-glow {
+			animation: h-pulse 3.6s ease-in-out infinite;
+		}
+		@keyframes h-pulse {
+			0%, 100% { opacity: 0.3; }
+			50% { opacity: 0.9; filter: drop-shadow(0 0 8px #3b82f6); }
+		}
+	</style>
+	<rect width="320" height="200" rx="16" fill="#0b0d17" />
+	<!-- Floor line -->
+	<line x1="20" y1="150" x2="300" y2="150" class="ground" />
+	<line x1="30" y1="150" x2="290" y2="150" stroke="#3b82f6" stroke-width="2" opacity="0.3" />
+
+	<!-- Extended Straight Legs on Floor -->
+	<line x1="90" y1="148" x2="240" y2="148" stroke="url(#foldGrad)" stroke-width="12" stroke-linecap="round" />
+	<circle cx="240" cy="148" r="6" fill="#10b981" />
+	<!-- Hamstring Release Zone -->
+	<line x1="115" y1="148" x2="195" y2="148" stroke="#38bdf8" stroke-width="6" class="hamstring-glow" />
+
+	<!-- Hinging Upper Torso & Reaching Arms -->
+	<g class="torso-hinge">
+		<!-- Pelvis/Hips at (90, 148) rising to Shoulders (115, 80) -->
+		<line x1="90" y1="148" x2="120" y2="85" stroke="url(#foldGrad)" stroke-width="12" stroke-linecap="round" filter="url(#glow)" />
+		
+		<!-- Reaching Arms extending toward feet -->
+		<line x1="120" y1="85" x2="225" y2="135" stroke="#bfdbfe" stroke-width="7" stroke-linecap="round" />
+		<circle cx="225" cy="135" r="5" fill="#3b82f6" />
+
+		<!-- Head & Long Spine alignment -->
+		<circle cx="132" cy="70" r="13" fill="#dbeafe" filter="url(#glow)" />
+	</g>
+
+	<!-- Exercise Tag -->
+	<rect x="18" y="18" width="145" height="26" rx="6" fill="rgba(59,130,246,0.15)" stroke="rgba(59,130,246,0.4)" stroke-width="1" />
+	<text x="90" y="35" fill="#dbeafe" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" font-weight="700" text-anchor="middle" letter-spacing="0.5">HAMSTRING FOLD</text>
+</svg>

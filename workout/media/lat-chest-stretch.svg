@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" width="100%" height="100%">
+	<defs>
+		<linearGradient id="latGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+			<stop offset="0%" stop-color="#06b6d4" />
+			<stop offset="100%" stop-color="#10b981" />
+		</linearGradient>
+		<filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+			<feGaussianBlur stdDeviation="3" result="blur" />
+			<feComposite in="SourceGraphic" in2="blur" operator="over" />
+		</filter>
+	</defs>
+	<style>
+		.ground { stroke: rgba(255,255,255,0.15); stroke-width: 3; stroke-dasharray: 6 6; }
+		.lat-sink {
+			animation: puppy-breathe 4s ease-in-out infinite;
+			transform-origin: 75px 115px;
+		}
+		@keyframes puppy-breathe {
+			0%, 100% { transform: translateY(0); }
+			50% { transform: translateY(8px); }
+		}
+		.lat-glow {
+			animation: l-pulse 4s ease-in-out infinite;
+		}
+		@keyframes l-pulse {
+			0%, 100% { opacity: 0.4; }
+			50% { opacity: 1; filter: drop-shadow(0 0 8px #06b6d4); }
+		}
+	</style>
+	<rect width="320" height="200" rx="16" fill="#0b0d17" />
+	<!-- Floor line -->
+	<line x1="20" y1="150" x2="300" y2="150" class="ground" />
+	<line x1="30" y1="150" x2="290" y2="150" stroke="#06b6d4" stroke-width="2" opacity="0.3" />
+
+	<!-- Knees / Thighs Grounded Stance -->
+	<line x1="75" y1="115" x2="75" y2="150" stroke="#a7f3d0" stroke-width="10" stroke-linecap="round" />
+	<circle cx="75" cy="150" r="5" fill="#06b6d4" />
+
+	<!-- Reaching Extended Arms / Puppy Pose Torso Sinking -->
+	<g class="lat-sink">
+		<!-- Hips high in air at (75, 115) sloping down to chest (170, 140) -->
+		<line x1="75" y1="115" x2="175" y2="135" stroke="url(#latGrad)" stroke-width="12" stroke-linecap="round" filter="url(#glow)" />
+		
+		<!-- Arms reaching far forward on floor -->
+		<line x1="175" y1="135" x2="265" y2="148" stroke="#a7f3d0" stroke-width="8" stroke-linecap="round" />
+		<circle cx="265" cy="148" r="5" fill="#10b981" />
+
+		<!-- Head relaxing between shoulders -->
+		<circle cx="195" cy="130" r="13" fill="#ccfbf1" filter="url(#glow)" />
+
+		<!-- Latissimus Dorsi Squeeze / Stretch zone -->
+		<ellipse cx="140" cy="125" rx="18" ry="6" fill="#06b6d4" class="lat-glow" transform="rotate(15 140 125)" />
+	</g>
+
+	<!-- Exercise Tag -->
+	<rect x="18" y="18" width="150" height="26" rx="6" fill="rgba(6,182,212,0.15)" stroke="rgba(6,182,212,0.4)" stroke-width="1" />
+	<text x="93" y="35" fill="#ccfbf1" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" font-weight="700" text-anchor="middle" letter-spacing="0.5">KNEELING LAT STRETCH</text>
+</svg>
