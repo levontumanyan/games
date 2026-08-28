@@ -8,7 +8,7 @@ import { showPrompt, showAlert } from './modal.js';
 import { getClipIcon, getTimerIcon, getBreakIcon, getComboIcon, getExerciseIcon, getDuplicateIcon, getPlusIcon } from './icons.js';
 import {
 	getExercises, getExerciseById, filterExercises, createCustomExercise,
-	getCategoryBadgeHtml, getDisciplineBadgeHtml,
+	getCategoryBadgeHtml, getDisciplineBadgeHtml, inferMusclesForExercise, getMuscleBadgeHtml,
 	getExerciseMediaAssets, getExerciseFollowAlongMedia, getExerciseInstructionMedia,
 	getMediaKindBadgeHtml, addMediaAssetToExercise, showExerciseVariationsModal, MEDIA_KINDS
 } from './exercises.js';
@@ -2151,147 +2151,169 @@ export function createRoutine(title) {
  * @param {Function} onUpdate
  */
 /**
- * Open a quick selection modal to add an exercise into the active routine.
+ * Anatomical region definitions for the Option 4 Muscle Navigator exercise picker.
+ */
+const ANATOMICAL_REGIONS = [
+	{ id: 'all', label: 'All Movements', icon: '🎯' },
+	{ id: 'lower', label: 'Lower Body & Legs', icon: '🦵', muscles: ['quads', 'hamstrings', 'glutes', 'calves', 'adductors', 'groin', 'ankles'] },
+	{ id: 'core', label: 'Core & Hip Flexors', icon: '🛡️', muscles: ['abs', 'obliques', 'lower_back', 'hip_flexors'] },
+	{ id: 'arms', label: 'Arms & Grip', icon: '💪', muscles: ['biceps', 'triceps', 'forearms', 'wrists'] },
+	{ id: 'upper', label: 'Shoulders & Upper', icon: '🥊', muscles: ['shoulders', 'chest', 'back', 'lats', 'traps', 'upper_back', 'rotators'] },
+	{ id: 'stretch', label: 'Stretch & Mobility', icon: '🧘', categories: ['stretch', 'mobility'], disciplines: ['yoga'] }
+];
+
+/**
+ * Open the Anatomical Muscle Navigator modal to browse, inspect, and add exercises to the active routine.
+ * Clicking an exercise card body opens the full Exercise Variations / Cues HUD overlay.
+ * Clicking the "+ Add" button commits the movement directly into the workout routine.
  * @param {Object} routine
  * @param {Function} onUpdate
  * @param {number} [insertIndex=-1] - Optional index to insert at (defaults to end)
  */
 export function showAddExerciseModal(routine, onUpdate, insertIndex = -1) {
+	const allExercises = getExercises();
+
 	const backdrop = document.createElement('div');
-	backdrop.className = 'modal-backdrop';
+	backdrop.className = 'modal-backdrop modal-exercise-backdrop';
 
 	const modal = document.createElement('div');
-	modal.className = 'modal modal-add-picker';
+	modal.className = 'modal modal-add-navigator';
 
 	const isInserting = typeof insertIndex === 'number' && insertIndex >= 0;
 	const titleText = isInserting ? `🥋 Select Exercise (Insert at #${insertIndex + 1})` : '🥋 Select Exercise';
 
 	modal.innerHTML = `
-		<div id="add-ex-picker-main">
-			<div class="modal-header">
+		<div class="modal-header">
+			<div style="display:flex; align-items:center; gap:10px;">
 				<h3 class="modal-title">${titleText}</h3>
-				<button class="modal-close-btn" title="Close">✕</button>
+				<span class="badge-count" id="nav-count-badge">0 movements</span>
 			</div>
-
-			<div class="modal-body">
-				<div class="search-box-wrapper" style="margin-bottom:12px;">
-					<span class="search-icon">🔍</span>
-					<input type="text" id="add-ex-search" class="input combo-search-input" placeholder="Search exercises (pushups, teep, squats)..." autofocus>
-				</div>
-
-				<div id="add-ex-list" class="add-picker-list"></div>
-			</div>
+			<button class="modal-close-btn" title="Close">✕</button>
 		</div>
 
-		<div id="add-ex-picker-subwindow" class="add-picker-subwindow" style="display:none;">
-			<div class="modal-header">
-				<div>
-					<h3 class="modal-title" id="add-ex-sub-title">Exercise Name</h3>
-					<div class="modal-subtitle" id="add-ex-sub-meta" style="margin-top:2px;">Category • Discipline</div>
+		<div class="modal-body">
+			<!-- Filter Toolbar -->
+			<div class="nav-filter-toolbar">
+				<div class="nav-search-wrap">
+					<span class="search-icon">🔍</span>
+					<input type="text" class="nav-search-input" id="nav-search" placeholder="Search exercises, disciplines, or muscles (e.g. Teep, Quads, Push-ups)..." autofocus>
 				</div>
-				<button class="btn btn-ghost btn-xs" id="add-ex-sub-back-btn">← Back</button>
+
+				<div class="nav-pills-row" id="nav-discipline-pills">
+					<span class="nav-pill-label">Discipline</span>
+					<button type="button" class="nav-filter-pill active" data-disc="all">All</button>
+					<button type="button" class="nav-filter-pill" data-disc="calisthenics">🤸 Calisthenics</button>
+					<button type="button" class="nav-filter-pill" data-disc="muay_thai">🥊 Muay Thai</button>
+					<button type="button" class="nav-filter-pill" data-disc="boxing">🥊 Boxing</button>
+					<button type="button" class="nav-filter-pill" data-disc="yoga">🧘 Yoga & Recovery</button>
+					<button type="button" class="nav-filter-pill" data-disc="general">🏋️ General</button>
+				</div>
+
+				<div class="nav-pills-row" id="nav-media-pills">
+					<span class="nav-pill-label">Media Filter</span>
+					<button type="button" class="nav-filter-pill active" data-media="all">All Types</button>
+					<button type="button" class="nav-filter-pill" data-media="video">🎬 Has Video</button>
+					<button type="button" class="nav-filter-pill" data-media="gif">✨ Has GIF / Loop</button>
+					<button type="button" class="nav-filter-pill" data-media="tutorial">🎓 Has Tutorial</button>
+				</div>
 			</div>
 
-			<div class="modal-body" style="gap:16px;">
-				<div class="sub-reps-box">
-					<div class="sub-reps-counter-row">
-						<button class="btn-sub-step" id="add-ex-step-minus" type="button">−</button>
-						<input type="number" id="add-ex-num-input" class="sub-reps-input" value="20" min="1" max="999">
-						<button class="btn-sub-step" id="add-ex-step-plus" type="button">+</button>
-						<span class="sub-unit-label" id="add-ex-unit-label">Reps</span>
-					</div>
-
-					<div class="sub-chips-row" id="add-ex-preset-chips"></div>
-				</div>
-
-				<div class="modal-footer" style="padding:0;border:none;margin-top:8px;">
-					<button class="btn btn-ghost btn-sm" id="add-ex-sub-cancel-btn">Cancel</button>
-					<button class="btn btn-primary btn-sm" id="add-ex-sub-confirm-btn">✓ Add to Workout (Enter)</button>
-				</div>
+			<!-- 2-Column Anatomical Navigator -->
+			<div class="nav-muscle-layout">
+				<div class="nav-muscle-sidebar" id="nav-muscle-sidebar"></div>
+				<div class="nav-exercise-list-pane" id="nav-exercise-list"></div>
 			</div>
 		</div>
 	`;
 
-	const close = () => backdrop.remove();
+	const close = () => {
+		document.removeEventListener('keydown', handleEsc);
+		backdrop.remove();
+	};
 
-	modal.querySelectorAll('.modal-close-btn').forEach(btn => btn.addEventListener('click', close));
+	const handleEsc = (e) => {
+		if (e.key === 'Escape' || e.keyCode === 27) close();
+	};
+	document.addEventListener('keydown', handleEsc);
+
+	modal.querySelector('.modal-close-btn').addEventListener('click', close);
 	backdrop.addEventListener('click', (e) => {
 		if (e.target === backdrop) close();
 	});
 
-	const searchInput = modal.querySelector('#add-ex-search');
-	const listEl = modal.querySelector('#add-ex-list');
-	const mainView = modal.querySelector('#add-ex-picker-main');
-	const subView = modal.querySelector('#add-ex-picker-subwindow');
-	const subTitle = modal.querySelector('#add-ex-sub-title');
-	const subMeta = modal.querySelector('#add-ex-sub-meta');
-	const numInput = modal.querySelector('#add-ex-num-input');
-	const unitLabel = modal.querySelector('#add-ex-unit-label');
-	const presetChips = modal.querySelector('#add-ex-preset-chips');
-	const backBtn = modal.querySelector('#add-ex-sub-back-btn');
-	const cancelBtn = modal.querySelector('#add-ex-sub-cancel-btn');
-	const confirmBtn = modal.querySelector('#add-ex-sub-confirm-btn');
-	const stepMinus = modal.querySelector('#add-ex-step-minus');
-	const stepPlus = modal.querySelector('#add-ex-step-plus');
+	const searchInput = modal.querySelector('#nav-search');
+	const sidebarEl = modal.querySelector('#nav-muscle-sidebar');
+	const listEl = modal.querySelector('#nav-exercise-list');
+	const countBadge = modal.querySelector('#nav-count-badge');
 
-	let activeEx = null;
+	let activeRegion = 'all';
+	let activeDiscipline = 'all';
+	let activeMedia = 'all';
+	let searchQuery = '';
 
-	function openSubwindow(ex) {
-		activeEx = ex;
-		subTitle.textContent = ex.name;
-		subMeta.textContent = [ex.category, ex.discipline].filter(Boolean).join(' • ');
+	function matchesRegion(ex, regionId) {
+		if (regionId === 'all') return true;
+		const region = ANATOMICAL_REGIONS.find(r => r.id === regionId);
+		if (!region) return true;
 
-		const isReps = (ex.default_mode || 'reps') === 'reps';
-		unitLabel.textContent = isReps ? 'Reps' : 'Seconds';
-		numInput.value = ex.default_quantity || (isReps ? 20 : 30);
+		if (region.categories && region.categories.includes(ex.category)) return true;
+		if (region.disciplines && region.disciplines.includes(ex.discipline)) return true;
 
-		const chipValues = isReps ? [10, 15, 20, 25, 30, 50] : [15, 30, 45, 60, 90, 120];
-		presetChips.innerHTML = chipValues.map(v => `<button type="button" class="sub-chip-pill" data-val="${v}">${v}${isReps ? '' : 's'}</button>`).join('');
+		const muscles = inferMusclesForExercise(ex);
+		const allTargetMuscles = [...(muscles.primary || []), ...(muscles.secondary || [])];
+		if (region.muscles && region.muscles.some(m => allTargetMuscles.includes(m))) {
+			return true;
+		}
+		return false;
+	}
 
-		presetChips.querySelectorAll('.sub-chip-pill').forEach(chip => {
-			chip.addEventListener('click', () => {
-				numInput.value = chip.getAttribute('data-val');
-				numInput.focus();
-				numInput.select();
-			});
+	function getFilteredExercises(forRegion = activeRegion) {
+		const q = searchQuery.toLowerCase().trim();
+
+		return allExercises.filter(ex => {
+			if (activeDiscipline !== 'all' && ex.discipline !== activeDiscipline) return false;
+
+			const assets = getExerciseMediaAssets([ex]);
+			const hasVid = ex.media_url?.includes('youtube') || ex.media_url?.includes('youtu.be') || assets.some(a => a.type === 'video' || Boolean(a.videoId));
+			const hasGifOrImg = Boolean(ex.media_url && !hasVid) || assets.some(a => a.kind === 'animation' || a.kind === 'photo');
+			const hasTutorial = assets.some(a => a.kind === 'instruction');
+
+			if (activeMedia === 'video' && !hasVid) return false;
+			if (activeMedia === 'gif' && !hasGifOrImg) return false;
+			if (activeMedia === 'tutorial' && !hasTutorial) return false;
+
+			if (!matchesRegion(ex, forRegion)) return false;
+
+			if (q) {
+				const muscles = inferMusclesForExercise(ex);
+				const allTargetMuscles = [...(muscles.primary || []), ...(muscles.secondary || [])];
+				const matchName = (ex.name || '').toLowerCase().includes(q);
+				const matchCategory = (ex.category || '').toLowerCase().includes(q);
+				const matchDisc = (ex.discipline || '').toLowerCase().includes(q);
+				const matchMuscles = allTargetMuscles.some(m => m.toLowerCase().includes(q));
+				if (!matchName && !matchCategory && !matchDisc && !matchMuscles) return false;
+			}
+
+			return true;
 		});
-
-		mainView.style.display = 'none';
-		subView.style.display = 'block';
-		numInput.focus();
-		numInput.select();
 	}
 
-	function closeSubwindow() {
-		subView.style.display = 'none';
-		mainView.style.display = 'block';
-		activeEx = null;
-		searchInput.focus();
-	}
-
-	function commitAdd() {
-		if (!activeEx) return;
-		const ex = activeEx;
+	function commitAddExercise(ex) {
 		const isReps = (ex.default_mode || 'reps') === 'reps';
-		const quantity = parseInt(numInput.value, 10) || ex.default_quantity || (isReps ? 20 : 30);
-
-		const hasVideo = ex.media_url && (ex.media_url.includes('youtube') || ex.media_url.includes('youtu.be'));
-		const asset = (ex.media_assets || [])[0];
+		const quantity = ex.default_quantity || (isReps ? 20 : 30);
+		const asset = getExerciseFollowAlongMedia(ex) || (ex.media_assets || [])[0];
 		const isVidAsset = asset && (asset.type === 'video' || Boolean(asset.videoId));
 
-		let newStep;
-		if (isVidAsset || hasVideo) {
-			newStep = createClipStep();
-			newStep.label = ex.name;
-			newStep.videoId = asset?.videoId || parseYouTubeId(ex.media_url);
-			newStep.startSeconds = asset?.startSeconds || 0;
-			newStep.endSeconds = asset?.endSeconds || ((asset?.startSeconds || 0) + quantity);
-		} else {
-			newStep = createTimerStep();
-			newStep.label = ex.name;
-			newStep.stepMode = ex.default_mode || 'reps';
-			newStep.targetReps = isReps ? quantity : 0;
-			newStep.durationSeconds = !isReps ? quantity : 30;
+		const newStep = createTimerStep();
+		newStep.label = ex.name;
+		newStep.stepMode = isReps ? 'reps' : 'time';
+		newStep.targetReps = isReps ? quantity : 0;
+		newStep.durationSeconds = !isReps ? quantity : 30;
+		if (isVidAsset) {
+			newStep.videoId = asset.videoId || parseYouTubeId(asset.url);
+			newStep.startSeconds = asset.startSeconds || 0;
+			newStep.endSeconds = asset.endSeconds || ((asset.startSeconds || 0) + (isReps ? 60 : quantity));
+		} else if (asset?.url || ex.media_url) {
 			newStep.gifUrl = asset?.url || ex.media_url || '';
 			newStep.mediaUrl = asset?.url || ex.media_url || '';
 		}
@@ -2312,86 +2334,154 @@ export function showAddExerciseModal(routine, onUpdate, insertIndex = -1) {
 		highlightStepElement(newStep.id);
 	}
 
-	backBtn.addEventListener('click', closeSubwindow);
-	cancelBtn.addEventListener('click', closeSubwindow);
-	confirmBtn.addEventListener('click', commitAdd);
+	function renderSidebar() {
+		sidebarEl.innerHTML = '';
+		ANATOMICAL_REGIONS.forEach(reg => {
+			const count = getFilteredExercises(reg.id).length;
+			const btn = document.createElement('button');
+			btn.type = 'button';
+			btn.className = `nav-region-btn ${activeRegion === reg.id ? 'active' : ''}`;
+			btn.innerHTML = `
+				<span>${reg.icon} ${reg.label}</span>
+				<span class="nav-region-count">${count}</span>
+			`;
+			btn.addEventListener('click', () => {
+				activeRegion = reg.id;
+				renderSidebar();
+				renderList();
+			});
+			sidebarEl.appendChild(btn);
+		});
+	}
 
-	stepMinus.addEventListener('click', () => {
-		const isReps = (activeEx?.default_mode || 'reps') === 'reps';
-		let val = parseInt(numInput.value, 10) || 10;
-		numInput.value = Math.max(1, val - (isReps ? 5 : 5));
-	});
-
-	stepPlus.addEventListener('click', () => {
-		const isReps = (activeEx?.default_mode || 'reps') === 'reps';
-		let val = parseInt(numInput.value, 10) || 10;
-		numInput.value = val + (isReps ? 5 : 5);
-	});
-
-	numInput.addEventListener('wheel', (e) => {
-		e.preventDefault();
-		const isReps = (activeEx?.default_mode || 'reps') === 'reps';
-		const step = e.shiftKey ? 10 : (isReps ? 5 : 5);
-		let val = parseInt(numInput.value, 10) || 10;
-		numInput.value = Math.max(1, e.deltaY < 0 ? val + step : val - step);
-	}, { passive: false });
-
-	numInput.addEventListener('keydown', (e) => {
-		const isReps = (activeEx?.default_mode || 'reps') === 'reps';
-		const step = e.shiftKey ? 10 : (isReps ? 5 : 5);
-		if (e.key === 'ArrowUp') {
-			e.preventDefault();
-			let val = parseInt(numInput.value, 10) || 10;
-			numInput.value = Math.max(1, val + step);
-		} else if (e.key === 'ArrowDown') {
-			e.preventDefault();
-			let val = parseInt(numInput.value, 10) || 10;
-			numInput.value = Math.max(1, val - step);
-		} else if (e.key === 'Enter') {
-			commitAdd();
-		} else if (e.key === 'Escape') {
-			closeSubwindow();
-		}
-	});
-
-	function renderList(query = '') {
-		const filtered = filterExercises(query);
+	function renderList() {
+		const filtered = getFilteredExercises(activeRegion);
+		countBadge.textContent = `${filtered.length} movement${filtered.length === 1 ? '' : 's'}`;
 		listEl.innerHTML = '';
 
 		if (filtered.length === 0) {
-			listEl.innerHTML = `<div class="empty-sessions"><p>No exercises found.</p></div>`;
+			listEl.innerHTML = `<div class="empty-sessions" style="padding:40px 20px; text-align:center;"><p style="color:var(--text-muted);">No matching exercises found in this region.</p></div>`;
 			return;
 		}
 
 		filtered.forEach(ex => {
-			const item = document.createElement('div');
-			item.className = 'add-picker-item';
+			const card = document.createElement('div');
+			card.className = 'nav-exercise-card';
 
-			const metaText = [ex.category, ex.discipline].filter(Boolean).join(' • ');
+			const fullEx = (ex.id ? getExerciseById(ex.id) : null) || ex;
+			const muscles = inferMusclesForExercise(fullEx);
+			const primaryPills = (muscles.primary || []).slice(0, 3).map(m => getMuscleBadgeHtml(m, true)).join('');
 
-			item.innerHTML = `
-				<div class="add-picker-item-left">
-					<span class="add-picker-name">${escapeHtml(ex.name)}</span>
-					${metaText ? `<span class="add-picker-sub">${escapeHtml(metaText)}</span>` : ''}
+			const assets = getExerciseMediaAssets([fullEx]);
+			const followAlong = getExerciseFollowAlongMedia(fullEx) || assets[0];
+			const isVid = followAlong && (followAlong.type === 'video' || Boolean(followAlong.videoId));
+			const vid = followAlong?.videoId || (fullEx.media_url ? parseYouTubeId(fullEx.media_url) : null);
+
+			let thumbHtml = '';
+			if (isVid && vid) {
+				thumbHtml = `
+					<div class="nav-card-thumb">
+						<img src="https://img.youtube.com/vi/${vid}/default.jpg" alt="${escapeHtml(fullEx.name)}" loading="lazy">
+						<span class="nav-card-thumb-badge">▶</span>
+					</div>
+				`;
+			} else if (fullEx.media_url || followAlong?.url) {
+				thumbHtml = `
+					<div class="nav-card-thumb">
+						<img src="${fullEx.media_url || followAlong.url}" alt="${escapeHtml(fullEx.name)}" loading="lazy">
+						<span class="nav-card-thumb-badge">✨</span>
+					</div>
+				`;
+			} else {
+				thumbHtml = `
+					<div class="nav-card-thumb">
+						<span style="font-size:1.2rem;">🥋</span>
+					</div>
+				`;
+			}
+
+			const isReps = (fullEx.default_mode || 'reps') === 'reps';
+			const qty = fullEx.default_quantity || (isReps ? 20 : 30);
+			const unitStr = isReps ? 'reps' : 's';
+
+			card.innerHTML = `
+				<div class="nav-card-main" title="Click to view details, cues, and video variations">
+					${thumbHtml}
+					<div class="nav-card-info">
+						<div class="nav-card-title-row">
+							<span class="nav-card-title">${escapeHtml(fullEx.name)}</span>
+							<span class="nav-card-inspect-hint">Details ↗</span>
+						</div>
+						<div class="nav-card-tags-row">
+							${fullEx.discipline ? getDisciplineBadgeHtml(fullEx.discipline) : ''}
+							${fullEx.category ? getCategoryBadgeHtml(fullEx.category) : ''}
+							${primaryPills}
+						</div>
+					</div>
 				</div>
-				<div class="add-picker-item-right">
-					<button class="btn-picker-add" title="Configure reps & add">+</button>
+				<div class="nav-card-actions">
+					<button type="button" class="btn-nav-view" title="Open Full Variations Overlay">👁️ View</button>
+					<button type="button" class="btn-nav-add" title="Add to Routine">+ Add (${qty}${unitStr})</button>
 				</div>
 			`;
 
-			item.addEventListener('click', () => {
-				openSubwindow(ex);
+			// Clicking card main or view button opens the full Exercise Overlay
+			const openOverlay = (e) => {
+				if (e) e.stopPropagation();
+				showExerciseVariationsModal(fullEx, {
+					onUpdated: () => {
+						renderSidebar();
+						renderList();
+						onUpdate();
+					},
+					onAddToRoutine: () => {
+						commitAddExercise(fullEx);
+					}
+				});
+			};
+
+			card.querySelector('.nav-card-main').addEventListener('click', openOverlay);
+			card.querySelector('.btn-nav-view').addEventListener('click', openOverlay);
+
+			// Clicking "+ Add" directly commits the exercise into the routine
+			card.querySelector('.btn-nav-add').addEventListener('click', (e) => {
+				e.stopPropagation();
+				commitAddExercise(fullEx);
 			});
 
-			listEl.appendChild(item);
+			listEl.appendChild(card);
 		});
 	}
 
 	searchInput.addEventListener('input', (e) => {
-		renderList(e.target.value);
+		searchQuery = e.target.value;
+		renderSidebar();
+		renderList();
 	});
 
+	modal.querySelectorAll('#nav-discipline-pills .nav-filter-pill').forEach(pill => {
+		pill.addEventListener('click', () => {
+			modal.querySelectorAll('#nav-discipline-pills .nav-filter-pill').forEach(p => p.classList.remove('active'));
+			pill.classList.add('active');
+			activeDiscipline = pill.getAttribute('data-disc');
+			renderSidebar();
+			renderList();
+		});
+	});
+
+	modal.querySelectorAll('#nav-media-pills .nav-filter-pill').forEach(pill => {
+		pill.addEventListener('click', () => {
+			modal.querySelectorAll('#nav-media-pills .nav-filter-pill').forEach(p => p.classList.remove('active'));
+			pill.classList.add('active');
+			activeMedia = pill.getAttribute('data-media');
+			renderSidebar();
+			renderList();
+		});
+	});
+
+	renderSidebar();
 	renderList();
+
 	backdrop.appendChild(modal);
 	document.body.appendChild(backdrop);
 }
