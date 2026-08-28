@@ -3,30 +3,51 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Add Exercise Modal - Two-Line Breadcrumb & Quick Reps</title>
+	<title>Exercise Picker Redesign - Interactive 5-Design Preview</title>
 	<style>
 		:root {
-			--bg-primary: #090a10;
-			--bg-secondary: #10121a;
-			--bg-card: #161824;
-			--bg-card-elevated: #1c1f30;
-			--bg-hover: #222538;
-			--text-primary: #f1f2f8;
-			--text-secondary: #9ea2bd;
-			--text-muted: #656984;
+			--bg-primary: #121513;
+			--bg-secondary: #171c19;
+			--bg-card: #1f2622;
+			--bg-card-elevated: #27312c;
+			--bg-input: #151a17;
+			--bg-hover: #2e3b34;
+			--bg-active: #38473f;
+
+			--text-primary: #e6eae6;
+			--text-secondary: #97a39b;
+			--text-muted: #5e6b62;
+
+			--accent: #5fa778;
+			--accent-hover: #4e8e66;
+			--accent-glow: rgba(95, 167, 120, 0.2);
+			--accent-subtle: rgba(95, 167, 120, 0.12);
+
+			--clip-color: #6aa3a9;
+			--timer-color: #cbb07a;
+			--break-color: #78a88a;
+			--danger: #c46860;
+			--muay-thai: #c46860;
+			--boxing: #c77953;
+			--calisthenics: #6aa3a9;
+			--general: #5fa778;
+			--yoga: #78a88a;
+
 			--border: rgba(255, 255, 255, 0.08);
-			--border-hover: rgba(255, 255, 255, 0.18);
-			--accent: #6366f1;
-			--accent-hover: #4f46e5;
-			--accent-subtle: rgba(99, 102, 241, 0.15);
-			--accent-glow: rgba(99, 102, 241, 0.25);
-			--radius-sm: 6px;
-			--radius-md: 8px;
+			--border-hover: rgba(255, 255, 255, 0.16);
+			--border-focus: rgba(95, 167, 120, 0.5);
+
+			--radius-lg: 16px;
 			--radius: 12px;
+			--radius-sm: 8px;
+			--radius-xs: 6px;
 			--radius-pill: 9999px;
+
+			--shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+			--shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.6);
 		}
 
-		* {
+		*, *::before, *::after {
 			box-sizing: border-box;
 			margin: 0;
 			padding: 0;
@@ -36,605 +57,1647 @@
 			background: var(--bg-primary);
 			color: var(--text-primary);
 			font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
-			padding: 36px 20px 80px 20px;
+			padding: 24px 20px 80px 20px;
 			display: flex;
 			flex-direction: column;
 			align-items: center;
+			min-height: 100vh;
 		}
 
-		.header-intro {
-			max-width: 900px;
+		/* ── Top Bar & Switcher ── */
+		.top-nav {
+			max-width: 1040px;
 			width: 100%;
-			margin-bottom: 28px;
-			text-align: center;
+			margin-bottom: 24px;
 		}
 
-		.header-intro h1 {
-			font-size: 1.85rem;
+		.title-badge-row {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			margin-bottom: 12px;
+		}
+
+		.title-badge-row h1 {
+			font-size: 1.6rem;
 			font-weight: 800;
-			margin-bottom: 8px;
-			background: linear-gradient(135deg, #ffffff 0%, #a5b4fc 100%);
-			-webkit-background-clip: text;
-			-webkit-text-fill-color: transparent;
-		}
-
-		.header-intro p {
-			color: var(--text-secondary);
-			font-size: 0.95rem;
-			line-height: 1.5;
-		}
-
-		.demo-container {
-			max-width: 620px;
-			width: 100%;
-			display: flex;
-			flex-direction: column;
-			gap: 20px;
-		}
-
-		.modal-mock-full {
-			background: var(--bg-card);
-			border: 1px solid var(--border);
-			border-radius: var(--radius);
-			box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
-			overflow: hidden;
-			position: relative;
-			min-height: 400px;
-		}
-
-		.modal-mock-header {
-			padding: 16px 20px 14px 20px;
-			display: flex;
-			align-items: center;
-			justify-content: space-between;
-			border-bottom: 1px solid var(--border);
-		}
-
-		.modal-mock-title {
-			font-size: 1.05rem;
-			font-weight: 700;
-			display: flex;
-			align-items: center;
-			gap: 8px;
-		}
-
-		.modal-mock-close {
-			color: var(--text-muted);
-			font-size: 0.95rem;
-			cursor: pointer;
-			padding: 4px;
-		}
-
-		.modal-mock-body {
-			padding: 16px 20px;
-			display: flex;
-			flex-direction: column;
-			gap: 12px;
-		}
-
-		.mock-search-wrapper {
-			position: relative;
-			display: flex;
-			align-items: center;
-		}
-
-		.mock-search-icon {
-			position: absolute;
-			left: 12px;
-			font-size: 0.9rem;
-			opacity: 0.6;
-		}
-
-		.mock-search-input {
-			width: 100%;
-			padding: 9px 12px 9px 36px;
-			background: rgba(0, 0, 0, 0.35);
-			border: 1px solid var(--border);
-			border-radius: var(--radius-sm);
-			color: var(--text-primary);
-			font-size: 0.9rem;
-			outline: none;
-			transition: border-color 0.15s ease;
-		}
-		.mock-search-input:focus {
-			border-color: var(--accent);
-		}
-
-		.mock-items-list {
-			display: flex;
-			flex-direction: column;
-			gap: 7px;
-			max-height: 320px;
-			overflow-y: auto;
-			overflow-x: hidden;
-			scrollbar-width: thin;
-			scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
-		}
-
-		/* ── Two-Line Breadcrumb Item ──────────────────────────────────── */
-		.ex-picker-row {
-			display: flex;
-			align-items: center;
-			justify-content: space-between;
-			padding: 9px 14px;
-			background: rgba(255, 255, 255, 0.03);
-			border: 1px solid var(--border);
-			border-radius: var(--radius-sm);
-			cursor: pointer;
-			transition: all 0.15s ease;
-			box-sizing: border-box;
-			width: 100%;
-		}
-		.ex-picker-row:hover {
-			background: var(--bg-hover);
-			border-color: var(--accent);
-		}
-		.ex-picker-left {
-			display: flex;
-			flex-direction: column;
-			gap: 2px;
-			min-width: 0;
-			flex: 1;
-		}
-		.ex-picker-name {
-			font-size: 0.92rem;
-			font-weight: 700;
-			color: var(--text-primary);
-			white-space: nowrap;
-			overflow: hidden;
-			text-overflow: ellipsis;
-		}
-		.ex-picker-sub {
-			font-size: 0.74rem;
-			color: var(--text-muted);
-			display: flex;
-			align-items: center;
-			gap: 6px;
-		}
-		.ex-picker-dot {
-			opacity: 0.35;
-		}
-		.ex-picker-add-btn {
-			width: 28px;
-			height: 28px;
-			border-radius: 50%;
-			background: var(--bg-hover);
-			border: 1px solid var(--border);
-			color: var(--text-primary);
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			font-size: 0.95rem;
-			flex-shrink: 0;
-			transition: all 0.15s ease;
-		}
-		.ex-picker-row:hover .ex-picker-add-btn {
-			background: var(--accent);
-			border-color: var(--accent);
 			color: #ffffff;
-			transform: scale(1.1);
-			box-shadow: 0 0 10px var(--accent-glow);
-		}
-
-		/* ── Quick Reps Subwindow / Popover ────────────────────────────── */
-		.reps-subwindow {
-			position: absolute;
-			inset: 0;
-			background: var(--bg-card);
-			display: flex;
-			flex-direction: column;
-			padding: 24px;
-			animation: fadeIn 0.18s cubic-bezier(0.4, 0, 0.2, 1);
-			z-index: 10;
-		}
-
-		@keyframes fadeIn {
-			from { opacity: 0; transform: scale(0.98); }
-			to { opacity: 1; transform: scale(1); }
-		}
-
-		.reps-sub-header {
 			display: flex;
 			align-items: center;
-			justify-content: space-between;
-			margin-bottom: 20px;
+			gap: 10px;
 		}
 
-		.reps-sub-title-box {
-			display: flex;
-			flex-direction: column;
-			gap: 3px;
-		}
-
-		.reps-sub-title {
-			font-size: 1.15rem;
-			font-weight: 800;
-			color: var(--text-primary);
-		}
-
-		.reps-sub-meta {
-			font-size: 0.8rem;
-			color: var(--text-secondary);
-		}
-
-		.reps-sub-back-btn {
-			padding: 5px 10px;
-			border-radius: var(--radius-sm);
-			background: transparent;
-			border: 1px solid var(--border);
-			color: var(--text-secondary);
-			font-size: 0.78rem;
-			font-weight: 600;
-			cursor: pointer;
-		}
-		.reps-sub-back-btn:hover {
-			background: var(--bg-hover);
-			color: var(--text-primary);
-		}
-
-		.reps-input-section {
+		.design-desc-box {
 			background: var(--bg-secondary);
 			border: 1px solid var(--border);
-			border-radius: var(--radius-md);
-			padding: 22px;
-			display: flex;
-			flex-direction: column;
-			align-items: center;
-			gap: 16px;
-			margin-bottom: auto;
-		}
-
-		.reps-counter-row {
-			display: flex;
-			align-items: center;
-			gap: 12px;
-		}
-
-		.reps-step-btn {
-			width: 38px;
-			height: 38px;
-			border-radius: 50%;
-			background: var(--bg-hover);
-			border: 1px solid var(--border);
-			color: var(--text-primary);
-			font-size: 1.2rem;
-			font-weight: 700;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			cursor: pointer;
-			transition: all 0.15s ease;
-		}
-		.reps-step-btn:hover {
-			background: var(--accent-subtle);
-			border-color: var(--accent);
-			color: #ffffff;
-		}
-
-		.reps-number-input {
-			width: 100px;
-			height: 48px;
-			font-size: 1.8rem;
-			font-weight: 800;
-			text-align: center;
-			background: var(--bg-card);
-			border: 2px solid var(--accent);
-			border-radius: var(--radius-sm);
-			color: #ffffff;
-			outline: none;
-			box-shadow: 0 0 16px var(--accent-glow);
-		}
-
-		.reps-unit-label {
-			font-size: 0.95rem;
-			font-weight: 700;
+			border-radius: var(--radius);
+			padding: 14px 18px;
+			margin-bottom: 18px;
+			font-size: 0.92rem;
 			color: var(--text-secondary);
+			line-height: 1.45;
 		}
 
-		/* Quick Chips */
-		.reps-chips-row {
+		.design-desc-box strong {
+			color: var(--text-primary);
+		}
+
+		.design-tabs {
 			display: flex;
 			gap: 8px;
 			flex-wrap: wrap;
-			justify-content: center;
-		}
-
-		.reps-chip {
-			padding: 4px 10px;
-			border-radius: var(--radius-pill);
-			background: rgba(255, 255, 255, 0.05);
+			background: var(--bg-secondary);
+			padding: 6px;
+			border-radius: var(--radius);
 			border: 1px solid var(--border);
-			color: var(--text-secondary);
-			font-size: 0.8rem;
-			font-weight: 600;
-			cursor: pointer;
-			transition: all 0.12s ease;
-		}
-		.reps-chip:hover {
-			background: var(--accent-subtle);
-			color: #a5b4fc;
-			border-color: rgba(99, 102, 241, 0.4);
 		}
 
-		.reps-sub-actions {
-			display: flex;
-			gap: 10px;
-			margin-top: 16px;
-		}
-
-		.btn-confirm-add {
+		.design-tab-btn {
 			flex: 1;
-			padding: 10px 16px;
-			background: var(--accent);
-			color: #ffffff;
-			border: none;
-			border-radius: var(--radius-sm);
-			font-size: 0.92rem;
-			font-weight: 700;
-			cursor: pointer;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			gap: 6px;
-			transition: all 0.15s ease;
-		}
-		.btn-confirm-add:hover {
-			background: var(--accent-hover);
-			box-shadow: 0 0 16px var(--accent-glow);
-		}
-
-		.btn-cancel-sub {
-			padding: 10px 16px;
+			min-width: 160px;
 			background: transparent;
+			border: 1px solid transparent;
 			color: var(--text-secondary);
-			border: 1px solid var(--border);
+			padding: 10px 14px;
 			border-radius: var(--radius-sm);
 			font-size: 0.88rem;
 			font-weight: 600;
 			cursor: pointer;
+			display: flex;
+			flex-direction: column;
+			gap: 2px;
+			text-align: left;
+			transition: all 0.15s ease;
 		}
-		.btn-cancel-sub:hover {
+
+		.design-tab-btn .tab-title {
+			font-size: 0.9rem;
+			color: var(--text-primary);
+		}
+
+		.design-tab-btn .tab-sub {
+			font-size: 0.75rem;
+			color: var(--text-muted);
+			font-weight: normal;
+		}
+
+		.design-tab-btn:hover {
 			background: var(--bg-hover);
 			color: var(--text-primary);
 		}
 
-		/* Added workout step visualizer */
-		.added-log-box {
+		.design-tab-btn.active {
+			background: var(--bg-card-elevated);
+			border-color: var(--accent);
+			box-shadow: 0 2px 10px var(--accent-glow);
+		}
+
+		.design-tab-btn.active .tab-title {
+			color: var(--accent);
+		}
+
+		/* ── Modal Container Simulation ── */
+		.modal-viewport-wrapper {
+			max-width: 1040px;
+			width: 100%;
 			background: var(--bg-card);
 			border: 1px solid var(--border);
-			border-radius: var(--radius);
+			border-radius: var(--radius-lg);
+			box-shadow: var(--shadow-lg);
+			overflow: hidden;
+			display: flex;
+			flex-direction: column;
+			min-height: 640px;
+		}
+
+		.modal-header-bar {
 			padding: 16px 20px;
+			background: var(--bg-secondary);
+			border-bottom: 1px solid var(--border);
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
 		}
 
-		.added-log-title {
-			font-size: 0.85rem;
+		.modal-header-bar h2 {
+			font-size: 1.15rem;
 			font-weight: 700;
-			color: var(--text-secondary);
-			margin-bottom: 8px;
-			text-transform: uppercase;
-			letter-spacing: 0.04em;
+			display: flex;
+			align-items: center;
+			gap: 8px;
 		}
 
-		.added-log-feed {
+		.modal-header-actions {
+			display: flex;
+			align-items: center;
+			gap: 12px;
+		}
+
+		.close-x-btn {
+			background: transparent;
+			border: none;
+			color: var(--text-muted);
+			font-size: 1.2rem;
+			cursor: pointer;
+			padding: 4px 8px;
+			border-radius: 4px;
+		}
+		.close-x-btn:hover {
+			color: var(--text-primary);
+			background: var(--bg-hover);
+		}
+
+		/* ── Shared Filter Toolbar ── */
+		.filter-toolbar {
+			padding: 14px 20px;
+			border-bottom: 1px solid var(--border);
+			background: rgba(0, 0, 0, 0.15);
+			display: flex;
+			flex-direction: column;
+			gap: 12px;
+		}
+
+		.search-input-wrap {
+			position: relative;
+			display: flex;
+			align-items: center;
+		}
+
+		.search-input-wrap .search-icon {
+			position: absolute;
+			left: 14px;
+			font-size: 0.95rem;
+			color: var(--text-muted);
+			pointer-events: none;
+		}
+
+		.search-input {
+			width: 100%;
+			background: var(--bg-input);
+			border: 1px solid var(--border);
+			border-radius: var(--radius-sm);
+			padding: 10px 14px 10px 38px;
+			color: var(--text-primary);
+			font-size: 0.92rem;
+			outline: none;
+			transition: border-color 0.15s;
+		}
+
+		.search-input:focus {
+			border-color: var(--accent);
+		}
+
+		.pills-row {
+			display: flex;
+			gap: 6px;
+			flex-wrap: wrap;
+			align-items: center;
+		}
+
+		.pill-label {
+			font-size: 0.75rem;
+			text-transform: uppercase;
+			letter-spacing: 0.5px;
+			color: var(--text-muted);
+			margin-right: 4px;
+			font-weight: 700;
+		}
+
+		.filter-pill {
+			background: var(--bg-input);
+			border: 1px solid var(--border);
+			color: var(--text-secondary);
+			padding: 5px 12px;
+			border-radius: var(--radius-pill);
+			font-size: 0.8rem;
+			font-weight: 500;
+			cursor: pointer;
+			transition: all 0.12s ease;
+			display: inline-flex;
+			align-items: center;
+			gap: 5px;
+		}
+
+		.filter-pill:hover {
+			background: var(--bg-hover);
+			color: var(--text-primary);
+			border-color: var(--border-hover);
+		}
+
+		.filter-pill.active {
+			background: var(--accent-subtle);
+			color: var(--accent);
+			border-color: var(--accent);
+			font-weight: 600;
+		}
+
+		/* ── Common Exercise Badges ── */
+		.badge-disc {
+			display: inline-flex;
+			align-items: center;
+			gap: 4px;
+			padding: 2px 7px;
+			border-radius: var(--radius-xs);
+			font-size: 0.72rem;
+			font-weight: 600;
+			text-transform: capitalize;
+		}
+		.badge-disc.muay_thai { background: rgba(196, 104, 96, 0.18); color: #e58b84; }
+		.badge-disc.boxing { background: rgba(199, 121, 83, 0.18); color: #df9674; }
+		.badge-disc.calisthenics { background: rgba(106, 163, 169, 0.18); color: #8ec3c9; }
+		.badge-disc.general { background: rgba(95, 167, 120, 0.18); color: #81c79a; }
+		.badge-disc.yoga { background: rgba(120, 168, 138, 0.18); color: #9bc5aa; }
+
+		.badge-cat {
+			display: inline-flex;
+			align-items: center;
+			gap: 3px;
+			padding: 2px 6px;
+			border-radius: var(--radius-xs);
+			font-size: 0.7rem;
+			background: rgba(255, 255, 255, 0.06);
+			color: var(--text-secondary);
+		}
+
+		.badge-media {
+			display: inline-flex;
+			align-items: center;
+			gap: 4px;
+			padding: 2px 6px;
+			border-radius: var(--radius-xs);
+			font-size: 0.7rem;
+			background: rgba(106, 163, 169, 0.15);
+			color: var(--clip-color);
+			font-weight: 600;
+		}
+
+		.muscle-pill {
+			display: inline-block;
+			padding: 1px 6px;
+			border-radius: 4px;
+			font-size: 0.68rem;
+			font-weight: 600;
+			background: rgba(255, 255, 255, 0.05);
+			color: var(--text-muted);
+		}
+		.muscle-pill.primary {
+			background: rgba(95, 167, 120, 0.16);
+			color: #92d4ab;
+		}
+
+		/* ═══════════════════════════════════════════════════════
+		   DESIGN 1: SPOTLIGHT SPLIT-DECK (2-Pane Instant Inspect)
+		   ═══════════════════════════════════════════════════════ */
+		.layout-split-deck {
+			display: grid;
+			grid-template-columns: 1fr 340px;
+			flex: 1;
+			min-height: 480px;
+		}
+
+		.split-deck-list {
+			padding: 16px;
+			overflow-y: auto;
+			max-height: 520px;
+			display: flex;
+			flex-direction: column;
+			gap: 8px;
+			border-right: 1px solid var(--border);
+		}
+
+		.split-deck-item {
+			background: var(--bg-secondary);
+			border: 1px solid var(--border);
+			border-radius: var(--radius-sm);
+			padding: 12px 14px;
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			cursor: pointer;
+			transition: all 0.15s ease;
+		}
+
+		.split-deck-item:hover {
+			border-color: var(--border-hover);
+			background: var(--bg-hover);
+		}
+
+		.split-deck-item.selected {
+			border-color: var(--accent);
+			background: var(--bg-card-elevated);
+			box-shadow: inset 3px 0 0 var(--accent);
+		}
+
+		.split-deck-item-left {
+			display: flex;
+			align-items: center;
+			gap: 12px;
+		}
+
+		.split-deck-thumb {
+			width: 44px;
+			height: 44px;
+			border-radius: var(--radius-xs);
+			background: var(--bg-input);
+			overflow: hidden;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			flex-shrink: 0;
+			position: relative;
+		}
+
+		.split-deck-thumb img {
+			width: 100%;
+			height: 100%;
+			object-fit: cover;
+		}
+
+		.split-deck-info {
+			display: flex;
+			flex-direction: column;
+			gap: 4px;
+		}
+
+		.split-deck-name {
+			font-size: 0.95rem;
+			font-weight: 700;
+			color: var(--text-primary);
+		}
+
+		.split-deck-meta {
+			display: flex;
+			align-items: center;
+			gap: 6px;
+			flex-wrap: wrap;
+		}
+
+		.split-deck-actions {
+			display: flex;
+			align-items: center;
+			gap: 8px;
+		}
+
+		.btn-preview-trigger {
+			background: transparent;
+			border: 1px solid var(--border);
+			color: var(--text-secondary);
+			padding: 6px 10px;
+			border-radius: var(--radius-xs);
+			font-size: 0.78rem;
+			cursor: pointer;
+			transition: all 0.12s;
+		}
+		.btn-preview-trigger:hover {
+			background: var(--bg-hover);
+			color: var(--text-primary);
+			border-color: var(--border-hover);
+		}
+
+		.btn-quick-add {
+			background: var(--accent);
+			border: none;
+			color: #121513;
+			font-weight: 700;
+			padding: 6px 12px;
+			border-radius: var(--radius-xs);
+			font-size: 0.8rem;
+			cursor: pointer;
+			display: inline-flex;
+			align-items: center;
+			gap: 4px;
+			transition: background 0.12s;
+		}
+		.btn-quick-add:hover {
+			background: var(--accent-hover);
+		}
+
+		/* Spotlight Right Inspector Pane */
+		.split-deck-inspector {
+			padding: 20px;
+			background: var(--bg-secondary);
+			display: flex;
+			flex-direction: column;
+			gap: 16px;
+			overflow-y: auto;
+		}
+
+		.inspector-video-box {
+			width: 100%;
+			height: 170px;
+			border-radius: var(--radius-sm);
+			background: #000;
+			overflow: hidden;
+			position: relative;
+			border: 1px solid var(--border);
+		}
+
+		.inspector-video-box img {
+			width: 100%;
+			height: 100%;
+			object-fit: cover;
+		}
+
+		.inspector-video-overlay {
+			position: absolute;
+			inset: 0;
+			background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 60%);
+			display: flex;
+			align-items: flex-end;
+			padding: 10px 12px;
+			justify-content: space-between;
+		}
+
+		.inspector-title-row h3 {
+			font-size: 1.1rem;
+			font-weight: 700;
+			margin-bottom: 4px;
+		}
+
+		.inspector-meta-row {
+			display: flex;
+			gap: 6px;
+			flex-wrap: wrap;
+			margin-bottom: 12px;
+		}
+
+		.inspector-section-label {
+			font-size: 0.72rem;
+			text-transform: uppercase;
+			color: var(--text-muted);
+			font-weight: 700;
+			margin-bottom: 6px;
+		}
+
+		.inspector-stepper-box {
+			background: var(--bg-input);
+			border: 1px solid var(--border);
+			border-radius: var(--radius-sm);
+			padding: 12px;
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+		}
+
+		.stepper-controls {
+			display: flex;
+			align-items: center;
+			gap: 6px;
+		}
+
+		.stepper-btn {
+			width: 28px;
+			height: 28px;
+			background: var(--bg-hover);
+			border: 1px solid var(--border);
+			color: var(--text-primary);
+			border-radius: 4px;
+			font-weight: 700;
+			cursor: pointer;
+		}
+		.stepper-input {
+			width: 50px;
+			background: var(--bg-card);
+			border: 1px solid var(--border);
+			color: var(--text-primary);
+			text-align: center;
+			padding: 4px 0;
+			border-radius: 4px;
+			font-weight: 700;
+		}
+
+		.btn-full-inspect {
+			background: transparent;
+			border: 1px solid var(--border);
+			color: var(--text-secondary);
+			padding: 8px;
+			border-radius: var(--radius-sm);
+			font-size: 0.82rem;
+			cursor: pointer;
+			text-align: center;
+			transition: all 0.15s;
+		}
+		.btn-full-inspect:hover {
+			background: var(--bg-hover);
+			color: var(--text-primary);
+			border-color: var(--accent);
+		}
+
+		/* ═══════════════════════════════════════════════════════
+		   DESIGN 2: SMART ACTION-SPLIT GRID
+		   ═══════════════════════════════════════════════════════ */
+		.layout-smart-grid {
+			padding: 18px;
+			display: grid;
+			grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+			gap: 14px;
+			overflow-y: auto;
+			max-height: 520px;
+		}
+
+		.smart-grid-card {
+			background: var(--bg-secondary);
+			border: 1px solid var(--border);
+			border-radius: var(--radius);
+			overflow: hidden;
+			display: flex;
+			flex-direction: column;
+			transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+		}
+
+		.smart-grid-card:hover {
+			border-color: var(--border-hover);
+			transform: translateY(-2px);
+			box-shadow: var(--shadow);
+		}
+
+		.smart-card-clickable-body {
+			padding: 14px;
+			display: flex;
+			flex-direction: column;
+			gap: 10px;
+			cursor: pointer;
+			flex: 1;
+		}
+
+		.smart-card-clickable-body:hover .smart-card-title {
+			color: var(--accent);
+		}
+
+		.smart-card-top {
+			display: flex;
+			gap: 12px;
+		}
+
+		.smart-card-thumb-wrap {
+			width: 60px;
+			height: 60px;
+			border-radius: var(--radius-xs);
+			background: #000;
+			overflow: hidden;
+			position: relative;
+			flex-shrink: 0;
+			border: 1px solid var(--border);
+		}
+
+		.smart-card-thumb-wrap img {
+			width: 100%;
+			height: 100%;
+			object-fit: cover;
+		}
+
+		.smart-card-play-icon {
+			position: absolute;
+			inset: 0;
+			background: rgba(0, 0, 0, 0.35);
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			color: #fff;
+			font-size: 0.85rem;
+		}
+
+		.smart-card-details {
+			display: flex;
+			flex-direction: column;
+			gap: 4px;
+			flex: 1;
+		}
+
+		.smart-card-title {
+			font-size: 0.96rem;
+			font-weight: 700;
+			color: var(--text-primary);
+			transition: color 0.12s;
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+		}
+
+		.smart-card-inspect-hint {
+			font-size: 0.72rem;
+			color: var(--text-muted);
+			font-weight: normal;
+		}
+
+		.smart-card-muscles {
+			display: flex;
+			gap: 4px;
+			flex-wrap: wrap;
+		}
+
+		.smart-card-footer-action-bar {
+			background: var(--bg-card-elevated);
+			border-top: 1px solid var(--border);
+			padding: 8px 12px;
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+		}
+
+		.smart-card-qty-chip {
+			font-size: 0.78rem;
+			color: var(--text-secondary);
+			font-weight: 600;
+		}
+
+		/* ═══════════════════════════════════════════════════════
+		   DESIGN 3: PRO COMMAND-TABLE (Dense & Keyboard-Fast)
+		   ═══════════════════════════════════════════════════════ */
+		.layout-command-table {
+			padding: 12px 18px;
+			overflow-y: auto;
+			max-height: 520px;
+		}
+
+		.command-table {
+			width: 100%;
+			border-collapse: collapse;
+			font-size: 0.88rem;
+		}
+
+		.command-table th {
+			text-align: left;
+			padding: 8px 12px;
+			font-size: 0.72rem;
+			text-transform: uppercase;
+			color: var(--text-muted);
+			border-bottom: 1px solid var(--border);
+			letter-spacing: 0.5px;
+		}
+
+		.command-table tr {
+			border-bottom: 1px solid var(--border);
+			transition: background 0.12s;
+		}
+
+		.command-table tbody tr:hover {
+			background: var(--bg-hover);
+		}
+
+		.command-table td {
+			padding: 10px 12px;
+			vertical-align: middle;
+		}
+
+		.tbl-name-cell {
+			font-weight: 700;
+			color: var(--text-primary);
+			cursor: pointer;
+			display: flex;
+			align-items: center;
+			gap: 8px;
+		}
+
+		.tbl-name-cell:hover {
+			color: var(--accent);
+		}
+
+		.tbl-inspect-btn {
+			background: rgba(255, 255, 255, 0.05);
+			border: 1px solid var(--border);
+			color: var(--text-secondary);
+			padding: 3px 8px;
+			border-radius: 4px;
+			font-size: 0.72rem;
+			cursor: pointer;
+			display: inline-flex;
+			align-items: center;
+			gap: 4px;
+		}
+		.tbl-inspect-btn:hover {
+			background: var(--bg-hover);
+			color: var(--text-primary);
+			border-color: var(--accent);
+		}
+
+		/* ═══════════════════════════════════════════════════════
+		   DESIGN 4: ANATOMICAL MUSCLE MAP NAVIGATOR
+		   ═══════════════════════════════════════════════════════ */
+		.layout-muscle-map {
+			display: grid;
+			grid-template-columns: 240px 1fr;
+			flex: 1;
+			min-height: 480px;
+		}
+
+		.muscle-sidebar {
+			background: var(--bg-secondary);
+			border-right: 1px solid var(--border);
+			padding: 16px;
+			display: flex;
+			flex-direction: column;
+			gap: 12px;
+		}
+
+		.muscle-group-btn {
+			background: var(--bg-input);
+			border: 1px solid var(--border);
+			color: var(--text-secondary);
+			padding: 10px 12px;
+			border-radius: var(--radius-sm);
+			font-size: 0.85rem;
+			font-weight: 600;
+			cursor: pointer;
+			text-align: left;
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			transition: all 0.12s;
+		}
+
+		.muscle-group-btn:hover {
+			background: var(--bg-hover);
+			color: var(--text-primary);
+		}
+
+		.muscle-group-btn.active {
+			background: var(--accent-subtle);
+			border-color: var(--accent);
+			color: var(--accent);
+		}
+
+		.muscle-list-pane {
+			padding: 16px;
+			overflow-y: auto;
+			max-height: 520px;
+			display: flex;
+			flex-direction: column;
+			gap: 10px;
+		}
+
+		/* ═══════════════════════════════════════════════════════
+		   DESIGN 5: BATCH BUILDER WITH FLOATING TRAY
+		   ═══════════════════════════════════════════════════════ */
+		.layout-batch-builder {
+			display: flex;
+			flex-direction: column;
+			flex: 1;
+		}
+
+		.batch-list {
+			padding: 16px;
+			overflow-y: auto;
+			max-height: 440px;
+			display: flex;
+			flex-direction: column;
+			gap: 8px;
+			flex: 1;
+		}
+
+		.batch-row {
+			background: var(--bg-secondary);
+			border: 1px solid var(--border);
+			border-radius: var(--radius-sm);
+			padding: 10px 14px;
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			transition: all 0.12s;
+		}
+
+		.batch-row.is-selected {
+			border-color: var(--accent);
+			background: var(--bg-card-elevated);
+		}
+
+		.batch-row-left {
+			display: flex;
+			align-items: center;
+			gap: 12px;
+		}
+
+		.batch-checkbox {
+			width: 18px;
+			height: 18px;
+			accent-color: var(--accent);
+			cursor: pointer;
+		}
+
+		.batch-floating-tray {
+			background: var(--bg-secondary);
+			border-top: 1px solid var(--border);
+			padding: 14px 20px;
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.4);
+		}
+
+		.tray-chips-wrap {
+			display: flex;
+			gap: 6px;
+			flex-wrap: wrap;
+			align-items: center;
+		}
+
+		.tray-badge-pill {
+			background: var(--bg-hover);
+			border: 1px solid var(--border);
+			padding: 4px 10px;
+			border-radius: var(--radius-pill);
+			font-size: 0.78rem;
+			color: var(--text-primary);
+			display: inline-flex;
+			align-items: center;
+			gap: 6px;
+		}
+
+		.btn-tray-commit {
+			background: var(--accent);
+			border: none;
+			color: #121513;
+			font-weight: 700;
+			padding: 10px 18px;
+			border-radius: var(--radius-sm);
+			font-size: 0.88rem;
+			cursor: pointer;
+			display: inline-flex;
+			align-items: center;
+			gap: 6px;
+		}
+
+		/* ── Working Exercise Details HUD Modal (Preview Overlay) ── */
+		.preview-overlay-backdrop {
+			position: fixed;
+			inset: 0;
+			background: rgba(0, 0, 0, 0.75);
+			backdrop-filter: blur(6px);
+			z-index: 9999;
+			display: none;
+			align-items: center;
+			justify-content: center;
+			padding: 20px;
+		}
+
+		.preview-overlay-backdrop.open {
+			display: flex;
+		}
+
+		.preview-overlay-modal {
+			background: var(--bg-card);
+			border: 1px solid var(--border-hover);
+			border-radius: var(--radius-lg);
+			width: 100%;
+			max-width: 680px;
+			max-height: 85vh;
+			overflow-y: auto;
+			box-shadow: var(--shadow-lg);
+			animation: modalPop 0.18s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+		}
+
+		@keyframes modalPop {
+			from { opacity: 0; transform: scale(0.96); }
+			to { opacity: 1; transform: scale(1); }
+		}
+
+		.overlay-modal-header {
+			padding: 16px 20px;
+			background: var(--bg-secondary);
+			border-bottom: 1px solid var(--border);
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+		}
+
+		.overlay-modal-body {
+			padding: 20px;
+			display: flex;
+			flex-direction: column;
+			gap: 16px;
+		}
+
+		.overlay-media-hero {
+			width: 100%;
+			height: 240px;
+			border-radius: var(--radius-sm);
+			background: #000;
+			overflow: hidden;
+			position: relative;
+			border: 1px solid var(--border);
+		}
+
+		.overlay-media-hero img {
+			width: 100%;
+			height: 100%;
+			object-fit: cover;
+		}
+
+		.overlay-media-hero-badge {
+			position: absolute;
+			bottom: 12px;
+			left: 12px;
+			background: rgba(0, 0, 0, 0.8);
+			padding: 4px 10px;
+			border-radius: 4px;
+			font-size: 0.78rem;
+			color: #fff;
+			display: flex;
+			align-items: center;
+			gap: 6px;
+		}
+
+		.overlay-variations-grid {
+			display: grid;
+			grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+			gap: 10px;
+		}
+
+		.overlay-variation-card {
+			background: var(--bg-secondary);
+			border: 1px solid var(--border);
+			border-radius: var(--radius-sm);
+			padding: 8px;
+			cursor: pointer;
 			display: flex;
 			flex-direction: column;
 			gap: 6px;
 		}
 
-		.added-log-chip {
-			display: flex;
-			align-items: center;
-			justify-content: space-between;
-			padding: 6px 12px;
+		.overlay-variation-card.active {
+			border-color: var(--accent);
+			background: var(--bg-card-elevated);
+		}
+
+		.overlay-variation-thumb {
+			height: 75px;
+			border-radius: 4px;
+			background: #000;
+			overflow: hidden;
+		}
+
+		.overlay-variation-thumb img {
+			width: 100%;
+			height: 100%;
+			object-fit: cover;
+		}
+
+		/* Toast alert */
+		.toast-box {
+			position: fixed;
+			bottom: 24px;
+			right: 24px;
+			background: var(--bg-card-elevated);
+			border: 1px solid var(--accent);
+			color: var(--text-primary);
+			padding: 12px 18px;
 			border-radius: var(--radius-sm);
-			background: rgba(16, 185, 129, 0.1);
-			border: 1px solid rgba(16, 185, 129, 0.3);
-			color: #6ee7b7;
-			font-size: 0.82rem;
+			box-shadow: var(--shadow-lg);
+			font-size: 0.9rem;
 			font-weight: 600;
+			display: none;
+			align-items: center;
+			gap: 10px;
+			z-index: 10000;
+		}
+
+		.toast-box.show {
+			display: flex;
+			animation: toastIn 0.2s ease;
+		}
+
+		@keyframes toastIn {
+			from { opacity: 0; transform: translateY(10px); }
+			to { opacity: 1; transform: translateY(0); }
 		}
 	</style>
 </head>
 <body>
 
-	<div class="header-intro">
-		<h1>Two-Line Breadcrumb + Quick Reps Subwindow</h1>
-		<p>1. The initial list is ultra-clean with no rep numbers cluttering the cards.<br>2. Click any exercise below to open the quick reps subwindow with the default pre-filled.<br>3. Change the number or hit <strong>Enter</strong> to add it instantly.</p>
+	<div class="top-nav">
+		<div class="title-badge-row">
+			<h1>⚡ Workout Exercise Picker Redesign</h1>
+			<span style="font-size:0.85rem; color:var(--text-muted);">Interactive Architecture Sandbox</span>
+		</div>
+
+		<div class="design-desc-box" id="design-description">
+			<!-- Populated dynamically per design tab -->
+		</div>
+
+		<div class="design-tabs">
+			<button class="design-tab-btn active" data-design="1">
+				<span class="tab-title">1. Spotlight Split-Deck</span>
+				<span class="tab-sub">2-Pane Instant Inspect & Add</span>
+			</button>
+			<button class="design-tab-btn" data-design="2">
+				<span class="tab-title">2. Smart Action Grid</span>
+				<span class="tab-sub">Visual Cards + Action Footers</span>
+			</button>
+			<button class="design-tab-btn" data-design="3">
+				<span class="tab-title">3. Command Table Pro</span>
+				<span class="tab-sub">Dense, Fast & Keyboard-Friendly</span>
+			</button>
+			<button class="design-tab-btn" data-design="4">
+				<span class="tab-title">4. Anatomical Navigator</span>
+				<span class="tab-sub">Muscle-Targeted Filtering</span>
+			</button>
+			<button class="design-tab-btn" data-design="5">
+				<span class="tab-title">5. Batch Multi-Select</span>
+				<span class="tab-sub">Queue multiple exercises at once</span>
+			</button>
+		</div>
 	</div>
 
-	<div class="demo-container">
-
-		<div class="modal-mock-full" id="mock-modal">
-
-			<!-- Step 1: Clean Two-Line Exercise List -->
-			<div id="view-list">
-				<div class="modal-mock-header">
-					<div class="modal-mock-title">🥋 Select Exercise</div>
-					<span class="modal-mock-close">✕</span>
-				</div>
-
-				<div class="modal-mock-body">
-					<div class="mock-search-wrapper">
-						<span class="mock-search-icon">🔍</span>
-						<input type="text" id="demo-search" class="mock-search-input" placeholder="Search exercises (e.g. pushup, teep, squats)..." value="pushup">
-					</div>
-
-					<div class="mock-items-list" id="demo-list">
-						<!-- Injected by JS -->
-					</div>
-				</div>
-			</div>
-
-			<!-- Step 2: Quick Reps Subwindow (Shown when an exercise is clicked) -->
-			<div id="view-subwindow" class="reps-subwindow" style="display:none;">
-				<div class="reps-sub-header">
-					<div class="reps-sub-title-box">
-						<div class="reps-sub-title" id="sub-ex-name">Diamond Pushup</div>
-						<div class="reps-sub-meta" id="sub-ex-meta">Strength / Force • Calisthenics</div>
-					</div>
-					<button class="reps-sub-back-btn" id="sub-back-btn">← Back</button>
-				</div>
-
-				<div class="reps-input-section">
-					<div class="reps-counter-row">
-						<button class="reps-step-btn" id="btn-minus">-</button>
-						<input type="number" id="sub-num-input" class="reps-number-input" value="20" min="1" max="999">
-						<button class="reps-step-btn" id="btn-plus">+</button>
-						<span class="reps-unit-label" id="sub-unit-label">Reps</span>
-					</div>
-
-					<div class="reps-chips-row" id="reps-preset-chips">
-						<button class="reps-chip" data-val="10">10</button>
-						<button class="reps-chip" data-val="15">15</button>
-						<button class="reps-chip" data-val="20">20</button>
-						<button class="reps-chip" data-val="25">25</button>
-						<button class="reps-chip" data-val="30">30</button>
-						<button class="reps-chip" data-val="50">50</button>
-					</div>
-				</div>
-
-				<div class="reps-sub-actions">
-					<button class="btn-cancel-sub" id="btn-sub-cancel">Cancel</button>
-					<button class="btn-confirm-add" id="btn-sub-confirm">✓ Add to Workout (Enter)</button>
-				</div>
-			</div>
-
-		</div>
-
-		<!-- Added Log Feed Demo -->
-		<div class="added-log-box">
-			<div class="added-log-title">Workout Routine Preview:</div>
-			<div class="added-log-feed" id="added-log-feed">
-				<div style="font-size:0.8rem; color:var(--text-muted);">No exercises added yet. Click an exercise above!</div>
+	<!-- Main Modal Shell Preview -->
+	<div class="modal-viewport-wrapper">
+		<div class="modal-header-bar">
+			<h2>➕ Add Exercises to Routine</h2>
+			<div class="modal-header-actions">
+				<span style="font-size:0.8rem; color:var(--text-muted);" id="results-count-label">6 movements found</span>
+				<button class="close-x-btn" title="Close">✕</button>
 			</div>
 		</div>
 
+		<!-- Dynamic Shared Filter Toolbar -->
+		<div class="filter-toolbar">
+			<div class="search-input-wrap">
+				<span class="search-icon">🔍</span>
+				<input type="text" class="search-input" id="search-input" placeholder="Search exercises, disciplines, or muscles (e.g. Cossack Squat, Teep, Calisthenics, Quads)...">
+			</div>
+
+			<div class="pills-row" id="category-pills">
+				<span class="pill-label">Discipline</span>
+				<button class="filter-pill active" data-disc="all">All</button>
+				<button class="filter-pill" data-disc="calisthenics">🤸 Calisthenics</button>
+				<button class="filter-pill" data-disc="muay_thai">🥊 Muay Thai</button>
+				<button class="filter-pill" data-disc="boxing">🥊 Boxing</button>
+				<button class="filter-pill" data-disc="yoga">🧘 Yoga & Recovery</button>
+				<button class="filter-pill" data-disc="general">🏋️ General</button>
+			</div>
+
+			<div class="pills-row" id="media-pills">
+				<span class="pill-label">Filter By</span>
+				<button class="filter-pill active" data-media="all">All Types</button>
+				<button class="filter-pill" data-media="video">🎬 Has Video</button>
+				<button class="filter-pill" data-media="gif">✨ Has GIF / Loop</button>
+				<button class="filter-pill" data-media="tutorial">🎓 Has Coaching Tutorial</button>
+			</div>
+		</div>
+
+		<!-- Container for Active Design Dynamic View -->
+		<div id="design-view-container" style="flex:1; display:flex; flex-direction:column;"></div>
+	</div>
+
+	<!-- Reusable Exercise Overlay Modal -->
+	<div class="preview-overlay-backdrop" id="exercise-overlay">
+		<div class="preview-overlay-modal" id="overlay-content">
+			<!-- Populated when opening exercise overlay -->
+		</div>
+	</div>
+
+	<!-- Toast Notification -->
+	<div class="toast-box" id="toast-box">
+		<span>✓</span>
+		<span id="toast-message">Added to Routine</span>
 	</div>
 
 	<script>
-		const sampleExercises = [
-			{ id: '1', name: 'Diamond Pushup', category: 'Strength / Force', discipline: 'Calisthenics', mode: 'reps', defaultQty: 15, icon: '💪' },
-			{ id: '2', name: 'Mountain Climbers', category: 'Cardio & HIIT', discipline: 'General Fitness', mode: 'time', defaultQty: 45, icon: '🫀' },
-			{ id: '3', name: 'Standard Pushup', category: 'Strength / Force', discipline: 'Calisthenics', mode: 'reps', defaultQty: 20, icon: '💪' },
-			{ id: '4', name: 'Muay Thai Lead Teep Kick', category: 'Striking & Combos', discipline: 'Muay Thai', mode: 'reps', defaultQty: 20, icon: '🥊' },
-			{ id: '5', name: 'Bodyweight Squats', category: 'Lower Body', discipline: 'Calisthenics', mode: 'reps', defaultQty: 25, icon: '🦵' }
+		// Sample Exercise Dataset with realistic videos, GIFs, and muscle targets
+		const EXERCISES = [
+			{
+				id: 'cossack-squats',
+				name: 'Cossack Squats',
+				discipline: 'calisthenics',
+				category: 'mobility',
+				default_mode: 'reps',
+				default_quantity: 16,
+				videoId: 'IklyirQvTbc',
+				media_url: 'https://img.youtube.com/vi/IklyirQvTbc/mqdefault.jpg',
+				primary_muscles: ['quads', 'glutes', 'adductors'],
+				secondary_muscles: ['hamstrings', 'ankles'],
+				media_assets: [
+					{ kind: 'demonstration', title: 'Dynamic Cossack Shifts', videoId: 'IklyirQvTbc', startSeconds: 15, endSeconds: 60, type: 'video' },
+					{ kind: 'instruction', title: 'Deep Hip Mobility Breakdown', videoId: 'IklyirQvTbc', startSeconds: 120, endSeconds: 210, type: 'video' }
+				],
+				cues: ['Keep grounded heel flat', 'Chest upright throughout', 'Control lateral descent']
+			},
+			{
+				id: 'teep-kick',
+				name: 'Lead Teep Kick',
+				discipline: 'muay_thai',
+				category: 'technique',
+				default_mode: 'reps',
+				default_quantity: 20,
+				videoId: '8W83uLgT9_M',
+				media_url: 'https://img.youtube.com/vi/8W83uLgT9_M/mqdefault.jpg',
+				primary_muscles: ['hip_flexors', 'core', 'quads'],
+				secondary_muscles: ['calves', 'glutes'],
+				media_assets: [
+					{ kind: 'demonstration', title: 'Lead Teep Explosive Push', videoId: '8W83uLgT9_M', startSeconds: 4, endSeconds: 34, type: 'video' },
+					{ kind: 'instruction', title: 'Hips Engagement & Penetration', videoId: '8W83uLgT9_M', startSeconds: 50, endSeconds: 110, type: 'video' }
+				],
+				cues: ['Chamber knee high first', 'Push with ball of foot', 'Snap hip forward']
+			},
+			{
+				id: 'diamond-pushups',
+				name: 'Diamond Push-ups',
+				discipline: 'calisthenics',
+				category: 'strength',
+				default_mode: 'reps',
+				default_quantity: 15,
+				videoId: 'J0DnG1_S92I',
+				media_url: '/workout/media/diamond-pushups.svg',
+				primary_muscles: ['triceps', 'chest'],
+				secondary_muscles: ['shoulders', 'core'],
+				media_assets: [
+					{ kind: 'animation', title: 'Looping Diamond Form', url: '/workout/media/diamond-pushups.svg', type: 'image' },
+					{ kind: 'demonstration', title: 'Close Grip Execution', videoId: 'J0DnG1_S92I', startSeconds: 10, endSeconds: 45, type: 'video' }
+				],
+				cues: ['Form index-thumb triangle under chest', 'Elbows tight to ribs', 'Full lockout']
+			},
+			{
+				id: 'cobra-stretch',
+				name: 'Cobra Stretch',
+				discipline: 'yoga',
+				category: 'stretch',
+				default_mode: 'timer',
+				default_quantity: 45,
+				videoId: 'fOdrW7nf9gw',
+				media_url: '/workout/media/cobra-stretch.jpg',
+				primary_muscles: ['abs', 'lower_back'],
+				secondary_muscles: ['chest', 'shoulders'],
+				media_assets: [
+					{ kind: 'photo', title: 'High Cobra Arch Cue', url: '/workout/media/cobra-stretch.jpg', type: 'image' },
+					{ kind: 'demonstration', title: 'Flowing Cobra Pose', videoId: 'fOdrW7nf9gw', startSeconds: 8, endSeconds: 38, type: 'video' }
+				],
+				cues: ['Relax glutes and legs', 'Roll shoulders away from ears', 'Deep rhythmic breaths']
+			},
+			{
+				id: 'shadowboxing-1-2',
+				name: 'Jab-Cross Combo (1-2)',
+				discipline: 'boxing',
+				category: 'drill',
+				default_mode: 'timer',
+				default_quantity: 60,
+				videoId: 'CFrPZ_238E8',
+				media_url: 'https://img.youtube.com/vi/CFrPZ_238E8/mqdefault.jpg',
+				primary_muscles: ['shoulders', 'core'],
+				secondary_muscles: ['calves', 'rotators'],
+				media_assets: [
+					{ kind: 'demonstration', title: 'High Tempo 1-2 Flow', videoId: 'CFrPZ_238E8', startSeconds: 5, endSeconds: 65, type: 'video' }
+				],
+				cues: ['Rotate back foot on the cross', 'Snap punches right back to chin', 'Stay light on feet']
+			},
+			{
+				id: 'overhead-tricep-stretch',
+				name: 'Overhead Tricep Stretch',
+				discipline: 'yoga',
+				category: 'stretch',
+				default_mode: 'timer',
+				default_quantity: 30,
+				videoId: 'un38S9Yg93M',
+				media_url: '/workout/media/overhead-tricep-stretch.jpg',
+				primary_muscles: ['triceps', 'lats'],
+				secondary_muscles: ['shoulders'],
+				media_assets: [
+					{ kind: 'photo', title: 'Elbow Alignment Cue', url: '/workout/media/overhead-tricep-stretch.jpg', type: 'image' }
+				],
+				cues: ['Gently draw elbow behind head', 'Keep neck neutral', 'Hold steady without bouncing']
+			}
 		];
 
-		let activeExercise = null;
-		const viewList = document.getElementById('view-list');
-		const viewSubwindow = document.getElementById('view-subwindow');
-		const listContainer = document.getElementById('demo-list');
-		const searchInput = document.getElementById('demo-search');
-		const subExName = document.getElementById('sub-ex-name');
-		const subExMeta = document.getElementById('sub-ex-meta');
-		const subNumInput = document.getElementById('sub-num-input');
-		const subUnitLabel = document.getElementById('sub-unit-label');
-		const addedLogFeed = document.getElementById('added-log-feed');
-		const presetChipsContainer = document.getElementById('reps-preset-chips');
+		let activeDesign = 1;
+		let activeDiscipline = 'all';
+		let activeMedia = 'all';
+		let searchQuery = '';
+		let selectedInSplitDeck = EXERCISES[0];
+		let batchSelectedIds = new Set();
 
-		function renderExercises(query = '') {
-			listContainer.innerHTML = '';
-			const q = query.toLowerCase().trim();
-			const filtered = sampleExercises.filter(e => e.name.toLowerCase().includes(q) || e.discipline.toLowerCase().includes(q) || e.category.toLowerCase().includes(q));
+		const designDescriptions = {
+			1: '<strong>Design 1: Spotlight Split-Deck.</strong> Clicking any exercise updates the right-side instant preview inspector (with video/GIF, cues, and reps counter). Clicking <strong>"+ Add"</strong> directly inserts the exercise into the routine. Clicking <strong>"Open Full Overlay"</strong> triggers the deep modal with muscle map & breakdown.',
+			2: '<strong>Design 2: Smart Action Grid.</strong> High-density card grid with clear separation: Clicking the <strong>main card body</strong> opens the Exercise Detail Overlay with form cues. The bottom bar contains a dedicated <strong>quick-reps stepper and "+ Add" button</strong> for 1-click workout insertion.',
+			3: '<strong>Design 3: Command Table Pro.</strong> Minimalist, pro-trainer dense table. Row click or <strong>"ℹ️ Inspect"</strong> opens the exercise modal; right-aligned quick controls let you tune reps and click <strong>"+ Add"</strong> in fraction of a second.',
+			4: '<strong>Design 4: Anatomical Muscle Navigator.</strong> Visual muscle-group filter sidebar (Upper, Core, Lower, Arms, Stretches). Pick a muscle region on the left to immediately hone in on relevant exercises, with distinct card preview & add actions.',
+			5: '<strong>Design 5: Batch Multi-Select.</strong> Build routines in seconds! Checkbox select multiple movements with customized reps, preview any item by clicking its title, and insert all selected steps with the bottom floating tray.'
+		};
 
-			if (filtered.length === 0) {
-				listContainer.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-muted);font-size:0.85rem">No matching exercises</div>';
-				return;
-			}
+		function showToast(msg) {
+			const box = document.getElementById('toast-box');
+			document.getElementById('toast-message').textContent = msg;
+			box.classList.add('show');
+			setTimeout(() => box.classList.remove('show'), 2200);
+		}
 
-			filtered.forEach(ex => {
-				const row = document.createElement('div');
-				row.className = 'ex-picker-row';
-				row.innerHTML = `
-					<div class="ex-picker-left">
-						<span class="ex-picker-name">${ex.name}</span>
-						<span class="ex-picker-sub">${ex.category} <span class="ex-picker-dot">•</span> ${ex.discipline}</span>
+		function getFilteredExercises() {
+			return EXERCISES.filter(ex => {
+				if (activeDiscipline !== 'all' && ex.discipline !== activeDiscipline) return false;
+				if (activeMedia === 'video' && !ex.videoId) return false;
+				if (activeMedia === 'gif' && !ex.media_assets.some(a => a.kind === 'animation' || a.kind === 'photo')) return false;
+				if (activeMedia === 'tutorial' && !ex.media_assets.some(a => a.kind === 'instruction')) return false;
+
+				if (searchQuery) {
+					const q = searchQuery.toLowerCase();
+					const matchName = ex.name.toLowerCase().includes(q);
+					const matchDisc = ex.discipline.toLowerCase().includes(q);
+					const matchMuscles = [...ex.primary_muscles, ...ex.secondary_muscles].some(m => m.toLowerCase().includes(q));
+					if (!matchName && !matchDisc && !matchMuscles) return false;
+				}
+				return true;
+			});
+		}
+
+		function openExerciseOverlay(ex) {
+			const overlay = document.getElementById('exercise-overlay');
+			const content = document.getElementById('overlay-content');
+
+			const thumb = ex.videoId 
+				? `https://img.youtube.com/vi/${ex.videoId}/hqdefault.jpg`
+				: (ex.media_url || '/workout/media/pushups.svg');
+
+			content.innerHTML = `
+				<div class="overlay-modal-header">
+					<div>
+						<h3 style="font-size:1.15rem; font-weight:800; color:#fff;">${ex.name}</h3>
+						<span style="font-size:0.8rem; color:var(--text-secondary); text-transform:capitalize;">${ex.discipline} • ${ex.category}</span>
 					</div>
-					<div class="ex-picker-add-btn">+</div>
-				`;
-				row.addEventListener('click', () => openQuickReps(ex));
-				listContainer.appendChild(row);
-			});
-		}
+					<button class="close-x-btn" onclick="closeOverlay()">✕</button>
+				</div>
+				<div class="overlay-modal-body">
+					<div class="overlay-media-hero">
+						<img src="${thumb}" alt="${ex.name}">
+						<div class="overlay-media-hero-badge">
+							${ex.videoId ? '▶ Video Clip (00:15 - 01:00)' : '📷 Visual Form Cue'}
+						</div>
+					</div>
 
-		function openQuickReps(ex) {
-			activeExercise = ex;
-			subExName.textContent = ex.name;
-			subExMeta.textContent = `${ex.category} • ${ex.discipline}`;
-			const isReps = ex.mode === 'reps';
-			subUnitLabel.textContent = isReps ? 'Reps' : 'Sec';
-			subNumInput.value = ex.defaultQty;
+					<div>
+						<div style="font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); font-weight:700; margin-bottom:8px;">Target Muscles</div>
+						<div style="display:flex; gap:6px; flex-wrap:wrap;">
+							${ex.primary_muscles.map(m => `<span class="muscle-pill primary">Primary: ${m}</span>`).join('')}
+							${ex.secondary_muscles.map(m => `<span class="muscle-pill">Secondary: ${m}</span>`).join('')}
+						</div>
+					</div>
 
-			// Customize preset chips
-			presetChipsContainer.innerHTML = isReps
-				? [10, 15, 20, 25, 30, 50].map(v => `<button class="reps-chip" data-val="${v}">${v}</button>`).join('')
-				: [15, 30, 45, 60, 90, 120].map(v => `<button class="reps-chip" data-val="${v}">${v}s</button>`).join('');
+					<div>
+						<div style="font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); font-weight:700; margin-bottom:8px;">Media Variations (${ex.media_assets.length})</div>
+						<div class="overlay-variations-grid">
+							${ex.media_assets.map((asset, idx) => `
+								<div class="overlay-variation-card ${idx === 0 ? 'active' : ''}">
+									<div class="overlay-variation-thumb">
+										<img src="${asset.videoId ? `https://img.youtube.com/vi/${asset.videoId}/mqdefault.jpg` : (asset.url || thumb)}">
+									</div>
+									<div style="font-size:0.78rem; font-weight:700; color:#fff;">${asset.title}</div>
+									<div style="font-size:0.7rem; color:var(--text-muted); text-transform:capitalize;">${asset.kind}</div>
+								</div>
+							`).join('')}
+						</div>
+					</div>
 
-			presetChipsContainer.querySelectorAll('.reps-chip').forEach(btn => {
-				btn.addEventListener('click', () => {
-					subNumInput.value = btn.getAttribute('data-val');
-					subNumInput.focus();
-					subNumInput.select();
-				});
-			});
+					<div>
+						<div style="font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); font-weight:700; margin-bottom:8px;">Coaching Form Cues</div>
+						<ul style="padding-left:18px; font-size:0.85rem; color:var(--text-secondary); line-height:1.5;">
+							${ex.cues.map(c => `<li>${c}</li>`).join('')}
+						</ul>
+					</div>
 
-			viewList.style.display = 'none';
-			viewSubwindow.style.display = 'flex';
-			subNumInput.focus();
-			subNumInput.select();
-		}
-
-		function closeQuickReps() {
-			viewSubwindow.style.display = 'none';
-			viewList.style.display = 'block';
-			activeExercise = null;
-		}
-
-		function confirmAdd() {
-			if (!activeExercise) return;
-			const qty = parseInt(subNumInput.value, 10) || activeExercise.defaultQty;
-			const unit = activeExercise.mode === 'reps' ? 'Reps' : 'Sec';
-
-			if (addedLogFeed.querySelector('div[style*="text-muted"]')) {
-				addedLogFeed.innerHTML = '';
-			}
-
-			const chip = document.createElement('div');
-			chip.className = 'added-log-chip';
-			chip.innerHTML = `
-				<span>✓ Added <strong>${activeExercise.name}</strong></span>
-				<span>${qty} ${unit}</span>
+					<div style="display:flex; justify-content:flex-end; gap:10px; margin-top:8px; border-top:1px solid var(--border); padding-top:14px;">
+						<button class="btn-preview-trigger" onclick="closeOverlay()">Close</button>
+						<button class="btn-quick-add" onclick="addExerciseToWorkout('${ex.id}', ${ex.default_quantity}); closeOverlay();">
+							+ Add to Workout (${ex.default_quantity} ${ex.default_mode === 'reps' ? 'Reps' : 's'})
+						</button>
+					</div>
+				</div>
 			`;
-			addedLogFeed.prepend(chip);
 
-			closeQuickReps();
+			overlay.classList.add('open');
 		}
 
-		document.getElementById('sub-back-btn').addEventListener('click', closeQuickReps);
-		document.getElementById('btn-sub-cancel').addEventListener('click', closeQuickReps);
-		document.getElementById('btn-sub-confirm').addEventListener('click', confirmAdd);
+		function closeOverlay() {
+			document.getElementById('exercise-overlay').classList.remove('open');
+		}
 
-		document.getElementById('btn-minus').addEventListener('click', () => {
-			let val = parseInt(subNumInput.value, 10) || 10;
-			subNumInput.value = Math.max(1, val - (activeExercise?.mode === 'reps' ? 5 : 5));
-		});
+		function addExerciseToWorkout(exId, quantity) {
+			const ex = EXERCISES.find(e => e.id === exId);
+			if (!ex) return;
+			const unit = ex.default_mode === 'reps' ? 'reps' : 'seconds';
+			showToast(`Added "${ex.name}" (${quantity} ${unit}) to routine!`);
+		}
 
-		document.getElementById('btn-plus').addEventListener('click', () => {
-			let val = parseInt(subNumInput.value, 10) || 10;
-			subNumInput.value = val + (activeExercise?.mode === 'reps' ? 5 : 5);
-		});
+		// ── Render Dynamic Design Views ──
+		function renderView() {
+			const container = document.getElementById('design-view-container');
+			const list = getFilteredExercises();
+			document.getElementById('results-count-label').textContent = `${list.length} movements found`;
+			document.getElementById('design-description').innerHTML = designDescriptions[activeDesign];
 
-		subNumInput.addEventListener('keydown', (e) => {
-			if (e.key === 'Enter') {
-				confirmAdd();
-			} else if (e.key === 'Escape') {
-				closeQuickReps();
+			if (activeDesign === 1) {
+				// Design 1: Spotlight Split-Deck
+				if (!list.includes(selectedInSplitDeck) && list.length > 0) {
+					selectedInSplitDeck = list[0];
+				}
+				const sel = selectedInSplitDeck || list[0];
+
+				container.innerHTML = `
+					<div class="layout-split-deck">
+						<div class="split-deck-list">
+							${list.map(ex => `
+								<div class="split-deck-item ${sel && sel.id === ex.id ? 'selected' : ''}" onclick="selectSplitDeck('${ex.id}')">
+									<div class="split-deck-item-left">
+										<div class="split-deck-thumb">
+											<img src="${ex.videoId ? `https://img.youtube.com/vi/${ex.videoId}/default.jpg` : ex.media_url}" alt="${ex.name}">
+										</div>
+										<div class="split-deck-info">
+											<div class="split-deck-name">${ex.name}</div>
+											<div class="split-deck-meta">
+												<span class="badge-disc ${ex.discipline}">${ex.discipline}</span>
+												<span class="badge-cat">${ex.category}</span>
+												${ex.videoId ? '<span class="badge-media">🎬 Video</span>' : '<span class="badge-media">✨ GIF</span>'}
+											</div>
+										</div>
+									</div>
+									<div class="split-deck-actions">
+										<button class="btn-preview-trigger" onclick="event.stopPropagation(); openExerciseOverlay(EXERCISES.find(e => e.id === '${ex.id}'))" title="Open Full Overlay">👁️ View</button>
+										<button class="btn-quick-add" onclick="event.stopPropagation(); addExerciseToWorkout('${ex.id}', ${ex.default_quantity})">+ Add</button>
+									</div>
+								</div>
+							`).join('')}
+						</div>
+
+						<div class="split-deck-inspector">
+							${sel ? `
+								<div class="inspector-video-box">
+									<img src="${sel.videoId ? `https://img.youtube.com/vi/${sel.videoId}/hqdefault.jpg` : sel.media_url}">
+									<div class="inspector-video-overlay">
+										<span style="font-size:0.75rem; color:#fff; font-weight:700;">${sel.default_mode === 'reps' ? 'Reps Based' : 'Timer Based'}</span>
+										<span style="font-size:0.75rem; color:var(--accent); font-weight:700;">${sel.media_assets.length} Media Variations</span>
+									</div>
+								</div>
+
+								<div class="inspector-title-row">
+									<h3>${sel.name}</h3>
+									<div class="inspector-meta-row">
+										<span class="badge-disc ${sel.discipline}">${sel.discipline}</span>
+										<span class="badge-cat">${sel.category}</span>
+									</div>
+								</div>
+
+								<div>
+									<div class="inspector-section-label">Muscles Targeted</div>
+									<div style="display:flex; gap:4px; flex-wrap:wrap;">
+										${sel.primary_muscles.map(m => `<span class="muscle-pill primary">${m}</span>`).join('')}
+									</div>
+								</div>
+
+								<div class="inspector-stepper-box">
+									<span style="font-size:0.85rem; font-weight:600; color:var(--text-secondary);">Configure Quantity:</span>
+									<div class="stepper-controls">
+										<button class="stepper-btn" onclick="adjustSplitDeckQty(-5)">−</button>
+										<input type="text" class="stepper-input" id="split-deck-qty-input" value="${sel.default_quantity}">
+										<button class="stepper-btn" onclick="adjustSplitDeckQty(5)">+</button>
+										<span style="font-size:0.8rem; color:var(--text-muted);">${sel.default_mode === 'reps' ? 'Reps' : 'Sec'}</span>
+									</div>
+								</div>
+
+								<button class="btn-quick-add" style="justify-content:center; padding:10px;" onclick="addExerciseToWorkout('${sel.id}', parseInt(document.getElementById('split-deck-qty-input').value, 10))">
+									+ Add to Workout Routine
+								</button>
+
+								<button class="btn-full-inspect" onclick="openExerciseOverlay(EXERCISES.find(e => e.id === '${sel.id}'))">
+									🔍 Open Full Exercise Variations Overlay
+								</button>
+							` : '<p style="color:var(--text-muted);">Select an exercise to preview.</p>'}
+						</div>
+					</div>
+				`;
+			} else if (activeDesign === 2) {
+				// Design 2: Smart Action Grid
+				container.innerHTML = `
+					<div class="layout-smart-grid">
+						${list.map(ex => `
+							<div class="smart-grid-card">
+								<div class="smart-card-clickable-body" onclick="openExerciseOverlay(EXERCISES.find(e => e.id === '${ex.id}'))" title="Click card to open exercise overlay">
+									<div class="smart-card-top">
+										<div class="smart-card-thumb-wrap">
+											<img src="${ex.videoId ? `https://img.youtube.com/vi/${ex.videoId}/default.jpg` : ex.media_url}">
+											<div class="smart-card-play-icon">${ex.videoId ? '▶' : '✨'}</div>
+										</div>
+										<div class="smart-card-details">
+											<div class="smart-card-title">
+												<span>${ex.name}</span>
+												<span class="smart-card-inspect-hint">Details ↗</span>
+											</div>
+											<div style="display:flex; gap:4px; flex-wrap:wrap;">
+												<span class="badge-disc ${ex.discipline}">${ex.discipline}</span>
+												<span class="badge-cat">${ex.category}</span>
+											</div>
+										</div>
+									</div>
+									<div class="smart-card-muscles">
+										${ex.primary_muscles.map(m => `<span class="muscle-pill primary">${m}</span>`).join('')}
+									</div>
+								</div>
+
+								<div class="smart-card-footer-action-bar">
+									<span class="smart-card-qty-chip">⚡ Default: ${ex.default_quantity} ${ex.default_mode === 'reps' ? 'Reps' : 'Sec'}</span>
+									<button class="btn-quick-add" onclick="addExerciseToWorkout('${ex.id}', ${ex.default_quantity})">+ Add to Workout</button>
+								</div>
+							</div>
+						`).join('')}
+					</div>
+				`;
+			} else if (activeDesign === 3) {
+				// Design 3: Command Table Pro
+				container.innerHTML = `
+					<div class="layout-command-table">
+						<table class="command-table">
+							<thead>
+								<tr>
+									<th>Exercise Movement</th>
+									<th>Discipline</th>
+									<th>Primary Muscles</th>
+									<th>Media</th>
+									<th>Overlay</th>
+									<th style="text-align:right;">Quick Add</th>
+								</tr>
+							</thead>
+							<tbody>
+								${list.map(ex => `
+									<tr>
+										<td>
+											<div class="tbl-name-cell" onclick="openExerciseOverlay(EXERCISES.find(e => e.id === '${ex.id}'))">
+												<span style="font-size:1.1rem;">${ex.category === 'strength' ? '💪' : (ex.category === 'technique' ? '🥋' : '🔄')}</span>
+												<span>${ex.name}</span>
+											</div>
+										</td>
+										<td><span class="badge-disc ${ex.discipline}">${ex.discipline}</span></td>
+										<td>
+											<div style="display:flex; gap:4px;">
+												${ex.primary_muscles.slice(0, 2).map(m => `<span class="muscle-pill primary">${m}</span>`).join('')}
+											</div>
+										</td>
+										<td>${ex.videoId ? '<span class="badge-media">🎬 Video</span>' : '<span class="badge-media">✨ GIF</span>'}</td>
+										<td>
+											<button class="tbl-inspect-btn" onclick="openExerciseOverlay(EXERCISES.find(e => e.id === '${ex.id}'))">👁️ Inspect</button>
+										</td>
+										<td style="text-align:right;">
+											<button class="btn-quick-add" onclick="addExerciseToWorkout('${ex.id}', ${ex.default_quantity})">
+												+ Add (${ex.default_quantity} ${ex.default_mode === 'reps' ? 'r' : 's'})
+											</button>
+										</td>
+									</tr>
+								`).join('')}
+							</tbody>
+						</table>
+					</div>
+				`;
+			} else if (activeDesign === 4) {
+				// Design 4: Anatomical Muscle Navigator
+				container.innerHTML = `
+					<div class="layout-muscle-map">
+						<div class="muscle-sidebar">
+							<span style="font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); font-weight:700;">Target Regions</span>
+							<button class="muscle-group-btn active" onclick="setMuscleFilter('all')">🎯 All Regions (6)</button>
+							<button class="muscle-group-btn" onclick="setMuscleFilter('quads')">🦵 Lower Body & Quads (2)</button>
+							<button class="muscle-group-btn" onclick="setMuscleFilter('core')">🛡️ Core & Hip Flexors (3)</button>
+							<button class="muscle-group-btn" onclick="setMuscleFilter('triceps')">💪 Arms & Triceps (2)</button>
+							<button class="muscle-group-btn" onclick="setMuscleFilter('shoulders')">🥊 Shoulders & Upper (2)</button>
+						</div>
+
+						<div class="muscle-list-pane">
+							${list.map(ex => `
+								<div class="split-deck-item" onclick="openExerciseOverlay(EXERCISES.find(e => e.id === '${ex.id}'))">
+									<div class="split-deck-item-left">
+										<div class="split-deck-thumb">
+											<img src="${ex.videoId ? `https://img.youtube.com/vi/${ex.videoId}/default.jpg` : ex.media_url}">
+										</div>
+										<div class="split-deck-info">
+											<div class="split-deck-name">${ex.name} <span style="font-size:0.75rem; color:var(--accent); font-weight:normal;">(Click for Overlay ↗)</span></div>
+											<div style="display:flex; gap:6px;">
+												${ex.primary_muscles.map(m => `<span class="muscle-pill primary">${m}</span>`).join('')}
+											</div>
+										</div>
+									</div>
+									<button class="btn-quick-add" onclick="event.stopPropagation(); addExerciseToWorkout('${ex.id}', ${ex.default_quantity})">
+										+ Add (${ex.default_quantity} ${ex.default_mode === 'reps' ? 'reps' : 's'})
+									</button>
+								</div>
+							`).join('')}
+						</div>
+					</div>
+				`;
+			} else if (activeDesign === 5) {
+				// Design 5: Batch Multi-Select
+				const selectedCount = batchSelectedIds.size;
+				container.innerHTML = `
+					<div class="layout-batch-builder">
+						<div class="batch-list">
+							${list.map(ex => {
+								const isChecked = batchSelectedIds.has(ex.id);
+								return `
+									<div class="batch-row ${isChecked ? 'is-selected' : ''}">
+										<div class="batch-row-left">
+											<input type="checkbox" class="batch-checkbox" ${isChecked ? 'checked' : ''} onchange="toggleBatchItem('${ex.id}')">
+											<div style="cursor:pointer;" onclick="openExerciseOverlay(EXERCISES.find(e => e.id === '${ex.id}'))">
+												<div style="font-size:0.95rem; font-weight:700; color:#fff;">${ex.name} <span style="font-size:0.72rem; color:var(--text-muted);">[View Overlay]</span></div>
+												<span class="badge-disc ${ex.discipline}">${ex.discipline}</span>
+												<span style="font-size:0.75rem; color:var(--text-secondary); margin-left:6px;">${ex.default_quantity} ${ex.default_mode === 'reps' ? 'reps' : 'sec'}</span>
+											</div>
+										</div>
+										<button class="btn-preview-trigger" onclick="openExerciseOverlay(EXERCISES.find(e => e.id === '${ex.id}'))">👁️ Breakdown</button>
+									</div>
+								`;
+							}).join('')}
+						</div>
+
+						<div class="batch-floating-tray">
+							<div class="tray-chips-wrap">
+								<span style="font-size:0.85rem; font-weight:700; color:var(--text-primary);">Selected (${selectedCount}):</span>
+								${Array.from(batchSelectedIds).map(id => {
+									const ex = EXERCISES.find(e => e.id === id);
+									return `<span class="tray-badge-pill">${ex?.name || id} <span style="cursor:pointer; color:var(--danger);" onclick="toggleBatchItem('${id}')">✕</span></span>`;
+								}).join('')}
+								${selectedCount === 0 ? '<span style="font-size:0.8rem; color:var(--text-muted);">Check boxes above to queue exercises</span>' : ''}
+							</div>
+							<button class="btn-tray-commit" ${selectedCount === 0 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''} onclick="commitBatchAdd()">
+								✓ Add ${selectedCount} Movements to Workout
+							</button>
+						</div>
+					</div>
+				`;
 			}
+		}
+
+		function selectSplitDeck(id) {
+			selectedInSplitDeck = EXERCISES.find(e => e.id === id);
+			renderView();
+		}
+
+		function adjustSplitDeckQty(delta) {
+			const input = document.getElementById('split-deck-qty-input');
+			if (!input) return;
+			let val = parseInt(input.value, 10) || 10;
+			input.value = Math.max(1, val + delta);
+		}
+
+		function setMuscleFilter(muscle) {
+			if (muscle === 'all') {
+				searchQuery = '';
+			} else {
+				searchQuery = muscle;
+			}
+			renderView();
+		}
+
+		function toggleBatchItem(id) {
+			if (batchSelectedIds.has(id)) {
+				batchSelectedIds.delete(id);
+			} else {
+				batchSelectedIds.add(id);
+			}
+			renderView();
+		}
+
+		function commitBatchAdd() {
+			const count = batchSelectedIds.size;
+			if (count === 0) return;
+			showToast(`✓ Added ${count} exercises to routine at once!`);
+			batchSelectedIds.clear();
+			renderView();
+		}
+
+		// ── Event Listeners ──
+		document.querySelectorAll('.design-tab-btn').forEach(btn => {
+			btn.addEventListener('click', () => {
+				document.querySelectorAll('.design-tab-btn').forEach(b => b.classList.remove('active'));
+				btn.classList.add('active');
+				activeDesign = parseInt(btn.getAttribute('data-design'), 10);
+				renderView();
+			});
 		});
 
-		searchInput.addEventListener('input', (e) => renderExercises(e.target.value));
+		document.querySelectorAll('#category-pills .filter-pill').forEach(pill => {
+			pill.addEventListener('click', () => {
+				document.querySelectorAll('#category-pills .filter-pill').forEach(p => p.classList.remove('active'));
+				pill.classList.add('active');
+				activeDiscipline = pill.getAttribute('data-disc');
+				renderView();
+			});
+		});
 
-		renderExercises('pushup');
+		document.querySelectorAll('#media-pills .filter-pill').forEach(pill => {
+			pill.addEventListener('click', () => {
+				document.querySelectorAll('#media-pills .filter-pill').forEach(p => p.classList.remove('active'));
+				pill.classList.add('active');
+				activeMedia = pill.getAttribute('data-media');
+				renderView();
+			});
+		});
+
+		document.getElementById('search-input').addEventListener('input', (e) => {
+			searchQuery = e.target.value;
+			renderView();
+		});
+
+		// Close overlay on backdrop click or ESC
+		document.getElementById('exercise-overlay').addEventListener('click', (e) => {
+			if (e.target.id === 'exercise-overlay') closeOverlay();
+		});
+		window.addEventListener('keydown', (e) => {
+			if (e.key === 'Escape') closeOverlay();
+		});
+
+		// Initial render
+		renderView();
 	</script>
 </body>
 </html>
