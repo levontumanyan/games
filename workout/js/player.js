@@ -1184,7 +1184,7 @@ function openWorkoutTutorial(instructionAsset, exercise) {
 	backdrop.className = 'modal-backdrop workout-tutorial-backdrop';
 
 	const modal = document.createElement('div');
-	modal.className = 'modal workout-tutorial-modal';
+	modal.className = 'modal modal-window workout-tutorial-modal';
 
 	const vid = instructionAsset.videoId || (instructionAsset.url ? parseYouTubeId(instructionAsset.url) : null);
 	const startSec = instructionAsset.startSeconds || 0;

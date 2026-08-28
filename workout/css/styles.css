@@ -2099,6 +2099,13 @@ html, body {
 	color: var(--text-muted);
 }
 
+textarea.input {
+	min-height: 110px;
+	line-height: 1.5;
+	resize: vertical;
+	font-family: inherit;
+}
+
 /* ── Video Range Trimmer (Option 2) ──────────────────────────────────────── */
 
 .video-trimmer {
@@ -3310,6 +3317,8 @@ html, body {
 	justify-content: center;
 	z-index: 1000;
 	padding: 20px;
+	overflow-y: auto;
+	box-sizing: border-box;
 	animation: modalFadeIn 0.16s ease-out;
 }
 
@@ -3317,15 +3326,20 @@ html, body {
 	display: none !important;
 }
 
-.modal-window {
+.modal-window,
+.modal {
 	background: var(--bg-card);
 	border: 1px solid var(--border);
 	border-radius: var(--radius-lg);
 	width: 100%;
 	max-width: 440px;
+	max-height: min(90vh, calc(100dvh - 32px));
+	display: flex;
+	flex-direction: column;
 	box-shadow: 0 24px 64px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.08);
 	overflow: hidden;
 	animation: modalSlideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+	box-sizing: border-box;
 }
 
 .modal-header {
@@ -3334,6 +3348,7 @@ html, body {
 	justify-content: space-between;
 	padding: 18px 22px 14px 22px;
 	border-bottom: 1px solid var(--border);
+	flex-shrink: 0;
 }
 
 .modal-title {
@@ -3361,6 +3376,27 @@ html, body {
 
 .modal-body {
 	padding: 20px 22px;
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow-y: auto;
+	overscroll-behavior: contain;
+}
+
+.modal-body::-webkit-scrollbar {
+	width: 6px;
+}
+
+.modal-body::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+.modal-body::-webkit-scrollbar-thumb {
+	background: rgba(255, 255, 255, 0.15);
+	border-radius: 3px;
+}
+
+.modal-body::-webkit-scrollbar-thumb:hover {
+	background: rgba(255, 255, 255, 0.25);
 }
 
 .modal-message {
@@ -3400,6 +3436,7 @@ html, body {
 	padding: 14px 22px 18px 22px;
 	border-top: 1px solid var(--border);
 	background: rgba(0, 0, 0, 0.2);
+	flex-shrink: 0;
 }
 
 @keyframes modalFadeIn {
@@ -6713,15 +6750,30 @@ html, body {
 }
 
 .hud-img-thumb {
+	position: relative;
+	width: 100%;
+	min-height: 120px;
+	max-height: 170px;
+	aspect-ratio: 16 / 9;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	height: 100px;
+	border-radius: var(--radius-sm);
+	overflow: hidden;
+	background: var(--bg-card-elevated, rgba(0, 0, 0, 0.25));
 }
 
 .hud-img-thumb img {
-	max-height: 90px;
-	width: auto;
+	width: 100%;
+	height: 100%;
+	max-height: 170px;
+	object-fit: cover;
+}
+
+.hud-img-thumb img[src$=".svg"] {
+	object-fit: contain;
+	padding: 10px;
+	max-height: 110px;
 	filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.5));
 }
 

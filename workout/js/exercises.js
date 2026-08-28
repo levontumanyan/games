@@ -689,7 +689,7 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 	backdrop.className = 'modal-backdrop modal-exercise-backdrop';
 
 	const modal = document.createElement('div');
-	modal.className = 'modal modal-combo-hud-split';
+	modal.className = 'modal modal-window modal-combo-hud-split';
 
 	const close = () => {
 		document.removeEventListener('keydown', handleEsc);
@@ -764,8 +764,17 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 		const secondaryMuscles = (muscles.secondary || []).map(m => getMuscleBadgeHtml(m, false));
 
 		const primaryAsset = getExerciseFollowAlongMedia(exercise) || assets[0];
-		const isVid = primaryAsset && (primaryAsset.type === 'video' || Boolean(primaryAsset.videoId));
-		const vid = primaryAsset?.videoId || (primaryAsset?.url ? parseYouTubeId(primaryAsset.url) : null);
+		let previewVid = primaryAsset?.videoId || (primaryAsset?.url ? parseYouTubeId(primaryAsset.url) : null);
+		if (!previewVid && exercise.media_url) {
+			previewVid = parseYouTubeId(exercise.media_url);
+		}
+
+		let previewImgUrl = null;
+		if (primaryAsset?.url && !parseYouTubeId(primaryAsset.url)) {
+			previewImgUrl = primaryAsset.url;
+		} else if (exercise.media_url && !parseYouTubeId(exercise.media_url)) {
+			previewImgUrl = exercise.media_url;
+		}
 
 		const modeStr = (exercise.default_mode || 'reps') === 'reps'
 			? `🔢 ${exercise.default_quantity || 20} Target Reps`
@@ -782,14 +791,14 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 				<h2 class="hud-combo-title">${escapeHtml(exercise.name)}</h2>
 
 				<div class="hud-visual-card">
-					${isVid && vid ? `
+					${previewVid ? `
 						<div class="hud-video-thumb">
-							<img src="https://img.youtube.com/vi/${vid}/mqdefault.jpg" alt="${escapeHtml(exercise.name)}">
+							<img src="https://img.youtube.com/vi/${previewVid}/mqdefault.jpg" alt="${escapeHtml(exercise.name)}">
 							<span class="modal-play-badge">▶</span>
 						</div>
 					` : `
 						<div class="hud-img-thumb">
-							<img src="${exercise.media_url || '/workout/media/pushups.svg'}" alt="${escapeHtml(exercise.name)}" onerror="this.src='/workout/media/pushups.svg'">
+							<img src="${escapeHtml(previewImgUrl || '/workout/media/pushups.svg')}" alt="${escapeHtml(exercise.name)}" onerror="this.src='/workout/media/pushups.svg'">
 						</div>
 					`}
 					<div class="hud-visual-caption">Form Reference & Execution</div>
@@ -1197,7 +1206,7 @@ export function showEditExerciseModal(exercise = null, options = {}) {
 	backdrop.className = 'modal-backdrop';
 
 	const modal = document.createElement('div');
-	modal.className = 'modal modal-create-exercise';
+	modal.className = 'modal modal-window modal-create-exercise';
 
 	const currentPri = isEdit
 		? new Set(exercise.primary_muscles || inferMusclesForExercise(exercise).primary || ['core'])
@@ -1272,7 +1281,7 @@ export function showEditExerciseModal(exercise = null, options = {}) {
 
 			<div class="field-group">
 				<label>Description & Technical Cues</label>
-				<textarea id="create-ex-desc" class="input" rows="2" placeholder="Key form cues, tempo, or setup instructions...">${isEdit ? escapeHtml(exercise.description || '') : ''}</textarea>
+				<textarea id="create-ex-desc" class="input" rows="5" placeholder="Key form cues, tempo, or setup instructions...">${isEdit ? escapeHtml(exercise.description || '') : ''}</textarea>
 			</div>
 
 			<div class="field-group">

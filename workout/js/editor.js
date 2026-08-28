@@ -988,14 +988,14 @@ export function resolveStepMediaUrl(step) {
 		if (l.includes('decline pushup') || l.includes('decline push-up') || l.includes('decline-pushup') || l.includes('decline')) {
 			return '/workout/media/decline-pushups.svg';
 		}
-		if (l.includes('diamond pushup') || l.includes('diamond push-up') || l.includes('diamond-pushup')) {
-			return '/workout/media/diamond-pushups.svg';
-		}
-		if (l.includes('pushup') || l.includes('push-up') || l.includes('push up')) {
-			return '/workout/media/pushups.svg';
+		if (l.includes('mountain climber') || l.includes('climber')) {
+			return '/workout/media/mountain-climbers.svg';
 		}
 		if (l.includes('shoulder tap') || l.includes('shoulder-tap') || l.includes('shouldertap')) {
 			return '/workout/media/shoulder-taps.svg';
+		}
+		if (l.includes('pushup') || l.includes('push-up') || l.includes('push up')) {
+			return '/workout/media/pushups.svg';
 		}
 		if (l.includes('cobra')) {
 			return '/workout/media/cobra-stretch.jpg';
@@ -2183,7 +2183,7 @@ export function showAddExerciseModal(routine, onUpdate, insertIndex = -1) {
 	backdrop.className = 'modal-backdrop modal-exercise-backdrop';
 
 	const modal = document.createElement('div');
-	modal.className = 'modal modal-add-navigator';
+	modal.className = 'modal modal-window modal-add-navigator';
 
 	const isInserting = typeof insertIndex === 'number' && insertIndex >= 0;
 	const titleText = isInserting ? `🥋 Select Exercise (Insert at #${insertIndex + 1})` : '🥋 Select Exercise';
@@ -2505,7 +2505,7 @@ export function showAddComboModal(routine, onUpdate, insertIndex = -1) {
 	backdrop.className = 'modal-backdrop';
 
 	const modal = document.createElement('div');
-	modal.className = 'modal modal-add-picker';
+	modal.className = 'modal modal-window modal-add-picker';
 
 	const isInserting = typeof insertIndex === 'number' && insertIndex >= 0;
 	const titleText = isInserting ? `🔗 Select Combo Flow (Insert at #${insertIndex + 1})` : '🔗 Select Combo Flow';

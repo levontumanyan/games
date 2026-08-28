@@ -335,14 +335,6 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 			return FileResponse(preview_path)
 		raise HTTPException(status_code=404, detail="Exercise picker preview page not found")
 
-	@app.api_route("/svg_animations_preview.html", methods=["GET", "HEAD"])
-	@app.api_route("/workout/svg_animations_preview.html", methods=["GET", "HEAD"])
-	async def svg_animations_preview():
-		preview_path = static_dir / "svg_animations_preview.html"
-		if preview_path.exists():
-			return FileResponse(preview_path)
-		raise HTTPException(status_code=404, detail="SVG preview page not found")
-
 	@app.api_route("/", methods=["GET", "HEAD"])
 	@app.api_route("/workout", methods=["GET", "HEAD"])
 	@app.api_route("/workout/", methods=["GET", "HEAD"])

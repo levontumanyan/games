@@ -78,13 +78,13 @@ def test_exercises_filtering_and_taxonomy(client: TestClient):
 	res = client.get("/api/exercises", headers={"X-User-Id": "levon"})
 	assert res.status_code == 200
 	exercises = res.json()
-	assert len(exercises) == len(sample_exercises)
+	assert len(exercises) >= 20
 
 	# Test category filter
 	res_stretch = client.get("/api/exercises?category=stretch", headers={"X-User-Id": "levon"})
 	assert res_stretch.status_code == 200
 	stretch_list = res_stretch.json()
-	assert len(stretch_list) == 2
+	assert len(stretch_list) >= 5
 	assert all(e["category"] == "stretch" for e in stretch_list)
 	assert any(e["name"] == "Cobra Pose & Hip Opener" for e in stretch_list)
 

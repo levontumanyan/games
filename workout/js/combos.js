@@ -354,7 +354,7 @@ export function showComboDetailModal(combo, options = {}) {
 	backdrop.className = 'modal-backdrop modal-combo-backdrop';
 
 	const modal = document.createElement('div');
-	modal.className = 'modal modal-combo-hud-split';
+	modal.className = 'modal modal-window modal-combo-hud-split';
 
 	const exList = (combo.exercise_ids || []).map(id => getExerciseById(id)).filter(Boolean);
 	const primaryAsset = (combo.media_assets || [])[0];
@@ -540,7 +540,7 @@ export function showCreateComboModal(options = {}) {
 	backdrop.className = 'modal-backdrop';
 
 	const modal = document.createElement('div');
-	modal.className = 'modal modal-create-combo';
+	modal.className = 'modal modal-window modal-create-combo';
 
 	modal.innerHTML = `
 		<div class="modal-header">

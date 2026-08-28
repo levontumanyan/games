@@ -4,8 +4,8 @@
 
 import {
 	loadRoutines, saveRoutines, fetchServerRoutines,
-	saveServerRoutines, exportRoutines, exportSingleRoutine,
-	importRoutines, buildRoutineUrl, getRoutineTargetFromUrl,
+	saveServerRoutines, exportSingleRoutine,
+	buildRoutineUrl, getRoutineTargetFromUrl,
 	fetchStats
 } from './storage.js';
 import {
@@ -164,8 +164,6 @@ async function init() {
 function cacheDom() {
 	dom.routineList = document.getElementById('routine-list');
 	dom.addWorkoutBtn = document.getElementById('add-workout-btn');
-	dom.exportBtn = document.getElementById('export-btn');
-	dom.importBtn = document.getElementById('import-btn');
 	dom.syncStatus = document.getElementById('sync-status');
 	dom.emptyView = document.getElementById('empty-view');
 	dom.routineView = document.getElementById('routine-view');
@@ -701,8 +699,6 @@ function toggleSidebar(hide) {
  */
 function bindEvents() {
 	dom.addWorkoutBtn.addEventListener('click', handleAddWorkout);
-	dom.exportBtn.addEventListener('click', handleExport);
-	dom.importBtn.addEventListener('click', handleImport);
 	if (dom.sidebarToggleBtn) {
 		dom.sidebarToggleBtn.addEventListener('click', () => toggleSidebar(true));
 	}
@@ -1319,51 +1315,6 @@ function handleAddBreak() {
 	expandStep(newStep.id);
 	persist(true);
 	renderSelectedRoutine();
-}
-
-function handleExport() {
-	exportRoutines(routines);
-}
-
-async function handleImport() {
-	try {
-		const { routines: imported, isSingle } = await importRoutines();
-		if (isSingle && imported.length > 0) {
-			const newRoutine = imported[0];
-			routines.push(newRoutine);
-			selectedRoutineId = newRoutine.id;
-			if (isViewingShared) {
-				isViewingShared = false;
-				sharedRoutine = null;
-				history.replaceState(null, '', window.location.pathname);
-			}
-			currentMode = 'view';
-			persist(true);
-			renderRoutineList();
-			renderSelectedRoutine();
-			await showAlert({
-				title: 'Workout Imported',
-				message: `"${newRoutine.title}" was successfully added to your workouts.`
-			});
-		} else {
-			routines = imported;
-			selectedRoutineId = routines.length > 0 ? routines[0].id : null;
-			if (isViewingShared) {
-				isViewingShared = false;
-				sharedRoutine = null;
-				history.replaceState(null, '', window.location.pathname);
-			}
-			currentMode = 'view';
-			persist(true);
-			renderRoutineList();
-			renderSelectedRoutine();
-		}
-	} catch (err) {
-		await showAlert({
-			title: 'Import Failed',
-			message: 'Could not import routines: ' + err.message
-		});
-	}
 }
 
 function escapeHtml(str) {
