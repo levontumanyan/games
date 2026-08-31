@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="matcha-dark">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Add to Workout UX Explorations - Workout Player</title>
+	<link rel="stylesheet" href="css/styles.css">
+	<style>
+		body {
+			font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+			background: var(--bg-primary, #121513);
+			color: var(--text-primary, #e6eae6);
+			padding: 24px;
+			line-height: 1.5;
+		}
+		.design-header {
+			max-width: 1200px;
+			margin: 0 auto 32px;
+			padding-bottom: 20px;
+			border-bottom: 1px solid var(--bg-hover, #2e3b34);
+		}
+		.design-title {
+			font-size: 1.8rem;
+			font-weight: 700;
+			color: var(--accent, #5fa778);
+			display: flex;
+			align-items: center;
+			gap: 12px;
+		}
+		.design-subtitle {
+			color: var(--text-secondary, #97a39b);
+			margin-top: 6px;
+			font-size: 0.95rem;
+		}
+		.options-nav {
+			display: flex;
+			gap: 10px;
+			margin-top: 16px;
+			flex-wrap: wrap;
+		}
+		.opt-nav-btn {
+			background: var(--bg-card, #1f2622);
+			color: var(--text-secondary, #97a39b);
+			border: 1px solid var(--bg-hover, #2e3b34);
+			padding: 8px 16px;
+			border-radius: 8px;
+			cursor: pointer;
+			font-size: 0.9rem;
+			font-weight: 500;
+			transition: all 0.15s ease;
+		}
+		.opt-nav-btn.active, .opt-nav-btn:hover {
+			background: var(--bg-hover, #2e3b34);
+			color: var(--text-primary, #e6eae6);
+			border-color: var(--accent, #5fa778);
+		}
+		.prototype-section {
+			max-width: 1200px;
+			margin: 0 auto 48px;
+			background: var(--bg-secondary, #171c19);
+			border: 1px solid var(--bg-hover, #2e3b34);
+			border-radius: 12px;
+			padding: 24px;
+			display: none;
+			position: relative;
+			min-height: 520px;
+		}
+		.prototype-section.visible {
+			display: block;
+		}
+		.proto-badge {
+			display: inline-block;
+			background: var(--accent-subtle, rgba(95, 167, 120, 0.12));
+			color: var(--accent, #5fa778);
+			padding: 4px 10px;
+			border-radius: 6px;
+			font-size: 0.8rem;
+			font-weight: 600;
+			text-transform: uppercase;
+			letter-spacing: 0.5px;
+			margin-bottom: 8px;
+		}
+		.proto-header {
+			margin-bottom: 20px;
+		}
+		.proto-title {
+			font-size: 1.3rem;
+			font-weight: 600;
+			margin-bottom: 4px;
+		}
+		.proto-desc {
+			color: var(--text-secondary, #97a39b);
+			font-size: 0.9rem;
+		}
+		.demo-cards-grid {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+			gap: 16px;
+			margin-top: 20px;
+		}
+		.demo-card {
+			background: var(--bg-card, #1f2622);
+			border: 1px solid var(--bg-hover, #2e3b34);
+			border-radius: 10px;
+			padding: 16px;
+			position: relative;
+			display: flex;
+			flex-direction: column;
+			gap: 12px;
+		}
+		.demo-card-head {
+			display: flex;
+			gap: 12px;
+			align-items: center;
+		}
+		.demo-card-thumb {
+			width: 68px;
+			height: 50px;
+			border-radius: 6px;
+			background: #000;
+			overflow: hidden;
+			position: relative;
+			flex-shrink: 0;
+		}
+		.demo-card-thumb img {
+			width: 100%;
+			height: 100%;
+			object-fit: cover;
+		}
+		.demo-card-info h4 {
+			font-size: 1rem;
+			font-weight: 600;
+			margin-bottom: 4px;
+		}
+		.demo-card-tags {
+			display: flex;
+			gap: 6px;
+			flex-wrap: wrap;
+		}
+		.demo-tag {
+			font-size: 0.75rem;
+			padding: 2px 6px;
+			border-radius: 4px;
+			background: var(--bg-input, #151a17);
+			color: var(--text-secondary, #97a39b);
+		}
+		.demo-card-actions {
+			display: flex;
+			justify-content: flex-end;
+			gap: 8px;
+			margin-top: auto;
+			position: relative;
+		}
+
+		/* ── Option 1: Dropdown / Popover ── */
+		.popover-menu {
+			position: absolute;
+			bottom: 110%;
+			right: 0;
+			width: 280px;
+			background: var(--bg-card-elevated, #27312c);
+			border: 1px solid var(--accent, #5fa778);
+			border-radius: 8px;
+			box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+			z-index: 50;
+			padding: 8px 0;
+			animation: fadeIn 0.15s ease;
+		}
+		.popover-header {
+			padding: 6px 12px;
+			font-size: 0.75rem;
+			font-weight: 600;
+			color: var(--text-muted, #5e6b62);
+			text-transform: uppercase;
+			border-bottom: 1px solid var(--bg-hover, #2e3b34);
+			margin-bottom: 4px;
+		}
+		.popover-item {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			padding: 8px 12px;
+			cursor: pointer;
+			font-size: 0.85rem;
+			transition: background 0.1s ease;
+		}
+		.popover-item:hover {
+			background: var(--bg-hover, #2e3b34);
+		}
+		.popover-item-active {
+			color: var(--accent, #5fa778);
+			font-weight: 600;
+		}
+		.popover-badge {
+			font-size: 0.7rem;
+			background: var(--accent-subtle, rgba(95,167,120,0.12));
+			color: var(--accent, #5fa778);
+			padding: 2px 6px;
+			border-radius: 4px;
+		}
+		.popover-footer {
+			border-top: 1px solid var(--bg-hover, #2e3b34);
+			margin-top: 4px;
+			padding: 6px 12px 2px;
+		}
+
+		/* ── Option 2: Floating Drawer Tray ── */
+		.floating-tray {
+			position: fixed;
+			bottom: 24px;
+			left: 50%;
+			transform: translateX(-50%);
+			width: calc(100% - 48px);
+			max-width: 860px;
+			background: var(--bg-card-elevated, #27312c);
+			border: 1px solid var(--accent, #5fa778);
+			border-radius: 12px;
+			box-shadow: 0 12px 36px rgba(0,0,0,0.6);
+			padding: 12px 20px;
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			z-index: 100;
+			transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+		}
+		.floating-tray.hidden {
+			transform: translateX(-50%) translateY(100px);
+			opacity: 0;
+			pointer-events: none;
+		}
+		.tray-items-list {
+			display: flex;
+			gap: 8px;
+			align-items: center;
+			overflow-x: auto;
+		}
+		.tray-item-chip {
+			display: flex;
+			align-items: center;
+			gap: 6px;
+			background: var(--bg-input, #151a17);
+			border: 1px solid var(--bg-hover, #2e3b34);
+			padding: 4px 10px;
+			border-radius: 20px;
+			font-size: 0.8rem;
+			white-space: nowrap;
+		}
+		.tray-item-remove {
+			cursor: pointer;
+			color: var(--text-muted, #5e6b62);
+		}
+		.tray-item-remove:hover {
+			color: var(--danger, #c46860);
+		}
+
+		/* ── Option 3: Config Modal ── */
+		.demo-modal-backdrop {
+			position: absolute;
+			inset: 0;
+			background: rgba(0,0,0,0.7);
+			backdrop-filter: blur(4px);
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			border-radius: 12px;
+			z-index: 60;
+		}
+		.demo-modal-card {
+			background: var(--bg-card, #1f2622);
+			border: 1px solid var(--accent, #5fa778);
+			border-radius: 12px;
+			width: 440px;
+			max-width: 90%;
+			padding: 24px;
+			box-shadow: 0 16px 40px rgba(0,0,0,0.7);
+		}
+		.modal-form-group {
+			margin-bottom: 16px;
+		}
+		.modal-form-group label {
+			display: block;
+			font-size: 0.8rem;
+			font-weight: 600;
+			color: var(--text-secondary, #97a39b);
+			margin-bottom: 6px;
+		}
+		.mode-toggle-group {
+			display: flex;
+			gap: 8px;
+		}
+		.mode-toggle-btn {
+			flex: 1;
+			background: var(--bg-input, #151a17);
+			border: 1px solid var(--bg-hover, #2e3b34);
+			color: var(--text-secondary, #97a39b);
+			padding: 8px 10px;
+			border-radius: 6px;
+			font-size: 0.8rem;
+			cursor: pointer;
+			text-align: center;
+		}
+		.mode-toggle-btn.active {
+			background: var(--accent-subtle, rgba(95,167,120,0.12));
+			border-color: var(--accent, #5fa778);
+			color: var(--accent, #5fa778);
+			font-weight: 600;
+		}
+
+		/* ── Option 4: Toast notification ── */
+		.toast-demo {
+			position: fixed;
+			bottom: 30px;
+			right: 30px;
+			background: var(--bg-card-elevated, #27312c);
+			border: 1px solid var(--accent, #5fa778);
+			color: var(--text-primary, #e6eae6);
+			padding: 12px 18px;
+			border-radius: 8px;
+			box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+			display: flex;
+			align-items: center;
+			gap: 12px;
+			z-index: 100;
+			animation: slideUp 0.2s ease;
+		}
+		@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+		@keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+	</style>
+</head>
+<body>
+
+	<div class="design-header">
+		<div class="design-title">
+			<span>⚡</span> Add to Workout UX Explorations
+		</div>
+		<p class="design-subtitle">
+			Review 4 interactive prototype patterns for adding movements from the Exercise Library without jarring context loss. Click the buttons below to test each pattern live.
+		</p>
+		<div class="options-nav">
+			<button class="opt-nav-btn active" onclick="switchOption('opt1')">1. Target Workout Popover Picker</button>
+			<button class="opt-nav-btn" onclick="switchOption('opt2')">2. Bottom Workout Queue Tray ("Cart")</button>
+			<button class="opt-nav-btn" onclick="switchOption('opt3')">3. Precision Config Sheet (Position & Mode)</button>
+			<button class="opt-nav-btn" onclick="switchOption('opt4')">4. Seamless Inline Feedback + Toast</button>
+		</div>
+	</div>
+
+	<!-- ── OPTION 1: Target Workout Dropdown / Popover ── -->
+	<section id="opt1" class="prototype-section visible">
+		<div class="proto-header">
+			<span class="proto-badge">Option 1 · Quick Dropdown Target</span>
+			<h3 class="proto-title">Target Workout Popover Menu</h3>
+			<p class="proto-desc">
+				Clicking <strong>+ Add to Workout</strong> opens a lightweight popover anchored to the button. Choose which workout to append to, or create a new one on the fly. You stay in the Library with a checkmark confirmation!
+			</p>
+		</div>
+
+		<div class="demo-cards-grid">
+			<div class="demo-card">
+				<div class="demo-card-head">
+					<div class="demo-card-thumb">
+						<img src="https://img.youtube.com/vi/wPGC3uFIOBA/mqdefault.jpg" alt="Check Repeats">
+					</div>
+					<div class="demo-card-info">
+						<h4>Check Repeats (Lead & Rear Block)</h4>
+						<div class="demo-card-tags">
+							<span class="demo-tag">🎬 Video Clip</span>
+							<span class="demo-tag">⏱️ 1m</span>
+							<span class="demo-tag">Muay Thai</span>
+						</div>
+					</div>
+				</div>
+				<div class="demo-card-actions">
+					<button class="btn btn-sm btn-ghost">▶ Preview</button>
+					<button class="btn btn-sm btn-primary" onclick="togglePopover(this, 'Check Repeats')">
+						+ Add to Workout ▾
+					</button>
+				</div>
+			</div>
+
+			<div class="demo-card">
+				<div class="demo-card-head">
+					<div class="demo-card-thumb">
+						<img src="media/pushups.svg" alt="Push-Ups" style="padding:4px;background:#151a17;">
+					</div>
+					<div class="demo-card-info">
+						<h4>Push-Ups</h4>
+						<div class="demo-card-tags">
+							<span class="demo-tag">✨ Visual Form</span>
+							<span class="demo-tag">🔢 25 reps</span>
+							<span class="demo-tag">Strength</span>
+						</div>
+					</div>
+				</div>
+				<div class="demo-card-actions">
+					<button class="btn btn-sm btn-ghost">▶ Preview</button>
+					<button class="btn btn-sm btn-primary" onclick="togglePopover(this, 'Push-Ups')">
+						+ Add to Workout ▾
+					</button>
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<!-- ── OPTION 2: Bottom Workout Stash / Drawer ── -->
+	<section id="opt2" class="prototype-section">
+		<div class="proto-header">
+			<span class="proto-badge">Option 2 · Multi-Add Stash / Tray</span>
+			<h3 class="proto-title">Bottom "Workout Stash" Dock</h3>
+			<p class="proto-desc">
+				Clicking <strong>+ Add</strong> puts the movement into a floating tray at the bottom. Build a whole routine by clicking multiple exercises in a row, adjust the target routine, and commit all at once or switch tabs when ready.
+			</p>
+		</div>
+
+		<div class="demo-cards-grid">
+			<div class="demo-card">
+				<div class="demo-card-head">
+					<div class="demo-card-thumb">
+						<img src="https://img.youtube.com/vi/wPGC3uFIOBA/mqdefault.jpg" alt="Check Repeats">
+					</div>
+					<div class="demo-card-info">
+						<h4>Check Repeats</h4>
+						<div class="demo-card-tags"><span class="demo-tag">🎬 Video Clip (1m)</span></div>
+					</div>
+				</div>
+				<div class="demo-card-actions">
+					<button class="btn btn-sm btn-primary" onclick="addToTray('Check Repeats', '🎬 1m')">+ Queue Movement</button>
+				</div>
+			</div>
+
+			<div class="demo-card">
+				<div class="demo-card-head">
+					<div class="demo-card-thumb">
+						<img src="https://img.youtube.com/vi/ZWZWzRnLpVM/mqdefault.jpg" alt="Star Jumps">
+					</div>
+					<div class="demo-card-info">
+						<h4>Star Jumps</h4>
+						<div class="demo-card-tags"><span class="demo-tag">⚡ Drill (45s)</span></div>
+					</div>
+				</div>
+				<div class="demo-card-actions">
+					<button class="btn btn-sm btn-primary" onclick="addToTray('Star Jumps', '⚡ 45s')">+ Queue Movement</button>
+				</div>
+			</div>
+
+			<div class="demo-card">
+				<div class="demo-card-head">
+					<div class="demo-card-thumb">
+						<img src="media/cobra-stretch.jpg" alt="Cobra Stretch">
+					</div>
+					<div class="demo-card-info">
+						<h4>Cobra Stretch</h4>
+						<div class="demo-card-tags"><span class="demo-tag">🧘 Mobility (30s)</span></div>
+					</div>
+				</div>
+				<div class="demo-card-actions">
+					<button class="btn btn-sm btn-primary" onclick="addToTray('Cobra Stretch', '🧘 30s')">+ Queue Movement</button>
+				</div>
+			</div>
+		</div>
+
+		<div id="floating-tray" class="floating-tray hidden">
+			<div style="display:flex; flex-direction:column; gap:6px;">
+				<div style="font-size:0.75rem; color:var(--text-muted); font-weight:600; text-transform:uppercase;">
+					Adding to: <select id="tray-workout-select" style="background:var(--bg-input); color:var(--accent); border:1px solid var(--bg-hover); padding:2px 8px; border-radius:4px; font-weight:600;"><option>Morning Flow (Active)</option><option>HIIT Boxing</option><option>+ New Workout</option></select>
+				</div>
+				<div class="tray-items-list" id="tray-list"></div>
+			</div>
+			<div style="display:flex; gap:8px; align-items:center;">
+				<button class="btn btn-sm btn-ghost" onclick="clearTray()">Clear</button>
+				<button class="btn btn-sm btn-primary" onclick="commitTray()">Commit to Workout (<span id="tray-count">0</span>) →</button>
+			</div>
+		</div>
+	</section>
+
+	<!-- ── OPTION 3: Precision Config Sheet ── -->
+	<section id="opt3" class="prototype-section">
+		<div class="proto-header">
+			<span class="proto-badge">Option 3 · Granular Tuning</span>
+			<h3 class="proto-title">Step Configuration & Position Sheet</h3>
+			<p class="proto-desc">
+				For power users who want to configure whether an exercise is added as a full Video Clip or custom interval, and where in the routine order it should land.
+			</p>
+		</div>
+
+		<div class="demo-cards-grid">
+			<div class="demo-card">
+				<div class="demo-card-head">
+					<div class="demo-card-thumb">
+						<img src="https://img.youtube.com/vi/wPGC3uFIOBA/mqdefault.jpg" alt="Check Repeats">
+					</div>
+					<div class="demo-card-info">
+						<h4>Check Repeats (Lead & Rear Block)</h4>
+						<div class="demo-card-tags"><span class="demo-tag">Muay Thai</span><span class="demo-tag">Technique</span></div>
+					</div>
+				</div>
+				<div class="demo-card-actions">
+					<button class="btn btn-sm btn-primary" onclick="openConfigModal('Check Repeats', 'wPGC3uFIOBA', 60)">
+						+ Add to Workout...
+					</button>
+				</div>
+			</div>
+		</div>
+
+		<div id="demo-modal" class="demo-modal-backdrop" style="display:none;">
+			<div class="demo-modal-card">
+				<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+					<h3 style="font-size:1.1rem; font-weight:600;" id="modal-ex-title">Add Check Repeats</h3>
+					<button class="btn btn-xs btn-ghost" onclick="closeConfigModal()">✕</button>
+				</div>
+
+				<div class="modal-form-group">
+					<label>Target Workout Routine</label>
+					<select class="input" style="width:100%;">
+						<option>Morning Flow (Currently Selected)</option>
+						<option>Muay Thai Heavy Conditioning</option>
+						<option>⚡ Create New Routine</option>
+					</select>
+				</div>
+
+				<div class="modal-form-group">
+					<label>Step Mode</label>
+					<div class="mode-toggle-group">
+						<div class="mode-toggle-btn active" onclick="setModalMode(this)">🎬 Video Follow-Along</div>
+						<div class="mode-toggle-btn" onclick="setModalMode(this)">⏱️ Interval Timer</div>
+						<div class="mode-toggle-btn" onclick="setModalMode(this)">🔢 Reps Goal</div>
+					</div>
+				</div>
+
+				<div class="modal-form-group">
+					<label>Insert Position</label>
+					<select class="input" style="width:100%;">
+						<option>At the end of workout (Step #4)</option>
+						<option>At the start (Step #1)</option>
+						<option>After Step #2 (Star Jumps)</option>
+					</select>
+				</div>
+
+				<div style="display:flex; justify-content:space-between; gap:10px; margin-top:24px;">
+					<button class="btn btn-sm btn-ghost" style="flex:1;" onclick="submitModal(false)">+ Add & Keep Browsing</button>
+					<button class="btn btn-sm btn-primary" style="flex:1;" onclick="submitModal(true)">+ Add & Open Workout →</button>
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<!-- ── OPTION 4: Inline Feedback + Toast ── -->
+	<section id="opt4" class="prototype-section">
+		<div class="proto-header">
+			<span class="proto-badge">Option 4 · Minimal & Frictionless</span>
+			<h3 class="proto-title">Inline Instant Confirmation + Toast Undo</h3>
+			<p class="proto-desc">
+				Clicking <strong>+ Add to Workout</strong> directly adds to the active routine in 1 click, instantly shifts the button state to <em>✓ Added to Morning Flow</em>, and shows a floating toast with a quick <strong>[Open Workout →]</strong> and <strong>[Undo]</strong> link. Zero popups, zero forced navigation.
+			</p>
+		</div>
+
+		<div class="demo-cards-grid">
+			<div class="demo-card">
+				<div class="demo-card-head">
+					<div class="demo-card-thumb">
+						<img src="https://img.youtube.com/vi/wPGC3uFIOBA/mqdefault.jpg" alt="Check Repeats">
+					</div>
+					<div class="demo-card-info">
+						<h4>Check Repeats</h4>
+						<div class="demo-card-tags"><span class="demo-tag">🎬 Video Clip</span></div>
+					</div>
+				</div>
+				<div class="demo-card-actions">
+					<button class="btn btn-sm btn-primary" onclick="instantAdd(this, 'Check Repeats')">
+						+ Add to Workout
+					</button>
+				</div>
+			</div>
+
+			<div class="demo-card">
+				<div class="demo-card-head">
+					<div class="demo-card-thumb">
+						<img src="https://img.youtube.com/vi/7sLw5dHdRG4/mqdefault.jpg" alt="Jab-Cross">
+					</div>
+					<div class="demo-card-info">
+						<h4>Jab-Cross Combo</h4>
+						<div class="demo-card-tags"><span class="demo-tag">🥊 Boxing</span></div>
+					</div>
+				</div>
+				<div class="demo-card-actions">
+					<button class="btn btn-sm btn-primary" onclick="instantAdd(this, 'Jab-Cross Combo')">
+						+ Add to Workout
+					</button>
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<div id="toast-container"></div>
+
+	<script>
+		function switchOption(id) {
+			document.querySelectorAll('.prototype-section').forEach(s => s.classList.remove('visible'));
+			document.querySelectorAll('.opt-nav-btn').forEach(b => b.classList.remove('active'));
+			document.getElementById(id).classList.add('visible');
+			event.target.classList.add('active');
+			if (id !== 'opt2') {
+				document.getElementById('floating-tray').classList.add('hidden');
+			}
+		}
+
+		/* Option 1 Logic */
+		let activePopover = null;
+		function togglePopover(btn, exName) {
+			if (activePopover) {
+				activePopover.remove();
+				activePopover = null;
+				return;
+			}
+			const menu = document.createElement('div');
+			menu.className = 'popover-menu';
+			menu.innerHTML = `
+				<div class="popover-header">Add "${exName}" to:</div>
+				<div class="popover-item popover-item-active" onclick="chooseRoutine('Morning Flow', '${exName}', this)">
+					<span>⚡ Morning Flow</span>
+					<span class="popover-badge">Active</span>
+				</div>
+				<div class="popover-item" onclick="chooseRoutine('HIIT Boxing', '${exName}', this)">
+					<span>🥊 HIIT Boxing</span>
+					<span style="font-size:0.75rem;color:var(--text-muted);">3 steps</span>
+				</div>
+				<div class="popover-item" onclick="chooseRoutine('Leg Day Conditioning', '${exName}', this)">
+					<span>🦵 Leg Day Conditioning</span>
+					<span style="font-size:0.75rem;color:var(--text-muted);">5 steps</span>
+				</div>
+				<div class="popover-footer">
+					<div class="popover-item" style="color:var(--accent); font-weight:600; padding:4px 0;" onclick="chooseRoutine('New Workout', '${exName}', this)">
+						+ Create New Workout
+					</div>
+				</div>
+			`;
+			btn.parentElement.appendChild(menu);
+			activePopover = menu;
+
+			setTimeout(() => {
+				const closeOnClickOutside = (e) => {
+					if (!menu.contains(e.target) && e.target !== btn) {
+						menu.remove();
+						activePopover = null;
+						document.removeEventListener('click', closeOnClickOutside);
+					}
+				};
+				document.addEventListener('click', closeOnClickOutside);
+			}, 10);
+		}
+
+		function chooseRoutine(routineName, exName, el) {
+			el.innerHTML = `<span>✓ Added to ${routineName}</span>`;
+			setTimeout(() => {
+				if (activePopover) {
+					activePopover.remove();
+					activePopover = null;
+				}
+				showToast(`Added "${exName}" to ${routineName}!`);
+			}, 400);
+		}
+
+		/* Option 2 Logic */
+		let trayItems = [];
+		function addToTray(name, tag) {
+			trayItems.push({ name, tag });
+			updateTray();
+		}
+		function updateTray() {
+			const tray = document.getElementById('floating-tray');
+			const list = document.getElementById('tray-list');
+			const count = document.getElementById('tray-count');
+			list.innerHTML = '';
+			trayItems.forEach((item, idx) => {
+				const chip = document.createElement('div');
+				chip.className = 'tray-item-chip';
+				chip.innerHTML = `<span>${item.name}</span> <span style="font-size:0.7rem;opacity:0.7;">${item.tag}</span> <span class="tray-item-remove" onclick="removeFromTray(${idx})">✕</span>`;
+				list.appendChild(chip);
+			});
+			count.textContent = trayItems.length;
+			if (trayItems.length > 0) {
+				tray.classList.remove('hidden');
+			} else {
+				tray.classList.add('hidden');
+			}
+		}
+		function removeFromTray(idx) {
+			trayItems.splice(idx, 1);
+			updateTray();
+		}
+		function clearTray() {
+			trayItems = [];
+			updateTray();
+		}
+		function commitTray() {
+			const target = document.getElementById('tray-workout-select').value;
+			showToast(`Committed ${trayItems.length} movements to "${target}"!`);
+			clearTray();
+		}
+
+		/* Option 3 Logic */
+		function openConfigModal(name) {
+			document.getElementById('modal-ex-title').textContent = `Add "${name}" to Workout`;
+			document.getElementById('demo-modal').style.display = 'flex';
+		}
+		function closeConfigModal() {
+			document.getElementById('demo-modal').style.display = 'none';
+		}
+		function setModalMode(el) {
+			el.parentElement.querySelectorAll('.mode-toggle-btn').forEach(b => b.classList.remove('active'));
+			el.classList.add('active');
+		}
+		function submitModal(openRoutine) {
+			closeConfigModal();
+			showToast(openRoutine ? 'Added movement and opening workout editor...' : 'Added movement! Continuing browsing...');
+		}
+
+		/* Option 4 Logic */
+		function instantAdd(btn, exName) {
+			const origText = btn.innerHTML;
+			btn.innerHTML = '✓ Added to Morning Flow';
+			btn.classList.remove('btn-primary');
+			btn.classList.add('btn-ghost');
+			btn.style.borderColor = 'var(--accent)';
+			btn.style.color = 'var(--accent)';
+			showToast(`Added "${exName}" to Morning Flow`, true);
+
+			setTimeout(() => {
+				btn.innerHTML = origText;
+				btn.classList.remove('btn-ghost');
+				btn.classList.add('btn-primary');
+				btn.style.borderColor = '';
+				btn.style.color = '';
+			}, 2500);
+		}
+
+		function showToast(msg, showActions = false) {
+			const container = document.getElementById('toast-container');
+			const toast = document.createElement('div');
+			toast.className = 'toast-demo';
+			toast.innerHTML = `
+				<span>${msg}</span>
+				${showActions ? '<button class="btn btn-xs btn-primary" onclick="alert(\'Navigating to routine view...\')">Open Workout →</button>' : ''}
+			`;
+			container.appendChild(toast);
+			setTimeout(() => {
+				toast.style.opacity = '0';
+				toast.style.transform = 'translateY(10px)';
+				toast.style.transition = 'all 0.2s ease';
+				setTimeout(() => toast.remove(), 200);
+			}, 3000);
+		}
+	</script>
+</body>
+</html>

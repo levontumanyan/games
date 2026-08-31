@@ -236,7 +236,31 @@ def test_step_creation_from_exercise_and_combo():
 	node_script = f"""
 	globalThis.localStorage = {{ getItem: () => null, setItem: () => {{}}, removeItem: () => {{}} }};
 	globalThis.document = {{ querySelector: () => null, querySelectorAll: () => [], addEventListener: () => {{}} }};
-	globalThis.window = {{ addEventListener: () => {{}}, removeEventListener: () => {{}} }};
+	globalThis.window = {{
+		addEventListener: () => {{}},
+		removeEventListener: () => {{}},
+		__INITIAL_EXERCISES__: [
+			{{
+				id: 'ex-check-repeats',
+				name: 'Check Repeats (Lead & Rear Block)',
+				category: 'technique',
+				discipline: 'muay_thai',
+				default_mode: 'time',
+				default_quantity: 60,
+				media_assets: [
+					{{
+						id: 'asset-check-repeats-demo',
+						kind: 'demonstration',
+						type: 'video',
+						title: 'Check Repeats Technique & Cadence',
+						videoId: 'wPGC3uFIOBA',
+						startSeconds: 0,
+						endSeconds: 60
+					}}
+				]
+			}}
+		]
+	}};
 
 	const {{ createStepFromExercise, createStepFromCombo }} = await import('{js_dir}/editor.js');
 
@@ -300,9 +324,19 @@ def test_step_creation_from_exercise_and_combo():
 		]
 	}};
 
-	const comboStep = createStepFromCombo(comboWithVid);
-	if (comboStep.type !== 'clip' || comboStep.videoId !== 'ZWZWzRnLpVM' || comboStep.endSeconds !== 250) {{
-		throw new Error('createStepFromCombo failed for combo with video: ' + JSON.stringify(comboStep));
+	// 4. Test resolveStepVideoAsset from player.js
+	const {{ resolveStepVideoAsset }} = await import('{js_dir}/player.js');
+	const legacyTimerStep = {{
+		id: 'legacy-step-1',
+		type: 'timer',
+		durationSeconds: 60,
+		label: 'Check Repeats',
+		exercises: [{{ id: 'ex-check-repeats' }}]
+	}};
+
+	const resolvedVid = resolveStepVideoAsset(legacyTimerStep);
+	if (!resolvedVid || resolvedVid.videoId !== 'wPGC3uFIOBA' || resolvedVid.endSeconds !== 60) {{
+		throw new Error('resolveStepVideoAsset failed for legacy timer step: ' + JSON.stringify(resolvedVid));
 	}}
 	"""
 

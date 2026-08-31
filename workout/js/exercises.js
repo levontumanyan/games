@@ -201,7 +201,19 @@ export async function loadExercises() {
  * @returns {Array}
  */
 export function getExercises() {
+	if (cachedExercises.length === 0 && typeof window !== 'undefined' && Array.isArray(window.__INITIAL_EXERCISES__)) {
+		cachedExercises = window.__INITIAL_EXERCISES__;
+	}
 	return cachedExercises;
+}
+
+/**
+ * Set cached exercises in memory.
+ * @param {Array} list
+ */
+export function setExercises(list = []) {
+	cachedExercises = list || [];
+	isLoaded = true;
 }
 
 /**
