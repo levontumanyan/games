@@ -1502,6 +1502,83 @@ export function createBreakStep(durationSeconds = 30) {
 }
 
 /**
+ * Create a new step from an exercise definition.
+ * If the exercise has a follow-along video asset or YouTube video, creates a 'clip' step.
+ * Otherwise creates a 'timer' or 'reps' step.
+ * @param {Object} ex
+ * @returns {Object} Step object
+ */
+export function createStepFromExercise(ex) {
+	if (!ex) return createTimerStep();
+	const isReps = (ex.default_mode || 'reps') === 'reps';
+	const quantity = ex.default_quantity || (isReps ? 20 : 30);
+	const asset = getExerciseFollowAlongMedia(ex) || (ex.media_assets || [])[0];
+	const isVidAsset = asset && (asset.type === 'video' || Boolean(asset.videoId));
+	const directVid = (!isVidAsset && ex.media_url && (ex.media_url.includes('youtube') || ex.media_url.includes('youtu.be'))) ? parseYouTubeId(ex.media_url) : null;
+
+	let newStep;
+	if (isVidAsset || directVid) {
+		newStep = createClipStep();
+		newStep.label = ex.name;
+		newStep.videoId = (asset && asset.videoId) ? asset.videoId : (directVid || parseYouTubeId(asset?.url));
+		newStep.startSeconds = asset?.startSeconds || 0;
+		newStep.endSeconds = asset?.endSeconds || ((asset?.startSeconds || 0) + (isReps ? 60 : quantity));
+	} else {
+		newStep = createTimerStep();
+		newStep.label = ex.name;
+		newStep.stepMode = isReps ? 'reps' : 'time';
+		newStep.targetReps = isReps ? quantity : 0;
+		newStep.durationSeconds = !isReps ? quantity : 30;
+		if (asset?.url || ex.media_url) {
+			newStep.gifUrl = asset?.url || ex.media_url || '';
+			newStep.mediaUrl = asset?.url || ex.media_url || '';
+		}
+	}
+	newStep.exercises = [{ id: ex.id, name: ex.name, category: ex.category, discipline: ex.discipline }];
+	return newStep;
+}
+
+/**
+ * Create a new step from a combo definition.
+ * If the combo has a video asset or YouTube video, creates a 'clip' step.
+ * Otherwise creates a 'timer' or 'reps' step.
+ * @param {Object} combo
+ * @returns {Object} Step object
+ */
+export function createStepFromCombo(combo) {
+	if (!combo) return createTimerStep();
+	const exList = (combo.exercise_ids || []).map(id => (typeof id === 'object' ? id : { id }));
+	const asset = (combo.media_assets || [])[0];
+	const isVideo = asset && (asset.type === 'video' || Boolean(asset.videoId));
+	const directVid = (!isVideo && combo.media_url && (combo.media_url.includes('youtube') || combo.media_url.includes('youtu.be'))) ? parseYouTubeId(combo.media_url) : null;
+
+	let newStep;
+	if (isVideo || directVid) {
+		newStep = createClipStep();
+		newStep.label = combo.name;
+		newStep.videoId = (asset && asset.videoId) ? asset.videoId : (directVid || parseYouTubeId(asset?.url || combo.media_url));
+		newStep.startSeconds = asset?.startSeconds || 0;
+		newStep.endSeconds = asset?.endSeconds || ((asset?.startSeconds || 0) + (combo.default_quantity || 190));
+	} else {
+		newStep = createTimerStep();
+		newStep.label = combo.name;
+		if (combo.default_mode === 'reps') {
+			newStep.stepMode = 'reps';
+			newStep.targetReps = combo.default_quantity || 20;
+		} else {
+			newStep.durationSeconds = combo.default_quantity || 190;
+		}
+		if (asset?.url || combo.media_url) {
+			newStep.gifUrl = asset?.url || combo.media_url || '';
+			newStep.mediaUrl = asset?.url || combo.media_url || '';
+		}
+	}
+	newStep.flow_type = combo.flow_type || 'alternating';
+	newStep.exercises = exList;
+	return newStep;
+}
+
+/**
  * Create a new empty routine.
  * @param {string} title
  * @returns {Object} Routine object
@@ -1669,26 +1746,7 @@ export function showAddExerciseModal(routine, onUpdate, insertIndex = -1) {
 	}
 
 	function commitAddExercise(ex) {
-		const isReps = (ex.default_mode || 'reps') === 'reps';
-		const quantity = ex.default_quantity || (isReps ? 20 : 30);
-		const asset = getExerciseFollowAlongMedia(ex) || (ex.media_assets || [])[0];
-		const isVidAsset = asset && (asset.type === 'video' || Boolean(asset.videoId));
-
-		const newStep = createTimerStep();
-		newStep.label = ex.name;
-		newStep.stepMode = isReps ? 'reps' : 'time';
-		newStep.targetReps = isReps ? quantity : 0;
-		newStep.durationSeconds = !isReps ? quantity : 30;
-		if (isVidAsset) {
-			newStep.videoId = asset.videoId || parseYouTubeId(asset.url);
-			newStep.startSeconds = asset.startSeconds || 0;
-			newStep.endSeconds = asset.endSeconds || ((asset.startSeconds || 0) + (isReps ? 60 : quantity));
-		} else if (asset?.url || ex.media_url) {
-			newStep.gifUrl = asset?.url || ex.media_url || '';
-			newStep.mediaUrl = asset?.url || ex.media_url || '';
-		}
-
-		newStep.exercises = [{ id: ex.id, name: ex.name, category: ex.category, discipline: ex.discipline }];
+		const newStep = createStepFromExercise(ex);
 
 		if (typeof insertIndex === 'number' && insertIndex >= 0 && insertIndex <= routine.steps.length) {
 			routine.steps.splice(insertIndex, 0, newStep);
@@ -1932,30 +1990,7 @@ export function showAddComboModal(routine, onUpdate, insertIndex = -1) {
 			`;
 
 			item.addEventListener('click', () => {
-				const asset = (combo.media_assets || [])[0];
-				const isVideo = asset && (asset.type === 'video' || Boolean(asset.videoId));
-				const exList = (combo.exercise_ids || []).map(id => ({ id }));
-
-				let newStep;
-				if (isVideo) {
-					newStep = createClipStep();
-					newStep.label = combo.name;
-					newStep.videoId = asset.videoId || parseYouTubeId(asset.url || combo.media_url);
-					newStep.startSeconds = asset.startSeconds || 0;
-					newStep.endSeconds = asset.endSeconds || ((asset.startSeconds || 0) + (combo.default_quantity || 190));
-				} else {
-					newStep = createTimerStep();
-					newStep.label = combo.name;
-					if (combo.default_mode === 'reps') {
-						newStep.stepMode = 'reps';
-						newStep.targetReps = combo.default_quantity || 20;
-					} else {
-						newStep.durationSeconds = combo.default_quantity || 190;
-					}
-				}
-
-				newStep.flow_type = combo.flow_type || 'alternating';
-				newStep.exercises = exList;
+				const newStep = createStepFromCombo(combo);
 
 				if (typeof insertIndex === 'number' && insertIndex >= 0 && insertIndex <= routine.steps.length) {
 					routine.steps.splice(insertIndex, 0, newStep);

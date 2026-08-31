@@ -223,3 +223,92 @@ def test_youtube_playlist_and_video_parsing():
 		text=True,
 	)
 	assert res.returncode == 0, f"Node test for YouTube parsing failed:\n{res.stderr}"
+
+
+def test_step_creation_from_exercise_and_combo():
+	import shutil
+	import subprocess
+
+	if not shutil.which("node"):
+		return
+
+	js_dir = Path(__file__).parent.parent / "js"
+	node_script = f"""
+	globalThis.localStorage = {{ getItem: () => null, setItem: () => {{}}, removeItem: () => {{}} }};
+	globalThis.document = {{ querySelector: () => null, querySelectorAll: () => [], addEventListener: () => {{}} }};
+	globalThis.window = {{ addEventListener: () => {{}}, removeEventListener: () => {{}} }};
+
+	const {{ createStepFromExercise, createStepFromCombo }} = await import('{js_dir}/editor.js');
+
+	// 1. Video-backed exercise (Check Repeats)
+	const checkRepeatsEx = {{
+		id: 'ex-check-repeats',
+		name: 'Check Repeats (Lead & Rear Block)',
+		category: 'technique',
+		discipline: 'muay_thai',
+		default_mode: 'time',
+		default_quantity: 60,
+		media_assets: [
+			{{
+				id: 'asset-check-repeats-demo',
+				kind: 'demonstration',
+				type: 'video',
+				title: 'Check Repeats Technique & Cadence',
+				videoId: 'wPGC3uFIOBA',
+				startSeconds: 0,
+				endSeconds: 60
+			}}
+		]
+	}};
+
+	const clipStep = createStepFromExercise(checkRepeatsEx);
+	if (clipStep.type !== 'clip' || clipStep.videoId !== 'wPGC3uFIOBA' || clipStep.endSeconds !== 60) {{
+		throw new Error('createStepFromExercise failed for video exercise: ' + JSON.stringify(clipStep));
+	}}
+
+	// 2. Non-video exercise (pushups timer)
+	const pushupsEx = {{
+		id: 'ex-pushups',
+		name: 'Push-Ups',
+		category: 'strength',
+		discipline: 'general',
+		default_mode: 'reps',
+		default_quantity: 25,
+		media_url: '/workout/media/pushups.svg'
+	}};
+
+	const timerStep = createStepFromExercise(pushupsEx);
+	if (timerStep.type !== 'timer' || timerStep.stepMode !== 'reps' || timerStep.targetReps !== 25) {{
+		throw new Error('createStepFromExercise failed for reps exercise: ' + JSON.stringify(timerStep));
+	}}
+
+	// 3. Combo with video
+	const comboWithVid = {{
+		id: 'combo-1',
+		name: 'Star Jumps Combo',
+		flow_type: 'alternating',
+		default_mode: 'time',
+		default_quantity: 190,
+		media_assets: [
+			{{
+				id: 'combo-asset-1',
+				type: 'video',
+				videoId: 'ZWZWzRnLpVM',
+				startSeconds: 60,
+				endSeconds: 250
+			}}
+		]
+	}};
+
+	const comboStep = createStepFromCombo(comboWithVid);
+	if (comboStep.type !== 'clip' || comboStep.videoId !== 'ZWZWzRnLpVM' || comboStep.endSeconds !== 250) {{
+		throw new Error('createStepFromCombo failed for combo with video: ' + JSON.stringify(comboStep));
+	}}
+	"""
+
+	res = subprocess.run(
+		["node", "--input-type=module", "-e", node_script],
+		capture_output=True,
+		text=True,
+	)
+	assert res.returncode == 0, f"Node test for step creation failed:\n{res.stderr}"

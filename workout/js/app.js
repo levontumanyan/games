@@ -10,6 +10,7 @@ import {
 } from './storage.js';
 import {
 	renderEditor, createClipStep, createTimerStep, createBreakStep, createRoutine,
+	createStepFromExercise, createStepFromCombo,
 	showAddExerciseModal, showAddComboModal, toggleAllStepCards, expandStep
 } from './editor.js';
 import { renderRoutineOverview } from './view.js';
@@ -425,20 +426,7 @@ function switchTab(tab) {
 						routines.push(routine);
 						selectedRoutineId = routine.id;
 					}
-					const isReps = (exercise.default_mode || 'reps') === 'reps';
-					const followAlong = getExerciseFollowAlongMedia(exercise);
-					const visualUrl = (followAlong && followAlong.type === 'image' && followAlong.url)
-						? followAlong.url
-						: (exercise.media_url && !exercise.media_url.includes('youtube') && !exercise.media_url.includes('youtu.be') ? exercise.media_url : '');
-
-					const newStep = createTimerStep(
-						exercise.name,
-						isReps ? 30 : (exercise.default_quantity || 30),
-						visualUrl
-					);
-					newStep.stepMode = exercise.default_mode || 'reps';
-					if (isReps) newStep.targetReps = exercise.default_quantity || 20;
-					newStep.exercises = [{ id: exercise.id, name: exercise.name, category: exercise.category, discipline: exercise.discipline }];
+					const newStep = createStepFromExercise(exercise);
 					routine.steps.push(newStep);
 					expandStep(newStep.id);
 					persist();
@@ -529,29 +517,7 @@ function switchTab(tab) {
 						routines.push(routine);
 						selectedRoutineId = routine.id;
 					}
-					const exList = (combo.exercise_ids || []).map(id => getExerciseById(id)).filter(Boolean);
-					const asset = (combo.media_assets || [])[0];
-					const isVideo = asset && (asset.type === 'video' || Boolean(asset.videoId));
-					let newStep;
-					if (isVideo) {
-						newStep = createClipStep(
-							combo.name,
-							asset.videoId || parseYouTubeId(asset.url || combo.media_url),
-							asset.startSeconds || 0,
-							asset.endSeconds || ((asset.startSeconds || 0) + (combo.default_quantity || 190))
-						);
-					} else {
-						const isReps = (combo.default_mode || 'time') === 'reps';
-						newStep = createTimerStep(
-							combo.name,
-							isReps ? 30 : (combo.default_quantity || 190),
-							combo.media_url || ''
-						);
-						newStep.stepMode = combo.default_mode || 'time';
-						if (isReps) newStep.targetReps = combo.default_quantity || 20;
-					}
-					newStep.flow_type = combo.flow_type || 'alternating';
-					newStep.exercises = exList;
+					const newStep = createStepFromCombo(combo);
 					routine.steps.push(newStep);
 					expandStep(newStep.id);
 					persist();
@@ -636,20 +602,7 @@ function switchTab(tab) {
 						routines.push(routine);
 						selectedRoutineId = routine.id;
 					}
-					const isReps = (exercise.default_mode || 'reps') === 'reps';
-					const followAlong = getExerciseFollowAlongMedia(exercise);
-					const visualUrl = (followAlong && followAlong.type === 'image' && followAlong.url)
-						? followAlong.url
-						: (exercise.media_url && !exercise.media_url.includes('youtube') && !exercise.media_url.includes('youtu.be') ? exercise.media_url : '');
-
-					const newStep = createTimerStep(
-						exercise.name,
-						isReps ? 30 : (exercise.default_quantity || 30),
-						visualUrl
-					);
-					newStep.stepMode = exercise.default_mode || 'reps';
-					if (isReps) newStep.targetReps = exercise.default_quantity || 20;
-					newStep.exercises = [{ id: exercise.id, name: exercise.name, category: exercise.category, discipline: exercise.discipline }];
+					const newStep = createStepFromExercise(exercise);
 					routine.steps.push(newStep);
 					expandStep(newStep.id);
 					persist();
@@ -1094,15 +1047,7 @@ function goToExercise(exerciseOrId) {
 				routines.push(routine);
 				selectedRoutineId = routine.id;
 			}
-			const isReps = (fullEx.default_mode || 'reps') === 'reps';
-			const newStep = createTimerStep(
-				fullEx.name,
-				isReps ? 30 : (fullEx.default_quantity || 30),
-				fullEx.media_url || ''
-			);
-			newStep.stepMode = fullEx.default_mode || 'reps';
-			if (isReps) newStep.targetReps = fullEx.default_quantity || 20;
-			newStep.exercises = [{ id: fullEx.id, name: fullEx.name, category: fullEx.category, discipline: fullEx.discipline }];
+			const newStep = createStepFromExercise(fullEx);
 			routine.steps.push(newStep);
 			expandStep(newStep.id);
 			persist();

@@ -1,8 +1,8 @@
-import { formatTime, formatFriendlyDuration, escapeHtml } from './utils.js';
+import { formatTime, formatFriendlyDuration, escapeHtml, parseYouTubeId } from './utils.js';
 import { isBreakStep, resolveStepMediaUrl } from './editor.js';
 import { getClipIcon, getTimerIcon, getBreakIcon, getStepsIcon, getShareIcon, getSaveIcon } from './icons.js';
 import { getCategoryBadgeHtml, getDisciplineBadgeHtml, getMuscleBadgeHtml, MUSCLE_DEFINITIONS } from './taxonomy.js';
-import { inferMusclesForExercise, getExerciseById, getExercises } from './exercises.js';
+import { inferMusclesForExercise, getExerciseById, getExercises, getExerciseFollowAlongMedia } from './exercises.js';
 import { getFlowTypeBadgeHtml } from './combos.js';
 
 /**
@@ -362,10 +362,28 @@ function createViewStepCard(step, index, steps, actions) {
 	const mediaUrl = resolveStepMediaUrl(step);
 	const isReps = step.stepMode === 'reps' || (step.targetReps && step.targetReps > 0);
 
-	if (step.type === 'clip') {
-		if (step.videoId) {
+	const ytVideoId = step.videoId || (() => {
+		if (Array.isArray(step.exercises) && step.exercises.length > 0) {
+			for (const ex of step.exercises) {
+				const fullEx = (ex && ex.id ? getExerciseById(ex.id) : null) || ex;
+				if (!fullEx) continue;
+				const followAlong = getExerciseFollowAlongMedia(fullEx);
+				if (followAlong && (followAlong.type === 'video' || followAlong.videoId)) {
+					return followAlong.videoId || parseYouTubeId(followAlong.url);
+				}
+				if (fullEx.media_url && (fullEx.media_url.includes('youtube') || fullEx.media_url.includes('youtu.be'))) {
+					return parseYouTubeId(fullEx.media_url);
+				}
+			}
+		}
+		return null;
+	})();
+
+	if (step.type === 'clip' || ytVideoId) {
+		const vid = step.videoId || ytVideoId;
+		if (vid) {
 			const img = document.createElement('img');
-			img.src = `https://img.youtube.com/vi/${step.videoId}/mqdefault.jpg`;
+			img.src = `https://img.youtube.com/vi/${vid}/mqdefault.jpg`;
 			img.alt = step.label || 'Video Clip';
 			img.loading = 'lazy';
 			img.onerror = () => {
