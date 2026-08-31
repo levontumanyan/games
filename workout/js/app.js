@@ -136,6 +136,15 @@ async function init() {
 			upNextLabel: dom.upNextLabel,
 			upNextMeta: dom.upNextMeta,
 			upNextMediaThumb: dom.upNextMediaThumb,
+			countdownStage: dom.countdownStage,
+			countdownRoutineTitle: dom.countdownRoutineTitle,
+			countdownNumber: dom.countdownNumber,
+			countdownRingFill: dom.countdownRingFill,
+			countdownFirstUpCard: dom.countdownFirstUpCard,
+			countdownFirstThumb: dom.countdownFirstThumb,
+			countdownFirstLabel: dom.countdownFirstLabel,
+			countdownFirstMeta: dom.countdownFirstMeta,
+			countdownSkipBtn: dom.countdownSkipBtn,
 		},
 		{
 			onStop: () => {
@@ -235,6 +244,17 @@ function cacheDom() {
 	dom.upNextLabel = document.getElementById('up-next-label');
 	dom.upNextMeta = document.getElementById('up-next-meta');
 	dom.upNextMediaThumb = document.getElementById('up-next-media-thumb');
+
+	// Countdown stage elements
+	dom.countdownStage = document.getElementById('countdown-stage');
+	dom.countdownRoutineTitle = document.getElementById('countdown-routine-title');
+	dom.countdownNumber = document.getElementById('countdown-number');
+	dom.countdownRingFill = document.getElementById('countdown-ring-fill');
+	dom.countdownFirstUpCard = document.getElementById('countdown-first-up-card');
+	dom.countdownFirstThumb = document.getElementById('countdown-first-thumb');
+	dom.countdownFirstLabel = document.getElementById('countdown-first-label');
+	dom.countdownFirstMeta = document.getElementById('countdown-first-meta');
+	dom.countdownSkipBtn = document.getElementById('countdown-skip-btn');
 
 	// Player bottom controls elements
 	dom.currentStepLabel = document.getElementById('current-step-label');

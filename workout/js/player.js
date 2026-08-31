@@ -55,6 +55,10 @@ let clipLoadedAt = 0;
 let hudIdleTimer = null;
 const HUD_IDLE_DELAY = 3000;
 
+// Starting countdown state (5-second intro)
+let isCountingDown = false;
+let countdownInterval = null;
+
 // Screen Wake Lock (prevent sleep / screensaver during workouts & fullscreen)
 let wakeLock = null;
 
@@ -133,7 +137,9 @@ export async function initPlayer(domRefs, callbacks) {
 		dom.playerStage.addEventListener('click', (e) => {
 			if (e.target.closest('button') || e.target.closest('input') || e.target.closest('.step-indicator')) return;
 			if (isPlaying) {
-				if (isRepsMode) {
+				if (isCountingDown) {
+					skipCountdown();
+				} else if (isRepsMode) {
 					completeRepsStep();
 				} else {
 					togglePause();
@@ -190,7 +196,9 @@ export async function initPlayer(domRefs, callbacks) {
 
 		if (e.code === 'Space' || e.key === 'Enter') {
 			e.preventDefault();
-			if (isRepsMode) {
+			if (isCountingDown) {
+				skipCountdown();
+			} else if (isRepsMode) {
 				completeRepsStep();
 			} else {
 				togglePause();
@@ -422,6 +430,168 @@ function onYTError(event) {
 }
 
 /**
+ * Clear any active starting countdown timer.
+ */
+export function clearCountdown() {
+	if (countdownInterval) {
+		clearInterval(countdownInterval);
+		countdownInterval = null;
+	}
+	isCountingDown = false;
+	const countdownStage = dom.countdownStage || document.getElementById('countdown-stage');
+	if (countdownStage) {
+		countdownStage.classList.add('hidden');
+	}
+}
+
+/**
+ * Skip the starting countdown and immediately execute step 1.
+ */
+export function skipCountdown() {
+	if (!isCountingDown) return;
+	clearCountdown();
+	executeCurrentStep();
+}
+
+/**
+ * Start the 5-second "Get Ready" intro screen.
+ * @param {Object} routine
+ * @param {Function} onComplete
+ */
+function startWorkoutCountdown(routine, onComplete) {
+	clearCountdown();
+	clearTimer();
+	clearRepsTimer();
+	clearClipMonitor();
+
+	isCountingDown = true;
+	const countdownStage = dom.countdownStage || document.getElementById('countdown-stage');
+	const routineTitleEl = dom.countdownRoutineTitle || document.getElementById('countdown-routine-title');
+	const numberEl = dom.countdownNumber || document.getElementById('countdown-number');
+	const ringFill = dom.countdownRingFill || document.getElementById('countdown-ring-fill');
+	const firstThumb = dom.countdownFirstThumb || document.getElementById('countdown-first-thumb');
+	const firstLabel = dom.countdownFirstLabel || document.getElementById('countdown-first-label');
+	const firstMeta = dom.countdownFirstMeta || document.getElementById('countdown-first-meta');
+	const skipBtn = dom.countdownSkipBtn || document.getElementById('countdown-skip-btn');
+
+	if (!countdownStage) {
+		onComplete();
+		return;
+	}
+
+	// Hide video and timer overlays during countdown
+	dom.videoWrapper?.classList.add('hidden');
+	dom.timerOverlay?.classList.add('hidden');
+	countdownStage.classList.remove('hidden');
+
+	if (routineTitleEl) {
+		const totalMoves = routine.steps.length;
+		routineTitleEl.textContent = `${routine.title || 'Workout'} (${totalMoves} movement${totalMoves === 1 ? '' : 's'})`;
+	}
+
+	// First movement preview
+	const firstStep = (routine.steps && routine.steps[0]) ? routine.steps[0] : null;
+	if (firstStep) {
+		if (firstLabel) firstLabel.textContent = firstStep.label || 'First Movement';
+
+		const videoAsset = resolveStepVideoAsset(firstStep);
+		const isVid = Boolean(firstStep.videoId || videoAsset?.videoId || firstStep.type === 'clip');
+		const isReps = firstStep.stepMode === 'reps' || (Boolean(firstStep.targetReps) && firstStep.targetReps > 0);
+		const dur = firstStep.durationSeconds || videoAsset?.endSeconds || 30;
+
+		let modeTag = '';
+		if (isVid) {
+			modeTag = `<span class="view-tag view-tag-clip" style="font-size:0.75rem;padding:2px 6px;">${getClipIcon(11)} Video Clip</span>`;
+		} else if (isReps) {
+			modeTag = `<span class="view-tag view-tag-reps" style="font-size:0.75rem;padding:2px 6px;">🔢 ${firstStep.targetReps || 20} reps</span>`;
+		} else {
+			modeTag = `<span class="view-tag view-tag-time" style="font-size:0.75rem;padding:2px 6px;">${getTimerIcon(11)} ${formatTime(dur)}</span>`;
+		}
+
+		// Target muscles
+		let musclePills = '';
+		if (Array.isArray(firstStep.exercises) && firstStep.exercises.length > 0) {
+			const ex = firstStep.exercises[0];
+			const fullEx = (ex && ex.id ? getExerciseById(ex.id) : null) || ex;
+			const muscles = inferMusclesForExercise(fullEx);
+			if (muscles.primary && muscles.primary.length > 0) {
+				const def = MUSCLE_DEFINITIONS[muscles.primary[0]];
+				if (def) {
+					musclePills = `<span style="font-size:0.75rem;padding:2px 6px;border-radius:4px;background:rgba(255,255,255,0.06);color:var(--text-secondary);">${def.icon} ${def.name}</span>`;
+				}
+			}
+		}
+
+		if (firstMeta) {
+			firstMeta.innerHTML = `${modeTag} ${musclePills}`;
+		}
+
+		// Thumbnail
+		if (firstThumb) {
+			const vidId = firstStep.videoId || videoAsset?.videoId;
+			const mediaUrl = resolveStepMediaUrl(firstStep);
+			if (vidId) {
+				firstThumb.innerHTML = `<img src="https://img.youtube.com/vi/${vidId}/mqdefault.jpg" alt="${escapeHtml(firstStep.label)}" />`;
+			} else if (mediaUrl) {
+				firstThumb.innerHTML = `<img src="${mediaUrl}" alt="${escapeHtml(firstStep.label)}" />`;
+			} else {
+				firstThumb.innerHTML = `<span style="font-size:1.4rem;">🥋</span>`;
+			}
+		}
+	}
+
+	if (skipBtn) {
+		skipBtn.onclick = (e) => {
+			e.stopPropagation();
+			skipCountdown();
+		};
+	}
+
+	let remaining = 5;
+	const totalSeconds = 5;
+	const circumference = 2 * Math.PI * 88; // ~552.92
+
+	function updateCountdownDisplay() {
+		if (numberEl) {
+			numberEl.textContent = remaining > 0 ? remaining : 'GO!';
+			// Trigger pulse animation
+			numberEl.style.animation = 'none';
+			numberEl.offsetHeight; // trigger reflow
+			numberEl.style.animation = 'countdownPulse 0.9s cubic-bezier(0.16, 1, 0.3, 1)';
+		}
+
+		if (ringFill) {
+			const fraction = remaining / totalSeconds;
+			const offset = circumference * (1 - fraction);
+			ringFill.style.strokeDasharray = circumference;
+			ringFill.style.strokeDashoffset = offset;
+		}
+
+		if (remaining <= 3 && remaining >= 1) {
+			playCountdownBeep(remaining);
+		} else if (remaining === 0) {
+			playCountdownBeep(0);
+		}
+	}
+
+	updateCountdownDisplay();
+
+	countdownInterval = setInterval(() => {
+		remaining--;
+		updateCountdownDisplay();
+
+		if (remaining <= 0) {
+			clearInterval(countdownInterval);
+			countdownInterval = null;
+			setTimeout(() => {
+				clearCountdown();
+				onComplete();
+			}, 400);
+		}
+	}, 1000);
+}
+
+/**
  * Start playing a routine from the beginning or a specific step.
  * @param {Object} routine - The routine to play
  * @param {number} [startIndex=0] - Step index to start from
@@ -442,7 +612,16 @@ export function startRoutine(routine, startIndex = 0, isPreview = false) {
 	requestWakeLock();
 
 	showPlayerUI();
-	executeCurrentStep();
+
+	if (!isPreviewMode && startIndex === 0) {
+		startWorkoutCountdown(routine, () => {
+			executeCurrentStep();
+		});
+	} else {
+		clearCountdown();
+		executeCurrentStep();
+	}
+
 	resetHudIdleTimer();
 }
 
@@ -1089,6 +1268,7 @@ export function resetPlayback() {
  * @param {boolean} [isCompleted=false]
  */
 export function stopPlayback(isCompleted = false) {
+	clearCountdown();
 	clearTimer();
 	clearRepsTimer();
 	clearClipMonitor();

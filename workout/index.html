@@ -167,7 +167,7 @@
 					</button>
 				</div>
 
-				<!-- Stage: video or timer -->
+				<!-- Stage: video, timer, or countdown -->
 				<div class="player-stage">
 					<!-- YouTube player container -->
 					<div id="video-wrapper" class="hidden">
@@ -201,6 +201,38 @@
 									</div>
 								</div>
 							</div>
+						</div>
+					</div>
+
+					<!-- Countdown / Get Ready stage -->
+					<div id="countdown-stage" class="countdown-stage hidden">
+						<div class="countdown-stage-content">
+							<div class="countdown-eyebrow">GET READY · WORKOUT STARTING</div>
+							<h2 id="countdown-routine-title" class="countdown-routine-title">Workout</h2>
+
+							<div class="countdown-circle-wrap">
+								<svg class="countdown-svg" viewBox="0 0 200 200">
+									<circle class="countdown-ring-bg" cx="100" cy="100" r="88" />
+									<circle id="countdown-ring-fill" class="countdown-ring-fill" cx="100" cy="100" r="88" />
+								</svg>
+								<div id="countdown-number" class="countdown-number">5</div>
+							</div>
+
+							<!-- First movement up next preview -->
+							<div id="countdown-first-up-card" class="countdown-first-up-card">
+								<span class="first-up-eyebrow">FIRST MOVEMENT</span>
+								<div class="first-up-content">
+									<div id="countdown-first-thumb" class="first-up-thumb"></div>
+									<div class="first-up-info">
+										<div id="countdown-first-label" class="first-up-title">—</div>
+										<div id="countdown-first-meta" class="first-up-meta"></div>
+									</div>
+								</div>
+							</div>
+
+							<button id="countdown-skip-btn" class="btn btn-ghost btn-sm countdown-skip-btn">
+								Start Now (Space) ⏭️
+							</button>
 						</div>
 					</div>
 				</div>
