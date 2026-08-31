@@ -20,3 +20,9 @@ When given a workout link (`https://levon.ajwest.ca/workout/#u=<user>&r=<id>` or
 ## Combo & Exercise Endpoints
 - `POST /workout/api/combos` — Create or update a custom combo.
 - `POST /workout/api/exercises` — Create or update a custom exercise.
+
+# Development & UI Verification
+
+## Playwright Visual Inspection
+- `uv run --with playwright python scripts/inspect_pages.py` — Capture desktop and mobile screenshots across all primary views (saved to `/tmp/workout_screenshots/`).
+

@@ -170,13 +170,13 @@ export function renderCombosCatalog(container, options = {}) {
 	});
 
 	const filterOptions = [
-		{ id: 'all', label: 'All Combos', icon: '🔗' },
-		{ id: 'flow:alternating', label: '⮀ Alternating Cadence', icon: '⮀' },
-		{ id: 'flow:sequence', label: '➔ Combination Flows', icon: '➔' },
-		{ id: 'flow:superset', label: '⚡ Supersets', icon: '⚡' },
-		{ id: 'disc:muay_thai', label: 'Muay Thai', icon: '🥊' },
-		{ id: 'disc:boxing', label: 'Boxing', icon: '🥊' },
-		{ id: 'disc:calisthenics', label: 'Calisthenics', icon: '🤸' },
+		{ id: 'all', label: 'All Combos' },
+		{ id: 'flow:alternating', label: 'Alternating' },
+		{ id: 'flow:sequence', label: 'Flow' },
+		{ id: 'flow:superset', label: 'Superset' },
+		{ id: 'disc:muay_thai', label: 'Muay Thai' },
+		{ id: 'disc:boxing', label: 'Boxing' },
+		{ id: 'disc:calisthenics', label: 'Calisthenics' },
 	];
 
 	function renderFilterChips() {
@@ -185,7 +185,7 @@ export function renderCombosCatalog(container, options = {}) {
 			const btn = document.createElement('button');
 			btn.type = 'button';
 			btn.className = `combo-chip-btn ${currentFilter === opt.id ? 'active' : ''}`;
-			btn.innerHTML = `<span>${opt.icon}</span> <span>${opt.label}</span>`;
+			btn.textContent = opt.label;
 			btn.addEventListener('click', () => {
 				currentFilter = opt.id;
 				renderFilterChips();
@@ -228,47 +228,26 @@ export function renderCombosCatalog(container, options = {}) {
 			card.className = 'combo-library-card';
 
 			const modeStr = (combo.default_mode || 'time') === 'reps'
-				? `🔢 ${combo.default_quantity || 20} Total Reps`
-				: `⏱️ ${formatTime(combo.default_quantity || 190)}`;
-
-			// Aggregate muscles from constituent exercises
-			const primarySet = new Set();
-			const secondarySet = new Set();
-			exList.forEach(e => {
-				const m = inferMusclesForExercise(e);
-				(m.primary || []).forEach(p => primarySet.add(p));
-				(m.secondary || []).forEach(s => secondarySet.add(s));
-			});
-			const primaryList = Array.from(primarySet).map(m => getMuscleBadgeHtml(m, true));
-			const secondaryList = Array.from(secondarySet).filter(m => !primarySet.has(m)).map(m => getMuscleBadgeHtml(m, false));
-			let displayedBadges = [...primaryList, ...secondaryList];
-			let moreCount = 0;
-			if (displayedBadges.length > 4) {
-				moreCount = displayedBadges.length - 3;
-				displayedBadges = displayedBadges.slice(0, 3);
-			}
-			const muscleBadgesHtml = displayedBadges.join('') + (moreCount > 0 ? `<span class="ex-muscle-more-pill">+${moreCount} more</span>` : '');
+				? `${combo.default_quantity || 20} Reps`
+				: formatTime(combo.default_quantity || 190);
 
 			card.innerHTML = `
 				<div class="combo-card-header">
 					<div class="combo-card-badges">
-						${getCategoryBadgeHtml(combo.category)}
+						${getFlowTypeBadgeHtml(combo.flow_type || 'alternating')}
 						${combo.discipline ? getDisciplineBadgeHtml(combo.discipline) : ''}
 					</div>
-					<button class="btn btn-ghost btn-xs btn-del-combo" title="Delete combo" data-id="${combo.id}">✕</button>
+					<span class="combo-card-mode-tag">${modeStr}</span>
 				</div>
 
 				<div class="combo-card-title-row">
 					<h3 class="combo-card-title">${escapeHtml(combo.name)}</h3>
-					<span class="combo-card-mode-tag">${modeStr}</span>
 				</div>
-
-				${muscleBadgesHtml ? `<div class="ex-lib-muscles-row">${muscleBadgesHtml}</div>` : ''}
 
 				<p class="combo-card-desc">${escapeHtml(combo.description || 'Compound movement flow.')}</p>
 
 				<div class="combo-exercises-pill-row">
-					<span class="combo-ex-label">Constituents:</span>
+					<span class="combo-ex-label">Movements:</span>
 					${exList.map(e => `
 						<span class="combo-constituent-pill">
 							<span class="pill-dot">●</span> ${escapeHtml(e.name)}
@@ -412,6 +391,7 @@ export function showComboDetailModal(combo, options = {}) {
 				<button class="btn btn-primary btn-hud-play" style="width:100%;">▶ Play Continuous Flow</button>
 				<button class="btn btn-ghost btn-hud-breakdown" style="width:100%;">⚡ Break Down into Steps</button>
 				<button class="btn btn-ghost btn-hud-add" style="width:100%;">+ Add to Workout</button>
+				${(combo.user_id && combo.user_id !== 'system') ? '<button class="btn btn-danger btn-sm btn-hud-del" style="width:100%;margin-top:8px;">🗑 Delete Combo</button>' : ''}
 			</div>
 		</div>
 
@@ -517,10 +497,20 @@ export function showComboDetailModal(combo, options = {}) {
 	}
 
 	const addRoutineBtn = modal.querySelector('.btn-hud-add');
-	if (addRoutineBtn) {
-		addRoutineBtn.addEventListener('click', () => {
-			close();
-			onAddToRoutine(combo);
+	const delComboBtn = modal.querySelector('.btn-hud-del');
+	if (delComboBtn) {
+		delComboBtn.addEventListener('click', async () => {
+			const confirmed = await showConfirm({
+				title: 'Delete Combo',
+				message: `Are you sure you want to delete "${combo.name}" from your custom combo library?`,
+				confirmText: 'Delete',
+				danger: true,
+			});
+			if (confirmed) {
+				await deleteCustomCombo(combo.id);
+				close();
+				options.onUpdated?.();
+			}
 		});
 	}
 

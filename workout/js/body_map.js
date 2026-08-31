@@ -557,51 +557,43 @@ export function renderAnatomyExplorer(container, options = {}) {
 	const onAddToRoutine = options.onAddToRoutine || (() => {});
 
 	container.innerHTML = `
-		<div class="exercises-catalog-container">
-			<div class="exercises-catalog-header">
+		<div class="anatomy-explorer-container">
+			<div class="anatomy-catalog-header">
 				<div>
-					<h2 class="exercises-title">🧬 Human Body Anatomy & Muscle Map</h2>
-					<p class="exercises-subtitle">Interactive muscle visualization — click any muscle group below to filter exercises</p>
+					<h2 class="anatomy-title">🧬 Anatomy & Muscle Explorer</h2>
+					<p class="anatomy-subtitle">Interactive muscle visualization — select any muscle group to inspect targeting movements</p>
 				</div>
-				<button id="btn-anatomy-create-ex" class="btn btn-primary btn-sm">+ New Exercise</button>
 			</div>
 
 			<!-- Interactive Body Map & Quick Selector -->
-			<div class="exercises-body-map-wrapper">
+			<div class="anatomy-body-map-wrapper">
 				<div id="anatomy-body-map-mount"></div>
 				<div class="anatomy-muscle-chips-selector" id="anatomy-quick-chips"></div>
 			</div>
 
-			<!-- Search & Category Filters -->
-			<div class="exercises-filter-bar">
-				<div class="search-box-wrapper">
-					<span class="search-icon">🔍</span>
-					<input type="text" id="anatomy-search-input" class="input exercise-search-input" placeholder="Search exercises, techniques, cues...">
+			<!-- Targeted Movements Section -->
+			<div class="anatomy-target-section">
+				<div class="anatomy-section-header">
+					<h3 id="anatomy-active-target-title" class="anatomy-section-title">🎯 Targeted Movements</h3>
+					<span id="anatomy-active-target-count" class="anatomy-target-count-badge">0 movements</span>
 				</div>
-				<div class="exercise-filter-chips" id="anatomy-filter-chips"></div>
+				<div id="anatomy-cards-grid" class="exercises-cards-grid"></div>
 			</div>
-
-			<!-- Full Exercises Cards Grid -->
-			<div id="anatomy-cards-grid" class="exercises-cards-grid"></div>
 		</div>
 	`;
 
-	let currentSearch = '';
-	let currentFilter = 'all';
 	let currentMuscleFilter = null;
 
 	const bodyMapMount = container.querySelector('#anatomy-body-map-mount');
 	const chipsContainer = container.querySelector('#anatomy-quick-chips');
-	const searchInput = container.querySelector('#anatomy-search-input');
-	const filterChipsContainer = container.querySelector('#anatomy-filter-chips');
 	const gridContainer = container.querySelector('#anatomy-cards-grid');
-	const createBtn = container.querySelector('#btn-anatomy-create-ex');
+	const targetTitle = container.querySelector('#anatomy-active-target-title');
+	const targetCount = container.querySelector('#anatomy-active-target-count');
 
 	const bodyMap = createBodyMap(bodyMapMount, {
 		onMuscleClick: (muscleId) => {
 			currentMuscleFilter = muscleId;
 			renderChips();
-			renderFilterChips();
 			renderGrid();
 		},
 	});
@@ -617,75 +609,28 @@ export function renderAnatomyExplorer(container, options = {}) {
 				currentMuscleFilter = currentMuscleFilter === m.id ? null : m.id;
 				bodyMap.setSelectedMuscle(currentMuscleFilter);
 				renderChips();
-				renderFilterChips();
 				renderGrid();
 			});
 			chipsContainer.appendChild(btn);
 		});
 	}
 
-	const filterOptions = [
-		{ id: 'all', label: 'All Movements', icon: '🏋️' },
-		{ id: 'disc:muay_thai', label: 'Muay Thai', icon: '🥊' },
-		{ id: 'disc:boxing', label: 'Boxing', icon: '🥊' },
-		{ id: 'disc:calisthenics', label: 'Calisthenics', icon: '🤸' },
-		{ id: 'disc:yoga', label: 'Yoga & Recovery', icon: '🧘' },
-		{ id: 'cat:strength', label: 'Strength', icon: '💪' },
-		{ id: 'cat:drill', label: 'Drills', icon: '⚡' },
-		{ id: 'cat:technique', label: 'Technique', icon: '🥋' },
-		{ id: 'cat:stretch', label: 'Stretch', icon: '🧘' },
-		{ id: 'cat:cardio', label: 'Cardio', icon: '🫀' },
-	];
-
-	function renderFilterChips() {
-		filterChipsContainer.innerHTML = '';
+	function renderGrid() {
+		const list = filterExercises('', '', '', currentMuscleFilter);
 
 		if (currentMuscleFilter && MUSCLE_DEFINITIONS[currentMuscleFilter]) {
 			const mDef = MUSCLE_DEFINITIONS[currentMuscleFilter];
-			const mBtn = document.createElement('button');
-			mBtn.type = 'button';
-			mBtn.className = 'ex-chip-btn active muscle-active-chip';
-			mBtn.innerHTML = `<span>${mDef.icon}</span> <span>${mDef.label}</span> <span class="chip-clear-x">✕</span>`;
-			mBtn.addEventListener('click', () => {
-				currentMuscleFilter = null;
-				bodyMap.setSelectedMuscle(null);
-				renderChips();
-				renderFilterChips();
-				renderGrid();
-			});
-			filterChipsContainer.appendChild(mBtn);
+			targetTitle.innerHTML = `<span>${mDef.icon}</span> Targeted Movements: <strong>${escapeHtml(mDef.label)}</strong>`;
+		} else {
+			targetTitle.textContent = '🎯 All Movements';
 		}
-
-		filterOptions.forEach(opt => {
-			const btn = document.createElement('button');
-			btn.type = 'button';
-			btn.className = `ex-chip-btn ${currentFilter === opt.id ? 'active' : ''}`;
-			btn.innerHTML = `<span>${opt.icon}</span> <span>${opt.label}</span>`;
-			btn.addEventListener('click', () => {
-				currentFilter = opt.id;
-				renderFilterChips();
-				renderGrid();
-			});
-			filterChipsContainer.appendChild(btn);
-		});
-	}
-
-	function renderGrid() {
-		let cat = '';
-		let disc = '';
-		if (currentFilter.startsWith('cat:')) {
-			cat = currentFilter.replace('cat:', '');
-		} else if (currentFilter.startsWith('disc:')) {
-			disc = currentFilter.replace('disc:', '');
-		}
-
-		const list = filterExercises(currentSearch, cat, disc, currentMuscleFilter);
+		targetCount.textContent = `${list.length} movement${list.length !== 1 ? 's' : ''}`;
 
 		if (list.length === 0) {
 			gridContainer.innerHTML = `
-				<div class="empty-sessions">
-					<p>No exercises found targeting ${currentMuscleFilter ? MUSCLE_DEFINITIONS[currentMuscleFilter]?.label || currentMuscleFilter : 'this filter'}.</p>
-					<p class="empty-sub">Select another muscle group or click ✕ on the filter chip to view all movements.</p>
+				<div class="empty-sessions" style="grid-column: 1 / -1;">
+					<p>No exercises found targeting ${currentMuscleFilter ? MUSCLE_DEFINITIONS[currentMuscleFilter]?.label || currentMuscleFilter : 'this area'}.</p>
+					<p class="empty-sub">Select another muscle group on the body map or choose a different quick chip above.</p>
 				</div>
 			`;
 			return;
@@ -699,41 +644,42 @@ export function renderAnatomyExplorer(container, options = {}) {
 			const card = document.createElement('div');
 			card.className = 'exercise-library-card';
 
+			const instructionCount = assets.filter(a => a.kind === 'instruction').length;
+			const demoCount = assets.filter(a => a.kind === 'demonstration').length;
+			const animCount = assets.filter(a => a.kind === 'animation' || a.kind === 'photo').length;
+
 			const modeStr = (ex.default_mode || 'reps') === 'reps'
-				? `🔢 ${ex.default_quantity || 20} Reps`
-				: `⏱️ ${formatTime(ex.default_quantity || 30)}`;
+				? `${ex.default_quantity || 20} Reps`
+				: formatTime(ex.default_quantity || 30);
 
-			const muscleBadgesHtml = [
-				...(muscles.primary || []).map(m => getMuscleBadgeHtml(m, true)),
-				...(muscles.secondary || []).map(m => getMuscleBadgeHtml(m, false)),
-			].join('');
-
+			card.dataset.id = ex.id;
 			card.innerHTML = `
 				<div class="ex-lib-header">
 					<div class="ex-lib-badges">
 						${getCategoryBadgeHtml(ex.category)}
 						${ex.discipline ? getDisciplineBadgeHtml(ex.discipline) : ''}
 					</div>
-					<button class="btn btn-ghost btn-xs btn-del-ex" title="Delete exercise" data-id="${ex.id}">✕</button>
+					<span class="ex-lib-mode-tag">${modeStr}</span>
 				</div>
 
 				<div class="ex-lib-title-row">
 					<h3 class="ex-lib-title">${escapeHtml(ex.name)}</h3>
-					<span class="ex-lib-mode-tag">${modeStr}</span>
 				</div>
 
-				<div class="ex-lib-muscles-row">${muscleBadgesHtml}</div>
+				<p class="ex-lib-desc">${escapeHtml(ex.description || 'Movement and technique practice.')}</p>
 
-				<p class="ex-lib-desc">${escapeHtml(ex.description || 'Movement and form execution.')}</p>
+				<div class="ex-lib-media-pills">
+					${instructionCount > 0 ? `<span class="ex-media-mini-pill pill-inst">🎬 ${instructionCount} Tutorial${instructionCount > 1 ? 's' : ''}</span>` : ''}
+					${demoCount > 0 ? `<span class="ex-media-mini-pill pill-demo">⚡ ${demoCount} Drill${demoCount > 1 ? 's' : ''}</span>` : ''}
+					${animCount > 0 ? `<span class="ex-media-mini-pill pill-anim">✨ Visual Form</span>` : ''}
+					${assets.length === 0 ? `<span class="ex-media-mini-pill pill-none">No media</span>` : ''}
+				</div>
 
 				<div class="ex-lib-actions">
-					<button class="btn btn-sm btn-primary btn-play-ex" title="Play exercise preview">
-						▶ Play Preview
+					<button class="btn btn-sm btn-ghost btn-play-ex" title="Test in Preview Mode">
+						▶ Preview
 					</button>
-					<button class="btn btn-sm btn-ghost btn-view-vars" title="View tutorials, form variations, and media">
-						🎬 Variations (${assets.length})
-					</button>
-					<button class="btn btn-sm btn-ghost btn-add-routine" title="Add to current workout">
+					<button class="btn btn-sm btn-primary btn-add-routine" title="Add to current workout">
 						+ Add to Workout
 					</button>
 				</div>
@@ -747,59 +693,31 @@ export function renderAnatomyExplorer(container, options = {}) {
 			});
 
 			const playBtn = card.querySelector('.btn-play-ex');
-			playBtn.addEventListener('click', () => {
+			playBtn.addEventListener('click', (e) => {
+				e.stopPropagation();
 				const followAlong = getExerciseFollowAlongMedia(ex);
 				onPlayExercise(ex, followAlong || null);
 			});
 
-			const varsBtn = card.querySelector('.btn-view-vars');
-			varsBtn.addEventListener('click', () => {
-				showExerciseVariationsModal(ex, {
-					onPlayAsset: (asset) => onPlayExercise(ex, asset),
-					onUpdated: () => renderGrid(),
-				});
-			});
-
 			const addRoutineBtn = card.querySelector('.btn-add-routine');
-			addRoutineBtn.addEventListener('click', () => {
+			addRoutineBtn.addEventListener('click', (e) => {
+				e.stopPropagation();
 				onAddToRoutine(ex);
 			});
 
-			const delBtn = card.querySelector('.btn-del-ex');
-			if (delBtn) {
-				delBtn.addEventListener('click', async (e) => {
-					e.stopPropagation();
-					const confirmed = await showConfirm({
-						title: 'Delete Exercise',
-						message: `Are you sure you want to delete "${ex.name}" from your custom exercise library?`,
-						confirmText: 'Delete',
-						danger: true,
-					});
-					if (confirmed) {
-						await deleteCustomExercise(ex.id);
-						renderGrid();
-					}
+			// Entire card is clickable to open top-layer detail & variations overlay
+			card.addEventListener('click', () => {
+				showExerciseVariationsModal(ex, {
+					onPlayAsset: (asset) => onPlayExercise(ex, asset),
+					onAddToRoutine: () => onAddToRoutine(ex),
+					onUpdated: () => renderGrid()
 				});
-			}
+			});
 
 			gridContainer.appendChild(card);
 		});
 	}
 
-	createBtn.addEventListener('click', () => {
-		showCreateExerciseModal({
-			onCreated: () => {
-				renderGrid();
-			},
-		});
-	});
-
-	searchInput.addEventListener('input', (e) => {
-		currentSearch = e.target.value;
-		renderGrid();
-	});
-
 	renderChips();
-	renderFilterChips();
 	renderGrid();
 }

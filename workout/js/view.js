@@ -90,31 +90,21 @@ export function renderRoutineOverview(routine, container, actions = {}) {
 	const statsRow = document.createElement('div');
 	statsRow.className = 'view-stats-row';
 
-	const stats = [
-		{ label: `${steps.length} Steps`, icon: getStepsIcon(14) },
-		{ label: `~${formatTime(totalSeconds)}`, icon: getTimerIcon(14) },
-		{ label: `${clipCount} Videos`, icon: getClipIcon(14) },
+	const metaItems = [
+		`${steps.length} steps`,
+		`~${formatTime(totalSeconds)}`,
 	];
-
-	if (repsCount > 0) {
-		stats.push({ label: `${repsCount} Rep Sets`, icon: '🔢' });
-	}
-	if (timerCount > 0) {
-		stats.push({ label: `${timerCount} Timers`, icon: getTimerIcon(14) });
-	}
-	if (breakCount > 0) {
-		stats.push({ label: `${breakCount} Breaks`, icon: getBreakIcon(14) });
-	}
+	if (clipCount > 0) metaItems.push(`${clipCount} video${clipCount > 1 ? 's' : ''}`);
+	if (repsCount > 0) metaItems.push(`${repsCount} rep set${repsCount > 1 ? 's' : ''}`);
+	if (breakCount > 0) metaItems.push(`${breakCount} break${breakCount > 1 ? 's' : ''}`);
 	if (routine.musicTracks && routine.musicTracks.length > 0) {
-		stats.push({ label: `${routine.musicTracks.length} Music Tracks`, icon: '🎵' });
+		metaItems.push(`${routine.musicTracks.length} music track${routine.musicTracks.length > 1 ? 's' : ''}`);
 	}
 
-	stats.forEach(stat => {
-		const pill = document.createElement('span');
-		pill.className = 'view-stat-pill';
-		pill.innerHTML = `${stat.icon} ${stat.label}`;
-		statsRow.appendChild(pill);
-	});
+	statsRow.innerHTML = metaItems.map((item, idx) => `
+		<span class="view-meta-item">${idx === 0 ? getStepsIcon(13) : ''} ${item}</span>
+		${idx < metaItems.length - 1 ? '<span class="view-meta-dot">·</span>' : ''}
+	`).join('');
 
 	titleInfo.append(title, statsRow);
 
@@ -341,13 +331,7 @@ function createViewStepCard(step, index, steps, actions) {
 		tag.innerHTML = `${getTimerIcon(11)} ${formatFriendlyDuration(step.durationSeconds || 30)}`;
 
 		details.append(title, tag);
-
-		const playAction = document.createElement('button');
-		playAction.className = 'view-step-play-btn';
-		playAction.innerHTML = '🔍';
-		playAction.title = `Preview Step ${index + 1}`;
-
-		card.append(indexBadge, iconBox, details, playAction);
+		card.append(indexBadge, iconBox, details);
 
 		// Single row click triggers Preview Mode so it does not count towards stats
 		card.addEventListener('click', () => {
@@ -571,7 +555,7 @@ function createViewStepCard(step, index, steps, actions) {
 				<span class="sub-row-meta">
 					${muscleHtml}
 					<span class="sub-row-target">${exTargetStr}</span>
-					<span class="sub-row-goto-icon" title="View Exercise">🥋 ↗</span>
+					<span class="sub-row-goto-icon" title="View Exercise">↗</span>
 				</span>
 			`;
 
@@ -593,31 +577,7 @@ function createViewStepCard(step, index, steps, actions) {
 		details.appendChild(nestedDeck);
 	}
 
-	// Actions column (View Exercise + Quick Preview)
-	const actionsWrap = document.createElement('div');
-	actionsWrap.className = 'view-step-card-actions';
-
-	if (linkedEx) {
-		const viewExBtn = document.createElement('button');
-		viewExBtn.type = 'button';
-		viewExBtn.className = 'view-step-ex-btn';
-		viewExBtn.innerHTML = '🥋';
-		viewExBtn.title = `View "${linkedEx.name}" movement guide & videos`;
-		viewExBtn.addEventListener('click', (e) => {
-			e.stopPropagation();
-			actions.onGoToExercise?.(linkedEx);
-		});
-		actionsWrap.appendChild(viewExBtn);
-	}
-
-	const playAction = document.createElement('button');
-	playAction.type = 'button';
-	playAction.className = 'view-step-play-btn';
-	playAction.innerHTML = '🔍';
-	playAction.title = `Preview Step ${index + 1} (Stats Disabled)`;
-
-	actionsWrap.appendChild(playAction);
-	card.append(indexBadge, mediaBox, details, actionsWrap);
+	card.append(indexBadge, mediaBox, details);
 
 	// Single row click triggers Preview Mode so it does not count towards stats
 	card.addEventListener('click', () => {
