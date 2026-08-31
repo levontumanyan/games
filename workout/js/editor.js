@@ -5,15 +5,13 @@
 import { generateId, parseYouTubeId, parseYouTubeInfo, parseTime, formatTime, formatFriendlyDuration, escapeHtml, showToast } from './utils.js';
 import { saveAudioFile, deleteAudioFile } from './musicdb.js';
 import { showPrompt, showAlert } from './modal.js';
-import { getClipIcon, getTimerIcon, getBreakIcon, getComboIcon, getExerciseIcon, getDuplicateIcon, getPlusIcon } from './icons.js';
+import { getTimerIcon, getBreakIcon, getComboIcon, getExerciseIcon, getDuplicateIcon, getPlusIcon } from './icons.js';
 import {
-	getCategoryBadgeHtml, getDisciplineBadgeHtml, getMuscleBadgeHtml,
-	getMediaKindBadgeHtml, MEDIA_KINDS
+	getCategoryBadgeHtml, getDisciplineBadgeHtml, getMuscleBadgeHtml
 } from './taxonomy.js';
 import {
 	getExercises, getExerciseById, filterExercises, createCustomExercise,
-	inferMusclesForExercise, getExerciseMediaAssets, getExerciseFollowAlongMedia,
-	getExerciseInstructionMedia, addMediaAssetToExercise
+	inferMusclesForExercise, getExerciseMediaAssets, getExerciseFollowAlongMedia
 } from './exercises.js';
 import { showExerciseVariationsModal } from './exercises_view.js';
 import { getCombos } from './combos.js';
@@ -107,7 +105,6 @@ export function renderEditor(routine, container, actions) {
 				<button type="button" class="btn btn-primary btn-sm btn-empty-add-ex">🥋 + Add Exercise</button>
 				<button type="button" class="btn btn-secondary btn-sm btn-empty-add-break">⏱️ + Add Rest</button>
 				<button type="button" class="btn btn-secondary btn-sm btn-empty-add-combo">🔗 + Add Combo</button>
-				<button type="button" class="btn btn-secondary btn-sm btn-empty-add-clip">🎬 + Add Video Clip</button>
 			</div>
 		`;
 		emptyCard.querySelector('.btn-empty-add-ex').addEventListener('click', () => showAddExerciseModal(routine, onUpdate, 0));
@@ -117,11 +114,6 @@ export function renderEditor(routine, container, actions) {
 			highlightStepElement(s.id);
 		});
 		emptyCard.querySelector('.btn-empty-add-combo').addEventListener('click', () => showAddComboModal(routine, onUpdate, 0));
-		emptyCard.querySelector('.btn-empty-add-clip').addEventListener('click', () => {
-			const s = insertClipStep(routine, 0);
-			onUpdate();
-			highlightStepElement(s.id);
-		});
 		container.appendChild(emptyCard);
 		return;
 	}
@@ -416,18 +408,6 @@ export function createInsertDivider(routine, insertIndex, onUpdate) {
 		showAddComboModal(routine, onUpdate, insertIndex);
 	});
 
-	const clipBtn = document.createElement('button');
-	clipBtn.type = 'button';
-	clipBtn.className = 'btn-insert-pill btn-insert-clip';
-	clipBtn.innerHTML = `🎬 + Video`;
-	clipBtn.addEventListener('click', (e) => {
-		e.stopPropagation();
-		const step = insertClipStep(routine, insertIndex);
-		onUpdate();
-		showToast(`Inserted Video Clip at #${insertIndex + 1}`);
-		highlightStepElement(step.id);
-	});
-
 	const closeBtn = document.createElement('button');
 	closeBtn.type = 'button';
 	closeBtn.className = 'btn-insert-close';
@@ -439,7 +419,7 @@ export function createInsertDivider(routine, insertIndex, onUpdate) {
 		addBtn.classList.remove('hidden');
 	});
 
-	menu.append(exBtn, breakBtn, comboBtn, clipBtn, closeBtn);
+	menu.append(exBtn, breakBtn, comboBtn, closeBtn);
 
 	addBtn.addEventListener('click', (e) => {
 		e.stopPropagation();
@@ -595,9 +575,7 @@ function createStepElement(step, index, routine, onUpdate, onTestStep) {
 	const body = document.createElement('div');
 	body.className = 'step-body';
 
-	if (step.type === 'clip') {
-		body.appendChild(createClipFields(step, onUpdate));
-	} else if (isBreak) {
+	if (isBreak) {
 		body.appendChild(createBreakFields(step, onUpdate));
 	} else {
 		body.appendChild(createTimerFields(step, onUpdate));
@@ -637,310 +615,6 @@ function createStepElement(step, index, routine, onUpdate, onTestStep) {
 
 	el.appendChild(moveBar);
 	return el;
-}
-
-/**
- * Create input fields for a clip step.
- */
-function createClipFields(step, onUpdate) {
-	const frag = document.createDocumentFragment();
-
-	if (!step.exercises) step.exercises = [];
-
-	// Exercise picker component
-	frag.appendChild(createExercisePicker(step, onUpdate));
-
-	// Multi-media variation selector (Instruction vs Execution vs GIF vs Photos)
-	frag.appendChild(createExerciseMediaSelector(step, onUpdate));
-
-	// Label
-	frag.appendChild(createField('Label', step.label, (val) => {
-		step.label = val;
-		onUpdate();
-	}));
-
-	// YouTube URL/ID
-	frag.appendChild(createField('YouTube URL or ID', step.videoId, (val) => {
-		const info = parseYouTubeInfo(val);
-		if (info && info.videoId) {
-			step.videoId = info.videoId;
-			if (info.startSeconds !== null && info.startSeconds !== undefined) {
-				step.startSeconds = info.startSeconds;
-				if (!step.endSeconds || step.endSeconds <= step.startSeconds) {
-					step.endSeconds = step.startSeconds + 60;
-				}
-			}
-			if (!step.label || step.label === 'Video Clip') {
-				fetchVideoTitle(info.videoId, (title) => {
-					if (title && (!step.label || step.label === 'Video Clip')) {
-						step.label = title;
-						onUpdate();
-					}
-				});
-			}
-			onUpdate();
-		}
-	}, 'e.g., https://youtube.com/watch?v=dQw4w9WgXcQ'));
-
-	// Dual-Handle Range Trimmer (Option 2)
-	frag.appendChild(createVideoRangeTrimmer(step, onUpdate));
-
-	return frag;
-}
-
-/**
- * Dual-Handle Range Trimmer component for video clips.
- * Visual interactive slider with two draggable handles, draggable range block,
- * and synchronized start/end time inputs.
- */
-function createVideoRangeTrimmer(step, onUpdate) {
-	const container = document.createElement('div');
-	container.className = 'video-trimmer';
-
-	let startSec = Math.max(0, step.startSeconds || 0);
-	let endSec = Math.max(startSec + 1, step.endSeconds || (startSec + 60));
-
-	function getTimelineMax() {
-		const ceiling = Math.max(300, endSec * 1.35);
-		return Math.ceil(ceiling / 60) * 60;
-	}
-	let timelineMax = getTimelineMax();
-
-	const trackWrapper = document.createElement('div');
-	trackWrapper.className = 'trimmer-track-wrapper';
-
-	const trackBg = document.createElement('div');
-	trackBg.className = 'trimmer-track-bg';
-
-	const highlight = document.createElement('div');
-	highlight.className = 'trimmer-highlight';
-	highlight.title = 'Drag interval window';
-
-	const handleStart = document.createElement('div');
-	handleStart.className = 'trimmer-handle trimmer-handle-start';
-	handleStart.title = 'Drag Start';
-
-	const handleEnd = document.createElement('div');
-	handleEnd.className = 'trimmer-handle trimmer-handle-end';
-	handleEnd.title = 'Drag End';
-
-	trackWrapper.append(trackBg, highlight, handleStart, handleEnd);
-
-	// Controls below trimmer
-	const controlsRow = document.createElement('div');
-	controlsRow.className = 'trimmer-controls-row';
-
-	// Start Input
-	const startGroup = document.createElement('div');
-	startGroup.className = 'field-group trimmer-input-group';
-	const startLbl = document.createElement('label');
-	startLbl.textContent = 'Start';
-	const startInput = document.createElement('input');
-	startInput.type = 'text';
-	startInput.className = 'input trimmer-input';
-	startInput.value = formatTime(startSec);
-	startGroup.append(startLbl, startInput);
-
-	// Duration Pill
-	const durationPill = document.createElement('div');
-	durationPill.className = 'trimmer-duration-pill';
-	durationPill.textContent = `⏱️ ${formatFriendlyDuration(endSec - startSec)}`;
-
-	// End Input
-	const endGroup = document.createElement('div');
-	endGroup.className = 'field-group trimmer-input-group';
-	const endLbl = document.createElement('label');
-	endLbl.textContent = 'End';
-	const endInput = document.createElement('input');
-	endInput.type = 'text';
-	endInput.className = 'input trimmer-input';
-	endInput.value = formatTime(endSec);
-	endGroup.append(endLbl, endInput);
-
-	controlsRow.append(startGroup, durationPill, endGroup);
-	container.append(trackWrapper, controlsRow);
-
-	function updateVisuals() {
-		timelineMax = getTimelineMax();
-		const leftPercent = (startSec / timelineMax) * 100;
-		const rightPercent = (endSec / timelineMax) * 100;
-		const widthPercent = Math.max(0, rightPercent - leftPercent);
-
-		highlight.style.left = `${leftPercent}%`;
-		highlight.style.width = `${widthPercent}%`;
-		handleStart.style.left = `${leftPercent}%`;
-		handleEnd.style.left = `${rightPercent}%`;
-
-		startInput.value = formatTime(startSec);
-		endInput.value = formatTime(endSec);
-		durationPill.textContent = `⏱️ ${formatFriendlyDuration(endSec - startSec)}`;
-	}
-
-	updateVisuals();
-
-	// Pointer dragging
-	let isDragging = null;
-	let dragStartX = 0;
-	let dragInitialStart = 0;
-	let dragInitialEnd = 0;
-
-	function getSecFromPointer(e) {
-		const rect = trackWrapper.getBoundingClientRect();
-		const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-		return Math.round(frac * timelineMax);
-	}
-
-	handleStart.addEventListener('pointerdown', (e) => {
-		e.preventDefault();
-		handleStart.setPointerCapture(e.pointerId);
-		isDragging = 'start';
-	});
-
-	handleEnd.addEventListener('pointerdown', (e) => {
-		e.preventDefault();
-		handleEnd.setPointerCapture(e.pointerId);
-		isDragging = 'end';
-	});
-
-	highlight.addEventListener('pointerdown', (e) => {
-		e.preventDefault();
-		highlight.setPointerCapture(e.pointerId);
-		isDragging = 'range';
-		dragStartX = e.clientX;
-		dragInitialStart = startSec;
-		dragInitialEnd = endSec;
-	});
-
-	const onPointerMove = (e) => {
-		if (!isDragging) return;
-		if (isDragging === 'start') {
-			const s = getSecFromPointer(e);
-			startSec = Math.max(0, Math.min(s, endSec - 1));
-			step.startSeconds = startSec;
-			updateVisuals();
-		} else if (isDragging === 'end') {
-			const end = getSecFromPointer(e);
-			endSec = Math.max(startSec + 1, Math.min(end, timelineMax));
-			step.endSeconds = endSec;
-			updateVisuals();
-		} else if (isDragging === 'range') {
-			const rect = trackWrapper.getBoundingClientRect();
-			const deltaSec = Math.round(((e.clientX - dragStartX) / rect.width) * timelineMax);
-			const dur = dragInitialEnd - dragInitialStart;
-			let newStart = dragInitialStart + deltaSec;
-			if (newStart < 0) newStart = 0;
-			if (newStart + dur > timelineMax) newStart = timelineMax - dur;
-			startSec = newStart;
-			endSec = newStart + dur;
-			step.startSeconds = startSec;
-			step.endSeconds = endSec;
-			updateVisuals();
-		}
-	};
-
-	const onPointerUp = () => {
-		if (isDragging) {
-			isDragging = null;
-			onUpdate();
-		}
-	};
-
-	trackWrapper.addEventListener('pointermove', onPointerMove);
-	trackWrapper.addEventListener('pointerup', onPointerUp);
-	trackWrapper.addEventListener('pointercancel', onPointerUp);
-
-	// Typing listeners with auto-select
-	startInput.addEventListener('focus', () => startInput.select());
-	endInput.addEventListener('focus', () => endInput.select());
-
-	const commitStart = () => {
-		const parsed = parseTime(startInput.value);
-		startSec = parsed;
-		if (endSec <= startSec) {
-			endSec = startSec + 60;
-		}
-		step.startSeconds = startSec;
-		step.endSeconds = endSec;
-		updateVisuals();
-		onUpdate();
-	};
-
-	const commitEnd = () => {
-		const parsed = parseTime(endInput.value);
-		if (parsed > startSec) {
-			endSec = parsed;
-		} else {
-			endSec = startSec + 60;
-		}
-		step.startSeconds = startSec;
-		step.endSeconds = endSec;
-		updateVisuals();
-		onUpdate();
-	};
-
-	startInput.addEventListener('change', commitStart);
-	startInput.addEventListener('blur', commitStart);
-	startInput.addEventListener('wheel', (e) => {
-		e.preventDefault();
-		const delta = e.shiftKey ? 5 : 1;
-		startSec = Math.max(0, e.deltaY < 0 ? startSec + delta : startSec - delta);
-		if (endSec <= startSec) endSec = startSec + 5;
-		step.startSeconds = startSec;
-		step.endSeconds = endSec;
-		updateVisuals();
-		onUpdate();
-	}, { passive: false });
-	startInput.addEventListener('keydown', (e) => {
-		const delta = e.shiftKey ? 5 : 1;
-		if (e.key === 'ArrowUp') {
-			e.preventDefault();
-			startSec = Math.max(0, startSec + delta);
-			if (endSec <= startSec) endSec = startSec + 5;
-			step.startSeconds = startSec;
-			step.endSeconds = endSec;
-			updateVisuals();
-			onUpdate();
-		} else if (e.key === 'ArrowDown') {
-			e.preventDefault();
-			startSec = Math.max(0, startSec - delta);
-			step.startSeconds = startSec;
-			updateVisuals();
-			onUpdate();
-		} else if (e.key === 'Enter') {
-			startInput.blur();
-		}
-	});
-
-	endInput.addEventListener('change', commitEnd);
-	endInput.addEventListener('blur', commitEnd);
-	endInput.addEventListener('wheel', (e) => {
-		e.preventDefault();
-		const delta = e.shiftKey ? 5 : 1;
-		endSec = Math.max(startSec + 1, e.deltaY < 0 ? endSec + delta : endSec - delta);
-		step.endSeconds = endSec;
-		updateVisuals();
-		onUpdate();
-	}, { passive: false });
-	endInput.addEventListener('keydown', (e) => {
-		const delta = e.shiftKey ? 5 : 1;
-		if (e.key === 'ArrowUp') {
-			e.preventDefault();
-			endSec = Math.max(startSec + 1, endSec + delta);
-			step.endSeconds = endSec;
-			updateVisuals();
-			onUpdate();
-		} else if (e.key === 'ArrowDown') {
-			e.preventDefault();
-			endSec = Math.max(startSec + 1, endSec - delta);
-			step.endSeconds = endSec;
-			updateVisuals();
-			onUpdate();
-		} else if (e.key === 'Enter') {
-			endInput.blur();
-		}
-	});
-
-	return container;
 }
 
 /**
@@ -1353,156 +1027,6 @@ function createExercisePicker(step, onUpdate) {
 }
 
 /**
- * Component to display, filter, and pick between an exercise's multiple media variations
- * (Instruction breakdown video vs. Execution video vs. Looping GIF / Animation vs. Photos).
- */
-function createExerciseMediaSelector(step, onUpdate) {
-	const container = document.createElement('div');
-	container.className = 'step-media-selector-section';
-
-	const assets = getExerciseMediaAssets(step.exercises || []);
-
-	if (assets.length === 0) {
-		return container;
-	}
-
-	const header = document.createElement('div');
-	header.className = 'media-selector-header';
-
-	const title = document.createElement('div');
-	title.className = 'media-selector-title';
-	title.innerHTML = `<span>🎬 Media & Variations</span> <span class="badge-count">${assets.length} available</span>`;
-
-	header.appendChild(title);
-	container.appendChild(header);
-
-	// Tabs: All, Follow-Along Drills, Animations, Photos, Coaching Tutorials
-	const tabsRow = document.createElement('div');
-	tabsRow.className = 'media-selector-tabs';
-
-	let activeFilter = 'all';
-
-	const kindOrder = ['all', 'demonstration', 'animation', 'photo', 'instruction'];
-	const rawKinds = new Set(assets.map(a => a.kind || 'demonstration'));
-	const kindsPresent = kindOrder.filter(k => k === 'all' || rawKinds.has(k));
-	rawKinds.forEach(k => {
-		if (!kindsPresent.includes(k)) kindsPresent.push(k);
-	});
-
-	function renderMediaGrid() {
-		const existingGrid = container.querySelector('.media-assets-grid');
-		if (existingGrid) existingGrid.remove();
-
-		const grid = document.createElement('div');
-		grid.className = 'media-assets-grid';
-
-		const filtered = activeFilter === 'all' ? assets : assets.filter(a => (a.kind || 'demonstration') === activeFilter);
-
-		if (filtered.length === 0) {
-			grid.innerHTML = '<p class="empty-chip-hint">No media in this category.</p>';
-			container.appendChild(grid);
-			return;
-		}
-
-		filtered.forEach(asset => {
-			const isVideo = asset.type === 'video' || Boolean(asset.videoId);
-			const isCurrentlyActive = isVideo
-				? (step.type === 'clip' && step.videoId === asset.videoId && (step.startSeconds || 0) === (asset.startSeconds || 0))
-				: ((step.gifUrl === asset.url || step.mediaUrl === asset.url) && (step.type === 'timer'));
-
-			const card = document.createElement('div');
-			card.className = `media-asset-card ${isCurrentlyActive ? 'is-active' : ''} kind-${asset.kind || 'demonstration'}`;
-			card.title = `Click to apply "${asset.title}" to this step`;
-
-			let thumbHtml = '';
-			if (isVideo) {
-				const vid = asset.videoId || parseYouTubeId(asset.url);
-				thumbHtml = `
-					<div class="asset-thumb-box">
-						<img src="https://img.youtube.com/vi/${vid}/mqdefault.jpg" alt="${escapeHtml(asset.title || '')}" loading="lazy">
-						<div class="asset-play-overlay">${asset.kind === 'instruction' ? '🎬' : '▶'}</div>
-						${asset.startSeconds !== undefined && asset.endSeconds ? `<span class="asset-timestamp">${formatTime(asset.startSeconds)} - ${formatTime(asset.endSeconds)}</span>` : ''}
-					</div>
-				`;
-			} else {
-				thumbHtml = `
-					<div class="asset-thumb-box">
-						<img src="${asset.url}" alt="${escapeHtml(asset.title || '')}" class="asset-img-thumb" loading="lazy">
-						<span class="asset-type-badge">${asset.kind === 'photo' ? '📷 Photo' : '✨ Looping GIF'}</span>
-					</div>
-				`;
-			}
-
-			card.innerHTML = `
-				${thumbHtml}
-				<div class="asset-card-info">
-					<div class="asset-kind-badge-row">
-						${getMediaKindBadgeHtml(asset.kind)}
-						${isCurrentlyActive ? '<span class="asset-active-pill">✓ Active</span>' : ''}
-					</div>
-					<div class="asset-card-title">${escapeHtml(asset.title || 'Media Asset')}</div>
-					<div class="asset-card-sub">${escapeHtml(asset.exerciseName || '')}</div>
-				</div>
-			`;
-
-			card.addEventListener('click', () => {
-				if (isVideo) {
-					step.type = 'clip';
-					step.videoId = asset.videoId || parseYouTubeId(asset.url);
-					step.startSeconds = asset.startSeconds || 0;
-					step.endSeconds = asset.endSeconds || (step.startSeconds + 60);
-					if (asset.kind === 'instruction') {
-						step.isTutorial = true;
-						step.label = `${asset.exerciseName || 'Exercise'}: [Tutorial] ${asset.title || 'Instruction'}`;
-					} else {
-						delete step.isTutorial;
-						step.label = `${asset.exerciseName || 'Exercise'}: Follow-Along`;
-					}
-				} else {
-					step.type = 'timer';
-					delete step.isTutorial;
-					step.gifUrl = asset.url;
-					step.mediaUrl = asset.url;
-					if (!step.label || step.label === 'Exercise' || step.label === 'Video Clip' || step.label.includes('[Tutorial]') || step.label.includes('Follow-Along')) {
-						step.label = asset.exerciseName || 'Exercise';
-					}
-				}
-				onUpdate();
-			});
-
-			grid.appendChild(card);
-		});
-
-		container.appendChild(grid);
-	}
-
-	kindsPresent.forEach(k => {
-		const tabBtn = document.createElement('button');
-		tabBtn.type = 'button';
-		tabBtn.className = `media-tab-btn ${activeFilter === k ? 'active' : ''}`;
-		if (k === 'all') {
-			tabBtn.textContent = `All (${assets.length})`;
-		} else {
-			const info = MEDIA_KINDS[k] || { label: k, icon: '🎬' };
-			const count = assets.filter(a => (a.kind || 'demonstration') === k).length;
-			tabBtn.innerHTML = `${info.icon} ${info.label} (${count})`;
-		}
-		tabBtn.addEventListener('click', () => {
-			activeFilter = k;
-			tabsRow.querySelectorAll('.media-tab-btn').forEach(b => b.classList.remove('active'));
-			tabBtn.classList.add('active');
-			renderMediaGrid();
-		});
-		tabsRow.appendChild(tabBtn);
-	});
-
-	container.appendChild(tabsRow);
-	renderMediaGrid();
-
-	return container;
-}
-
-/**
  * Create input fields for a timer or reps step.
  */
 function createTimerFields(step, onUpdate) {
@@ -1515,9 +1039,6 @@ function createTimerFields(step, onUpdate) {
 
 	// Exercise picker component
 	frag.appendChild(createExercisePicker(step, onUpdate));
-
-	// Multi-media variation selector (Instruction vs Execution vs GIF vs Photos)
-	frag.appendChild(createExerciseMediaSelector(step, onUpdate));
 
 	// Label
 	frag.appendChild(createField('Exercise Label', step.label, (val) => {
