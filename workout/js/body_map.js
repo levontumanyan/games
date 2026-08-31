@@ -6,210 +6,26 @@
  */
 
 import {
-	getExercises,
+	MUSCLE_DEFINITIONS,
+	getMuscleBadgeHtml,
 	getCategoryBadgeHtml,
 	getDisciplineBadgeHtml,
-	getMuscleBadgeHtml,
+} from './taxonomy.js';
+import {
+	getExercises,
 	getExerciseMediaAssets,
 	getExerciseFollowAlongMedia,
 	inferMusclesForExercise,
 	filterExercises,
-	showExerciseVariationsModal,
-	showCreateExerciseModal,
 	deleteCustomExercise,
 } from './exercises.js';
+import {
+	showExerciseVariationsModal,
+	showCreateExerciseModal,
+} from './exercises_view.js';
 import { escapeHtml, formatTime } from './utils.js';
 import { showConfirm } from './modal.js';
-
-export const MUSCLE_DEFINITIONS = {
-	chest: {
-		id: 'chest',
-		label: 'Chest (Pectorals)',
-		icon: '🫁',
-		region: 'upper',
-		color: '#c46860',
-		paths: {
-			front: ['path-chest-left', 'path-chest-right'],
-			back: [],
-		},
-	},
-	shoulders: {
-		id: 'shoulders',
-		label: 'Shoulders (Deltoids)',
-		icon: '🥋',
-		region: 'upper',
-		color: '#c77953',
-		paths: {
-			front: ['path-delt-front-left', 'path-delt-front-right'],
-			back: ['path-delt-back-left', 'path-delt-back-right'],
-		},
-	},
-	biceps: {
-		id: 'biceps',
-		label: 'Biceps',
-		icon: '💪',
-		region: 'upper',
-		color: '#cbb07a',
-		paths: {
-			front: ['path-bicep-left', 'path-bicep-right'],
-			back: [],
-		},
-	},
-	triceps: {
-		id: 'triceps',
-		label: 'Triceps',
-		icon: '🦾',
-		region: 'upper',
-		color: '#d19e5b',
-		paths: {
-			front: [],
-			back: ['path-tricep-left', 'path-tricep-right'],
-		},
-	},
-	forearms: {
-		id: 'forearms',
-		label: 'Forearms & Wrists',
-		icon: '✊',
-		region: 'upper',
-		color: '#8195a2',
-		paths: {
-			front: ['path-forearm-front-left', 'path-forearm-front-right'],
-			back: ['path-forearm-back-left', 'path-forearm-back-right'],
-		},
-	},
-	traps: {
-		id: 'traps',
-		label: 'Trapezius & Neck',
-		icon: '👔',
-		region: 'upper',
-		color: '#9e8b7d',
-		paths: {
-			front: [],
-			back: ['path-traps'],
-		},
-	},
-	lats: {
-		id: 'lats',
-		label: 'Lats (Latissimus Dorsi)',
-		icon: '🛡️',
-		region: 'upper',
-		color: '#6aa3a9',
-		paths: {
-			front: [],
-			back: ['path-lats-left', 'path-lats-right'],
-		},
-	},
-	lower_back: {
-		id: 'lower_back',
-		label: 'Lower Back (Lumbar)',
-		icon: '🦴',
-		region: 'upper',
-		color: '#7e8db5',
-		paths: {
-			front: [],
-			back: ['path-lower-back'],
-		},
-	},
-	abs: {
-		id: 'abs',
-		label: 'Abs (Six-Pack Core)',
-		icon: '🧱',
-		region: 'core',
-		color: '#5fa778',
-		paths: {
-			front: ['path-abs-upper', 'path-abs-mid', 'path-abs-lower'],
-			back: [],
-		},
-	},
-	obliques: {
-		id: 'obliques',
-		label: 'Obliques (Side Core)',
-		icon: '🌀',
-		region: 'core',
-		color: '#6ca396',
-		paths: {
-			front: ['path-oblique-left', 'path-oblique-right'],
-			back: [],
-		},
-	},
-	hip_flexors: {
-		id: 'hip_flexors',
-		label: 'Hip Flexors (Psoas)',
-		icon: '⚡',
-		region: 'core',
-		color: '#78a88a',
-		paths: {
-			front: ['path-hip-flexor-left', 'path-hip-flexor-right'],
-			back: [],
-		},
-	},
-	pelvic_floor: {
-		id: 'pelvic_floor',
-		label: 'Pelvic Floor (Deep Core)',
-		icon: '🪷',
-		region: 'core',
-		color: '#82967e',
-		paths: {
-			front: ['path-pelvic-front'],
-			back: ['path-pelvic-back'],
-		},
-	},
-	groin: {
-		id: 'groin',
-		label: 'Groin & Adductors (Inner Thigh)',
-		icon: '🦵',
-		region: 'lower',
-		color: '#849c89',
-		paths: {
-			front: ['path-groin-left', 'path-groin-right'],
-			back: [],
-		},
-	},
-	glutes: {
-		id: 'glutes',
-		label: 'Glutes & Hips',
-		icon: '🍑',
-		region: 'lower',
-		color: '#b85d39',
-		paths: {
-			front: [],
-			back: ['path-glute-left', 'path-glute-right'],
-		},
-	},
-	quads: {
-		id: 'quads',
-		label: 'Quads (Front Thigh)',
-		icon: '🍗',
-		region: 'lower',
-		color: '#9e782f',
-		paths: {
-			front: ['path-quad-left', 'path-quad-right'],
-			back: [],
-		},
-	},
-	hamstrings: {
-		id: 'hamstrings',
-		label: 'Hamstrings (Rear Thigh)',
-		icon: '🦵',
-		region: 'lower',
-		color: '#a87232',
-		paths: {
-			front: [],
-			back: ['path-hamstring-left', 'path-hamstring-right'],
-		},
-	},
-	calves: {
-		id: 'calves',
-		label: 'Calves & Shins',
-		icon: '🦶',
-		region: 'lower',
-		color: '#556b78',
-		paths: {
-			front: ['path-calf-front-left', 'path-calf-front-right'],
-			back: ['path-calf-back-left', 'path-calf-back-right'],
-		},
-	},
-};
+export { MUSCLE_DEFINITIONS };
 
 /**
  * Clean, proportionate SVG markup for the Anterior (Front) body view with expanded anatomy.

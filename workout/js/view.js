@@ -1,9 +1,9 @@
 import { formatTime, formatFriendlyDuration, escapeHtml } from './utils.js';
 import { isBreakStep, resolveStepMediaUrl } from './editor.js';
 import { getClipIcon, getTimerIcon, getBreakIcon, getStepsIcon, getShareIcon, getSaveIcon } from './icons.js';
-import { getCategoryBadgeHtml, getDisciplineBadgeHtml, inferMusclesForExercise, getMuscleBadgeHtml, getExerciseById, getExercises } from './exercises.js';
+import { getCategoryBadgeHtml, getDisciplineBadgeHtml, getMuscleBadgeHtml, MUSCLE_DEFINITIONS } from './taxonomy.js';
+import { inferMusclesForExercise, getExerciseById, getExercises } from './exercises.js';
 import { getFlowTypeBadgeHtml } from './combos.js';
-import { MUSCLE_DEFINITIONS } from './body_map.js';
 
 /**
  * Helper to resolve an exercise definition for a step.

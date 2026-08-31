@@ -31,7 +31,8 @@ import {
 	fetchUsers, createUser
 } from './user.js';
 import { renderStatsDashboard } from './stats.js';
-import { loadExercises, renderExercisesCatalog, getExerciseById, getExerciseFollowAlongMedia, showExerciseVariationsModal, highlightExerciseCard } from './exercises.js';
+import { loadExercises, getExerciseById, getExerciseFollowAlongMedia } from './exercises.js';
+import { renderExercisesCatalog, showExerciseVariationsModal, highlightExerciseCard } from './exercises_view.js';
 import { loadCombos, renderCombosCatalog } from './combos.js';
 import { renderAnatomyExplorer } from './body_map.js';
 import { initTheme } from './theme.js';

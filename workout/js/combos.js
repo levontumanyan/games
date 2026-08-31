@@ -3,7 +3,9 @@
  */
 
 import { fetchServerCombos, saveCustomComboOnServer, deleteCustomComboOnServer } from './storage.js';
-import { getExerciseById, getExercises, getCategoryBadgeHtml, getDisciplineBadgeHtml, inferMusclesForExercise, getMuscleBadgeHtml, showExerciseVariationsModal } from './exercises.js';
+import { getCategoryBadgeHtml, getDisciplineBadgeHtml, getMuscleBadgeHtml } from './taxonomy.js';
+import { getExerciseById, getExercises, inferMusclesForExercise } from './exercises.js';
+import { showExerciseVariationsModal } from './exercises_view.js';
 import { escapeHtml, formatTime, parseYouTubeId } from './utils.js';
 import { showConfirm, showAlert } from './modal.js';
 

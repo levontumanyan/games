@@ -15,7 +15,7 @@ import {
 	resumeSession, completeSession, stopSession
 } from './session.js';
 import { inferMusclesForExercise, getExerciseById, getExerciseInstructionMedia, getExerciseFollowAlongMedia } from './exercises.js';
-import { MUSCLE_DEFINITIONS } from './body_map.js';
+import { MUSCLE_DEFINITIONS } from './taxonomy.js';
 
 const PLAY_ICON = `<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><polygon points="7,4 19,12 7,20"/></svg>`;
 const PAUSE_ICON = `<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1.5"/><rect x="14" y="4" width="4" height="16" rx="1.5"/></svg>`;

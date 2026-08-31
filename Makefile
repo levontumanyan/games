@@ -57,11 +57,22 @@ format:
 check: lint test
 
 test:
-	@echo "==> Running workout tests..."
+	@echo "==> Running workout tests (fast unit & AST module cycle tests)..."
 	@cd workout && uv run pytest -q
 	@echo "==> Running spelling-bee tests..."
 	@cd spelling-bee && uv run pytest -q
-	@echo "All tests passed!"
+	@echo "All fast tests passed!"
+
+test-browser:
+	@echo "==> Running Playwright headless browser smoke tests..."
+	@cd workout && uv run pytest -q -m browser
+	@echo "All browser smoke tests passed!"
+
+test-all:
+	@echo "==> Running full test suite (fast unit + Playwright browser tests)..."
+	@cd workout && uv run pytest -q -m ""
+	@cd spelling-bee && uv run pytest -q
+	@echo "All tests (including browser suite) passed!"
 
 sync:
 	@echo "==> Syncing workout dependencies..."

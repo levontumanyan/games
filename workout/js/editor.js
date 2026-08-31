@@ -7,11 +7,15 @@ import { saveAudioFile, deleteAudioFile } from './musicdb.js';
 import { showPrompt, showAlert } from './modal.js';
 import { getClipIcon, getTimerIcon, getBreakIcon, getComboIcon, getExerciseIcon, getDuplicateIcon, getPlusIcon } from './icons.js';
 import {
+	getCategoryBadgeHtml, getDisciplineBadgeHtml, getMuscleBadgeHtml,
+	getMediaKindBadgeHtml, MEDIA_KINDS
+} from './taxonomy.js';
+import {
 	getExercises, getExerciseById, filterExercises, createCustomExercise,
-	getCategoryBadgeHtml, getDisciplineBadgeHtml, inferMusclesForExercise, getMuscleBadgeHtml,
-	getExerciseMediaAssets, getExerciseFollowAlongMedia, getExerciseInstructionMedia,
-	getMediaKindBadgeHtml, addMediaAssetToExercise, showExerciseVariationsModal, MEDIA_KINDS
+	inferMusclesForExercise, getExerciseMediaAssets, getExerciseFollowAlongMedia,
+	getExerciseInstructionMedia, addMediaAssetToExercise
 } from './exercises.js';
+import { showExerciseVariationsModal } from './exercises_view.js';
 import { getCombos } from './combos.js';
 
 // Track expanded step IDs across renders

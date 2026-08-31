@@ -4,7 +4,7 @@ import { showConfirm, showAlert } from './modal.js';
 import {
 	CATEGORIES, DISCIPLINES,
 	getCategoryBadgeHtml, getDisciplineBadgeHtml
-} from './exercises.js';
+} from './taxonomy.js';
 
 let cachedStats = null;
 
