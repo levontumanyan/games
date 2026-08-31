@@ -849,16 +849,7 @@ function createExercisePicker(step, onUpdate) {
 	if (!step.exercises) step.exercises = [];
 
 	const container = document.createElement('div');
-	container.className = 'field-group step-exercise-picker-group';
-
-	const headerRow = document.createElement('div');
-	headerRow.className = 'ex-picker-header-row';
-
-	const label = document.createElement('label');
-	label.textContent = `Exercises & Movements (${step.exercises.length})`;
-
-	headerRow.appendChild(label);
-	container.appendChild(headerRow);
+	container.className = 'step-exercise-picker-compact';
 
 	// Tag chips list
 	const chipList = document.createElement('div');
@@ -866,14 +857,6 @@ function createExercisePicker(step, onUpdate) {
 
 	function renderChips() {
 		chipList.innerHTML = '';
-		if (step.exercises.length === 0) {
-			const emptyChip = document.createElement('span');
-			emptyChip.className = 'empty-chip-hint';
-			emptyChip.textContent = 'No movements tagged (click below to select or add)';
-			chipList.appendChild(emptyChip);
-			return;
-		}
-
 		step.exercises.forEach((ex, i) => {
 			const chip = document.createElement('div');
 			chip.className = 'step-ex-chip';
@@ -883,7 +866,7 @@ function createExercisePicker(step, onUpdate) {
 				${getCategoryBadgeHtml(ex.category)}
 				<span class="step-ex-name">${escapeHtml(ex.name)}</span>
 				${ex.discipline ? getDisciplineBadgeHtml(ex.discipline) : ''}
-				<button type="button" class="btn-remove-ex-chip" title="Remove exercise">✕</button>
+				<button type="button" class="btn-remove-ex-chip" title="Remove movement">✕</button>
 			`;
 			chip.addEventListener('click', () => {
 				const fullEx = (ex.id ? getExerciseById(ex.id) : null) || ex;
@@ -898,7 +881,6 @@ function createExercisePicker(step, onUpdate) {
 			removeBtn.addEventListener('click', (e) => {
 				e.stopPropagation();
 				step.exercises.splice(i, 1);
-				label.textContent = `Exercises & Movements (${step.exercises.length})`;
 				renderChips();
 				onUpdate();
 			});
@@ -911,12 +893,12 @@ function createExercisePicker(step, onUpdate) {
 
 	// Autocomplete combobox
 	const combobox = document.createElement('div');
-	combobox.className = 'ex-combobox-wrapper';
+	combobox.className = 'ex-combobox-wrapper ex-combobox-compact';
 
 	const input = document.createElement('input');
 	input.type = 'text';
-	input.className = 'input ex-combobox-input';
-	input.placeholder = '+ Search or add movement (e.g. Teep, Push-ups, Cobra)...';
+	input.className = 'input ex-combobox-input ex-combobox-input-compact';
+	input.placeholder = '+ Tag movement (e.g. Teep, Push-ups)...';
 	input.autocomplete = 'off';
 
 	const dropdown = document.createElement('div');
@@ -950,7 +932,6 @@ function createExercisePicker(step, onUpdate) {
 				}
 				input.value = '';
 				dropdown.classList.add('hidden');
-				label.textContent = `Exercises & Movements (${step.exercises.length})`;
 				renderChips();
 				onUpdate();
 			});
@@ -982,7 +963,6 @@ function createExercisePicker(step, onUpdate) {
 						if (!step.label || step.label === 'Exercise' || step.label === 'Video Clip') {
 							step.label = step.exercises.map(ex => ex.name).join(' + ');
 						}
-						// If item has default media or mode, suggest it
 						if (item.media_url && !step.gifUrl && !step.mediaUrl) {
 							step.gifUrl = item.media_url;
 						}
@@ -994,7 +974,6 @@ function createExercisePicker(step, onUpdate) {
 						}
 						input.value = '';
 						dropdown.classList.add('hidden');
-						label.textContent = `Exercises & Movements (${step.exercises.length})`;
 						renderChips();
 						onUpdate();
 					}
@@ -1027,7 +1006,7 @@ function createExercisePicker(step, onUpdate) {
 }
 
 /**
- * Create input fields for a timer or reps step.
+ * Create compact input fields for a timer or reps step.
  */
 function createTimerFields(step, onUpdate) {
 	const frag = document.createDocumentFragment();
@@ -1037,88 +1016,87 @@ function createTimerFields(step, onUpdate) {
 	if (!step.exercises) step.exercises = [];
 	if (!step.stepMode) step.stepMode = step.targetReps ? 'reps' : 'time';
 
-	// Exercise picker component
+	// 1. Tagged movements / exercise chips
 	frag.appendChild(createExercisePicker(step, onUpdate));
 
-	// Label
-	frag.appendChild(createField('Exercise Label', step.label, (val) => {
-		step.label = val;
+	// 2. Compact Control Row: Label + Mode + Presets + Stepper
+	const row = document.createElement('div');
+	row.className = 'timer-controls-row';
+
+	// Compact Label Field
+	const labelGroup = document.createElement('div');
+	labelGroup.className = 'field-group timer-label-group';
+	const labelInput = document.createElement('input');
+	labelInput.type = 'text';
+	labelInput.className = 'input timer-label-input';
+	labelInput.placeholder = 'Exercise Label...';
+	labelInput.value = step.label || '';
+	labelInput.addEventListener('change', (e) => {
+		step.label = e.target.value.trim();
 		onUpdate();
-	}, 'e.g., Push-ups, Teep Drill, Plank'));
+	});
+	labelGroup.appendChild(labelInput);
 
-	// ── Mode Switcher: Timed vs Reps ─────────────────────────────────────────
-	const modeRow = document.createElement('div');
-	modeRow.className = 'field-group step-mode-switcher-group';
-
-	const modeLabel = document.createElement('label');
-	modeLabel.textContent = 'Execution Mode';
-
-	const modeButtons = document.createElement('div');
-	modeButtons.className = 'step-mode-segmented';
+	// Mode Switcher: Timed vs Reps (inline segmented button)
+	const modeToggle = document.createElement('div');
+	modeToggle.className = 'step-mode-segmented-compact';
 
 	const timedBtn = document.createElement('button');
 	timedBtn.type = 'button';
 	timedBtn.className = `btn-mode-seg ${step.stepMode !== 'reps' ? 'active' : ''}`;
-	timedBtn.innerHTML = `⏱️ Timed Interval`;
+	timedBtn.innerHTML = `⏱️ Time`;
 	timedBtn.addEventListener('click', () => {
 		step.stepMode = 'time';
+		if (!step.durationSeconds) step.durationSeconds = 30;
 		onUpdate();
 	});
 
 	const repsBtn = document.createElement('button');
 	repsBtn.type = 'button';
 	repsBtn.className = `btn-mode-seg ${step.stepMode === 'reps' ? 'active' : ''}`;
-	repsBtn.innerHTML = `🔢 Target Reps`;
+	repsBtn.innerHTML = `🔢 Reps`;
 	repsBtn.addEventListener('click', () => {
 		step.stepMode = 'reps';
 		if (!step.targetReps) step.targetReps = 20;
 		onUpdate();
 	});
 
-	modeButtons.append(timedBtn, repsBtn);
-	modeRow.append(modeLabel, modeButtons);
-	frag.appendChild(modeRow);
+	modeToggle.append(timedBtn, repsBtn);
+
+	// Presets & Stepper Group
+	const presetsGroup = document.createElement('div');
+	presetsGroup.className = 'timer-presets-group';
+
+	const stepperGroup = document.createElement('div');
+	stepperGroup.className = 'timer-stepper-group';
 
 	if (step.stepMode === 'reps') {
-		// Reps inputs
-		const repsContainer = document.createElement('div');
-		repsContainer.className = 'timer-duration-container';
-
-		const repsGroup = document.createElement('div');
-		repsGroup.className = 'field-group';
-		const repsLbl = document.createElement('label');
-		repsLbl.textContent = 'Target Reps (Quantity)';
-
-		const stepper = document.createElement('div');
-		stepper.className = 'reps-stepper-control';
+		const curReps = step.targetReps || 20;
 
 		const decBtn = document.createElement('button');
 		decBtn.type = 'button';
-		decBtn.className = 'stepper-btn stepper-btn-dec';
+		decBtn.className = 'break-stepper-btn';
 		decBtn.innerHTML = '−';
 		decBtn.title = 'Decrease reps (-5, Shift for -10)';
 
 		const repsInp = document.createElement('input');
 		repsInp.type = 'number';
 		repsInp.min = '1';
-		repsInp.className = 'stepper-input';
-		repsInp.value = step.targetReps || 20;
+		repsInp.className = 'break-custom-input';
+		repsInp.value = curReps;
 
 		const incBtn = document.createElement('button');
 		incBtn.type = 'button';
-		incBtn.className = 'stepper-btn stepper-btn-inc';
+		incBtn.className = 'break-stepper-btn';
 		incBtn.innerHTML = '+';
 		incBtn.title = 'Increase reps (+5, Shift for +10)';
 
-		const repsPresetsRow = document.createElement('div');
-		repsPresetsRow.className = 'preset-chips-row';
-		const repsPresets = [5, 10, 15, 20, 25, 30, 50, 100];
-		const presetChips = [];
-
-		function updateActiveRepsChip(val) {
-			presetChips.forEach(({ chip, r }) => {
-				if (val === r) chip.classList.add('active');
-				else chip.classList.remove('active');
+		const repsPresets = [10, 15, 20, 25, 30, 50];
+		const presetButtons = [];
+		function updateActivePreset(val) {
+			presetButtons.forEach(({ btn, r }) => {
+				if (val === r) btn.classList.add('active');
+				else btn.classList.remove('active');
 			});
 		}
 
@@ -1126,7 +1104,7 @@ function createTimerFields(step, onUpdate) {
 			const clamped = Math.max(1, parseInt(val, 10) || 20);
 			step.targetReps = clamped;
 			repsInp.value = clamped;
-			updateActiveRepsChip(clamped);
+			updateActivePreset(clamped);
 			onUpdate();
 		};
 
@@ -1141,278 +1119,100 @@ function createTimerFields(step, onUpdate) {
 		});
 
 		repsInp.addEventListener('focus', () => repsInp.select());
-
-		repsInp.addEventListener('wheel', (e) => {
-			e.preventDefault();
-			const delta = e.shiftKey ? 10 : 1;
-			setReps((step.targetReps || 20) + (e.deltaY < 0 ? delta : -delta));
-		}, { passive: false });
-
-		repsInp.addEventListener('keydown', (e) => {
-			if (e.key === 'ArrowUp') {
-				e.preventDefault();
-				const delta = e.shiftKey ? 10 : 1;
-				setReps((step.targetReps || 20) + delta);
-			} else if (e.key === 'ArrowDown') {
-				e.preventDefault();
-				const delta = e.shiftKey ? 10 : 1;
-				setReps((step.targetReps || 20) - delta);
-			} else if (e.key === 'Enter') {
-				repsInp.blur();
-			}
-		});
-
-		repsInp.addEventListener('change', () => {
-			setReps(repsInp.value);
-		});
+		repsInp.addEventListener('change', () => setReps(repsInp.value));
 
 		repsPresets.forEach(r => {
-			const chip = document.createElement('button');
-			chip.type = 'button';
-			chip.className = 'preset-chip';
-			if ((step.targetReps || 20) === r) chip.classList.add('active');
-			chip.textContent = `${r} reps`;
-			chip.addEventListener('click', () => {
-				setReps(r);
-			});
-			repsPresetsRow.appendChild(chip);
-			presetChips.push({ chip, r });
+			const btn = document.createElement('button');
+			btn.type = 'button';
+			btn.className = 'preset-chip break-preset-chip';
+			if (curReps === r) btn.classList.add('active');
+			btn.textContent = `${r}`;
+			btn.title = `${r} reps`;
+			btn.addEventListener('click', () => setReps(r));
+			presetsGroup.appendChild(btn);
+			presetButtons.push({ btn, r });
 		});
 
-		stepper.append(decBtn, repsInp, incBtn);
-		repsGroup.append(repsLbl, stepper);
-		repsContainer.append(repsGroup, repsPresetsRow);
-		frag.appendChild(repsContainer);
+		stepperGroup.append(decBtn, repsInp, incBtn);
 	} else {
-		// Timed inputs
-		const durationContainer = document.createElement('div');
-		durationContainer.className = 'timer-duration-container';
+		const curSec = step.durationSeconds || 30;
 
-		const presetsRow = document.createElement('div');
-		presetsRow.className = 'preset-chips-row';
+		const decBtn = document.createElement('button');
+		decBtn.type = 'button';
+		decBtn.className = 'break-stepper-btn';
+		decBtn.innerHTML = '−';
+		decBtn.title = 'Decrease duration (-5s, Shift for -15s)';
 
-		const presets = [
+		const customInput = document.createElement('input');
+		customInput.type = 'text';
+		customInput.className = 'break-custom-input';
+		customInput.placeholder = '0:30';
+		customInput.value = formatTime(curSec);
+
+		const incBtn = document.createElement('button');
+		incBtn.type = 'button';
+		incBtn.className = 'break-stepper-btn';
+		incBtn.innerHTML = '+';
+		incBtn.title = 'Increase duration (+5s, Shift for +15s)';
+
+		const timePresets = [
 			{ label: '15s', sec: 15 },
 			{ label: '30s', sec: 30 },
 			{ label: '45s', sec: 45 },
 			{ label: '1m', sec: 60 },
-			{ label: '1m 30s', sec: 90 },
 			{ label: '2m', sec: 120 },
 			{ label: '3m', sec: 180 },
-			{ label: '5m', sec: 300 },
 		];
-
-		const presetChips = [];
-		function updateActiveTimerChip(sec) {
-			presetChips.forEach(({ chip, p }) => {
-				if (sec === p.sec) chip.classList.add('active');
-				else chip.classList.remove('active');
+		const presetButtons = [];
+		function updateActivePreset(sec) {
+			presetButtons.forEach(({ btn, pSec }) => {
+				if (sec === pSec) btn.classList.add('active');
+				else btn.classList.remove('active');
 			});
 		}
 
-		const timeField = createTimeField('Duration (MM:SS or sec)', step.durationSeconds || 30, (val) => {
-			step.durationSeconds = Math.max(1, val);
-			updateActiveTimerChip(step.durationSeconds);
+		const setDuration = (newSec) => {
+			const clamped = Math.max(1, newSec);
+			step.durationSeconds = clamped;
+			customInput.value = formatTime(clamped);
+			updateActivePreset(clamped);
 			onUpdate();
-		}, '0:30', false);
-
-		presets.forEach(p => {
-			const chip = document.createElement('button');
-			chip.type = 'button';
-			chip.className = 'preset-chip';
-			if ((step.durationSeconds || 30) === p.sec) chip.classList.add('active');
-			chip.textContent = p.label;
-			chip.addEventListener('click', () => {
-				step.durationSeconds = p.sec;
-				const inputEl = timeField.querySelector('input');
-				if (inputEl) inputEl.value = formatTime(p.sec);
-				updateActiveTimerChip(p.sec);
-				onUpdate();
-			});
-			presetsRow.appendChild(chip);
-			presetChips.push({ chip, p });
-		});
-
-		durationContainer.append(timeField, presetsRow);
-		frag.appendChild(durationContainer);
-	}
-
-	// ── Animation / GIF Section ──────────────────────────────────────────────
-	const mediaSection = document.createElement('div');
-	mediaSection.className = 'step-media-section';
-
-	const mediaField = createField('Animation / GIF URL', step.gifUrl || step.mediaUrl || '', (val) => {
-		const clean = val.trim();
-		if (clean) {
-			step.gifUrl = clean;
-		} else {
-			delete step.gifUrl;
-			delete step.mediaUrl;
-		}
-		onUpdate();
-	}, '/workout/media/cobra-stretch.svg or https://...');
-
-	const mediaPresetsRow = document.createElement('div');
-	mediaPresetsRow.className = 'preset-chips-row media-preset-chips';
-
-	const mediaPresets = [
-		{ label: 'Pushups', url: '/workout/media/pushups.svg' },
-		{ label: 'Diamond Pushups', url: '/workout/media/diamond-pushups.svg' },
-		{ label: 'Shoulder Taps', url: '/workout/media/shoulder-taps.svg' },
-		{ label: 'Cobra Stretch', url: '/workout/media/cobra-stretch.jpg' },
-		{ label: 'Tricep Stretch', url: '/workout/media/overhead-tricep-stretch.jpg' },
-		{ label: 'Pigeon Pose', url: '/workout/media/pigeon-pose.jpg' },
-		{ label: 'Child’s Pose', url: '/workout/media/childs-pose.jpg' },
-		{ label: 'Hamstring Fold', url: '/workout/media/seated-hamstring-fold.jpg' },
-	];
-
-	mediaPresets.forEach(p => {
-		const chip = document.createElement('button');
-		chip.type = 'button';
-		chip.className = 'preset-chip';
-		if ((step.gifUrl || step.mediaUrl) === p.url) chip.classList.add('active');
-		chip.textContent = p.label;
-		chip.addEventListener('click', () => {
-			if (step.gifUrl === p.url || step.mediaUrl === p.url) {
-				delete step.gifUrl;
-				delete step.mediaUrl;
-			} else {
-				step.gifUrl = p.url;
-			}
-			onUpdate();
-		});
-		mediaPresetsRow.appendChild(chip);
-	});
-
-	mediaSection.appendChild(mediaField);
-	mediaSection.appendChild(mediaPresetsRow);
-	frag.appendChild(mediaSection);
-
-	// ── Music Section ───────────────────────────────────────────────────────
-	const musicSection = document.createElement('div');
-	musicSection.className = 'step-music-section';
-
-	const musicHeader = document.createElement('div');
-	musicHeader.className = 'step-music-header';
-
-	const musicTitle = document.createElement('span');
-	musicTitle.className = 'step-music-title';
-	musicTitle.textContent = '🎵 Music';
-
-	const addYtBtn = document.createElement('button');
-	addYtBtn.className = 'btn btn-ghost btn-sm';
-	addYtBtn.textContent = '🔗 YouTube';
-	addYtBtn.type = 'button';
-	addYtBtn.addEventListener('click', async () => {
-		const url = await showPrompt({
-			title: 'Add YouTube Music',
-			message: 'Paste a YouTube or YouTube Music link:',
-			placeholder: 'https://music.youtube.com/watch?v=... or https://youtube.com/watch?v=...',
-			confirmText: 'Next'
-		});
-		if (!url) return;
-		const videoId = parseYouTubeId(url);
-		if (!videoId) {
-			await showAlert({
-				title: 'Invalid Link',
-				message: 'Could not find a valid YouTube video ID from that link. Please check the URL and try again.'
-			});
-			return;
-		}
-		const label = await showPrompt({
-			title: 'Track Label',
-			message: 'Display name for this track:',
-			defaultValue: 'Music',
-			placeholder: 'e.g. Upbeat Workout Beat',
-			confirmText: 'Add Track'
-		}) || 'Music';
-		step.musicTracks.push({
-			id: generateId(),
-			source: 'youtube',
-			videoId: videoId,
-			label: label
-		});
-		onUpdate();
-	});
-
-	const addFileBtn = document.createElement('button');
-	addFileBtn.className = 'btn btn-ghost btn-sm';
-	addFileBtn.textContent = '📁 File';
-	addFileBtn.type = 'button';
-	addFileBtn.addEventListener('click', () => {
-		const input = document.createElement('input');
-		input.type = 'file';
-		input.accept = 'audio/*';
-		input.onchange = async (e) => {
-			const file = e.target.files[0];
-			if (!file) return;
-			const trackId = generateId();
-			const label = await showPrompt({
-				title: 'Audio Track Label',
-				message: 'Display name for this audio file:',
-				defaultValue: file.name,
-				confirmText: 'Add Track'
-			}) || file.name;
-			try {
-				await saveAudioFile(trackId, file, file.name);
-				step.musicTracks.push({
-					id: trackId,
-					source: 'file',
-					fileId: trackId,
-					fileName: file.name,
-					label: label
-				});
-				onUpdate();
-			} catch (err) {
-				await showAlert({
-					title: 'File Save Error',
-					message: 'Failed to save audio file: ' + err.message
-				});
-			}
 		};
-		input.click();
-	});
 
-	musicHeader.append(musicTitle, addYtBtn, addFileBtn);
-	musicSection.appendChild(musicHeader);
-
-	// Render existing tracks
-	if (step.musicTracks.length === 0) {
-		const empty = document.createElement('p');
-		empty.className = 'step-music-empty';
-		empty.textContent = 'No music. Tracks loop if shorter than the timer.';
-		musicSection.appendChild(empty);
-	} else {
-		step.musicTracks.forEach((track, i) => {
-			const trackEl = document.createElement('div');
-			trackEl.className = 'step-music-track';
-
-			const badge = document.createElement('span');
-			badge.className = 'track-source-badge';
-			badge.textContent = track.source === 'youtube' ? '▶ YT' : '📁 File';
-
-			const trackLabel = document.createElement('span');
-			trackLabel.className = 'track-label';
-			trackLabel.textContent = track.label || (track.source === 'youtube' ? track.videoId : track.fileName);
-
-			const removeBtn = document.createElement('button');
-			removeBtn.className = 'btn btn-danger btn-sm';
-			removeBtn.textContent = '✕';
-			removeBtn.type = 'button';
-			removeBtn.addEventListener('click', async () => {
-				if (track.source === 'file' && track.fileId) {
-					try { await deleteAudioFile(track.fileId); } catch {}
-				}
-				step.musicTracks.splice(i, 1);
-				onUpdate();
-			});
-
-			trackEl.append(badge, trackLabel, removeBtn);
-			musicSection.appendChild(trackEl);
+		decBtn.addEventListener('click', (e) => {
+			const delta = e.shiftKey ? 15 : 5;
+			const cur = parseTime(customInput.value) || step.durationSeconds || 30;
+			setDuration(cur - delta);
 		});
+
+		incBtn.addEventListener('click', (e) => {
+			const delta = e.shiftKey ? 15 : 5;
+			const cur = parseTime(customInput.value) || step.durationSeconds || 30;
+			setDuration(cur + delta);
+		});
+
+		customInput.addEventListener('focus', () => customInput.select());
+		customInput.addEventListener('change', () => {
+			const parsed = parseTime(customInput.value);
+			setDuration(Math.max(1, parsed || 30));
+		});
+
+		timePresets.forEach(p => {
+			const btn = document.createElement('button');
+			btn.type = 'button';
+			btn.className = 'preset-chip break-preset-chip';
+			if (curSec === p.sec) btn.classList.add('active');
+			btn.textContent = p.label;
+			btn.addEventListener('click', () => setDuration(p.sec));
+			presetsGroup.appendChild(btn);
+			presetButtons.push({ btn, pSec: p.sec });
+		});
+
+		stepperGroup.append(decBtn, customInput, incBtn);
 	}
 
-	frag.appendChild(musicSection);
+	row.append(labelGroup, modeToggle, presetsGroup, stepperGroup);
+	frag.appendChild(row);
 
 	return frag;
 }
