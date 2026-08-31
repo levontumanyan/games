@@ -8,7 +8,7 @@ import { playCountdownBeep } from './audio.js';
 import { getClipIcon, getTimerIcon, getBreakIcon } from './icons.js';
 import {
 	setPlaylist, startMusic, pauseMusic, resumeMusic,
-	stopMusic, muteMusic, unmuteMusic, hasMusic
+	stopMusic, muteMusic, unmuteMusic, hasMusic, getCurrentTrack
 } from './music.js';
 import {
 	startSession, updateSessionStep, pauseSession,
@@ -529,8 +529,8 @@ function executeClipStep(step) {
 		dom.upNextCard.classList.add('hidden');
 	}
 
-	// Stop any music during video clips
-	stopMusic();
+	// Pause background music during video clips
+	pauseMusic();
 	if (dom.musicControlsBar) {
 		dom.musicControlsBar.classList.add('hidden');
 	}
@@ -654,7 +654,9 @@ function executeTimerStep(step) {
 	const quickTitle = document.getElementById('music-quick-title');
 	const musicToggleBtn = document.getElementById('player-music-toggle-btn');
 	if (tracks.length > 0) {
-		const trackTitle = tracks[0].label || (tracks[0].source === 'youtube' ? tracks[0].videoId : tracks[0].fileName);
+		const currentInfo = getCurrentTrack();
+		const currentTrack = currentInfo?.track || tracks[0];
+		const trackTitle = currentTrack.liveTitle || currentTrack.label || (currentTrack.source === 'youtube' ? (currentTrack.videoId || currentTrack.playlistId) : currentTrack.fileName);
 		if (dom.musicTrackName) dom.musicTrackName.textContent = trackTitle;
 		if (quickTitle) quickTitle.textContent = trackTitle;
 		if (musicToggleBtn) musicToggleBtn.classList.add('has-music');

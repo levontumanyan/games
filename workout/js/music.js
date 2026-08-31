@@ -87,6 +87,16 @@ export async function initMusic(containerEl, callbacks) {
 			onStateChange: (event) => {
 				if (event.data === YT.PlayerState.ENDED) {
 					handleTrackEnded();
+				} else if (event.data === YT.PlayerState.PLAYING) {
+					if (onTrackChangeCallback && currentTrackIndex >= 0 && currentTrackIndex < playlist.length) {
+						const track = playlist[currentTrackIndex];
+						try {
+							const data = ytMusicPlayer.getVideoData();
+							if (data && data.title && (!track.label || track.label === 'Music' || track.label === 'Music Track' || track.isPlaylist)) {
+								onTrackChangeCallback({ ...track, liveTitle: data.title }, currentTrackIndex);
+							}
+						} catch {}
+					}
 				}
 			},
 			onError: (err) => {
@@ -125,6 +135,11 @@ function handleTrackEnded() {
 			return;
 		}
 		if (activeSource === 'youtube' && ytMusicReady && ytMusicPlayer) {
+			const track = playlist[0];
+			if (track.playlistId && !track.videoId) {
+				// YouTube playlist naturally cycles or advances
+				return;
+			}
 			ytMusicPlayer.seekTo(0);
 			ytMusicPlayer.playVideo();
 			return;
@@ -141,7 +156,10 @@ function handleTrackEnded() {
 export function setPlaylist(tracks) {
 	const newTracks = tracks || [];
 	const isSame = playlist.length === newTracks.length &&
-		playlist.every((t, i) => t.source === newTracks[i].source && (t.videoId === newTracks[i].videoId || t.fileId === newTracks[i].fileId));
+		playlist.every((t, i) =>
+			t.source === newTracks[i].source &&
+			(t.videoId === newTracks[i].videoId || t.fileId === newTracks[i].fileId || t.playlistId === newTracks[i].playlistId)
+		);
 	if (isSame) return;
 	playlist = newTracks;
 	if (currentTrackIndex < 0 || currentTrackIndex >= playlist.length) {
@@ -168,14 +186,30 @@ async function playCurrentTrack() {
 	// Stop whatever is currently playing
 	stopCurrentSource();
 
-	if (track.source === 'youtube' && track.videoId) {
+	if (track.source === 'youtube' && (track.videoId || track.playlistId)) {
 		activeSource = 'youtube';
 		if (ytMusicReady && ytMusicPlayer) {
 			try {
-				ytMusicPlayer.loadVideoById({
-					videoId: track.videoId,
-					suggestedQuality: 'small'
-				});
+				if (track.playlistId && !track.videoId) {
+					ytMusicPlayer.loadPlaylist({
+						list: track.playlistId,
+						listType: 'playlist',
+						index: 0,
+						suggestedQuality: 'small'
+					});
+				} else if (track.playlistId && track.videoId) {
+					ytMusicPlayer.loadPlaylist({
+						list: track.playlistId,
+						listType: 'playlist',
+						index: 0,
+						suggestedQuality: 'small'
+					});
+				} else {
+					ytMusicPlayer.loadVideoById({
+						videoId: track.videoId,
+						suggestedQuality: 'small'
+					});
+				}
 				ytMusicPlayer.setVolume(musicVolume * 100);
 				if (isMusicMuted) {
 					ytMusicPlayer.mute();
@@ -184,7 +218,7 @@ async function playCurrentTrack() {
 					try { ytMusicPlayer.playVideo(); } catch {}
 				}
 			} catch (err) {
-				console.warn('Failed to load video on YouTube music player:', err);
+				console.warn('Failed to load YouTube music track/playlist:', err);
 			}
 		} else {
 			pendingPlay = true;
@@ -264,7 +298,11 @@ export function pauseMusic() {
  * Resume the current music track.
  */
 export function resumeMusic() {
-	if (!isMusicPlaying) return;
+	if (playlist.length === 0) return;
+	if (!isMusicPlaying || !activeSource) {
+		startMusic();
+		return;
+	}
 	if (activeSource === 'youtube' && ytMusicReady && ytMusicPlayer) {
 		try { ytMusicPlayer.playVideo(); } catch {}
 	}
@@ -345,6 +383,13 @@ export function getVolume() {
  */
 export function nextTrack() {
 	if (playlist.length === 0) return;
+	const track = playlist[currentTrackIndex];
+	if (activeSource === 'youtube' && track?.playlistId && ytMusicReady && ytMusicPlayer) {
+		try {
+			ytMusicPlayer.nextVideo();
+			return;
+		} catch {}
+	}
 	currentTrackIndex = (currentTrackIndex + 1) % playlist.length;
 	if (isMusicPlaying) playCurrentTrack();
 }
@@ -354,6 +399,13 @@ export function nextTrack() {
  */
 export function prevTrack() {
 	if (playlist.length === 0) return;
+	const track = playlist[currentTrackIndex];
+	if (activeSource === 'youtube' && track?.playlistId && ytMusicReady && ytMusicPlayer) {
+		try {
+			ytMusicPlayer.previousVideo();
+			return;
+		} catch {}
+	}
 	currentTrackIndex = (currentTrackIndex - 1 + playlist.length) % playlist.length;
 	if (isMusicPlaying) playCurrentTrack();
 }

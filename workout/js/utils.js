@@ -13,29 +13,37 @@ export function parseYouTubeInfo(input) {
 
 	// Raw 11-character ID
 	if (/^[A-Za-z0-9_-]{11}$/.test(input)) {
-		return { videoId: input, startSeconds: null };
+		return { videoId: input, playlistId: null, startSeconds: null, isPlaylist: false };
 	}
 
 	try {
 		const url = new URL(input);
 		const hostname = url.hostname.replace('www.', '');
 		let videoId = null;
+		let playlistId = url.searchParams.get('list') || null;
 
-		if ((hostname === 'youtube.com' || hostname === 'music.youtube.com') && url.pathname === '/watch') {
-			const v = url.searchParams.get('v');
-			if (v && /^[A-Za-z0-9_-]{11}$/.test(v)) videoId = v;
-		} else if (hostname === 'youtube.com' && url.pathname.startsWith('/embed/')) {
-			const id = url.pathname.split('/embed/')[1]?.split(/[?/]/)[0];
-			if (id && /^[A-Za-z0-9_-]{11}$/.test(id)) videoId = id;
-		} else if (hostname === 'youtube.com' && url.pathname.startsWith('/shorts/')) {
-			const id = url.pathname.split('/shorts/')[1]?.split(/[?/]/)[0];
-			if (id && /^[A-Za-z0-9_-]{11}$/.test(id)) videoId = id;
+		if ((hostname === 'youtube.com' || hostname === 'music.youtube.com')) {
+			if (url.pathname === '/watch') {
+				const v = url.searchParams.get('v');
+				if (v && /^[A-Za-z0-9_-]{11}$/.test(v)) videoId = v;
+			} else if (url.pathname === '/playlist') {
+				// Pure playlist page (e.g. https://music.youtube.com/playlist?list=OLAK5uy...)
+				if (playlistId) {
+					// playlistId is already set
+				}
+			} else if (url.pathname.startsWith('/embed/')) {
+				const id = url.pathname.split('/embed/')[1]?.split(/[?/]/)[0];
+				if (id && /^[A-Za-z0-9_-]{11}$/.test(id)) videoId = id;
+			} else if (url.pathname.startsWith('/shorts/')) {
+				const id = url.pathname.split('/shorts/')[1]?.split(/[?/]/)[0];
+				if (id && /^[A-Za-z0-9_-]{11}$/.test(id)) videoId = id;
+			}
 		} else if (hostname === 'youtu.be') {
 			const id = url.pathname.slice(1).split(/[?/]/)[0];
 			if (id && /^[A-Za-z0-9_-]{11}$/.test(id)) videoId = id;
 		}
 
-		if (!videoId) return null;
+		if (!videoId && !playlistId) return null;
 
 		// Extract timestamp if present in query params or fragment
 		let timeParam = url.searchParams.get('t') || url.searchParams.get('start') || url.searchParams.get('time_continue');
@@ -45,7 +53,12 @@ export function parseYouTubeInfo(input) {
 		}
 
 		const startSeconds = timeParam ? parseTime(timeParam) : null;
-		return { videoId, startSeconds };
+		return {
+			videoId,
+			playlistId,
+			startSeconds,
+			isPlaylist: Boolean(playlistId && !videoId)
+		};
 	} catch {
 		// Not a valid URL
 	}
@@ -61,6 +74,16 @@ export function parseYouTubeInfo(input) {
 export function parseYouTubeId(input) {
 	const info = parseYouTubeInfo(input);
 	return info ? info.videoId : null;
+}
+
+/**
+ * Extract YouTube playlist ID if present.
+ * @param {string} input - YouTube URL or playlist ID
+ * @returns {string|null}
+ */
+export function parseYouTubePlaylistId(input) {
+	const info = parseYouTubeInfo(input);
+	return info ? info.playlistId : null;
 }
 
 /**

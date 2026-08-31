@@ -166,35 +166,38 @@ export function createRoutineMusicCard(routine, onUpdate) {
 	const addYtBtn = document.createElement('button');
 	addYtBtn.className = 'btn btn-ghost btn-xs';
 	addYtBtn.type = 'button';
-	addYtBtn.textContent = '🔗 + YouTube Track';
+	addYtBtn.textContent = '🔗 + YouTube Track / Playlist';
 	addYtBtn.addEventListener('click', async (e) => {
 		e.stopPropagation();
 		const url = await showPrompt({
 			title: 'Add YouTube Music to Workout',
-			message: 'Paste a YouTube or YouTube Music link:',
-			placeholder: 'https://music.youtube.com/watch?v=... or https://youtube.com/watch?v=...',
+			message: 'Paste a YouTube / YouTube Music track or playlist link:',
+			placeholder: 'https://music.youtube.com/playlist?list=... or https://youtube.com/watch?v=...',
 			confirmText: 'Next'
 		});
 		if (!url) return;
-		const videoId = parseYouTubeId(url);
-		if (!videoId) {
+		const ytInfo = parseYouTubeInfo(url);
+		if (!ytInfo || (!ytInfo.videoId && !ytInfo.playlistId)) {
 			await showAlert({
 				title: 'Invalid Link',
-				message: 'Could not find a valid YouTube video ID from that link. Please check the URL and try again.'
+				message: 'Could not find a valid YouTube video ID or playlist ID from that link. Please check the URL and try again.'
 			});
 			return;
 		}
+		const defaultLabel = ytInfo.isPlaylist ? 'YouTube Playlist' : 'Music Track';
 		const label = await showPrompt({
-			title: 'Track Label',
-			message: 'Display name for this track:',
-			defaultValue: 'Music Track',
-			placeholder: 'e.g. Upbeat Workout Beat',
-			confirmText: 'Add Track'
-		}) || 'Music Track';
+			title: ytInfo.isPlaylist ? 'Playlist Label' : 'Track Label',
+			message: ytInfo.isPlaylist ? 'Display name for this playlist:' : 'Display name for this track:',
+			defaultValue: defaultLabel,
+			placeholder: ytInfo.isPlaylist ? 'e.g. Synthwave Playlist' : 'e.g. Upbeat Workout Beat',
+			confirmText: 'Add to Workout'
+		}) || defaultLabel;
 		routine.musicTracks.push({
 			id: generateId(),
 			source: 'youtube',
-			videoId: videoId,
+			videoId: ytInfo.videoId || null,
+			playlistId: ytInfo.playlistId || null,
+			isPlaylist: ytInfo.isPlaylist,
 			label: label
 		});
 		onUpdate();
@@ -257,11 +260,13 @@ export function createRoutineMusicCard(routine, onUpdate) {
 
 			const badge = document.createElement('span');
 			badge.className = 'track-source-badge';
-			badge.textContent = track.source === 'youtube' ? '▶ YT' : '📁 File';
+			badge.textContent = track.source === 'youtube'
+				? (track.isPlaylist || (track.playlistId && !track.videoId) ? '▶ YT Playlist' : '▶ YT')
+				: '📁 File';
 
 			const trackLabel = document.createElement('span');
 			trackLabel.className = 'track-label';
-			trackLabel.textContent = track.label || (track.source === 'youtube' ? track.videoId : track.fileName);
+			trackLabel.textContent = track.label || (track.source === 'youtube' ? (track.videoId || track.playlistId) : track.fileName);
 
 			const removeBtn = document.createElement('button');
 			removeBtn.className = 'btn btn-danger btn-sm';
@@ -481,7 +486,54 @@ function createStepElement(step, index, routine, onUpdate, onTestStep) {
 
 	const headerTitle = document.createElement('span');
 	headerTitle.className = 'step-header-title';
-	headerTitle.textContent = step.label || (isBreak ? 'Rest' : 'Untitled Step');
+	const derivedTitle = step.label || (step.exercises && step.exercises.length > 0 ? step.exercises.map(e => e.name).join(' + ') : (isBreak ? 'Rest' : 'Exercise'));
+	headerTitle.textContent = derivedTitle;
+
+	const editTitleBtn = document.createElement('button');
+	editTitleBtn.type = 'button';
+	editTitleBtn.className = 'btn-edit-title-pencil';
+	editTitleBtn.title = 'Edit custom step title';
+	editTitleBtn.innerHTML = '✏️';
+	editTitleBtn.addEventListener('click', (e) => {
+		e.stopPropagation();
+		const currentVal = step.label || derivedTitle;
+		const input = document.createElement('input');
+		input.type = 'text';
+		input.className = 'input input-inline-title-edit';
+		input.value = currentVal;
+		input.placeholder = derivedTitle;
+
+		const commit = () => {
+			const val = input.value.trim();
+			if (val && val !== (step.exercises && step.exercises.length > 0 ? step.exercises.map(ex => ex.name).join(' + ') : (isBreak ? 'Rest' : 'Exercise'))) {
+				step.label = val;
+			} else {
+				delete step.label;
+			}
+			headerTitle.textContent = step.label || (step.exercises && step.exercises.length > 0 ? step.exercises.map(ex => ex.name).join(' + ') : (isBreak ? 'Rest' : 'Exercise'));
+			if (input.parentNode) {
+				input.replaceWith(headerTitle);
+				editTitleBtn.style.display = '';
+			}
+			onUpdate();
+		};
+
+		input.addEventListener('blur', commit);
+		input.addEventListener('keydown', (evt) => {
+			if (evt.key === 'Enter') {
+				evt.preventDefault();
+				input.blur();
+			} else if (evt.key === 'Escape') {
+				input.value = currentVal;
+				input.blur();
+			}
+		});
+
+		headerTitle.replaceWith(input);
+		editTitleBtn.style.display = 'none';
+		input.focus();
+		input.select();
+	});
 
 	const headerMeta = document.createElement('span');
 	headerMeta.className = 'step-header-meta';
@@ -494,7 +546,7 @@ function createStepElement(step, index, routine, onUpdate, onTestStep) {
 		headerMeta.textContent = formatFriendlyDuration(step.durationSeconds || 30);
 	}
 
-	headerInfo.append(headerTitle, headerMeta);
+	headerInfo.append(headerTitle, editTitleBtn, headerMeta);
 
 	if (step.musicTracks && step.musicTracks.length > 0) {
 		const musicBadge = document.createElement('span');
@@ -704,20 +756,6 @@ function createBreakFields(step, onUpdate) {
 	const row = document.createElement('div');
 	row.className = 'break-controls-row';
 
-	// Compact Label Field
-	const labelGroup = document.createElement('div');
-	labelGroup.className = 'field-group break-label-group';
-	const labelInput = document.createElement('input');
-	labelInput.type = 'text';
-	labelInput.className = 'input break-label-input';
-	labelInput.placeholder = 'Rest';
-	labelInput.value = step.label || 'Rest';
-	labelInput.addEventListener('change', (e) => {
-		step.label = e.target.value.trim() || 'Rest';
-		onUpdate();
-	});
-	labelGroup.appendChild(labelInput);
-
 	// Quick Duration Presets: 5s, 30s, 1m, 2m
 	const presetsGroup = document.createElement('div');
 	presetsGroup.className = 'break-presets-group';
@@ -836,7 +874,7 @@ function createBreakFields(step, onUpdate) {
 	});
 
 	stepperGroup.append(decBtn, customInput, incBtn);
-	row.append(labelGroup, presetsGroup, stepperGroup);
+	row.append(presetsGroup, stepperGroup);
 	container.appendChild(row);
 
 	return container;
@@ -1019,23 +1057,9 @@ function createTimerFields(step, onUpdate) {
 	// 1. Tagged movements / exercise chips
 	frag.appendChild(createExercisePicker(step, onUpdate));
 
-	// 2. Compact Control Row: Label + Mode + Presets + Stepper
+	// 2. Compact Control Row: Mode + Presets + Stepper
 	const row = document.createElement('div');
 	row.className = 'timer-controls-row';
-
-	// Compact Label Field
-	const labelGroup = document.createElement('div');
-	labelGroup.className = 'field-group timer-label-group';
-	const labelInput = document.createElement('input');
-	labelInput.type = 'text';
-	labelInput.className = 'input timer-label-input';
-	labelInput.placeholder = 'Exercise Label...';
-	labelInput.value = step.label || '';
-	labelInput.addEventListener('change', (e) => {
-		step.label = e.target.value.trim();
-		onUpdate();
-	});
-	labelGroup.appendChild(labelInput);
 
 	// Mode Switcher: Timed vs Reps (inline segmented button)
 	const modeToggle = document.createElement('div');
@@ -1211,7 +1235,7 @@ function createTimerFields(step, onUpdate) {
 		stepperGroup.append(decBtn, customInput, incBtn);
 	}
 
-	row.append(labelGroup, modeToggle, presetsGroup, stepperGroup);
+	row.append(modeToggle, presetsGroup, stepperGroup);
 	frag.appendChild(row);
 
 	return frag;

@@ -167,3 +167,59 @@ def test_workout_js_modules_evaluate_in_node():
 		text=True,
 	)
 	assert res.returncode == 0, f"Node failed to evaluate workout JS modules:\n{res.stderr}"
+
+
+def test_youtube_playlist_and_video_parsing():
+	import shutil
+	import subprocess
+
+	if not shutil.which("node"):
+		return
+
+	js_dir = Path(__file__).parent.parent / "js"
+	node_script = f"""
+	import {{ parseYouTubeInfo, parseYouTubeId, parseYouTubePlaylistId }} from '{js_dir}/utils.js';
+
+	// 1. YouTube Music playlist
+	const ytMusicPl = parseYouTubeInfo('https://music.youtube.com/playlist?list=OLAK5uy_lIHIK_DkEwWuvS6ibD_HcGpOqxfdK5XZI&si=ylcf4DF_rVxzX1Z3');
+	if (!ytMusicPl || ytMusicPl.playlistId !== 'OLAK5uy_lIHIK_DkEwWuvS6ibD_HcGpOqxfdK5XZI' || !ytMusicPl.isPlaylist) {{
+		throw new Error('Failed to parse YouTube Music playlist URL: ' + JSON.stringify(ytMusicPl));
+	}}
+	if (parseYouTubePlaylistId('https://music.youtube.com/playlist?list=OLAK5uy_lIHIK_DkEwWuvS6ibD_HcGpOqxfdK5XZI') !== 'OLAK5uy_lIHIK_DkEwWuvS6ibD_HcGpOqxfdK5XZI') {{
+		throw new Error('parseYouTubePlaylistId failed for YT Music');
+	}}
+
+	// 2. Standard YouTube playlist
+	const ytPl = parseYouTubeInfo('https://www.youtube.com/playlist?list=PL1234567890abcdef');
+	if (!ytPl || ytPl.playlistId !== 'PL1234567890abcdef' || !ytPl.isPlaylist) {{
+		throw new Error('Failed to parse YouTube playlist URL');
+	}}
+
+	// 3. Watch URL with video ID and playlist ID
+	const ytWatchWithList = parseYouTubeInfo('https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=PL1234567890abcdef');
+	if (!ytWatchWithList || ytWatchWithList.videoId !== 'dQw4w9WgXcQ' || ytWatchWithList.playlistId !== 'PL1234567890abcdef' || ytWatchWithList.isPlaylist) {{
+		throw new Error('Failed to parse video URL with list param');
+	}}
+
+	// 4. Standard Watch URL
+	const ytWatch = parseYouTubeInfo('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+	if (!ytWatch || ytWatch.videoId !== 'dQw4w9WgXcQ' || ytWatch.playlistId !== null || ytWatch.isPlaylist) {{
+		throw new Error('Failed to parse standard watch URL');
+	}}
+	if (parseYouTubeId('https://www.youtube.com/watch?v=dQw4w9WgXcQ') !== 'dQw4w9WgXcQ') {{
+		throw new Error('parseYouTubeId failed for standard watch URL');
+	}}
+
+	// 5. Short URL with timestamp
+	const ytShort = parseYouTubeInfo('https://youtu.be/dQw4w9WgXcQ?t=45s');
+	if (!ytShort || ytShort.videoId !== 'dQw4w9WgXcQ' || ytShort.startSeconds !== 45) {{
+		throw new Error('Failed to parse youtu.be short URL with timestamp');
+	}}
+	"""
+
+	res = subprocess.run(
+		["node", "--input-type=module", "-e", node_script],
+		capture_output=True,
+		text=True,
+	)
+	assert res.returncode == 0, f"Node test for YouTube parsing failed:\n{res.stderr}"

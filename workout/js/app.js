@@ -1417,8 +1417,13 @@ async function showCompletionModal(session, completedRoutine) {
 async function initMusicModule() {
 	await initMusic(dom.ytMusicPlayer, {
 		onTrackChange: (track) => {
+			const title = track.liveTitle || track.label || (track.source === 'youtube' ? (track.videoId || track.playlistId) : track.fileName) || 'Music';
 			if (dom.musicTrackName) {
-				dom.musicTrackName.textContent = track.label || 'Music';
+				dom.musicTrackName.textContent = title;
+			}
+			const quickTitle = document.getElementById('music-quick-title');
+			if (quickTitle) {
+				quickTitle.textContent = title;
 			}
 		},
 	});
