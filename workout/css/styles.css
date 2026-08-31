@@ -2040,15 +2040,41 @@ html, body {
 	margin-top: 4px;
 }
 
-.timer-label-group {
-	flex: 1;
-	min-width: 140px;
-	margin-bottom: 0;
+.step-fixed-video-pill {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	padding: 5px 14px;
+	border-radius: 20px;
+	background: rgba(59, 130, 246, 0.12);
+	border: 1px solid rgba(59, 130, 246, 0.3);
+	color: #93c5fd;
+	font-size: 0.82rem;
+	font-weight: 600;
 }
 
-.timer-label-input {
-	padding: 6px 12px;
-	font-size: 0.88rem;
+.step-fixed-video-pill .fixed-video-icon {
+	font-size: 0.95rem;
+}
+
+.step-fixed-video-pill .fixed-video-title {
+	font-weight: 700;
+	color: #bfdbfe;
+}
+
+.step-fixed-video-pill .fixed-video-dur {
+	font-weight: 800;
+	color: #ffffff;
+	font-variant-numeric: tabular-nums;
+	background: rgba(255, 255, 255, 0.12);
+	padding: 1px 6px;
+	border-radius: 10px;
+}
+
+.step-fixed-video-pill .fixed-video-timestamps {
+	font-size: 0.74rem;
+	color: rgba(255, 255, 255, 0.65);
+	font-variant-numeric: tabular-nums;
 }
 
 .step-mode-segmented-compact {

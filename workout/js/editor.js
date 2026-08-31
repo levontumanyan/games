@@ -1057,185 +1057,200 @@ function createTimerFields(step, onUpdate) {
 	// 1. Tagged movements / exercise chips
 	frag.appendChild(createExercisePicker(step, onUpdate));
 
-	// 2. Compact Control Row: Mode + Presets + Stepper
+	// 2. Compact Control Row: Mode + Presets + Stepper (or Fixed Video Badge)
+	const isVideoStep = Boolean(step.type === 'clip' || (step.videoId && step.endSeconds && step.endSeconds > (step.startSeconds || 0)));
+
 	const row = document.createElement('div');
 	row.className = 'timer-controls-row';
 
-	// Mode Switcher: Timed vs Reps (inline segmented button)
-	const modeToggle = document.createElement('div');
-	modeToggle.className = 'step-mode-segmented-compact';
-
-	const timedBtn = document.createElement('button');
-	timedBtn.type = 'button';
-	timedBtn.className = `btn-mode-seg ${step.stepMode !== 'reps' ? 'active' : ''}`;
-	timedBtn.innerHTML = `⏱️ Time`;
-	timedBtn.addEventListener('click', () => {
-		step.stepMode = 'time';
-		if (!step.durationSeconds) step.durationSeconds = 30;
-		onUpdate();
-	});
-
-	const repsBtn = document.createElement('button');
-	repsBtn.type = 'button';
-	repsBtn.className = `btn-mode-seg ${step.stepMode === 'reps' ? 'active' : ''}`;
-	repsBtn.innerHTML = `🔢 Reps`;
-	repsBtn.addEventListener('click', () => {
-		step.stepMode = 'reps';
-		if (!step.targetReps) step.targetReps = 20;
-		onUpdate();
-	});
-
-	modeToggle.append(timedBtn, repsBtn);
-
-	// Presets & Stepper Group
-	const presetsGroup = document.createElement('div');
-	presetsGroup.className = 'timer-presets-group';
-
-	const stepperGroup = document.createElement('div');
-	stepperGroup.className = 'timer-stepper-group';
-
-	if (step.stepMode === 'reps') {
-		const curReps = step.targetReps || 20;
-
-		const decBtn = document.createElement('button');
-		decBtn.type = 'button';
-		decBtn.className = 'break-stepper-btn';
-		decBtn.innerHTML = '−';
-		decBtn.title = 'Decrease reps (-5, Shift for -10)';
-
-		const repsInp = document.createElement('input');
-		repsInp.type = 'number';
-		repsInp.min = '1';
-		repsInp.className = 'break-custom-input';
-		repsInp.value = curReps;
-
-		const incBtn = document.createElement('button');
-		incBtn.type = 'button';
-		incBtn.className = 'break-stepper-btn';
-		incBtn.innerHTML = '+';
-		incBtn.title = 'Increase reps (+5, Shift for +10)';
-
-		const repsPresets = [10, 15, 20, 25, 30, 50];
-		const presetButtons = [];
-		function updateActivePreset(val) {
-			presetButtons.forEach(({ btn, r }) => {
-				if (val === r) btn.classList.add('active');
-				else btn.classList.remove('active');
-			});
-		}
-
-		const setReps = (val) => {
-			const clamped = Math.max(1, parseInt(val, 10) || 20);
-			step.targetReps = clamped;
-			repsInp.value = clamped;
-			updateActivePreset(clamped);
-			onUpdate();
-		};
-
-		decBtn.addEventListener('click', (e) => {
-			const delta = e.shiftKey ? 10 : 5;
-			setReps((step.targetReps || 20) - delta);
-		});
-
-		incBtn.addEventListener('click', (e) => {
-			const delta = e.shiftKey ? 10 : 5;
-			setReps((step.targetReps || 20) + delta);
-		});
-
-		repsInp.addEventListener('focus', () => repsInp.select());
-		repsInp.addEventListener('change', () => setReps(repsInp.value));
-
-		repsPresets.forEach(r => {
-			const btn = document.createElement('button');
-			btn.type = 'button';
-			btn.className = 'preset-chip break-preset-chip';
-			if (curReps === r) btn.classList.add('active');
-			btn.textContent = `${r}`;
-			btn.title = `${r} reps`;
-			btn.addEventListener('click', () => setReps(r));
-			presetsGroup.appendChild(btn);
-			presetButtons.push({ btn, r });
-		});
-
-		stepperGroup.append(decBtn, repsInp, incBtn);
+	if (isVideoStep) {
+		const dur = Math.max(1, (step.endSeconds || 60) - (step.startSeconds || 0));
+		const videoPill = document.createElement('div');
+		videoPill.className = 'step-fixed-video-pill';
+		videoPill.innerHTML = `
+			<span class="fixed-video-icon">🎬</span>
+			<span class="fixed-video-title">Follow-Along Video Drill</span>
+			<span class="fixed-video-dur">${formatTime(dur)}</span>
+			<span class="fixed-video-timestamps">(${formatTime(step.startSeconds || 0)} → ${formatTime(step.endSeconds || dur)})</span>
+		`;
+		row.appendChild(videoPill);
 	} else {
-		const curSec = step.durationSeconds || 30;
+		// Mode Switcher: Timed vs Reps (inline segmented button)
+		const modeToggle = document.createElement('div');
+		modeToggle.className = 'step-mode-segmented-compact';
 
-		const decBtn = document.createElement('button');
-		decBtn.type = 'button';
-		decBtn.className = 'break-stepper-btn';
-		decBtn.innerHTML = '−';
-		decBtn.title = 'Decrease duration (-5s, Shift for -15s)';
+		const timedBtn = document.createElement('button');
+		timedBtn.type = 'button';
+		timedBtn.className = `btn-mode-seg ${step.stepMode !== 'reps' ? 'active' : ''}`;
+		timedBtn.innerHTML = `⏱️ Time`;
+		timedBtn.addEventListener('click', () => {
+			step.stepMode = 'time';
+			if (!step.durationSeconds) step.durationSeconds = 30;
+			onUpdate();
+		});
 
-		const customInput = document.createElement('input');
-		customInput.type = 'text';
-		customInput.className = 'break-custom-input';
-		customInput.placeholder = '0:30';
-		customInput.value = formatTime(curSec);
+		const repsBtn = document.createElement('button');
+		repsBtn.type = 'button';
+		repsBtn.className = `btn-mode-seg ${step.stepMode === 'reps' ? 'active' : ''}`;
+		repsBtn.innerHTML = `🔢 Reps`;
+		repsBtn.addEventListener('click', () => {
+			step.stepMode = 'reps';
+			if (!step.targetReps) step.targetReps = 20;
+			onUpdate();
+		});
 
-		const incBtn = document.createElement('button');
-		incBtn.type = 'button';
-		incBtn.className = 'break-stepper-btn';
-		incBtn.innerHTML = '+';
-		incBtn.title = 'Increase duration (+5s, Shift for +15s)';
+		modeToggle.append(timedBtn, repsBtn);
 
-		const timePresets = [
-			{ label: '15s', sec: 15 },
-			{ label: '30s', sec: 30 },
-			{ label: '45s', sec: 45 },
-			{ label: '1m', sec: 60 },
-			{ label: '2m', sec: 120 },
-			{ label: '3m', sec: 180 },
-		];
-		const presetButtons = [];
-		function updateActivePreset(sec) {
-			presetButtons.forEach(({ btn, pSec }) => {
-				if (sec === pSec) btn.classList.add('active');
-				else btn.classList.remove('active');
+		// Presets & Stepper Group
+		const presetsGroup = document.createElement('div');
+		presetsGroup.className = 'timer-presets-group';
+
+		const stepperGroup = document.createElement('div');
+		stepperGroup.className = 'timer-stepper-group';
+
+		if (step.stepMode === 'reps') {
+			const curReps = step.targetReps || 20;
+
+			const decBtn = document.createElement('button');
+			decBtn.type = 'button';
+			decBtn.className = 'break-stepper-btn';
+			decBtn.innerHTML = '−';
+			decBtn.title = 'Decrease reps (-5, Shift for -10)';
+
+			const repsInp = document.createElement('input');
+			repsInp.type = 'number';
+			repsInp.min = '1';
+			repsInp.className = 'break-custom-input';
+			repsInp.value = curReps;
+
+			const incBtn = document.createElement('button');
+			incBtn.type = 'button';
+			incBtn.className = 'break-stepper-btn';
+			incBtn.innerHTML = '+';
+			incBtn.title = 'Increase reps (+5, Shift for +10)';
+
+			const repsPresets = [10, 15, 20, 25, 30, 50];
+			const presetButtons = [];
+			function updateActivePreset(val) {
+				presetButtons.forEach(({ btn, r }) => {
+					if (val === r) btn.classList.add('active');
+					else btn.classList.remove('active');
+				});
+			}
+
+			const setReps = (val) => {
+				const clamped = Math.max(1, parseInt(val, 10) || 20);
+				step.targetReps = clamped;
+				repsInp.value = clamped;
+				updateActivePreset(clamped);
+				onUpdate();
+			};
+
+			decBtn.addEventListener('click', (e) => {
+				const delta = e.shiftKey ? 10 : 5;
+				setReps((step.targetReps || 20) - delta);
 			});
+
+			incBtn.addEventListener('click', (e) => {
+				const delta = e.shiftKey ? 10 : 5;
+				setReps((step.targetReps || 20) + delta);
+			});
+
+			repsInp.addEventListener('focus', () => repsInp.select());
+			repsInp.addEventListener('change', () => setReps(repsInp.value));
+
+			repsPresets.forEach(r => {
+				const btn = document.createElement('button');
+				btn.type = 'button';
+				btn.className = 'preset-chip break-preset-chip';
+				if (curReps === r) btn.classList.add('active');
+				btn.textContent = `${r}`;
+				btn.title = `${r} reps`;
+				btn.addEventListener('click', () => setReps(r));
+				presetsGroup.appendChild(btn);
+				presetButtons.push({ btn, r });
+			});
+
+			stepperGroup.append(decBtn, repsInp, incBtn);
+		} else {
+			const curSec = step.durationSeconds || 30;
+
+			const decBtn = document.createElement('button');
+			decBtn.type = 'button';
+			decBtn.className = 'break-stepper-btn';
+			decBtn.innerHTML = '−';
+			decBtn.title = 'Decrease duration (-5s, Shift for -15s)';
+
+			const customInput = document.createElement('input');
+			customInput.type = 'text';
+			customInput.className = 'break-custom-input';
+			customInput.placeholder = '0:30';
+			customInput.value = formatTime(curSec);
+
+			const incBtn = document.createElement('button');
+			incBtn.type = 'button';
+			incBtn.className = 'break-stepper-btn';
+			incBtn.innerHTML = '+';
+			incBtn.title = 'Increase duration (+5s, Shift for +15s)';
+
+			const timePresets = [
+				{ label: '15s', sec: 15 },
+				{ label: '30s', sec: 30 },
+				{ label: '45s', sec: 45 },
+				{ label: '1m', sec: 60 },
+				{ label: '2m', sec: 120 },
+				{ label: '3m', sec: 180 },
+			];
+			const presetButtons = [];
+			function updateActivePreset(sec) {
+				presetButtons.forEach(({ btn, pSec }) => {
+					if (sec === pSec) btn.classList.add('active');
+					else btn.classList.remove('active');
+				});
+			}
+
+			const setDuration = (newSec) => {
+				const clamped = Math.max(1, newSec);
+				step.durationSeconds = clamped;
+				customInput.value = formatTime(clamped);
+				updateActivePreset(clamped);
+				onUpdate();
+			};
+
+			decBtn.addEventListener('click', (e) => {
+				const delta = e.shiftKey ? 15 : 5;
+				const cur = parseTime(customInput.value) || step.durationSeconds || 30;
+				setDuration(cur - delta);
+			});
+
+			incBtn.addEventListener('click', (e) => {
+				const delta = e.shiftKey ? 15 : 5;
+				const cur = parseTime(customInput.value) || step.durationSeconds || 30;
+				setDuration(cur + delta);
+			});
+
+			customInput.addEventListener('focus', () => customInput.select());
+			customInput.addEventListener('change', () => {
+				const parsed = parseTime(customInput.value);
+				setDuration(Math.max(1, parsed || 30));
+			});
+
+			timePresets.forEach(p => {
+				const btn = document.createElement('button');
+				btn.type = 'button';
+				btn.className = 'preset-chip break-preset-chip';
+				if (curSec === p.sec) btn.classList.add('active');
+				btn.textContent = p.label;
+				btn.addEventListener('click', () => setDuration(p.sec));
+				presetsGroup.appendChild(btn);
+				presetButtons.push({ btn, pSec: p.sec });
+			});
+
+			stepperGroup.append(decBtn, customInput, incBtn);
 		}
 
-		const setDuration = (newSec) => {
-			const clamped = Math.max(1, newSec);
-			step.durationSeconds = clamped;
-			customInput.value = formatTime(clamped);
-			updateActivePreset(clamped);
-			onUpdate();
-		};
-
-		decBtn.addEventListener('click', (e) => {
-			const delta = e.shiftKey ? 15 : 5;
-			const cur = parseTime(customInput.value) || step.durationSeconds || 30;
-			setDuration(cur - delta);
-		});
-
-		incBtn.addEventListener('click', (e) => {
-			const delta = e.shiftKey ? 15 : 5;
-			const cur = parseTime(customInput.value) || step.durationSeconds || 30;
-			setDuration(cur + delta);
-		});
-
-		customInput.addEventListener('focus', () => customInput.select());
-		customInput.addEventListener('change', () => {
-			const parsed = parseTime(customInput.value);
-			setDuration(Math.max(1, parsed || 30));
-		});
-
-		timePresets.forEach(p => {
-			const btn = document.createElement('button');
-			btn.type = 'button';
-			btn.className = 'preset-chip break-preset-chip';
-			if (curSec === p.sec) btn.classList.add('active');
-			btn.textContent = p.label;
-			btn.addEventListener('click', () => setDuration(p.sec));
-			presetsGroup.appendChild(btn);
-			presetButtons.push({ btn, pSec: p.sec });
-		});
-
-		stepperGroup.append(decBtn, customInput, incBtn);
+		row.append(modeToggle, presetsGroup, stepperGroup);
 	}
-
-	row.append(modeToggle, presetsGroup, stepperGroup);
 	frag.appendChild(row);
 
 	return frag;
