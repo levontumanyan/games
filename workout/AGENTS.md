@@ -4,6 +4,9 @@
 When given a workout link (`https://levon.ajwest.ca/workout/#u=<user>&r=<id>` or `#r=<id>`):
 - Fetch the routine JSON directly via `GET https://levon.ajwest.ca/workout/api/routines/<id>?user_id=<user>` (fallback user: `levon`).
 
+## YouTube Video Searching
+- Use youtube search python tool to find real, verified YouTube videos instead of guessing URLs.
+
 # API & Agent Workflows
 
 ## Remote-First Execution
