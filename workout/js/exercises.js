@@ -8,9 +8,7 @@ import { MUSCLE_DEFINITIONS } from './body_map.js';
 export {
 	renderExercisesCatalog,
 	showExerciseVariationsModal,
-	showEditExerciseModal,
 	showCreateExerciseModal,
-	highlightExerciseCard,
 } from './exercises_view.js';
 
 export const MUSCLE_GROUPS = MUSCLE_DEFINITIONS;
@@ -113,37 +111,6 @@ export function getExerciseMediaAssets(exercisesOrIds = []) {
 }
 
 /**
- * Retrieve the best video/visual follow-along asset for an exercise.
- * @param {Object|string} exerciseOrId
- * @returns {Object|null}
- */
-export function getExerciseFollowAlongMedia(exerciseOrId) {
-	if (!exerciseOrId) return null;
-	const assets = getExerciseMediaAssets([exerciseOrId]);
-	// 1. Prefer explicit demonstration follow-along video
-	const demo = assets.find(a => (a.kind === 'demonstration' || a.kind === 'drill') && (a.type === 'video' || Boolean(a.videoId)));
-	if (demo) return demo;
-	// 2. Prefer looping visual animation or photo
-	const visual = assets.find(a => a.kind === 'animation' || a.kind === 'photo');
-	if (visual) return visual;
-	// 3. Fallback: Any non-instruction video asset
-	const nonInst = assets.find(a => a.kind !== 'instruction');
-	if (nonInst) return nonInst;
-	return null;
-}
-
-/**
- * Retrieve any instructional tutorial / coaching breakdown asset for an exercise.
- * @param {Object|string} exerciseOrId
- * @returns {Object|null}
- */
-export function getExerciseInstructionMedia(exerciseOrId) {
-	if (!exerciseOrId) return null;
-	const assets = getExerciseMediaAssets([exerciseOrId]);
-	return assets.find(a => a.kind === 'instruction') || null;
-}
-
-/**
  * Add a new media asset to an exercise and persist to server.
  * @param {string} exerciseId
  * @param {Object} asset
@@ -156,55 +123,9 @@ export async function addMediaAssetToExercise(exerciseId, asset) {
 	const existingAssets = Array.isArray(ex.media_assets) ? [...ex.media_assets] : [];
 	existingAssets.push(asset);
 
-	let media_url = ex.media_url;
-	if (!media_url && asset.url) {
-		media_url = asset.url;
-	}
-
 	const updated = await createCustomExercise({
 		...ex,
-		media_url: media_url,
 		media_assets: existingAssets
-	});
-
-	return updated;
-}
-
-/**
- * Remove a media asset from an exercise and persist to server.
- * @param {string} exerciseId
- * @param {string} assetId
- * @returns {Promise<Object>}
- */
-export async function removeMediaAssetFromExercise(exerciseId, assetId) {
-	const ex = getExerciseById(exerciseId);
-	if (!ex) throw new Error('Exercise not found');
-
-	let existingAssets = Array.isArray(ex.media_assets) ? [...ex.media_assets] : [];
-
-	// If existingAssets is empty but ex.media_url exists (legacy fallback)
-	if (existingAssets.length === 0 && (assetId === `fb-${ex.id}` || assetId === `${ex.id}-default` || ex.media_url)) {
-		const updated = await createCustomExercise({
-			...ex,
-			media_url: '',
-			media_assets: []
-		});
-		return updated;
-	}
-
-	const filteredAssets = existingAssets.filter(a => a.id !== assetId && a.url !== assetId);
-
-	let media_url = ex.media_url || '';
-	if (filteredAssets.length === 0) {
-		media_url = '';
-	} else if (!filteredAssets.some(a => a.url === media_url)) {
-		media_url = filteredAssets[0].url || '';
-	}
-
-	const updated = await createCustomExercise({
-		...ex,
-		media_url: media_url,
-		media_assets: filteredAssets
 	});
 
 	return updated;
