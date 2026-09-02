@@ -712,6 +712,9 @@ export function resolveStepMediaUrl(step) {
 
 	if (step.type === 'timer' && step.label) {
 		const l = step.label.toLowerCase();
+		if (l.includes('diamond pushup') || l.includes('diamond push-up') || l.includes('diamond-pushup') || l.includes('diamond')) {
+			return '/workout/media/diamond-pushups.gif';
+		}
 		if (l.includes('pike pushup') || l.includes('pike push-up') || l.includes('pike-pushup') || l.includes('pike')) {
 			return '/workout/media/pike-pushups.svg';
 		}

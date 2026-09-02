@@ -508,17 +508,25 @@ function switchTab(tab) {
 						showToast('No constituent exercises to break down.');
 						return;
 					}
-					const totalSec = combo.default_quantity || 190;
-					const perSec = Math.max(20, Math.floor(totalSec / exList.length));
-					const steps = exList.map(e => {
-						const isReps = (e.default_mode || 'time') === 'reps';
+					const isComboReps = combo.default_mode === 'reps';
+					const totalQuantity = combo.default_quantity || (isComboReps ? 20 : 190);
+					const count = exList.length;
+					const baseQty = Math.floor(totalQuantity / count);
+					const remainder = totalQuantity % count;
+
+					const steps = exList.map((e, idx) => {
+						const isReps = isComboReps || (e.default_mode || 'time') === 'reps';
+						const allocated = idx < remainder ? baseQty + 1 : baseQty;
+						const repsCount = isComboReps ? allocated : (e.default_quantity || 20);
+						const secCount = !isComboReps ? Math.max(10, allocated) : (e.default_quantity || 30);
+
 						const s = createTimerStep(
 							e.name,
-							isReps ? 30 : (e.default_quantity || perSec),
+							isReps ? 30 : secCount,
 							e.media_url || ''
 						);
-						s.stepMode = e.default_mode || 'time';
-						if (isReps) s.targetReps = e.default_quantity || 20;
+						s.stepMode = isReps ? 'reps' : 'time';
+						if (isReps) s.targetReps = repsCount;
 						s.exercises = [e];
 						return s;
 					});

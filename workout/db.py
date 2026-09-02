@@ -243,14 +243,14 @@ class Database:
 				"default_mode": "reps",
 				"default_quantity": 15,
 				"description": "Close-grip push-ups for tricep overload. Setup: Thumbs and index fingers together forming diamond shape under mid-chest. Execution: Lower with elbows pinned against ribs, pressing through triceps.",
-				"media_url": "/workout/media/pushups.svg",
+				"media_url": "/workout/media/diamond-pushups.gif",
 				"media_assets": [
 					{
-						"id": "asset-diamond-pushups-ref",
-						"kind": "photo",
+						"id": "asset-diamond-pushups-anim",
+						"kind": "animation",
 						"type": "image",
-						"title": "Diamond Push-up Form Reference",
-						"url": "/workout/media/pushups.svg",
+						"title": "Diamond Push-up Form Animation",
+						"url": "/workout/media/diamond-pushups.gif",
 					}
 				],
 				"primary_muscles": ["triceps", "chest"],

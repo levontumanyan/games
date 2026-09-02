@@ -2,7 +2,7 @@
  * Player module - YouTube IFrame API integration and timer countdown engine.
  */
 
-import { formatTime, formatFriendlyDuration, parseYouTubeId, escapeHtml } from './utils.js';
+import { formatTime, formatFriendlyDuration, parseYouTubeId, escapeHtml, getEffectiveSubStepReps, getEffectiveSubStepDuration } from './utils.js';
 import { isBreakStep, resolveStepMediaUrl } from './editor.js';
 import { playCountdownBeep } from './audio.js';
 import { getClipIcon, getTimerIcon, getBreakIcon } from './icons.js';
@@ -823,7 +823,7 @@ function executeTimerStep(step) {
 	const activeSubEx = (rawSubEx && resolvedSubEx) ? { ...resolvedSubEx, ...rawSubEx, name: rawSubEx.name || resolvedSubEx.name || '' } : (resolvedSubEx || rawSubEx);
 
 	const isSubReps = hasSubSteps
-		? (activeSubEx.stepMode === 'reps' || activeSubEx.default_mode === 'reps' || (Boolean(activeSubEx.targetReps) && Number(activeSubEx.targetReps) > 0) || (!activeSubEx.durationSeconds && step.stepMode === 'reps'))
+		? (activeSubEx.stepMode === 'reps' || (!activeSubEx.durationSeconds && (step.stepMode === 'reps' || Boolean(step.targetReps))) || (activeSubEx.default_mode === 'reps' && !activeSubEx.durationSeconds))
 		: (!isBreak && (step.stepMode === 'reps' || (Boolean(step.targetReps) && Number(step.targetReps) > 0)));
 	isRepsMode = isSubReps;
 
@@ -914,7 +914,7 @@ function executeTimerStep(step) {
 
 	if (isSubReps) {
 		const targetReps = hasSubSteps
-			? (activeSubEx.targetReps || activeSubEx.reps || (activeSubEx.default_mode === 'reps' ? activeSubEx.default_quantity : (step.targetReps || 20)))
+			? getEffectiveSubStepReps(step, currentSubStepIndex, totalSubSteps, activeSubEx)
 			: (step.targetReps || 20);
 		dom.timerDisplay.textContent = `${targetReps} REPS`;
 		dom.timerLabel.textContent = hasSubSteps ? (activeSubEx.name || step.label) : (step.label || 'Complete Target Reps');
@@ -963,7 +963,7 @@ function executeTimerStep(step) {
 		}
 	} else {
 		const targetDuration = hasSubSteps
-			? (activeSubEx.durationSeconds || (activeSubEx.default_mode === 'time' ? activeSubEx.default_quantity : (step.durationSeconds || 30)))
+			? getEffectiveSubStepDuration(step, currentSubStepIndex, totalSubSteps, activeSubEx)
 			: (step.durationSeconds || 30);
 		const linkedEx = resolvedSubEx || (step.exercises && step.exercises[0]) || (step.exercise_id ? getExerciseById(step.exercise_id) : null);
 		const stepMuscles = inferMusclesForExercise(linkedEx || { name: (activeSubEx?.name || step.label), description: step.description });

@@ -1,4 +1,4 @@
-import { formatTime, formatFriendlyDuration, escapeHtml, parseYouTubeId } from './utils.js';
+import { formatTime, formatFriendlyDuration, escapeHtml, parseYouTubeId, getEffectiveSubStepReps, getEffectiveSubStepDuration } from './utils.js';
 import { isBreakStep, resolveStepMediaUrl } from './editor.js';
 import { getClipIcon, getTimerIcon, getBreakIcon, getStepsIcon, getShareIcon, getSaveIcon } from './icons.js';
 import { getCategoryBadgeHtml, getDisciplineBadgeHtml, getMuscleBadgeHtml, MUSCLE_DEFINITIONS } from './taxonomy.js';
@@ -554,9 +554,9 @@ function createViewStepCard(step, index, steps, actions) {
 			subRow.setAttribute('tabindex', '0');
 			subRow.title = `Click to view "${resolvedEx.name}" exercise guide & videos`;
 
-			const isSubReps = resolvedEx.stepMode === 'reps' || resolvedEx.default_mode === 'reps' || Boolean(resolvedEx.targetReps) || (!resolvedEx.durationSeconds && step.stepMode === 'reps');
-			const subReps = resolvedEx.targetReps || resolvedEx.reps || (resolvedEx.default_mode === 'reps' ? resolvedEx.default_quantity : (step.targetReps || 10));
-			const subDur = resolvedEx.durationSeconds || (resolvedEx.default_mode === 'time' ? resolvedEx.default_quantity : (step.durationSeconds || 30));
+			const isSubReps = resolvedEx.stepMode === 'reps' || (!resolvedEx.durationSeconds && (step.stepMode === 'reps' || Boolean(step.targetReps))) || (resolvedEx.default_mode === 'reps' && !resolvedEx.durationSeconds);
+			const subReps = getEffectiveSubStepReps(step, sIdx, step.exercises.length, resolvedEx);
+			const subDur = getEffectiveSubStepDuration(step, sIdx, step.exercises.length, resolvedEx);
 			const exTargetStr = isSubReps ? `${subReps} reps` : formatFriendlyDuration(subDur);
 
 			const subMuscles = inferMusclesForExercise(resolvedEx);

@@ -346,3 +346,78 @@ def test_step_creation_from_exercise_and_combo():
 		text=True,
 	)
 	assert res.returncode == 0, f"Node test for step creation failed:\n{res.stderr}"
+
+
+def test_combo_substep_reps_and_duration_division():
+	"""Verify getEffectiveSubStepReps and getEffectiveSubStepDuration correctly divide combo quantities."""
+	import subprocess
+
+	js_dir = Path(__file__).parent.parent / "js"
+	node_script = f"""
+	import {{ getEffectiveSubStepReps, getEffectiveSubStepDuration }} from '{js_dir}/utils.js';
+
+	// Case 1: 30 reps across 4 exercises -> 8, 8, 7, 7 = 30
+	const comboStep30 = {{
+		id: 'step-pushups-30',
+		type: 'timer',
+		stepMode: 'reps',
+		targetReps: 30,
+		exercises: [
+			{{ id: 'ex-pike-pushups', default_mode: 'reps', default_quantity: 12 }},
+			{{ id: 'ex-decline-pushups', default_mode: 'reps', default_quantity: 15 }},
+			{{ id: 'ex-standard-pushups', default_mode: 'reps', default_quantity: 20 }},
+			{{ id: 'ex-diamond-pushups', default_mode: 'reps', default_quantity: 15 }}
+		]
+	}};
+
+	const reps0 = getEffectiveSubStepReps(comboStep30, 0, 4, comboStep30.exercises[0]);
+	const reps1 = getEffectiveSubStepReps(comboStep30, 1, 4, comboStep30.exercises[1]);
+	const reps2 = getEffectiveSubStepReps(comboStep30, 2, 4, comboStep30.exercises[2]);
+	const reps3 = getEffectiveSubStepReps(comboStep30, 3, 4, comboStep30.exercises[3]);
+
+	if (reps0 !== 8 || reps1 !== 8 || reps2 !== 7 || reps3 !== 7) {{
+		throw new Error(`Expected 8, 8, 7, 7 but got ${{reps0}}, ${{reps1}}, ${{reps2}}, ${{reps3}}`);
+	}}
+	if (reps0 + reps1 + reps2 + reps3 !== 30) {{
+		throw new Error(`Sum of reps must equal 30, got ${{reps0 + reps1 + reps2 + reps3}}`);
+	}}
+
+	// Case 2: Explicit sub-exercise overrides
+	const explicitStep = {{
+		id: 'step-custom',
+		type: 'timer',
+		stepMode: 'reps',
+		targetReps: 38,
+		exercises: [
+			{{ id: 'ex-pike', targetReps: 10 }},
+			{{ id: 'ex-decline', targetReps: 10 }},
+			{{ id: 'ex-standard', targetReps: 10 }},
+			{{ id: 'ex-diamond', targetReps: 8 }}
+		]
+	}};
+	if (getEffectiveSubStepReps(explicitStep, 0, 4, explicitStep.exercises[0]) !== 10) throw new Error('Expected explicit 10');
+	if (getEffectiveSubStepReps(explicitStep, 3, 4, explicitStep.exercises[3]) !== 8) throw new Error('Expected explicit 8');
+
+	// Case 3: 120s duration across 3 exercises -> 40, 40, 40
+	const timedCombo = {{
+		id: 'step-timed',
+		type: 'timer',
+		stepMode: 'time',
+		durationSeconds: 120,
+		exercises: [
+			{{ id: 'ex-1' }},
+			{{ id: 'ex-2' }},
+			{{ id: 'ex-3' }}
+		]
+	}};
+	if (getEffectiveSubStepDuration(timedCombo, 0, 3, timedCombo.exercises[0]) !== 40) throw new Error('Expected 40s');
+	if (getEffectiveSubStepDuration(timedCombo, 1, 3, timedCombo.exercises[1]) !== 40) throw new Error('Expected 40s');
+	if (getEffectiveSubStepDuration(timedCombo, 2, 3, timedCombo.exercises[2]) !== 40) throw new Error('Expected 40s');
+	"""
+
+	res = subprocess.run(
+		["node", "--input-type=module", "-e", node_script],
+		capture_output=True,
+		text=True,
+	)
+	assert res.returncode == 0, f"Node test for reps/duration division failed:\n{res.stderr}"

@@ -255,4 +255,72 @@ export function escapeHtml(str) {
 	return div.innerHTML;
 }
 
+/**
+ * Calculate the effective target reps for a sub-exercise within a compound step.
+ * Respects explicit sub-exercise reps, or evenly/proportionally divides parent targetReps.
+ * @param {Object} step - Parent step
+ * @param {number} subIndex - Index of the sub-exercise (0-based)
+ * @param {number} totalSubSteps - Total count of sub-exercises in this step
+ * @param {Object} [subEx] - Resolved sub-exercise object
+ * @returns {number}
+ */
+export function getEffectiveSubStepReps(step, subIndex = 0, totalSubSteps = 1, subEx = null) {
+	if (subEx) {
+		const explicit = subEx.targetReps ?? subEx.reps;
+		if (explicit !== undefined && explicit !== null && Number(explicit) > 0) {
+			return Number(explicit);
+		}
+	}
+	const count = Math.max(1, totalSubSteps || (step?.exercises?.length || 1));
+	const isRepsMode = step?.stepMode === 'reps' || (Boolean(step?.targetReps) && Number(step?.targetReps) > 0);
+
+	if (isRepsMode) {
+		const totalReps = Math.max(1, Number(step.targetReps) || 20);
+		const base = Math.floor(totalReps / count);
+		const remainder = totalReps % count;
+		const allocated = subIndex < remainder ? base + 1 : base;
+		return Math.max(1, allocated);
+	}
+
+	if (subEx && subEx.default_mode === 'reps' && subEx.default_quantity) {
+		return Number(subEx.default_quantity);
+	}
+
+	return 20;
+}
+
+/**
+ * Calculate the effective duration in seconds for a sub-exercise within a compound step.
+ * Respects explicit sub-exercise duration, or evenly divides parent step duration.
+ * @param {Object} step - Parent step
+ * @param {number} subIndex - Index of the sub-exercise (0-based)
+ * @param {number} totalSubSteps - Total count of sub-exercises in this step
+ * @param {Object} [subEx] - Resolved sub-exercise object
+ * @returns {number}
+ */
+export function getEffectiveSubStepDuration(step, subIndex = 0, totalSubSteps = 1, subEx = null) {
+	if (subEx) {
+		const explicit = subEx.durationSeconds ?? subEx.duration;
+		if (explicit !== undefined && explicit !== null && Number(explicit) > 0) {
+			return Number(explicit);
+		}
+	}
+	const count = Math.max(1, totalSubSteps || (step?.exercises?.length || 1));
+	const isTimeMode = step?.stepMode !== 'reps' && (!step?.targetReps || Number(step?.targetReps) === 0);
+
+	if (isTimeMode && count > 1) {
+		const totalSec = Math.max(1, Number(step?.durationSeconds) || 30);
+		const base = Math.floor(totalSec / count);
+		const remainder = totalSec % count;
+		const allocated = subIndex < remainder ? base + 1 : base;
+		return Math.max(1, allocated);
+	}
+
+	if (subEx && subEx.default_mode === 'time' && subEx.default_quantity) {
+		return Number(subEx.default_quantity);
+	}
+
+	return Number(step?.durationSeconds) || 30;
+}
+
 
