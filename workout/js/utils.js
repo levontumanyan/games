@@ -272,7 +272,7 @@ export function getEffectiveSubStepReps(step, subIndex = 0, totalSubSteps = 1, s
 		}
 	}
 	const count = Math.max(1, totalSubSteps || (step?.exercises?.length || 1));
-	const isRepsMode = step?.stepMode === 'reps' || (Boolean(step?.targetReps) && Number(step?.targetReps) > 0);
+	const isRepsMode = step?.stepMode === 'reps' || (!step?.stepMode && Boolean(step?.targetReps) && Number(step?.targetReps) > 0);
 
 	if (isRepsMode) {
 		const totalReps = Math.max(1, Number(step.targetReps) || 20);
@@ -306,7 +306,7 @@ export function getEffectiveSubStepDuration(step, subIndex = 0, totalSubSteps = 
 		}
 	}
 	const count = Math.max(1, totalSubSteps || (step?.exercises?.length || 1));
-	const isTimeMode = step?.stepMode !== 'reps' && (!step?.targetReps || Number(step?.targetReps) === 0);
+	const isTimeMode = step?.stepMode === 'time' || (step?.stepMode !== 'reps' && (!step?.targetReps || Number(step?.targetReps) === 0));
 
 	if (isTimeMode && count > 1) {
 		const totalSec = Math.max(1, Number(step?.durationSeconds) || 30);

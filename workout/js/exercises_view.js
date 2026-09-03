@@ -280,6 +280,10 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 	};
 
 	const handleEsc = (e) => {
+		const modalDlg = document.getElementById('modal-backdrop');
+		if (modalDlg && !modalDlg.classList.contains('hidden')) {
+			return;
+		}
 		if (e.key === 'Escape' || e.keyCode === 27) {
 			close();
 		}
@@ -553,7 +557,7 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 				if (!confirmed) return;
 
 				try {
-					const updated = await removeMediaAssetFromExercise(exercise.id, assetToRemove.id);
+					const updated = await removeMediaAssetFromExercise(exercise.id || exercise, assetToRemove.id, assetToRemove.url);
 					Object.assign(exercise, updated);
 					renderModalContent();
 					onUpdated();

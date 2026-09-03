@@ -454,6 +454,10 @@ export function showComboDetailModal(combo, options = {}) {
 	};
 
 	const handleEsc = (e) => {
+		const modalDlg = document.getElementById('modal-backdrop');
+		if (modalDlg && !modalDlg.classList.contains('hidden')) {
+			return;
+		}
 		if (e.key === 'Escape' || e.keyCode === 27) {
 			close();
 		}

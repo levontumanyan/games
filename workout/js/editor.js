@@ -540,7 +540,7 @@ function createStepElement(step, index, routine, onUpdate, onTestStep) {
 	if (step.type === 'clip') {
 		const dur = Math.max(0, (step.endSeconds || 60) - (step.startSeconds || 0));
 		headerMeta.textContent = `${formatTime(dur)} (${formatTime(step.startSeconds || 0)}–${formatTime(step.endSeconds || 60)})`;
-	} else if (step.stepMode === 'reps' || step.targetReps) {
+	} else if (step.stepMode === 'reps' || (!step.stepMode && Boolean(step.targetReps))) {
 		headerMeta.textContent = `${step.targetReps || 20} reps`;
 	} else {
 		headerMeta.textContent = formatFriendlyDuration(step.durationSeconds || 30);

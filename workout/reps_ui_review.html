@@ -1,0 +1,1571 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="matcha-dark">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Reps UI & Layout Collision Fix Review - Workout Player</title>
+	<link rel="stylesheet" href="css/styles.css">
+	<style>
+		:root {
+			--review-bg: #0b0f0d;
+			--review-card-bg: #141b17;
+			--review-card-border: rgba(95, 167, 120, 0.18);
+			--review-accent: #5fa778;
+			--review-accent-bright: #34d399;
+			--review-amber: #f59e0b;
+			--review-text: #e6eae6;
+			--review-text-muted: #8b9990;
+		}
+
+		* {
+			box-sizing: border-box;
+		}
+
+		html {
+			height: auto !important;
+			min-height: 100% !important;
+			overflow-y: auto !important;
+			overflow-x: hidden !important;
+		}
+
+		body {
+			font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+			background: var(--review-bg);
+			color: var(--review-text);
+			margin: 0;
+			padding: 24px;
+			line-height: 1.5;
+			height: auto !important;
+			min-height: 100vh !important;
+			overflow-y: visible !important;
+			overflow-x: hidden !important;
+		}
+
+		.review-header {
+			max-width: 1360px;
+			margin: 0 auto 24px;
+			padding-bottom: 20px;
+			border-bottom: 1px solid var(--review-card-border);
+		}
+
+		.review-badge {
+			display: inline-flex;
+			align-items: center;
+			gap: 6px;
+			padding: 4px 10px;
+			border-radius: 999px;
+			background: rgba(239, 68, 68, 0.15);
+			border: 1px solid rgba(239, 68, 68, 0.3);
+			color: #f87171;
+			font-size: 0.8rem;
+			font-weight: 700;
+			letter-spacing: 0.05em;
+			text-transform: uppercase;
+			margin-bottom: 10px;
+		}
+
+		.review-badge.fix {
+			background: rgba(95, 167, 120, 0.15);
+			border-color: rgba(95, 167, 120, 0.3);
+			color: var(--review-accent-bright);
+		}
+
+		.review-title {
+			font-size: clamp(1.6rem, 3vw, 2.2rem);
+			font-weight: 800;
+			margin: 0 0 8px;
+			letter-spacing: -0.02em;
+			color: #ffffff;
+		}
+
+		.review-subtitle {
+			color: var(--review-text-muted);
+			font-size: 1.05rem;
+			max-width: 860px;
+			margin: 0 0 18px;
+		}
+
+		/* Diagnostic alert */
+		.diagnostic-box {
+			background: rgba(239, 68, 68, 0.08);
+			border: 1px solid rgba(239, 68, 68, 0.25);
+			border-radius: 12px;
+			padding: 16px 20px;
+			margin-top: 16px;
+			display: flex;
+			flex-direction: column;
+			gap: 8px;
+			font-size: 0.92rem;
+		}
+
+		.diagnostic-box strong {
+			color: #fca5a5;
+			display: flex;
+			align-items: center;
+			gap: 8px;
+		}
+
+		.diagnostic-box ul {
+			margin: 4px 0 0 18px;
+			padding: 0;
+			color: #cbd5e1;
+		}
+
+		/* Navigation / tabs */
+		.nav-tabs {
+			display: flex;
+			gap: 8px;
+			overflow-x: auto;
+			padding: 6px 0 16px;
+			border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+			max-width: 1360px;
+			margin: 0 auto 24px;
+		}
+
+		.nav-tab-btn {
+			background: #141b17;
+			border: 1px solid rgba(255, 255, 255, 0.12);
+			color: var(--review-text-muted);
+			padding: 10px 18px;
+			border-radius: 10px;
+			cursor: pointer;
+			font-size: 0.92rem;
+			font-weight: 600;
+			white-space: nowrap;
+			transition: all 0.15s ease;
+			display: flex;
+			align-items: center;
+			gap: 8px;
+		}
+
+		.nav-tab-btn:hover {
+			color: #ffffff;
+			border-color: rgba(255, 255, 255, 0.3);
+			background: #1c2620;
+		}
+
+		.nav-tab-btn.active {
+			background: rgba(95, 167, 120, 0.2);
+			border-color: var(--review-accent-bright);
+			color: #ffffff;
+			box-shadow: 0 0 16px rgba(95, 167, 120, 0.25);
+		}
+
+		.tab-content {
+			display: none;
+			max-width: 1360px;
+			margin: 0 auto;
+		}
+
+		.tab-content.active {
+			display: block;
+			animation: fadeIn 0.2s ease;
+		}
+
+		@keyframes fadeIn {
+			from { opacity: 0; transform: translateY(4px); }
+			to { opacity: 1; transform: translateY(0); }
+		}
+
+		/* Interactive Simulator Frame */
+		.idea-layout {
+			display: grid;
+			grid-template-columns: minmax(360px, 440px) 1fr;
+			gap: 36px;
+			align-items: start;
+		}
+
+		@media (max-width: 960px) {
+			.idea-layout {
+				grid-template-columns: 1fr;
+			}
+		}
+
+		.simulator-wrapper {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+		}
+
+		.simulator-frame {
+			width: 100%;
+			max-width: 420px;
+			height: 620px;
+			background: #060908;
+			border: 1px solid rgba(255, 255, 255, 0.16);
+			border-radius: 28px;
+			padding: 14px;
+			box-shadow: 0 24px 64px rgba(0, 0, 0, 0.85);
+			position: relative;
+			display: flex;
+			flex-direction: column;
+			overflow: hidden;
+		}
+
+		.simulator-topbar {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			padding: 6px 10px 10px;
+			font-size: 0.78rem;
+			color: var(--review-text-muted);
+			font-weight: 700;
+			letter-spacing: 0.04em;
+			text-transform: uppercase;
+			border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+		}
+
+		.simulator-screen {
+			flex: 1;
+			background: radial-gradient(circle at 50% 35%, rgba(245, 158, 11, 0.05) 0%, #050706 75%);
+			border-radius: 16px;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-content: center;
+			padding: 16px 12px;
+			position: relative;
+			overflow: hidden;
+		}
+
+		/* Exercise Media Card inside simulator */
+		.sim-media-card {
+			width: 100%;
+			max-width: 320px;
+			background: #ffffff;
+			border-radius: 18px;
+			overflow: hidden;
+			position: relative;
+			box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6);
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			min-height: 240px;
+		}
+
+		.sim-media-card img {
+			width: 100%;
+			height: auto;
+			max-height: 280px;
+			object-fit: contain;
+			display: block;
+		}
+
+		/* Exercise Title under media */
+		.sim-ex-title {
+			margin-top: 14px;
+			font-size: 1rem;
+			font-weight: 700;
+			color: #ffffff;
+			text-align: center;
+		}
+
+		.sim-ex-meta {
+			font-size: 0.8rem;
+			color: var(--review-text-muted);
+			text-align: center;
+			margin-top: 2px;
+		}
+
+		/* Simulator Step Advance Flash Overlay */
+		.sim-advance-overlay {
+			position: absolute;
+			inset: 0;
+			background: rgba(16, 185, 129, 0.92);
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-content: center;
+			border-radius: 16px;
+			color: #ffffff;
+			font-weight: 800;
+			z-index: 50;
+			opacity: 0;
+			pointer-events: none;
+			transition: opacity 0.2s ease;
+		}
+
+		.sim-advance-overlay.show {
+			opacity: 1;
+		}
+
+		.sim-advance-overlay .check-icon {
+			font-size: 3.5rem;
+			margin-bottom: 8px;
+			animation: bounceIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+		}
+
+		@keyframes bounceIn {
+			0% { transform: scale(0.5); opacity: 0; }
+			70% { transform: scale(1.15); opacity: 1; }
+			100% { transform: scale(1); }
+		}
+
+		/* Spec Card */
+		.spec-card {
+			background: var(--review-card-bg);
+			border: 1px solid var(--review-card-border);
+			border-radius: 16px;
+			padding: 28px;
+			display: flex;
+			flex-direction: column;
+			gap: 20px;
+		}
+
+		.spec-card h3 {
+			margin: 0;
+			font-size: 1.4rem;
+			color: #ffffff;
+			display: flex;
+			align-items: center;
+			gap: 10px;
+		}
+
+		.spec-pill {
+			display: inline-flex;
+			padding: 3px 10px;
+			border-radius: 6px;
+			font-size: 0.75rem;
+			font-weight: 700;
+			letter-spacing: 0.04em;
+			text-transform: uppercase;
+		}
+
+		.spec-pill.green { background: rgba(52, 211, 153, 0.15); color: #34d399; }
+		.spec-pill.amber { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+		.spec-pill.blue { background: rgba(96, 165, 250, 0.15); color: #60a5fa; }
+		.spec-pill.purple { background: rgba(167, 139, 250, 0.15); color: #a78bfa; }
+
+		.spec-pros-cons {
+			display: grid;
+			grid-template-columns: 1fr 1fr;
+			gap: 16px;
+		}
+
+		@media (max-width: 600px) {
+			.spec-pros-cons {
+				grid-template-columns: 1fr;
+			}
+		}
+
+		.pros-box, .cons-box {
+			background: rgba(0, 0, 0, 0.25);
+			border-radius: 10px;
+			padding: 14px;
+			border: 1px solid rgba(255, 255, 255, 0.06);
+		}
+
+		.pros-box strong { color: #34d399; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px; }
+		.cons-box strong { color: #f87171; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px; }
+
+		.pros-box ul, .cons-box ul {
+			margin: 0;
+			padding-left: 18px;
+			font-size: 0.88rem;
+			color: #cbd5e1;
+		}
+
+		.code-snippet {
+			background: #090c0a;
+			border: 1px solid rgba(255, 255, 255, 0.08);
+			border-radius: 8px;
+			padding: 14px;
+			font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+			font-size: 0.85rem;
+			color: #e2e8f0;
+			overflow-x: auto;
+		}
+
+		/* ==========================================================================
+		   IDEA 1: FLOATING GLASS PILL DOCK
+		   ========================================================================== */
+		.idea1-floating-pill {
+			position: absolute;
+			bottom: 12px;
+			left: 50%;
+			transform: translateX(-50%);
+			background: rgba(11, 15, 13, 0.85);
+			backdrop-filter: blur(16px);
+			-webkit-backdrop-filter: blur(16px);
+			border: 1px solid rgba(255, 255, 255, 0.18);
+			border-radius: 999px;
+			padding: 6px 8px 6px 16px;
+			display: flex;
+			align-items: center;
+			gap: 12px;
+			box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+			z-index: 10;
+			width: calc(100% - 24px);
+			max-width: 290px;
+			justify-content: space-between;
+		}
+
+		.idea1-rep-metric {
+			display: flex;
+			align-items: baseline;
+			gap: 5px;
+		}
+
+		.idea1-rep-num {
+			font-size: 1.6rem;
+			font-weight: 900;
+			color: #fbbf24;
+			line-height: 1;
+		}
+
+		.idea1-rep-unit {
+			font-size: 0.75rem;
+			font-weight: 800;
+			letter-spacing: 0.08em;
+			color: #e2e8f0;
+			text-transform: uppercase;
+		}
+
+		.action-done-btn {
+			background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+			color: #ffffff;
+			border: 1px solid rgba(255, 255, 255, 0.25);
+			padding: 8px 16px;
+			border-radius: 999px;
+			font-size: 0.88rem;
+			font-weight: 700;
+			cursor: pointer;
+			display: flex;
+			align-items: center;
+			gap: 6px;
+			box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);
+			transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.15s ease;
+		}
+
+		.action-done-btn:hover {
+			transform: scale(1.04);
+			box-shadow: 0 6px 20px rgba(16, 185, 129, 0.6);
+		}
+
+		.action-done-btn:active {
+			transform: scale(0.96);
+		}
+
+		/* ==========================================================================
+		   IDEA 2: HORIZONTAL ACTION BAR
+		   ========================================================================== */
+		.idea2-action-bar {
+			width: 100%;
+			max-width: 320px;
+			background: #121915;
+			border: 1px solid rgba(255, 255, 255, 0.12);
+			border-radius: 14px;
+			padding: 8px 12px;
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+			margin-top: 14px;
+		}
+
+		.idea2-rep-badge {
+			display: flex;
+			align-items: center;
+			gap: 6px;
+			background: rgba(245, 158, 11, 0.14);
+			border: 1px solid rgba(245, 158, 11, 0.3);
+			padding: 6px 10px;
+			border-radius: 10px;
+		}
+
+		.idea2-rep-num {
+			font-size: 1.4rem;
+			font-weight: 900;
+			color: #fbbf24;
+			line-height: 1;
+		}
+
+		.idea2-rep-text {
+			font-size: 0.72rem;
+			font-weight: 800;
+			color: #fde68a;
+			letter-spacing: 0.05em;
+		}
+
+		.idea2-ex-info {
+			display: flex;
+			flex-direction: column;
+			text-align: left;
+			margin-left: 8px;
+			flex: 1;
+		}
+
+		.idea2-ex-name {
+			font-size: 0.85rem;
+			font-weight: 700;
+			color: #ffffff;
+			white-space: nowrap;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			max-width: 110px;
+		}
+
+		.idea2-ex-sub {
+			font-size: 0.7rem;
+			color: var(--review-text-muted);
+		}
+
+		/* ==========================================================================
+		   IDEA 3: CORNER BADGE + HERO BUTTON
+		   ========================================================================== */
+		.idea3-corner-badge {
+			position: absolute;
+			top: 10px;
+			left: 10px;
+			background: rgba(11, 15, 13, 0.88);
+			backdrop-filter: blur(8px);
+			-webkit-backdrop-filter: blur(8px);
+			border: 1px solid rgba(255, 255, 255, 0.18);
+			padding: 6px 12px;
+			border-radius: 999px;
+			display: flex;
+			align-items: center;
+			gap: 6px;
+			box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+		}
+
+		.idea3-dot {
+			width: 8px;
+			height: 8px;
+			background: #fbbf24;
+			border-radius: 50%;
+			box-shadow: 0 0 8px #fbbf24;
+		}
+
+		.idea3-badge-text {
+			font-size: 0.82rem;
+			font-weight: 800;
+			letter-spacing: 0.04em;
+			color: #ffffff;
+		}
+
+		.idea3-hero-btn {
+			width: 100%;
+			max-width: 320px;
+			margin-top: 16px;
+			background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+			color: #ffffff;
+			border: 1px solid rgba(255, 255, 255, 0.25);
+			padding: 14px;
+			border-radius: 14px;
+			font-size: 1.05rem;
+			font-weight: 800;
+			cursor: pointer;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			gap: 8px;
+			box-shadow: 0 8px 24px rgba(16, 185, 129, 0.45);
+			transition: transform 0.1s ease;
+		}
+
+		.idea3-hero-btn:hover {
+			transform: scale(1.02);
+		}
+
+		/* ==========================================================================
+		   IDEA 4: STEPPER PILL
+		   ========================================================================== */
+		.idea4-controls {
+			margin-top: 14px;
+			width: 100%;
+			max-width: 320px;
+			display: flex;
+			flex-direction: column;
+			gap: 10px;
+			align-items: center;
+		}
+
+		.idea4-stepper-pill {
+			display: flex;
+			align-items: center;
+			background: #131a16;
+			border: 1px solid rgba(255, 255, 255, 0.14);
+			border-radius: 999px;
+			padding: 4px 6px;
+			box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+		}
+
+		.idea4-step-btn {
+			width: 38px;
+			height: 38px;
+			border-radius: 50%;
+			background: rgba(255, 255, 255, 0.08);
+			border: 1px solid rgba(255, 255, 255, 0.12);
+			color: #ffffff;
+			font-size: 1.25rem;
+			font-weight: 700;
+			cursor: pointer;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			transition: all 0.15s ease;
+			user-select: none;
+		}
+
+		.idea4-step-btn:hover {
+			background: rgba(255, 255, 255, 0.2);
+			transform: scale(1.1);
+		}
+
+		.idea4-step-btn:active {
+			transform: scale(0.92);
+		}
+
+		.idea4-display {
+			padding: 0 20px;
+			text-align: center;
+			min-width: 90px;
+		}
+
+		.idea4-count {
+			font-size: 1.8rem;
+			font-weight: 900;
+			color: #fbbf24;
+			line-height: 1;
+		}
+
+		.idea4-unit {
+			font-size: 0.7rem;
+			font-weight: 800;
+			color: var(--review-text-muted);
+			letter-spacing: 0.08em;
+			text-transform: uppercase;
+		}
+
+		/* ==========================================================================
+		   IDEA 5: DUAL PANEL DOCK
+		   ========================================================================== */
+		.idea5-split-container {
+			display: flex;
+			gap: 16px;
+			width: 100%;
+			max-width: 380px;
+			background: #0f1411;
+			border: 1px solid rgba(255, 255, 255, 0.12);
+			border-radius: 20px;
+			padding: 12px;
+			box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6);
+		}
+
+		.idea5-thumb-col {
+			width: 140px;
+			background: #ffffff;
+			border-radius: 14px;
+			overflow: hidden;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+		}
+
+		.idea5-thumb-col img {
+			width: 100%;
+			height: 100%;
+			object-fit: contain;
+		}
+
+		.idea5-meta-col {
+			flex: 1;
+			display: flex;
+			flex-direction: column;
+			justify-content: space-between;
+			padding: 4px 0;
+		}
+
+		/* ==========================================================================
+		   BUG DEMO
+		   ========================================================================== */
+		.mockup-bugged-ring {
+			position: relative;
+			width: 110px;
+			height: 110px;
+			margin-top: -15px;
+		}
+
+		.mockup-bugged-ring svg {
+			width: 100%;
+			height: 100%;
+		}
+
+		.mockup-bugged-center {
+			position: absolute;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+			width: 85%;
+			text-align: center;
+		}
+
+		.mockup-bugged-display {
+			font-size: 3.5rem;
+			font-weight: 900;
+			color: #fbbf24;
+			line-height: 0.8;
+			margin-top: -20px;
+			white-space: nowrap;
+		}
+
+		.mockup-bugged-btn {
+			margin-top: 12px;
+			padding: 10px 24px;
+			font-size: 0.95rem;
+			font-weight: 800;
+			border-radius: 40px;
+			background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+			color: #ffffff;
+			border: 1px solid rgba(255, 255, 255, 0.3);
+			cursor: pointer;
+			white-space: nowrap;
+			box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+		}
+
+		/* ==========================================================================
+		   OVERVIEW GRID CARDS
+		   ========================================================================== */
+		.overview-grid {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+			gap: 20px;
+			margin-top: 20px;
+		}
+
+		.overview-card {
+			background: var(--review-card-bg);
+			border: 1px solid var(--review-card-border);
+			border-radius: 14px;
+			padding: 16px;
+			display: flex;
+			flex-direction: column;
+			gap: 12px;
+			transition: transform 0.2s ease, border-color 0.2s ease;
+			cursor: pointer;
+		}
+
+		.overview-card:hover {
+			transform: translateY(-4px);
+			border-color: var(--review-accent-bright);
+		}
+
+		.overview-card h4 {
+			margin: 0;
+			font-size: 1rem;
+			color: #ffffff;
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+		}
+
+		.overview-preview-box {
+			background: #060908;
+			border-radius: 10px;
+			height: 160px;
+			overflow: hidden;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			position: relative;
+			padding: 8px;
+		}
+
+		.overview-preview-box img {
+			max-height: 100px;
+			object-fit: contain;
+			border-radius: 6px;
+		}
+
+		.overview-open-btn {
+			background: rgba(255, 255, 255, 0.08);
+			border: 1px solid rgba(255, 255, 255, 0.15);
+			color: #ffffff;
+			padding: 8px 12px;
+			border-radius: 8px;
+			font-size: 0.82rem;
+			font-weight: 700;
+			cursor: pointer;
+			text-align: center;
+			transition: background 0.15s ease;
+		}
+
+		.overview-card:hover .overview-open-btn {
+			background: var(--review-accent);
+		}
+
+		/* Keyboard hint bar */
+		.key-hint-bar {
+			margin-top: 14px;
+			display: flex;
+			align-items: center;
+			gap: 8px;
+			font-size: 0.82rem;
+			color: var(--review-text-muted);
+		}
+
+		.key-hint-bar kbd {
+			background: #1c2620;
+			border: 1px solid rgba(255, 255, 255, 0.2);
+			border-radius: 4px;
+			padding: 2px 7px;
+			font-family: inherit;
+			font-weight: 700;
+			color: #ffffff;
+		}
+	</style>
+</head>
+<body>
+
+	<header class="review-header">
+		<div class="review-badge fix">✓ Interactive Review & Live Simulators</div>
+		<h1 class="review-title">5 Minimal Solutions for Reps & Media UI Collision</h1>
+		<p class="review-subtitle">
+			Test live interactions with click or <kbd style="background:#222; padding:2px 6px; border-radius:4px;">Space</kbd> / <kbd style="background:#222; padding:2px 6px; border-radius:4px;">Enter</kbd>. Every simulator below actively advances through a 3-step workout sequence to verify real player ergonomics.
+		</p>
+
+		<div class="diagnostic-box">
+			<strong>⚠️ Why the Collision Happened in the Screenshot:</strong>
+			<ul>
+				<li><strong>Ring Container Shrinking</strong>: When media exists, <code>.has-media .timer-ring-container</code> shrinks the SVG ring to <code>110px &times; 110px</code>.</li>
+				<li><strong>Oversized Font Size</strong>: <code>#timer-overlay.is-reps-stage #timer-display</code> sets <code>font-size: clamp(3.2rem, 8vw, 5.5rem)</code>. Fitting `5 REPS` inside 110px forces the number "5" to burst out the top over the GIF, while "REPS" wraps and clips into "RE".</li>
+				<li><strong>DOM Button Injection</strong>: In <code>player.js</code>, <code>doneBtn</code> is injected inside <code>.timer-center-text</code>. Because <code>.timer-center-text</code> is vertically centered with <code>transform: translate(-50%, -50%)</code>, adding the 48px button shifts the center downward, pushing the rep number upward across the border and on top of the GIF.</li>
+				<li><strong>Circular Ring Irrelevance</strong>: Rep steps are target completions (e.g. "Do 5 Reps"), NOT timed countdowns. Circular progress rings take up vertical space for zero fitness value.</li>
+			</ul>
+		</div>
+	</header>
+
+	<nav class="nav-tabs" id="tabs-nav">
+		<button class="nav-tab-btn active" data-tab="tab-overview">📊 All 5 Overview</button>
+		<button class="nav-tab-btn" data-tab="tab-idea1">💡 1. Floating Glass Pill</button>
+		<button class="nav-tab-btn" data-tab="tab-idea2">💡 2. Horizontal Action Bar</button>
+		<button class="nav-tab-btn" data-tab="tab-idea3">💡 3. Corner Badge + Full Action</button>
+		<button class="nav-tab-btn" data-tab="tab-idea4">💡 4. Interactive Stepper Pill</button>
+		<button class="nav-tab-btn" data-tab="tab-idea5">💡 5. Dual Panel Dock</button>
+		<button class="nav-tab-btn" data-tab="tab-current-bug">⚠️ Current Collision (Before)</button>
+	</nav>
+
+	<!-- TAB 0: ALL 5 OVERVIEW -->
+	<main id="tab-overview" class="tab-content active">
+		<div class="spec-card">
+			<h3>Executive Comparison</h3>
+			<p style="color: var(--review-text-muted); margin-top: -8px;">
+				Click any card below to launch its interactive workout simulator. You can press <kbd style="background:#222; padding:2px 6px; border-radius:4px;">Space</kbd> or click "Done" to cycle through real workout steps.
+			</p>
+			<div class="overview-grid">
+				<div class="overview-card" onclick="switchTab('tab-idea1')">
+					<h4>
+						<span>1. Floating Glass Pill</span>
+						<span class="spec-pill green">Top Pick</span>
+					</h4>
+					<div class="overview-preview-box">
+						<div style="position: relative; display: inline-block;">
+							<img src="media/diamond-pushups.gif" alt="Preview">
+							<div style="position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); border: 1px solid rgba(255,255,255,0.2); border-radius: 999px; padding: 4px 10px; font-size: 0.7rem; font-weight: 800; color: #fbbf24; white-space: nowrap; display: flex; gap: 6px; align-items: center;">
+								<span>5 REPS</span>
+								<span style="background: #10b981; color: #fff; padding: 2px 6px; border-radius: 999px; font-size: 0.65rem;">✓ Done</span>
+							</div>
+						</div>
+					</div>
+					<p style="font-size: 0.84rem; color: var(--review-text-muted); margin: 0;">
+						Floats a sleek frosted glass pill inside the bottom edge of the GIF card. Zero extra vertical height taken below the media.
+					</p>
+					<div class="overview-open-btn">Open Live Simulator &rarr;</div>
+				</div>
+
+				<div class="overview-card" onclick="switchTab('tab-idea2')">
+					<h4>
+						<span>2. Horizontal Action Bar</span>
+						<span class="spec-pill amber">Clean & Sturdy</span>
+					</h4>
+					<div class="overview-preview-box">
+						<div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+							<img src="media/diamond-pushups.gif" alt="Preview" style="max-height: 80px;">
+							<div style="background: #121915; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 4px 8px; font-size: 0.7rem; display: flex; gap: 8px; align-items: center;">
+								<span style="color: #fbbf24; font-weight: 800;">5 REPS</span>
+								<span style="color: #94a3b8;">Pushups</span>
+								<span style="background: #10b981; color: #fff; padding: 2px 6px; border-radius: 6px;">✓</span>
+							</div>
+						</div>
+					</div>
+					<p style="font-size: 0.84rem; color: var(--review-text-muted); margin: 0;">
+						Eliminates circular ring completely. Packs rep target, exercise title, and Done button into a compact 50px horizontal row.
+					</p>
+					<div class="overview-open-btn">Open Live Simulator &rarr;</div>
+				</div>
+
+				<div class="overview-card" onclick="switchTab('tab-idea3')">
+					<h4>
+						<span>3. Corner Badge + Action</span>
+						<span class="spec-pill blue">Ultra-Minimal</span>
+					</h4>
+					<div class="overview-preview-box">
+						<div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+							<div style="position: relative;">
+								<img src="media/diamond-pushups.gif" alt="Preview" style="max-height: 80px;">
+								<span style="position: absolute; top: 4px; left: 4px; background: rgba(0,0,0,0.75); color: #fff; font-size: 0.65rem; font-weight: 800; padding: 2px 6px; border-radius: 6px;">5 REPS</span>
+							</div>
+							<div style="background: #10b981; color: #fff; font-weight: 800; font-size: 0.72rem; padding: 5px 14px; border-radius: 8px;">
+								✓ Complete 5 Reps
+							</div>
+						</div>
+					</div>
+					<p style="font-size: 0.84rem; color: var(--review-text-muted); margin: 0;">
+						Decouples rep target to an elegant top-corner badge; bottom has only one prominent, uncluttered completion button.
+					</p>
+					<div class="overview-open-btn">Open Live Simulator &rarr;</div>
+				</div>
+
+				<div class="overview-card" onclick="switchTab('tab-idea4')">
+					<h4>
+						<span>4. Interactive Stepper Pill</span>
+						<span class="spec-pill purple">Functional</span>
+					</h4>
+					<div class="overview-preview-box">
+						<div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+							<img src="media/diamond-pushups.gif" alt="Preview" style="max-height: 75px;">
+							<div style="background: #131a16; border: 1px solid rgba(255,255,255,0.15); border-radius: 999px; padding: 2px 8px; font-size: 0.75rem; display: flex; gap: 8px; align-items: center;">
+								<span>−</span>
+								<span style="color: #fbbf24; font-weight: 800;">5</span>
+								<span>+</span>
+							</div>
+							<div style="background: #10b981; color: #fff; font-size: 0.7rem; padding: 4px 12px; border-radius: 999px;">✓ Done</div>
+						</div>
+					</div>
+					<p style="font-size: 0.84rem; color: var(--review-text-muted); margin: 0;">
+						Allows on-the-fly adjustment if you do more or fewer reps (e.g. 4 or 8), logging true reps effortlessly.
+					</p>
+					<div class="overview-open-btn">Open Live Simulator &rarr;</div>
+				</div>
+
+				<div class="overview-card" onclick="switchTab('tab-idea5')">
+					<h4>
+						<span>5. Dual Panel Dock</span>
+						<span class="spec-pill green">Landscape / Tablet</span>
+					</h4>
+					<div class="overview-preview-box">
+						<div style="display: flex; gap: 8px; background: #121714; padding: 6px; border-radius: 8px; width: 90%;">
+							<img src="media/diamond-pushups.gif" alt="Preview" style="max-height: 65px; border-radius: 4px;">
+							<div style="display: flex; flex-direction: column; justify-content: center; gap: 2px;">
+								<span style="font-size: 0.65rem; color: #fbbf24; font-weight: 800;">5 REPS</span>
+								<span style="font-size: 0.6rem; color: #94a3b8;">Diamond</span>
+								<span style="background: #10b981; color: #fff; font-size: 0.6rem; padding: 2px 6px; border-radius: 4px; text-align: center;">✓ Done</span>
+							</div>
+						</div>
+					</div>
+					<p style="font-size: 0.84rem; color: var(--review-text-muted); margin: 0;">
+						Side-by-side layout: GIF on the left, console HUD on the right. Zero vertical fight for screen height.
+					</p>
+					<div class="overview-open-btn">Open Live Simulator &rarr;</div>
+				</div>
+			</div>
+		</div>
+	</main>
+
+	<!-- TAB 1: FLOATING GLASS PILL -->
+	<section id="tab-idea1" class="tab-content">
+		<div class="idea-layout">
+			<div class="simulator-wrapper">
+				<div class="simulator-frame">
+					<div class="simulator-topbar">
+						<span>WORKOUT PLAYER</span>
+						<span class="sim-step-indicator">STEP 1 / 3</span>
+					</div>
+					<div class="simulator-screen">
+						<!-- Advance Flash Feedback Overlay -->
+						<div class="sim-advance-overlay" id="overlay-idea1">
+							<div class="check-icon">✓</div>
+							<div style="font-size: 1.1rem;">STEP COMPLETE!</div>
+							<div style="font-size: 0.85rem; opacity: 0.9; margin-top: 4px;">Advancing to next exercise...</div>
+						</div>
+
+						<!-- Media Card -->
+						<div class="sim-media-card">
+							<img src="media/diamond-pushups.gif" class="sim-img" alt="Exercise">
+							<!-- Floating Pill inside card -->
+							<div class="idea1-floating-pill">
+								<div class="idea1-rep-metric">
+									<span class="idea1-rep-num sim-rep-num">5</span>
+									<span class="idea1-rep-unit">REPS</span>
+								</div>
+								<button type="button" class="action-done-btn" onclick="advanceSimulatorStep()">
+									<span>✓</span>
+									<span>Done</span>
+								</button>
+							</div>
+						</div>
+
+						<div class="sim-ex-title">Diamond Pushups</div>
+						<div class="sim-ex-meta">Chest & Triceps · Bodyweight</div>
+					</div>
+				</div>
+
+				<div class="key-hint-bar">
+					<span>Press <kbd>Space</kbd> or click <strong>Done</strong> to advance step</span>
+				</div>
+			</div>
+
+			<div class="spec-card">
+				<div>
+					<span class="spec-pill green">Idea 1 · Recommended</span>
+					<h3 style="margin-top: 8px;">Floating Glass Pill Dock</h3>
+					<p style="color: var(--review-text-muted); margin: 6px 0 0;">
+						Anchors a translucent, frosted-glass HUD capsule directly inside the bottom border of the GIF card. The UI becomes part of the media player rather than fighting with elements underneath it.
+					</p>
+				</div>
+
+				<div class="spec-pros-cons">
+					<div class="pros-box">
+						<strong>Advantages</strong>
+						<ul>
+							<li>Zero collision risk: Doesn't rely on vertical space below the GIF.</li>
+							<li>High contrast: Frosted glass background ensures crisp readability even over white FitnessProgramer GIF backgrounds.</li>
+							<li>Modern & Minimal: Inspired by iOS Dynamic Island & modern video player controls.</li>
+							<li>Unifies Reps & Done into one cohesive touch target.</li>
+						</ul>
+					</div>
+					<div class="cons-box">
+						<strong>Tradeoffs</strong>
+						<ul>
+							<li>Covers a small 36px band at the very bottom edge of the animation.</li>
+						</ul>
+					</div>
+				</div>
+
+				<div>
+					<div class="spec-section-title" style="color: var(--review-accent); font-size: 0.85rem; font-weight: 700; text-transform: uppercase; margin-bottom: 6px;">Implementation Blueprint</div>
+					<div class="code-snippet">
+/* Drop circular ring & float pill inside media */
+#timer-overlay.is-reps-stage .timer-ring-container {
+	display: none;
+}
+.timer-media-container {
+	position: relative;
+}
+.reps-floating-pill {
+	position: absolute;
+	bottom: 14px;
+	left: 50%;
+	transform: translateX(-50%);
+	background: rgba(11, 15, 13, 0.85);
+	backdrop-filter: blur(16px);
+	border: 1px solid rgba(255, 255, 255, 0.16);
+	border-radius: 999px;
+	padding: 6px 10px 6px 18px;
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	z-index: 10;
+}
+					</div>
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<!-- TAB 2: HORIZONTAL ACTION BAR -->
+	<section id="tab-idea2" class="tab-content">
+		<div class="idea-layout">
+			<div class="simulator-wrapper">
+				<div class="simulator-frame">
+					<div class="simulator-topbar">
+						<span>WORKOUT PLAYER</span>
+						<span class="sim-step-indicator">STEP 1 / 3</span>
+					</div>
+					<div class="simulator-screen">
+						<!-- Advance Flash Feedback Overlay -->
+						<div class="sim-advance-overlay" id="overlay-idea2">
+							<div class="check-icon">✓</div>
+							<div style="font-size: 1.1rem;">STEP COMPLETE!</div>
+							<div style="font-size: 0.85rem; opacity: 0.9; margin-top: 4px;">Advancing to next exercise...</div>
+						</div>
+
+						<div class="sim-media-card">
+							<img src="media/diamond-pushups.gif" class="sim-img" alt="Exercise">
+						</div>
+
+						<!-- Horizontal Action Bar -->
+						<div class="idea2-action-bar">
+							<div class="idea2-rep-badge">
+								<span class="idea2-rep-num sim-rep-num">5</span>
+								<span class="idea2-rep-text">REPS</span>
+							</div>
+							<div class="idea2-ex-info">
+								<span class="idea2-ex-name sim-ex-title">Diamond Pushups</span>
+								<span class="idea2-ex-sub sim-ex-meta">Chest & Triceps</span>
+							</div>
+							<button type="button" class="action-done-btn" onclick="advanceSimulatorStep()">
+								✓ Done
+							</button>
+						</div>
+					</div>
+				</div>
+				<div class="key-hint-bar">
+					<span>Press <kbd>Space</kbd> or click <strong>Done</strong> to advance step</span>
+				</div>
+			</div>
+
+			<div class="spec-card">
+				<div>
+					<span class="spec-pill amber">Idea 2</span>
+					<h3 style="margin-top: 8px;">Integrated Horizontal Action Bar</h3>
+					<p style="color: var(--review-text-muted); margin: 6px 0 0;">
+						Replaces the entire circular SVG ring for rep steps with a compact 50px high horizontal strip. Displays target count, exercise name, and the advance button in a single neat row.
+					</p>
+				</div>
+
+				<div class="spec-pros-cons">
+					<div class="pros-box">
+						<strong>Advantages</strong>
+						<ul>
+							<li>Never obscures the GIF animation.</li>
+							<li>Strict, predictable height: Exactly 50px of vertical space, leaving maximum height for the exercise GIF.</li>
+							<li>Clear visual hierarchy from left-to-right: Target &rarr; Exercise &rarr; Action.</li>
+						</ul>
+					</div>
+					<div class="cons-box">
+						<strong>Tradeoffs</strong>
+						<ul>
+							<li>Requires slightly more horizontal width for long exercise titles.</li>
+						</ul>
+					</div>
+				</div>
+
+				<div>
+					<div class="spec-section-title" style="color: var(--review-accent); font-size: 0.85rem; font-weight: 700; text-transform: uppercase; margin-bottom: 6px;">Implementation Blueprint</div>
+					<div class="code-snippet">
+/* Drop ring completely in rep mode */
+#timer-overlay.is-reps-stage .timer-ring-container {
+	display: none;
+}
+.reps-action-bar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	height: 52px;
+	padding: 0 16px;
+	border-radius: 12px;
+	background: var(--bg-card);
+	border: 1px solid var(--border-subtle);
+}
+					</div>
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<!-- TAB 3: CORNER BADGE + HERO ACTION -->
+	<section id="tab-idea3" class="tab-content">
+		<div class="idea-layout">
+			<div class="simulator-wrapper">
+				<div class="simulator-frame">
+					<div class="simulator-topbar">
+						<span>WORKOUT PLAYER</span>
+						<span class="sim-step-indicator">STEP 1 / 3</span>
+					</div>
+					<div class="simulator-screen">
+						<!-- Advance Flash Feedback Overlay -->
+						<div class="sim-advance-overlay" id="overlay-idea3">
+							<div class="check-icon">✓</div>
+							<div style="font-size: 1.1rem;">STEP COMPLETE!</div>
+							<div style="font-size: 0.85rem; opacity: 0.9; margin-top: 4px;">Advancing to next exercise...</div>
+						</div>
+
+						<div class="sim-media-card">
+							<img src="media/diamond-pushups.gif" class="sim-img" alt="Exercise">
+							<div class="idea3-corner-badge">
+								<div class="idea3-dot"></div>
+								<span class="idea3-badge-text"><span class="sim-rep-num">5</span> REPS TARGET</span>
+							</div>
+						</div>
+
+						<div class="sim-ex-title">Diamond Pushups</div>
+						<div class="sim-ex-meta">Chest & Triceps</div>
+
+						<button type="button" class="idea3-hero-btn" onclick="advanceSimulatorStep()">
+							<span>✓</span>
+							<span>Complete <span class="sim-rep-num">5</span> Reps</span>
+						</button>
+					</div>
+				</div>
+				<div class="key-hint-bar">
+					<span>Press <kbd>Space</kbd> or click <strong>Complete</strong> to advance step</span>
+				</div>
+			</div>
+
+			<div class="spec-card">
+				<div>
+					<span class="spec-pill blue">Idea 3</span>
+					<h3 style="margin-top: 8px;">Corner Rep Badge + Dedicated Primary Action</h3>
+					<p style="color: var(--review-text-muted); margin: 6px 0 0;">
+						Separates the "Information" from the "Action". The rep target lives as a refined glass pill in the top corner of the exercise card, leaving the bottom dedicated to a single, ergonomic completion button.
+					</p>
+				</div>
+
+				<div class="spec-pros-cons">
+					<div class="pros-box">
+						<strong>Advantages</strong>
+						<ul>
+							<li>Most uncluttered visual presentation possible.</li>
+							<li>Large, effortless touch target for sweaty fingers or quick keyboard hits.</li>
+							<li>Button copy clearly states the milestone: "Complete 5 Reps".</li>
+						</ul>
+					</div>
+					<div class="cons-box">
+						<strong>Tradeoffs</strong>
+						<ul>
+							<li>Rep count is separated from the button by the height of the image.</li>
+						</ul>
+					</div>
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<!-- TAB 4: INTERACTIVE STEPPER PILL -->
+	<section id="tab-idea4" class="tab-content">
+		<div class="idea-layout">
+			<div class="simulator-wrapper">
+				<div class="simulator-frame">
+					<div class="simulator-topbar">
+						<span>WORKOUT PLAYER</span>
+						<span class="sim-step-indicator">STEP 1 / 3</span>
+					</div>
+					<div class="simulator-screen">
+						<!-- Advance Flash Feedback Overlay -->
+						<div class="sim-advance-overlay" id="overlay-idea4">
+							<div class="check-icon">✓</div>
+							<div style="font-size: 1.1rem;">STEP COMPLETE!</div>
+							<div style="font-size: 0.85rem; opacity: 0.9; margin-top: 4px;">Logged reps & advancing...</div>
+						</div>
+
+						<div class="sim-media-card">
+							<img src="media/diamond-pushups.gif" class="sim-img" alt="Exercise">
+						</div>
+
+						<div class="sim-ex-title">Diamond Pushups</div>
+						<div class="sim-ex-meta">Chest & Triceps</div>
+
+						<div class="idea4-controls">
+							<!-- Stepper Pill -->
+							<div class="idea4-stepper-pill">
+								<button type="button" class="idea4-step-btn" onclick="stepRep(-1)">−</button>
+								<div class="idea4-display">
+									<div class="idea4-count" id="stepper-val">5</div>
+									<div class="idea4-unit">Reps Done</div>
+								</div>
+								<button type="button" class="idea4-step-btn" onclick="stepRep(1)">+</button>
+							</div>
+
+							<button type="button" class="action-done-btn" style="width: 100%; justify-content: center; padding: 12px;" onclick="advanceSimulatorStep()">
+								✓ Log & Advance (Space)
+							</button>
+						</div>
+					</div>
+				</div>
+				<div class="key-hint-bar">
+					<span>Click <kbd>−</kbd> / <kbd>+</kbd> or press <kbd>Space</kbd> to Log & Advance</span>
+				</div>
+			</div>
+
+			<div class="spec-card">
+				<div>
+					<span class="spec-pill purple">Idea 4</span>
+					<h3 style="margin-top: 8px;">Interactive Rep Stepper Pill</h3>
+					<p style="color: var(--review-text-muted); margin: 6px 0 0;">
+						For users who track their real output: easily increase or decrease reps if you pushed for 7 reps or fatigue forced you to stop at 4. Defaults to the routine's prescribed target.
+					</p>
+				</div>
+
+				<div class="spec-pros-cons">
+					<div class="pros-box">
+						<strong>Advantages</strong>
+						<ul>
+							<li>Adds real fitness utility: logs actual volume instead of assuming perfection.</li>
+							<li>Clean horizontal pill design keeps height contained under 100px total.</li>
+							<li>Tactile feedback with quick increment/decrement buttons.</li>
+						</ul>
+					</div>
+					<div class="cons-box">
+						<strong>Tradeoffs</strong>
+						<ul>
+							<li>Adds two more buttons (plus and minus) compared to a purely static display.</li>
+						</ul>
+					</div>
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<!-- TAB 5: DUAL PANEL DOCK -->
+	<section id="tab-idea5" class="tab-content">
+		<div class="idea-layout">
+			<div class="simulator-wrapper">
+				<div class="simulator-frame" style="max-width: 480px;">
+					<div class="simulator-topbar">
+						<span>WORKOUT PLAYER</span>
+						<span class="sim-step-indicator">STEP 1 / 3</span>
+					</div>
+					<div class="simulator-screen">
+						<!-- Advance Flash Feedback Overlay -->
+						<div class="sim-advance-overlay" id="overlay-idea5">
+							<div class="check-icon">✓</div>
+							<div style="font-size: 1.1rem;">STEP COMPLETE!</div>
+							<div style="font-size: 0.85rem; opacity: 0.9; margin-top: 4px;">Advancing to next exercise...</div>
+						</div>
+
+						<!-- Dual Panel Layout -->
+						<div class="idea5-split-container">
+							<div class="idea5-thumb-col">
+								<img src="media/diamond-pushups.gif" class="sim-img" alt="Exercise">
+							</div>
+							<div class="idea5-meta-col">
+								<div>
+									<div style="font-size: 0.68rem; font-weight: 800; letter-spacing: 0.08em; color: #fbbf24; text-transform: uppercase;">REPS STEP</div>
+									<div class="sim-ex-title" style="text-align: left; margin: 2px 0 4px;">Diamond Pushups</div>
+									<div class="sim-ex-meta" style="text-align: left; margin: 0;">Chest & Triceps</div>
+								</div>
+								<div style="margin-top: 12px;">
+									<div style="display: flex; align-items: baseline; gap: 4px; margin-bottom: 8px;">
+										<span class="sim-rep-num" style="font-size: 2.2rem; font-weight: 900; color: #ffffff; line-height: 1;">5</span>
+										<span style="font-size: 0.8rem; font-weight: 800; color: #fbbf24;">REPS</span>
+									</div>
+									<button type="button" class="action-done-btn" style="width: 100%; justify-content: center;" onclick="advanceSimulatorStep()">
+										✓ Complete
+									</button>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="key-hint-bar">
+					<span>Press <kbd>Space</kbd> or click <strong>Complete</strong> to advance step</span>
+				</div>
+			</div>
+
+			<div class="spec-card">
+				<div>
+					<span class="spec-pill green">Idea 5</span>
+					<h3 style="margin-top: 8px;">Split-View Dual Panel (Side-by-Side)</h3>
+					<p style="color: var(--review-text-muted); margin: 6px 0 0;">
+						Instead of vertically stacking the large GIF on top of the counter and button, places the media on the left and the HUD controls on the right. Perfect for landscape displays, tablets, or desktop browser viewports.
+					</p>
+				</div>
+
+				<div class="spec-pros-cons">
+					<div class="pros-box">
+						<strong>Advantages</strong>
+						<ul>
+							<li>Completely resolves vertical screen crowding on laptops and monitors.</li>
+							<li>Clean editorial look similar to Peloton and Apple Fitness+.</li>
+							<li>Both the exercise video and the rep counter have full, unrestricted breathing room.</li>
+						</ul>
+					</div>
+					<div class="cons-box">
+						<strong>Tradeoffs</strong>
+						<ul>
+							<li>Requires a CSS media query breakpoint to fall back to a column on narrow mobile screens.</li>
+						</ul>
+					</div>
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<!-- TAB 6: CURRENT BUG DEMO (Before) -->
+	<section id="tab-current-bug" class="tab-content">
+		<div class="idea-layout">
+			<div class="simulator-wrapper">
+				<div class="simulator-frame">
+					<div class="simulator-topbar">
+						<span>WORKOUT PLAYER</span>
+						<span style="color: #f87171;">CURRENT COLLISION BUG</span>
+					</div>
+					<div class="simulator-screen" style="justify-content: flex-start; padding-top: 24px;">
+						<div class="sim-media-card" style="margin-bottom: 0;">
+							<img src="media/diamond-pushups.gif" alt="Diamond Pushups">
+						</div>
+
+						<!-- The shrunken 110px ring with oversized text & injected button -->
+						<div class="mockup-bugged-ring">
+							<svg viewBox="0 0 300 300">
+								<circle cx="150" cy="150" r="140" fill="none" stroke="rgba(245, 158, 11, 0.2)" stroke-width="12" />
+								<circle cx="150" cy="150" r="140" fill="none" stroke="#f59e0b" stroke-width="12" stroke-dasharray="880" stroke-dashoffset="0" />
+							</svg>
+							<div class="mockup-bugged-center">
+								<div class="mockup-bugged-display">5 RE</div>
+								<div style="font-size: 0.8rem; font-weight: 700; color: #94a3b8; margin-top: 4px;">Diamond ...</div>
+								<button type="button" class="mockup-bugged-btn" onclick="alert('This is the current bug layout: notice how the 5 collides with the GIF and Diamond is squashed!')">✓ Done (Space / Enter)</button>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="key-hint-bar">
+					<span style="color: #f87171;">Notice how '5' intrudes into the GIF card and 'REPS' clips to 'RE'</span>
+				</div>
+			</div>
+
+			<div class="spec-card">
+				<div>
+					<span class="spec-pill" style="background: rgba(239, 68, 68, 0.2); color: #f87171;">Root Cause Breakdown</span>
+					<h3 style="margin-top: 8px;">Detailed Code Anatomy of the Bug</h3>
+				</div>
+
+				<div style="font-size: 0.92rem; color: #cbd5e1; line-height: 1.6;">
+					<p>Here is exactly where the style and DOM conflict occurs in the codebase:</p>
+					<ol style="padding-left: 20px; display: flex; flex-direction: column; gap: 10px;">
+						<li>
+							<strong>Conflict 1: Shrunken Container vs Huge Font</strong><br>
+							In <a href="file:///Users/levontumanyan/repos/games/workout/css/styles.css#L2759-L2763"><code>styles.css:2759</code></a>:
+							<code>.timer-stage-content.has-media .timer-ring-container { width: 110px; height: 110px; }</code>.<br>
+							However, in <a href="file:///Users/levontumanyan/repos/games/workout/css/styles.css#L2789-L2794"><code>styles.css:2789</code></a>:
+							<code>#timer-overlay.is-reps-stage #timer-display { font-size: clamp(3.2rem, 8vw, 5.5rem); }</code>.<br>
+							Because <code>3.5rem</code> is ~56px tall and "5 REPS" is 6 characters wide, it physically cannot fit inside 110px and overflows outside the ring.
+						</li>
+						<li>
+							<strong>Conflict 2: Button injected inside absolute centered text container</strong><br>
+							In <a href="file:///Users/levontumanyan/repos/games/workout/js/player.js#L923-L935"><code>player.js:923</code></a>:
+							The Done button is appended to <code>centerContainer</code> (which is <code>.timer-center-text</code>).<br>
+							Since <code>.timer-center-text</code> is centered with <code>transform: translate(-50%, -50%)</code>, adding the 48px button shifts the center point downward, pushing the rep number upward across the border and on top of the GIF!
+						</li>
+					</ol>
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<script>
+		// Synthetic workout routine steps for the interactive simulator
+		const SIMULATOR_STEPS = [
+			{
+				name: 'Diamond Pushups',
+				reps: 5,
+				meta: 'Chest & Triceps · Bodyweight',
+				img: 'media/diamond-pushups.gif'
+			},
+			{
+				name: 'Pike Pushups',
+				reps: 8,
+				meta: 'Shoulders & Upper Chest · Bodyweight',
+				img: 'media/pike-pushups.svg'
+			},
+			{
+				name: 'Decline Pushups',
+				reps: 10,
+				meta: 'Upper Chest & Core · Bodyweight',
+				img: 'media/decline-pushups.svg'
+			}
+		];
+
+		let currentStepIdx = 0;
+		let customStepperReps = 5;
+
+		// Audio synthesis for satisfying tactile confirmation
+		function playWorkoutChime() {
+			try {
+				const ctx = new (window.AudioContext || window.webkitAudioContext)();
+				const osc = ctx.createOscillator();
+				const gain = ctx.createGain();
+				osc.type = 'sine';
+				osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+				osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.12); // A5
+				gain.gain.setValueAtTime(0.3, ctx.currentTime);
+				gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+				osc.connect(gain);
+				gain.connect(ctx.destination);
+				osc.start();
+				osc.stop(ctx.currentTime + 0.2);
+			} catch (e) {
+				// AudioContext not allowed without interaction or unsupported
+			}
+		}
+
+		// Tab Switching Logic
+		window.switchTab = function(targetId) {
+			document.querySelectorAll('.nav-tab-btn').forEach(btn => {
+				btn.classList.toggle('active', btn.dataset.tab === targetId);
+			});
+			document.querySelectorAll('.tab-content').forEach(content => {
+				content.classList.toggle('active', content.id === targetId);
+			});
+		};
+
+		document.querySelectorAll('.nav-tab-btn').forEach(btn => {
+			btn.addEventListener('click', () => window.switchTab(btn.dataset.tab));
+		});
+
+		// Interactive Simulator Step Advance
+		window.advanceSimulatorStep = function() {
+			playWorkoutChime();
+
+			// Show flash overlay in active tab
+			const activeTab = document.querySelector('.tab-content.active');
+			const overlay = activeTab?.querySelector('.sim-advance-overlay');
+			if (overlay) {
+				overlay.classList.add('show');
+			}
+
+			setTimeout(() => {
+				currentStepIdx = (currentStepIdx + 1) % SIMULATOR_STEPS.length;
+				renderSimulatorState();
+				if (overlay) overlay.classList.remove('show');
+			}, 350);
+		};
+
+		function renderSimulatorState() {
+			const step = SIMULATOR_STEPS[currentStepIdx];
+			customStepperReps = step.reps;
+
+			// Update all simulator screens
+			document.querySelectorAll('.sim-step-indicator').forEach(el => {
+				el.textContent = `STEP ${currentStepIdx + 1} / ${SIMULATOR_STEPS.length}`;
+			});
+
+			document.querySelectorAll('.sim-img').forEach(el => {
+				el.src = step.img;
+				el.alt = step.name;
+			});
+
+			document.querySelectorAll('.sim-rep-num').forEach(el => {
+				el.textContent = step.reps;
+			});
+
+			document.querySelectorAll('.sim-ex-title').forEach(el => {
+				el.textContent = step.name;
+			});
+
+			document.querySelectorAll('.sim-ex-meta').forEach(el => {
+				el.textContent = step.meta;
+			});
+
+			const stepperEl = document.getElementById('stepper-val');
+			if (stepperEl) stepperEl.textContent = customStepperReps;
+		}
+
+		// Stepper Increment/Decrement for Idea 4
+		window.stepRep = function(delta) {
+			customStepperReps = Math.max(1, customStepperReps + delta);
+			const stepperEl = document.getElementById('stepper-val');
+			if (stepperEl) stepperEl.textContent = customStepperReps;
+			document.querySelectorAll('.sim-rep-num').forEach(el => {
+				el.textContent = customStepperReps;
+			});
+		};
+
+		// Keyboard Listener for Space / Enter
+		window.addEventListener('keydown', (e) => {
+			if (e.code === 'Space' || e.key === 'Enter') {
+				const activeTab = document.querySelector('.tab-content.active');
+				if (activeTab && activeTab.id !== 'tab-overview') {
+					e.preventDefault();
+					window.advanceSimulatorStep();
+				}
+			}
+		});
+
+		// Initial render
+		renderSimulatorState();
+	</script>
+</body>
+</html>

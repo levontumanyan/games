@@ -335,6 +335,14 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 			return FileResponse(preview_path)
 		raise HTTPException(status_code=404, detail="Exercise picker preview page not found")
 
+	@app.api_route("/reps_ui_review.html", methods=["GET", "HEAD"])
+	@app.api_route("/workout/reps_ui_review.html", methods=["GET", "HEAD"])
+	async def reps_ui_review():
+		preview_path = static_dir / "reps_ui_review.html"
+		if preview_path.exists():
+			return FileResponse(preview_path)
+		raise HTTPException(status_code=404, detail="Preview page not found")
+
 	@app.api_route("/", methods=["GET", "HEAD"])
 	@app.api_route("/workout", methods=["GET", "HEAD"])
 	@app.api_route("/workout/", methods=["GET", "HEAD"])

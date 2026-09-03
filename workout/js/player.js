@@ -41,6 +41,7 @@ let isPreviewMode = false;
 let isRepsMode = false;
 let repsElapsedSeconds = 0;
 let repsInterval = null;
+let currentRepsValue = 20;
 
 // Timer state
 let timerInterval = null;
@@ -132,6 +133,26 @@ export async function initPlayer(domRefs, callbacks) {
 		dom.playerBackBtn.addEventListener('click', stopPlayback);
 	}
 
+	// Reps mode interactive stepper & done buttons
+	if (dom.repsStepMinus) {
+		dom.repsStepMinus.addEventListener('click', (e) => {
+			e.stopPropagation();
+			decrementReps();
+		});
+	}
+	if (dom.repsStepPlus) {
+		dom.repsStepPlus.addEventListener('click', (e) => {
+			e.stopPropagation();
+			incrementReps();
+		});
+	}
+	if (dom.repsDoneBtn) {
+		dom.repsDoneBtn.addEventListener('click', (e) => {
+			e.stopPropagation();
+			completeRepsStep();
+		});
+	}
+
 	// Click on stage/video to toggle play/pause or done
 	if (dom.playerStage) {
 		dom.playerStage.addEventListener('click', (e) => {
@@ -203,6 +224,12 @@ export async function initPlayer(domRefs, callbacks) {
 			} else {
 				togglePause();
 			}
+		} else if (isRepsMode && (e.key === 'ArrowUp' || e.key === '+' || e.key === '=')) {
+			e.preventDefault();
+			incrementReps();
+		} else if (isRepsMode && (e.key === 'ArrowDown' || e.key === '-' || e.key === '_')) {
+			e.preventDefault();
+			decrementReps();
 		} else if (e.key === 'ArrowRight') {
 			e.preventDefault();
 			skipStep();
@@ -494,9 +521,8 @@ function startWorkoutCountdown(routine, onComplete) {
 	if (firstStep) {
 		if (firstLabel) firstLabel.textContent = firstStep.label || 'First Movement';
 
-		const videoAsset = resolveStepVideoAsset(firstStep);
 		const isVid = Boolean(firstStep.videoId || videoAsset?.videoId || firstStep.type === 'clip');
-		const isReps = firstStep.stepMode === 'reps' || (Boolean(firstStep.targetReps) && firstStep.targetReps > 0);
+		const isReps = firstStep.stepMode === 'reps' || (!firstStep.stepMode && Boolean(firstStep.targetReps) && firstStep.targetReps > 0);
 		const dur = firstStep.durationSeconds || videoAsset?.endSeconds || 30;
 
 		let modeTag = '';
@@ -631,8 +657,43 @@ export function startRoutine(routine, startIndex = 0, isPreview = false) {
 export function completeRepsStep() {
 	if (!isPlaying || !isRepsMode) return;
 	playCountdownBeep(1);
+	if (dom.repsDoneBtn) {
+		dom.repsDoneBtn.classList.add('active');
+		setTimeout(() => dom.repsDoneBtn?.classList.remove('active'), 250);
+	}
 	clearRepsTimer();
 	advanceStepOrSubStep();
+}
+
+/**
+ * Decrement target/completed reps for current step.
+ */
+export function decrementReps() {
+	if (!isRepsMode) return;
+	currentRepsValue = Math.max(1, currentRepsValue - 1);
+	updateRepsStepperDisplay();
+}
+
+/**
+ * Increment target/completed reps for current step.
+ */
+export function incrementReps() {
+	if (!isRepsMode) return;
+	currentRepsValue += 1;
+	updateRepsStepperDisplay();
+}
+
+/**
+ * Update the reps stepper UI and HUD indicators.
+ */
+function updateRepsStepperDisplay() {
+	const countEl = dom.repsStepperCount || document.getElementById('reps-stepper-count');
+	if (countEl) {
+		countEl.textContent = currentRepsValue;
+	}
+	if (dom.timerDisplay) {
+		dom.timerDisplay.textContent = `${currentRepsValue} REPS`;
+	}
 }
 
 /**
@@ -760,6 +821,8 @@ function executeClipStep(step) {
 	}
 	dom.timerOverlay?.querySelector('.timer-stage-content')?.classList.remove('has-media');
 	dom.timerOverlay?.classList.remove('is-reps-stage');
+	const repsContainer = dom.timerRepsContainer || document.getElementById('timer-reps-container');
+	if (repsContainer) repsContainer.classList.add('hidden');
 
 	if (dom.upNextCard) {
 		dom.upNextCard.classList.add('hidden');
@@ -823,8 +886,8 @@ function executeTimerStep(step) {
 	const activeSubEx = (rawSubEx && resolvedSubEx) ? { ...resolvedSubEx, ...rawSubEx, name: rawSubEx.name || resolvedSubEx.name || '' } : (resolvedSubEx || rawSubEx);
 
 	const isSubReps = hasSubSteps
-		? (activeSubEx.stepMode === 'reps' || (!activeSubEx.durationSeconds && (step.stepMode === 'reps' || Boolean(step.targetReps))) || (activeSubEx.default_mode === 'reps' && !activeSubEx.durationSeconds))
-		: (!isBreak && (step.stepMode === 'reps' || (Boolean(step.targetReps) && Number(step.targetReps) > 0)));
+		? (activeSubEx.stepMode === 'reps' || (!activeSubEx.durationSeconds && (step.stepMode === 'reps' || (!step.stepMode && Boolean(step.targetReps)))) || (activeSubEx.default_mode === 'reps' && !activeSubEx.durationSeconds))
+		: (!isBreak && (step.stepMode === 'reps' || (!step.stepMode && Boolean(step.targetReps) && Number(step.targetReps) > 0)));
 	isRepsMode = isSubReps;
 
 	dom.timerOverlay.classList.toggle('is-break', isBreak);
@@ -908,30 +971,20 @@ function executeTimerStep(step) {
 		}
 	}
 
-	// Remove any existing Done button
-	const existingDoneBtn = dom.timerOverlay.querySelector('.reps-done-action-btn');
-	if (existingDoneBtn) existingDoneBtn.remove();
+	const repsContainer = dom.timerRepsContainer || document.getElementById('timer-reps-container');
+
+	// Remove any obsolete injected Done buttons if present
+	dom.timerOverlay?.querySelectorAll('.timer-center-text .reps-done-action-btn')?.forEach(b => b.remove());
 
 	if (isSubReps) {
 		const targetReps = hasSubSteps
 			? getEffectiveSubStepReps(step, currentSubStepIndex, totalSubSteps, activeSubEx)
 			: (step.targetReps || 20);
-		dom.timerDisplay.textContent = `${targetReps} REPS`;
-		dom.timerLabel.textContent = hasSubSteps ? (activeSubEx.name || step.label) : (step.label || 'Complete Target Reps');
+		currentRepsValue = Number(targetReps) || 20;
+		updateRepsStepperDisplay();
 
-		// Inject Hero Done Button in stage
-		const centerContainer = dom.timerOverlay.querySelector('.timer-center-text') || dom.timerOverlay.querySelector('.timer-ring-container');
-		if (centerContainer) {
-			const doneBtn = document.createElement('button');
-			doneBtn.type = 'button';
-			doneBtn.className = 'btn btn-primary reps-done-action-btn';
-			doneBtn.innerHTML = `✓ Done (Space / Enter)`;
-			doneBtn.title = 'Complete reps & advance';
-			doneBtn.addEventListener('click', (e) => {
-				e.stopPropagation();
-				completeRepsStep();
-			});
-			centerContainer.appendChild(doneBtn);
+		if (repsContainer) {
+			repsContainer.classList.remove('hidden');
 		}
 
 		const linkedEx = resolvedSubEx || (step.exercises && step.exercises[0]) || (step.exercise_id ? getExerciseById(step.exercise_id) : null);
@@ -962,6 +1015,9 @@ function executeTimerStep(step) {
 			startRepsStopwatch();
 		}
 	} else {
+		if (repsContainer) {
+			repsContainer.classList.add('hidden');
+		}
 		const targetDuration = hasSubSteps
 			? getEffectiveSubStepDuration(step, currentSubStepIndex, totalSubSteps, activeSubEx)
 			: (step.durationSeconds || 30);
@@ -1014,7 +1070,7 @@ function executeTimerStep(step) {
 					dom.upNextMeta.textContent = `🎬 Next Video · ${formatFriendlyDuration(dur)} (${formatTime(start)} → ${formatTime(end)})`;
 				} else if (isBreakStep(next)) {
 					dom.upNextMeta.textContent = `☕ Rest (${formatFriendlyDuration(next.durationSeconds || 30)})`;
-				} else if (next.stepMode === 'reps' || next.targetReps) {
+				} else if (next.stepMode === 'reps' || (!next.stepMode && Boolean(next.targetReps))) {
 					dom.upNextMeta.textContent = `🔢 Exercise (${next.targetReps || 20} reps)`;
 				} else {
 					dom.upNextMeta.textContent = `⏱ Exercise (${formatFriendlyDuration(next.durationSeconds || 30)})`;
@@ -1279,6 +1335,8 @@ export function stopPlayback(isCompleted = false) {
 	isPlaying = false;
 	isPaused = false;
 	isRepsMode = false;
+	const repsContainer = dom.timerRepsContainer || document.getElementById('timer-reps-container');
+	if (repsContainer) repsContainer.classList.add('hidden');
 	clipHasStartedPlaying = false;
 	currentStepIndex = -1;
 	currentSubStepIndex = 0;

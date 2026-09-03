@@ -42,12 +42,16 @@ function initModalElements() {
 		if (!modalBackdrop || modalBackdrop.classList.contains('hidden')) return;
 		if (e.key === 'Escape') {
 			e.preventDefault();
+			e.stopPropagation();
 			close(null);
-		} else if (e.key === 'Enter' && e.target === modalInput) {
-			e.preventDefault();
-			modalConfirmBtn.click();
+		} else if (e.key === 'Enter') {
+			if (e.target === modalInput || !modalInputGroup || modalInputGroup.classList.contains('hidden')) {
+				e.preventDefault();
+				e.stopPropagation();
+				modalConfirmBtn.click();
+			}
 		}
-	});
+	}, true);
 }
 
 function close(result) {

@@ -144,14 +144,14 @@ export async function addMediaAssetToExercise(exerciseId, asset) {
  * @param {string} assetId
  * @returns {Promise<Object>}
  */
-export async function removeMediaAssetFromExercise(exerciseId, assetId) {
-	const ex = getExerciseById(exerciseId);
+export async function removeMediaAssetFromExercise(exerciseOrId, assetId, assetUrl = null) {
+	const ex = typeof exerciseOrId === 'string' ? getExerciseById(exerciseOrId) : (getExerciseById(exerciseOrId?.id) || exerciseOrId);
 	if (!ex) throw new Error('Exercise not found');
 
 	let existingAssets = Array.isArray(ex.media_assets) ? [...ex.media_assets] : [];
 
 	// If existingAssets is empty but ex.media_url exists (legacy fallback)
-	if (existingAssets.length === 0 && (assetId === `fb-${ex.id}` || assetId === `${ex.id}-default` || ex.media_url)) {
+	if (existingAssets.length === 0 && (assetId === `fb-${ex.id}` || assetId === `${ex.id}-default` || (assetUrl && ex.media_url === assetUrl) || ex.media_url)) {
 		const updated = await createCustomExercise({
 			...ex,
 			media_url: '',
@@ -160,7 +160,12 @@ export async function removeMediaAssetFromExercise(exerciseId, assetId) {
 		return updated;
 	}
 
-	const filteredAssets = existingAssets.filter(a => a.id !== assetId && a.url !== assetId);
+	const filteredAssets = existingAssets.filter(a => {
+		if (assetId && a.id && a.id === assetId) return false;
+		if (assetUrl && a.url && a.url === assetUrl) return false;
+		if (assetId && !a.id && a.url === assetId) return false;
+		return true;
+	});
 
 	let media_url = ex.media_url || '';
 	if (filteredAssets.length === 0) {

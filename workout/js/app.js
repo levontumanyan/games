@@ -119,6 +119,11 @@ async function init() {
 			timerDisplay: dom.timerDisplay,
 			timerLabel: dom.timerLabel,
 			timerRing: dom.timerRing,
+			timerRepsContainer: dom.timerRepsContainer,
+			repsStepMinus: dom.repsStepMinus,
+			repsStepPlus: dom.repsStepPlus,
+			repsStepperCount: dom.repsStepperCount,
+			repsDoneBtn: dom.repsDoneBtn,
 			videoWrapper: dom.videoWrapper,
 			currentStepLabel: dom.currentStepLabel,
 			currentStepType: dom.currentStepType,
@@ -240,6 +245,11 @@ function cacheDom() {
 	dom.timerDisplay = document.getElementById('timer-display');
 	dom.timerLabel = document.getElementById('timer-label');
 	dom.timerRing = document.getElementById('timer-ring');
+	dom.timerRepsContainer = document.getElementById('timer-reps-container');
+	dom.repsStepMinus = document.getElementById('reps-step-minus');
+	dom.repsStepPlus = document.getElementById('reps-step-plus');
+	dom.repsStepperCount = document.getElementById('reps-stepper-count');
+	dom.repsDoneBtn = document.getElementById('reps-done-btn');
 	dom.upNextCard = document.getElementById('up-next-card');
 	dom.upNextLabel = document.getElementById('up-next-label');
 	dom.upNextMeta = document.getElementById('up-next-meta');

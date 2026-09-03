@@ -2773,30 +2773,105 @@ textarea.input {
 	margin-top: 2px;
 }
 
-/* ── Reps Mode Stage ─────────────────────────────────────────────────────── */
+/* ── Reps Mode Stage (Interactive Stepper HUD - Option 4) ──────────────── */
 #timer-overlay.is-reps-stage {
-	background: radial-gradient(circle at 50% 50%, rgba(245, 158, 11, 0.15) 0%, rgba(5, 6, 10, 0.95) 75%);
+	background: radial-gradient(circle at 50% 50%, rgba(245, 158, 11, 0.12) 0%, rgba(5, 6, 10, 0.95) 75%);
 }
 
 #timer-overlay.is-reps-stage .timer-ring-container {
-	filter: drop-shadow(0 0 32px rgba(245, 158, 11, 0.35));
+	display: none !important;
 }
 
-#timer-overlay.is-reps-stage #timer-ring {
-	stroke: #f59e0b;
+#timer-overlay.is-reps-stage .timer-stage-content.has-media .timer-media-img {
+	max-height: min(46vh, 400px);
+	object-fit: contain;
 }
 
-#timer-overlay.is-reps-stage #timer-display {
+.timer-reps-container {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 14px;
+	width: 100%;
+	max-width: 360px;
+	margin: 6px auto 0;
+	animation: fadeInScale 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.timer-reps-container.hidden {
+	display: none !important;
+}
+
+.reps-stepper-pill {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	background: rgba(19, 26, 22, 0.85);
+	backdrop-filter: blur(14px);
+	-webkit-backdrop-filter: blur(14px);
+	border: 1px solid rgba(255, 255, 255, 0.16);
+	border-radius: 999px;
+	padding: 5px 8px;
+	box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+	min-width: 210px;
+}
+
+.reps-step-btn {
+	width: 44px;
+	height: 44px;
+	border-radius: 50%;
+	background: rgba(255, 255, 255, 0.08);
+	border: 1px solid rgba(255, 255, 255, 0.12);
+	color: #ffffff;
+	font-size: 1.4rem;
+	font-weight: 700;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: all 0.15s ease;
+	user-select: none;
+}
+
+.reps-step-btn:hover {
+	background: rgba(255, 255, 255, 0.2);
+	transform: scale(1.08);
+}
+
+.reps-step-btn:active {
+	transform: scale(0.92);
+}
+
+.reps-stepper-display {
+	padding: 0 16px;
+	text-align: center;
+	min-width: 90px;
+}
+
+.reps-stepper-count {
+	font-size: 2.2rem;
+	font-weight: 900;
+	color: #fbbf24;
+	line-height: 1;
+	letter-spacing: -0.02em;
+	font-variant-numeric: tabular-nums;
 	background: linear-gradient(180deg, #ffffff 0%, #fde68a 100%);
 	-webkit-background-clip: text;
 	-webkit-text-fill-color: transparent;
-	font-size: clamp(3.2rem, 8vw, 5.5rem);
+}
+
+.reps-stepper-unit {
+	font-size: 0.72rem;
+	font-weight: 800;
+	color: var(--text-secondary);
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	margin-top: 2px;
 }
 
 .reps-done-action-btn {
-	margin-top: 14px;
-	padding: 12px 32px;
-	font-size: 1.2rem;
+	padding: 12px 36px;
+	font-size: 1.15rem;
 	font-weight: 800;
 	border-radius: 40px;
 	background: linear-gradient(135deg, #10b981 0%, #059669 100%);
@@ -2810,9 +2885,15 @@ textarea.input {
 }
 
 .reps-done-action-btn:hover {
-	transform: scale(1.06);
+	transform: scale(1.04);
 	box-shadow: 0 0 36px rgba(16, 185, 129, 0.8), 0 8px 24px rgba(0, 0, 0, 0.5);
 	background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
+}
+
+.reps-done-action-btn:active,
+.reps-done-action-btn.active {
+	transform: scale(0.96);
+	filter: brightness(1.2);
 }
 
 @keyframes pulseDoneBtn {
@@ -3645,6 +3726,10 @@ textarea.input {
 
 .modal-backdrop.hidden {
 	display: none !important;
+}
+
+#modal-backdrop {
+	z-index: 20000;
 }
 
 .modal-window,

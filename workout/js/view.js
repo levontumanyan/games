@@ -65,8 +65,8 @@ export function renderRoutineOverview(routine, container, actions = {}) {
 	const steps = routine.steps || [];
 	const clipCount = steps.filter(s => s.type === 'clip').length;
 	const breakCount = steps.filter(s => isBreakStep(s)).length;
-	const repsCount = steps.filter(s => s.stepMode === 'reps' || s.targetReps).length;
-	const timerCount = steps.filter(s => s.type === 'timer' && !isBreakStep(s) && s.stepMode !== 'reps' && !s.targetReps).length;
+	const repsCount = steps.filter(s => s.stepMode === 'reps' || (!s.stepMode && Boolean(s.targetReps))).length;
+	const timerCount = steps.filter(s => s.type === 'timer' && !isBreakStep(s) && (s.stepMode === 'time' || (!s.stepMode && !s.targetReps))).length;
 	const totalSeconds = steps.reduce((sum, s) => {
 		if (s.type === 'timer') return sum + (s.durationSeconds || 0);
 		if (s.type === 'clip') {
@@ -360,7 +360,7 @@ function createViewStepCard(step, index, steps, actions) {
 	mediaBox.className = 'view-step-media';
 
 	const mediaUrl = resolveStepMediaUrl(step);
-	const isReps = step.stepMode === 'reps' || (step.targetReps && step.targetReps > 0);
+	const isReps = step.stepMode === 'reps' || (!step.stepMode && Boolean(step.targetReps) && Number(step.targetReps) > 0);
 
 	const ytVideoId = step.videoId || (() => {
 		if (Array.isArray(step.exercises) && step.exercises.length > 0) {
@@ -554,7 +554,7 @@ function createViewStepCard(step, index, steps, actions) {
 			subRow.setAttribute('tabindex', '0');
 			subRow.title = `Click to view "${resolvedEx.name}" exercise guide & videos`;
 
-			const isSubReps = resolvedEx.stepMode === 'reps' || (!resolvedEx.durationSeconds && (step.stepMode === 'reps' || Boolean(step.targetReps))) || (resolvedEx.default_mode === 'reps' && !resolvedEx.durationSeconds);
+			const isSubReps = resolvedEx.stepMode === 'reps' || (!resolvedEx.durationSeconds && (step.stepMode === 'reps' || (!step.stepMode && Boolean(step.targetReps)))) || (resolvedEx.default_mode === 'reps' && !resolvedEx.durationSeconds);
 			const subReps = getEffectiveSubStepReps(step, sIdx, step.exercises.length, resolvedEx);
 			const subDur = getEffectiveSubStepDuration(step, sIdx, step.exercises.length, resolvedEx);
 			const exTargetStr = isSubReps ? `${subReps} reps` : formatFriendlyDuration(subDur);
