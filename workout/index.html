@@ -12,7 +12,12 @@
 
 		<!-- ── Top Navigation Bar ──────────────────────────────────────── -->
 		<header class="app-topbar" id="app-topbar">
-			<div class="topbar-left"></div>
+			<div class="topbar-left">
+				<!-- Sidebar Expand / Show Button (displayed when sidebar is hidden on Workouts tab) -->
+				<button id="sidebar-expand-btn" class="sidebar-expand-btn hidden" title="Show Sidebar" aria-label="Show Sidebar">
+					<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><path d="M9 3v18"/><path d="m12 9 3 3-3 3"/></svg>
+				</button>
+			</div>
 
 			<!-- Top Navigation Tabs (Desktop / Tablet) -->
 			<nav class="topbar-nav" id="topbar-nav" aria-label="Main Navigation">
@@ -53,30 +58,22 @@
 			</div>
 		</header>
 
-		<!-- ── App Body Area ───────────────────────────────────────────── -->
-		<div class="app-body">
-
-			<!-- ── Dedicated Workouts Sidebar ──────────────────────────── -->
-			<aside class="sidebar" id="app-sidebar">
-				<div class="sidebar-actions">
-					<button id="add-workout-btn" class="btn btn-primary btn-sm">+ Add Workout</button>
-					<button id="sidebar-toggle-btn" class="btn btn-ghost btn-xs btn-sidebar-toggle" title="Hide Sidebar (reclaim space)" aria-label="Hide Sidebar">
-						<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><path d="M9 3v18"/><path d="m14 9-3 3 3 3"/></svg>
-					</button>
-				</div>
-
-				<div class="routine-list-container">
-					<ul id="routine-list"></ul>
-				</div>
-			</aside>
-
-			<!-- ── Main Content ──────────────────────────────────────────── -->
-			<main class="main-content">
-
-				<!-- Sidebar Expand / Show Button (displayed when sidebar is hidden on Workouts tab) -->
-				<button id="sidebar-expand-btn" class="sidebar-expand-btn hidden" title="Show Sidebar" aria-label="Show Sidebar">
-					<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><path d="M9 3v18"/><path d="m12 9 3 3-3 3"/></svg>
+		<!-- ── Dedicated Workouts Sidebar ──────────────────────────── -->
+		<aside class="sidebar" id="app-sidebar">
+			<div class="sidebar-actions">
+				<button id="add-workout-btn" class="btn btn-primary btn-sm">+ Add Workout</button>
+				<button id="sidebar-toggle-btn" class="btn btn-ghost btn-xs btn-sidebar-toggle" title="Hide Sidebar (reclaim space)" aria-label="Hide Sidebar">
+					<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><path d="M9 3v18"/><path d="m14 9-3 3 3 3"/></svg>
 				</button>
+			</div>
+
+			<div class="routine-list-container">
+				<ul id="routine-list"></ul>
+			</div>
+		</aside>
+
+		<!-- ── Main Content ──────────────────────────────────────────── -->
+		<main class="main-content">
 
 			<!-- ── Combos & Flows Library Catalog View ───────────────── -->
 			<div id="combos-view" class="hidden"></div>
@@ -306,7 +303,6 @@
 			</div>
 
 		</main>
-		</div> <!-- .app-body -->
 
 		<!-- ── Mobile Bottom Navigation Bar ──────────────────────────── -->
 		<nav class="mobile-bottom-nav" id="mobile-bottom-nav" aria-label="Mobile Navigation">

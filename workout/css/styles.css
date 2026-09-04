@@ -496,9 +496,14 @@ html, body {
 /* ── Layout ──────────────────────────────────────────────────────────────── */
 
 .app-container {
-	display: flex;
-	flex-direction: column;
+	display: grid;
+	grid-template-columns: 280px 1fr;
+	grid-template-rows: 52px 1fr;
+	grid-template-areas:
+		"sidebar topbar"
+		"sidebar main";
 	height: 100vh;
+	width: 100vw;
 	overflow: hidden;
 	background: radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.05) 0%, transparent 60%);
 }
@@ -506,8 +511,10 @@ html, body {
 /* ── Top Navigation Bar ─────────────────────────────────────────────────── */
 
 .app-topbar {
+	grid-area: topbar;
 	height: 52px;
 	min-height: 52px;
+	box-sizing: border-box;
 	background: var(--bg-secondary);
 	border-bottom: 1px solid var(--border);
 	display: grid;
@@ -516,6 +523,7 @@ html, body {
 	padding: 0 20px;
 	z-index: 30;
 	user-select: none;
+	min-width: 0;
 }
 
 .topbar-left {
@@ -594,38 +602,39 @@ html, body {
 	gap: 12px;
 }
 
-/* ── App Body Area (Sidebar + Main) ─────────────────────────────────────── */
-
-.app-body {
-	display: flex;
-	flex: 1;
-	overflow: hidden;
-	position: relative;
-	width: 100%;
-}
-
 /* ── Sidebar ─────────────────────────────────────────────────────────────── */
 
 .sidebar {
+	grid-area: sidebar;
 	width: 280px;
 	min-width: 260px;
+	height: 100%;
 	background: var(--bg-secondary);
 	border-right: 1px solid var(--border);
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
-	z-index: 10;
+	z-index: 20;
 	transition: margin-left 0.28s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.22s ease;
 	flex-shrink: 0;
+}
+
+.app-container.sidebar-hidden {
+	grid-template-columns: 0px 1fr;
 }
 
 .app-container.sidebar-hidden .sidebar {
 	margin-left: -280px;
 	opacity: 0;
 	pointer-events: none;
+	border-right: none;
 }
 
 /* Hide sidebar and reclaim 100% space on non-routines tabs (Exercises, Anatomy, Stats, Combos) */
+.app-container.non-routines-tab {
+	grid-template-columns: 0px 1fr;
+}
+
 .app-container.non-routines-tab .sidebar {
 	display: none !important;
 }
@@ -634,26 +643,19 @@ html, body {
 	display: none !important;
 }
 
-/* Sidebar Expand Floating Button (Minimal Icon Button) */
+/* Sidebar Expand Button (positioned in topbar-left) */
 .sidebar-expand-btn {
-	position: absolute;
-	top: 16px;
-	left: 16px;
-	z-index: 25;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
 	width: 32px;
 	height: 32px;
 	padding: 0;
-	background: var(--bg-card-elevated);
+	background: transparent;
 	color: var(--text-secondary);
 	border: 1px solid var(--border);
 	border-radius: var(--radius-sm);
 	cursor: pointer;
-	box-shadow: var(--shadow);
-	backdrop-filter: blur(12px);
-	-webkit-backdrop-filter: blur(12px);
 	transition: all var(--transition-fast);
 }
 
@@ -661,19 +663,10 @@ html, body {
 	background: var(--bg-hover);
 	border-color: var(--accent);
 	color: var(--text-primary);
-	transform: scale(1.08);
-	box-shadow: 0 0 12px var(--accent-glow);
 }
 
 .sidebar-expand-btn.hidden {
 	display: none !important;
-}
-
-/* Ensure clean clearance from the floating expand button when sidebar is collapsed */
-@media (min-width: 769px) {
-	.app-container.sidebar-hidden:not(.non-routines-tab) .main-content > div:not(.hidden):not(#player-view) {
-		padding-left: 58px;
-	}
 }
 
 
@@ -765,11 +758,15 @@ html, body {
 }
 
 .sidebar-actions {
-	padding: 10px 14px;
+	height: 52px;
+	min-height: 52px;
+	box-sizing: border-box;
+	padding: 0 14px;
 	border-bottom: 1px solid var(--border);
 	display: flex;
 	align-items: center;
 	gap: 8px;
+	background: var(--bg-secondary);
 }
 
 .sidebar-actions #add-workout-btn {
@@ -888,11 +885,13 @@ html, body {
 /* ── Main Content ────────────────────────────────────────────────────────── */
 
 .main-content {
+	grid-area: main;
 	flex: 1;
 	overflow: hidden;
 	display: flex;
 	flex-direction: column;
 	position: relative;
+	min-width: 0;
 }
 
 /* ── Empty View & Layouts ────────────────────────────────────────────────── */
@@ -4810,17 +4809,36 @@ textarea.input {
 		font-size: 0.95rem;
 	}
 
-	.app-body {
+	.app-container {
+		display: flex;
 		flex-direction: column;
+		grid-template-columns: none;
+		grid-template-rows: none;
+		grid-template-areas: none;
+	}
+
+	.app-topbar {
+		order: 1;
+		padding: 0 12px;
+		height: 48px;
+		min-height: 48px;
+		width: 100%;
 	}
 
 	.sidebar {
+		order: 2;
 		width: 100%;
 		min-width: 0;
+		height: auto;
 		max-height: 48vh;
 		border-right: none;
 		border-bottom: 1px solid var(--border);
 		transition: max-height 0.28s cubic-bezier(0.4, 0, 0.2, 1), margin-top 0.28s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.22s ease;
+	}
+
+	.sidebar-actions {
+		height: 48px;
+		min-height: 48px;
 	}
 
 	.app-container.sidebar-hidden .sidebar {
@@ -4833,7 +4851,9 @@ textarea.input {
 	}
 
 	.main-content {
+		order: 3;
 		padding-bottom: 58px;
+		flex: 1;
 	}
 
 	.mobile-bottom-nav {
@@ -7045,7 +7065,9 @@ textarea.input {
 }
 
 /* Base Body Outlines */
+.body-silhouette,
 .body-base {
+	pointer-events: none;
 	fill: var(--bg-card-elevated);
 	stroke: var(--border);
 	stroke-width: 1.2;
