@@ -53,7 +53,7 @@ export function renderExercisesCatalog(container, options = {}) {
 			<div class="exercises-filter-bar">
 				<div class="search-box-wrapper">
 					<span class="search-icon">🔍</span>
-					<input type="text" id="exercise-search-input" class="input exercise-search-input" placeholder="Search exercises, muscles, techniques, cues...">
+					<input type="text" id="exercise-search-input" class="input search-box-input exercise-search-input" placeholder="Search exercises, muscles, techniques, cues..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
 				</div>
 				<div class="exercise-filter-chips" id="exercise-filter-chips"></div>
 			</div>
@@ -229,6 +229,14 @@ export function renderExercisesCatalog(container, options = {}) {
 	searchInput.addEventListener('input', (e) => {
 		currentSearch = e.target.value;
 		renderGrid();
+	});
+
+	searchInput.addEventListener('keydown', (e) => {
+		if (e.key === 'Escape' && searchInput.value) {
+			searchInput.value = '';
+			currentSearch = '';
+			renderGrid();
+		}
 	});
 
 	renderFilterChips();

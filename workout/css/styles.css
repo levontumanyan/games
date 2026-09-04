@@ -2209,7 +2209,8 @@ html, body {
 	border: 1px solid var(--border);
 	border-radius: var(--radius-sm);
 	color: var(--text-primary);
-	font-size: 0.9rem;
+	font-size: 0.95rem;
+	caret-color: var(--accent);
 	transition: all var(--transition-fast);
 }
 
@@ -2222,6 +2223,13 @@ html, body {
 
 .input::placeholder {
 	color: var(--text-muted);
+	opacity: 1;
+	transition: opacity var(--transition-fast) ease, color var(--transition-fast) ease;
+}
+
+.input:focus::placeholder {
+	opacity: 0;
+	color: transparent;
 }
 
 textarea.input {
@@ -3811,7 +3819,14 @@ textarea.input {
 	border-radius: var(--radius-sm);
 	color: var(--text-primary);
 	font-size: 0.95rem;
+	caret-color: var(--accent);
 	transition: all var(--transition-fast);
+}
+
+.modal-input::placeholder {
+	color: var(--text-muted);
+	opacity: 1;
+	transition: opacity var(--transition-fast) ease, color var(--transition-fast) ease;
 }
 
 .modal-input:focus {
@@ -3819,6 +3834,11 @@ textarea.input {
 	border-color: var(--accent);
 	box-shadow: 0 0 0 3px var(--accent-glow);
 	background: var(--bg-input);
+}
+
+.modal-input:focus::placeholder {
+	opacity: 0;
+	color: transparent;
 }
 
 .modal-footer {
@@ -5446,32 +5466,73 @@ textarea.input {
 	background: var(--bg-input);
 	border: 1px solid var(--border);
 	border-radius: var(--radius-sm);
-	padding: 8px 14px;
+	padding: 9px 14px;
+	transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast);
+}
+
+.search-box-wrapper:focus-within,
+.catalog-search-wrapper:focus-within {
+	border-color: var(--accent);
+	box-shadow: 0 0 0 3px var(--accent-glow);
+	background: var(--bg-card);
 }
 
 .search-box-wrapper .search-icon,
 .catalog-search-wrapper .search-icon {
-	font-size: 0.95rem;
+	font-size: 1rem;
 	opacity: 0.7;
 	color: var(--text-muted);
+	transition: opacity var(--transition-fast), color var(--transition-fast);
 }
 
+.search-box-wrapper:focus-within .search-icon,
+.catalog-search-wrapper:focus-within .search-icon {
+	opacity: 1;
+	color: var(--accent);
+}
+
+.search-box-input,
+.search-input,
 .exercise-search-input,
 .combo-search-input,
 .catalog-search-input {
 	border: none !important;
 	background: transparent !important;
 	padding: 0 !important;
-	font-size: 0.9rem;
+	font-size: 0.95rem;
+	line-height: 1.4;
+	height: 24px;
 	width: 100%;
 	color: var(--text-primary);
+	caret-color: var(--accent);
 }
 
+.search-box-input::placeholder,
+.search-input::placeholder,
+.exercise-search-input::placeholder,
+.combo-search-input::placeholder,
+.catalog-search-input::placeholder {
+	color: var(--text-muted);
+	opacity: 1;
+	transition: opacity var(--transition-fast) ease, color var(--transition-fast) ease;
+}
+
+.search-box-input:focus,
+.search-input:focus,
 .exercise-search-input:focus,
 .combo-search-input:focus,
 .catalog-search-input:focus {
 	outline: none !important;
 	box-shadow: none !important;
+}
+
+.search-box-input:focus::placeholder,
+.search-input:focus::placeholder,
+.exercise-search-input:focus::placeholder,
+.combo-search-input:focus::placeholder,
+.catalog-search-input:focus::placeholder {
+	opacity: 0;
+	color: transparent;
 }
 
 .exercise-filter-chips,
@@ -6422,13 +6483,26 @@ textarea.input {
 	border-radius: var(--radius-sm);
 	padding: 9px 14px 9px 36px;
 	color: var(--text-primary);
-	font-size: 0.9rem;
+	font-size: 0.95rem;
+	caret-color: var(--accent);
 	outline: none;
-	transition: border-color 0.15s ease;
+	transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.nav-search-input::placeholder {
+	color: var(--text-muted);
+	opacity: 1;
+	transition: opacity var(--transition-fast) ease, color var(--transition-fast) ease;
 }
 
 .nav-search-input:focus {
 	border-color: var(--accent);
+	box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.nav-search-input:focus::placeholder {
+	opacity: 0;
+	color: transparent;
 }
 
 .nav-pills-row {
