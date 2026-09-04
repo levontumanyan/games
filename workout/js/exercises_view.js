@@ -24,6 +24,7 @@ import {
 import { showConfirm, showAlert } from './modal.js';
 import { uploadImageFile } from './storage.js';
 import { escapeHtml, formatTime, parseYouTubeId, showToast } from './utils.js';
+import { getFrontBodySvg, getBackBodySvg } from './body_map.js';
 
 /**
  * Render the full Exercise Library / Catalog view.
@@ -778,8 +779,8 @@ export function showEditExerciseModal(exercise = null, options = {}) {
 	modal.className = 'modal modal-window modal-create-exercise';
 
 	const currentPri = isEdit
-		? new Set(exercise.primary_muscles || inferMusclesForExercise(exercise).primary || ['abs'])
-		: new Set(['abs']);
+		? new Set(exercise.primary_muscles || inferMusclesForExercise(exercise).primary || [])
+		: new Set();
 	const currentSec = isEdit
 		? new Set(exercise.secondary_muscles || inferMusclesForExercise(exercise).secondary || [])
 		: new Set();
@@ -793,79 +794,109 @@ export function showEditExerciseModal(exercise = null, options = {}) {
 		</div>
 
 		<div class="modal-body">
-			<div class="field-group">
-				<label>Exercise Name</label>
-				<input type="text" id="create-ex-name" class="input" placeholder="e.g., Muay Thai Switch Kick, Diamond Push-ups..." value="${isEdit ? escapeHtml(exercise.name || '') : ''}">
-			</div>
+			<div class="modal-exercise-split-layout">
+				<div class="exercise-form-fields">
+					<div class="field-group">
+						<label>Exercise Name</label>
+						<input type="text" id="create-ex-name" class="input" placeholder="e.g., Muay Thai Switch Kick, Diamond Push-ups..." value="${isEdit ? escapeHtml(exercise.name || '') : ''}">
+					</div>
 
-			<div class="field-row">
-				<div class="field-group">
-					<label>Category</label>
-					<select id="create-ex-category" class="input">
-						<option value="strength" ${isEdit && exercise.category === 'strength' ? 'selected' : ''}>💪 Strength / Force</option>
-						<option value="drill" ${isEdit && exercise.category === 'drill' ? 'selected' : ''}>⚡ Drills & Speed</option>
-						<option value="technique" ${isEdit && exercise.category === 'technique' ? 'selected' : ''}>🥋 Technique & Form</option>
-						<option value="stretch" ${isEdit && exercise.category === 'stretch' ? 'selected' : ''}>🧘 Stretch & Recovery</option>
-						<option value="cardio" ${isEdit && exercise.category === 'cardio' ? 'selected' : ''}>🫀 Cardio & HIIT</option>
-						<option value="mobility" ${isEdit && exercise.category === 'mobility' ? 'selected' : ''}>🔄 Mobility & Joints</option>
-					</select>
+					<div class="field-row">
+						<div class="field-group">
+							<label>Category</label>
+							<select id="create-ex-category" class="input">
+								<option value="strength" ${isEdit && exercise.category === 'strength' ? 'selected' : ''}>💪 Strength / Force</option>
+								<option value="drill" ${isEdit && exercise.category === 'drill' ? 'selected' : ''}>⚡ Drills & Speed</option>
+								<option value="technique" ${isEdit && exercise.category === 'technique' ? 'selected' : ''}>🥋 Technique & Form</option>
+								<option value="stretch" ${isEdit && exercise.category === 'stretch' ? 'selected' : ''}>🧘 Stretch & Recovery</option>
+								<option value="cardio" ${isEdit && exercise.category === 'cardio' ? 'selected' : ''}>🫀 Cardio & HIIT</option>
+								<option value="mobility" ${isEdit && exercise.category === 'mobility' ? 'selected' : ''}>🔄 Mobility & Joints</option>
+							</select>
+						</div>
+
+						<div class="field-group">
+							<label>Discipline</label>
+							<select id="create-ex-discipline" class="input">
+								<option value="general" ${isEdit && exercise.discipline === 'general' ? 'selected' : ''}>🏋️ General Fitness</option>
+								<option value="muay_thai" ${isEdit && exercise.discipline === 'muay_thai' ? 'selected' : ''}>🥊 Muay Thai</option>
+								<option value="boxing" ${isEdit && exercise.discipline === 'boxing' ? 'selected' : ''}>🥊 Boxing</option>
+								<option value="calisthenics" ${isEdit && exercise.discipline === 'calisthenics' ? 'selected' : ''}>🤸 Calisthenics</option>
+								<option value="yoga" ${isEdit && exercise.discipline === 'yoga' ? 'selected' : ''}>🧘 Yoga & Mobility</option>
+							</select>
+						</div>
+					</div>
+
+					<div class="field-row">
+						<div class="field-group">
+							<label>Default Execution Mode</label>
+							<select id="create-ex-mode" class="input">
+								<option value="reps" ${isEdit && exercise.default_mode === 'reps' ? 'selected' : ''}>🔢 Target Reps</option>
+								<option value="time" ${isEdit && exercise.default_mode === 'time' ? 'selected' : ''}>⏱️ Timed Interval</option>
+							</select>
+						</div>
+
+						<div class="field-group">
+							<label>Default Quantity (reps or sec)</label>
+							<input type="number" id="create-ex-quantity" class="input" min="1" value="${isEdit ? (exercise.default_quantity || 20) : 20}">
+						</div>
+					</div>
+
+					<!-- Targeted Anatomy Badges Tray -->
+					<div class="selected-badges-tray">
+						<div class="badge-group-row">
+							<span class="badge-group-label label-pri">🔴 Primary Target Muscles</span>
+							<div class="badges-pill-wrap" id="create-ex-primary-muscles"></div>
+						</div>
+						<div class="badge-group-row">
+							<span class="badge-group-label label-sec">🟡 Secondary Synergist Muscles</span>
+							<div class="badges-pill-wrap" id="create-ex-secondary-muscles"></div>
+						</div>
+					</div>
+
+					<div class="field-group">
+						<label>Description & Technical Cues</label>
+						<textarea id="create-ex-desc" class="input" rows="4" placeholder="Key form cues, tempo, or setup instructions...">${isEdit ? escapeHtml(exercise.description || '') : ''}</textarea>
+					</div>
+
+					<div class="field-group">
+						<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+							<label style="margin-bottom:0;">Exercise Visual / Media (YouTube Link, Photo, or Screenshot)</label>
+							${isEdit && currentMediaUrl ? '<button type="button" id="btn-clear-ex-media" class="btn btn-ghost btn-xs" style="color:var(--text-danger,#ef4444);padding:1px 6px;">✕ Clear Video/Media</button>' : ''}
+						</div>
+						<div class="media-input-with-upload">
+							<input type="text" id="create-ex-media" class="input" placeholder="YouTube URL, image link, or upload/paste screenshot..." value="${escapeHtml(currentMediaUrl)}">
+							<input type="file" id="create-ex-file-input" accept="image/*" class="hidden-file-input">
+							<button type="button" id="btn-browse-ex-photo" class="btn btn-ghost btn-sm" title="Upload local image / screenshot">📷 Upload</button>
+						</div>
+						<div id="create-ex-upload-preview" class="create-upload-preview ${currentMediaUrl && !currentMediaUrl.includes('youtube') && !currentMediaUrl.includes('youtu.be') ? '' : 'hidden'}">
+							<img id="create-ex-preview-img" src="${escapeHtml(currentMediaUrl || '')}" onerror="this.parentElement.classList.add('hidden')">
+							<span class="preview-hint">Image / Screenshot Preview</span>
+						</div>
+					</div>
 				</div>
 
-				<div class="field-group">
-					<label>Discipline</label>
-					<select id="create-ex-discipline" class="input">
-						<option value="general" ${isEdit && exercise.discipline === 'general' ? 'selected' : ''}>🏋️ General Fitness</option>
-						<option value="muay_thai" ${isEdit && exercise.discipline === 'muay_thai' ? 'selected' : ''}>🥊 Muay Thai</option>
-						<option value="boxing" ${isEdit && exercise.discipline === 'boxing' ? 'selected' : ''}>🥊 Boxing</option>
-						<option value="calisthenics" ${isEdit && exercise.discipline === 'calisthenics' ? 'selected' : ''}>🤸 Calisthenics</option>
-						<option value="yoga" ${isEdit && exercise.discipline === 'yoga' ? 'selected' : ''}>🧘 Yoga & Mobility</option>
-					</select>
-				</div>
-			</div>
+				<!-- Anatomy Side Panel -->
+				<div class="exercise-anatomy-panel">
+					<div class="anatomy-controls-row">
+						<span class="anatomy-panel-title">🧬 Tap Muscle:</span>
+						<div class="picker-mode-switch" id="ex-anatomy-mode-switch">
+							<button type="button" class="picker-mode-btn active mode-pri" data-mode="primary" title="Tap body to select Primary Target">🔴 Primary</button>
+							<button type="button" class="picker-mode-btn mode-sec" data-mode="secondary" title="Tap body to select Secondary Synergist">🟡 Secondary</button>
+						</div>
+					</div>
 
-			<div class="field-row">
-				<div class="field-group">
-					<label>Default Execution Mode</label>
-					<select id="create-ex-mode" class="input">
-						<option value="reps" ${isEdit && exercise.default_mode === 'reps' ? 'selected' : ''}>🔢 Target Reps</option>
-						<option value="time" ${isEdit && exercise.default_mode === 'time' ? 'selected' : ''}>⏱️ Timed Interval</option>
-					</select>
-				</div>
+					<div class="modal-mini-body-stage">
+						<div class="modal-mini-body-view">
+							<span class="modal-mini-body-tag">Front (Anterior)</span>
+							${getFrontBodySvg()}
+						</div>
+						<div class="modal-mini-body-view">
+							<span class="modal-mini-body-tag">Back (Posterior)</span>
+							${getBackBodySvg()}
+						</div>
+					</div>
 
-				<div class="field-group">
-					<label>Default Quantity (reps or sec)</label>
-					<input type="number" id="create-ex-quantity" class="input" min="1" value="${isEdit ? (exercise.default_quantity || 20) : 20}">
-				</div>
-			</div>
-
-			<div class="field-group">
-				<label>Primary Target Muscles</label>
-				<div class="muscle-selector-chips" id="create-ex-primary-muscles"></div>
-			</div>
-
-			<div class="field-group">
-				<label>Secondary Synergist Muscles (Optional)</label>
-				<div class="muscle-selector-chips" id="create-ex-secondary-muscles"></div>
-			</div>
-
-			<div class="field-group">
-				<label>Description & Technical Cues</label>
-				<textarea id="create-ex-desc" class="input" rows="5" placeholder="Key form cues, tempo, or setup instructions...">${isEdit ? escapeHtml(exercise.description || '') : ''}</textarea>
-			</div>
-
-			<div class="field-group">
-				<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-					<label style="margin-bottom:0;">Exercise Visual / Media (YouTube Link, Photo, or Screenshot)</label>
-					${isEdit && currentMediaUrl ? '<button type="button" id="btn-clear-ex-media" class="btn btn-ghost btn-xs" style="color:var(--text-danger,#ef4444);padding:1px 6px;">✕ Clear Video/Media</button>' : ''}
-				</div>
-				<div class="media-input-with-upload">
-					<input type="text" id="create-ex-media" class="input" placeholder="YouTube URL, image link, or upload/paste screenshot..." value="${escapeHtml(currentMediaUrl)}">
-					<input type="file" id="create-ex-file-input" accept="image/*" class="hidden-file-input">
-					<button type="button" id="btn-browse-ex-photo" class="btn btn-ghost btn-sm" title="Upload local image / screenshot">📷 Upload</button>
-				</div>
-				<div id="create-ex-upload-preview" class="create-upload-preview ${currentMediaUrl && !currentMediaUrl.includes('youtube') && !currentMediaUrl.includes('youtu.be') ? '' : 'hidden'}">
-					<img id="create-ex-preview-img" src="${escapeHtml(currentMediaUrl || '')}" onerror="this.parentElement.classList.add('hidden')">
-					<span class="preview-hint">Image / Screenshot Preview</span>
+					<div class="muscle-hover-info" id="ex-anatomy-hover-info">Hover or tap any muscle on the model</div>
 				</div>
 			</div>
 		</div>
@@ -949,47 +980,109 @@ export function showEditExerciseModal(exercise = null, options = {}) {
 
 	const selectedPrimary = new Set(currentPri);
 	const selectedSecondary = new Set(currentSec);
+	let activePickerMode = 'primary'; // 'primary' | 'secondary'
 
-	function renderMusclePickers() {
+	const modeSwitch = modal.querySelector('#ex-anatomy-mode-switch');
+	const modeBtns = modeSwitch ? modeSwitch.querySelectorAll('.picker-mode-btn') : [];
+	modeBtns.forEach(btn => {
+		btn.addEventListener('click', () => {
+			modeBtns.forEach(b => b.classList.remove('active'));
+			btn.classList.add('active');
+			activePickerMode = btn.dataset.mode;
+		});
+	});
+
+	const hoverInfo = modal.querySelector('#ex-anatomy-hover-info');
+	const allModalPaths = modal.querySelectorAll('.exercise-anatomy-panel .muscle-group-path');
+
+	function syncAnatomyState() {
+		// 1. Highlight SVG paths
+		allModalPaths.forEach(p => {
+			const m = p.getAttribute('data-muscle');
+			p.classList.toggle('muscle-primary', selectedPrimary.has(m));
+			p.classList.toggle('muscle-secondary', selectedSecondary.has(m));
+		});
+
+		// 2. Render badges
+		renderBadges();
+	}
+
+	function renderBadges() {
 		priContainer.innerHTML = '';
 		secContainer.innerHTML = '';
 
-		Object.values(MUSCLE_DEFINITIONS).forEach(m => {
-			// Primary Chip
-			const priBtn = document.createElement('button');
-			priBtn.type = 'button';
-			priBtn.className = `muscle-pick-chip ${selectedPrimary.has(m.id) ? 'selected-pri' : ''}`;
-			priBtn.innerHTML = `<span>${m.icon}</span> <span>${m.label}</span>`;
-			priBtn.addEventListener('click', () => {
-				if (selectedPrimary.has(m.id)) {
-					selectedPrimary.delete(m.id);
-				} else {
-					selectedPrimary.add(m.id);
-					selectedSecondary.delete(m.id);
-				}
-				renderMusclePickers();
+		if (selectedPrimary.size === 0) {
+			priContainer.innerHTML = '<span class="empty-badge-hint">None selected (tap body to pick)</span>';
+		} else {
+			selectedPrimary.forEach(m => {
+				const def = MUSCLE_DEFINITIONS[m] || { label: m, icon: '💪' };
+				const pill = document.createElement('span');
+				pill.className = 'target-pill pri-pill';
+				pill.innerHTML = `<span>${def.icon} ${escapeHtml(def.label)}</span> <button type="button" class="btn-pill-remove" title="Remove">✕</button>`;
+				pill.querySelector('.btn-pill-remove').addEventListener('click', () => {
+					selectedPrimary.delete(m);
+					syncAnatomyState();
+				});
+				priContainer.appendChild(pill);
 			});
-			priContainer.appendChild(priBtn);
+		}
 
-			// Secondary Chip
-			const secBtn = document.createElement('button');
-			secBtn.type = 'button';
-			secBtn.className = `muscle-pick-chip ${selectedSecondary.has(m.id) ? 'selected-sec' : ''}`;
-			secBtn.innerHTML = `<span>${m.icon}</span> <span>${m.label}</span>`;
-			secBtn.addEventListener('click', () => {
-				if (selectedSecondary.has(m.id)) {
-					selectedSecondary.delete(m.id);
-				} else {
-					selectedSecondary.add(m.id);
-					selectedPrimary.delete(m.id);
-				}
-				renderMusclePickers();
+		if (selectedSecondary.size === 0) {
+			secContainer.innerHTML = '<span class="empty-badge-hint">None selected (optional)</span>';
+		} else {
+			selectedSecondary.forEach(m => {
+				const def = MUSCLE_DEFINITIONS[m] || { label: m, icon: '💪' };
+				const pill = document.createElement('span');
+				pill.className = 'target-pill sec-pill';
+				pill.innerHTML = `<span>${def.icon} ${escapeHtml(def.label)}</span> <button type="button" class="btn-pill-remove" title="Remove">✕</button>`;
+				pill.querySelector('.btn-pill-remove').addEventListener('click', () => {
+					selectedSecondary.delete(m);
+					syncAnatomyState();
+				});
+				secContainer.appendChild(pill);
 			});
-			secContainer.appendChild(secBtn);
-		});
+		}
 	}
 
-	renderMusclePickers();
+	allModalPaths.forEach(path => {
+		const muscleId = path.getAttribute('data-muscle');
+		const def = MUSCLE_DEFINITIONS[muscleId];
+
+		path.addEventListener('mouseenter', () => {
+			if (hoverInfo && def) {
+				const regionStr = (def.region || '').toUpperCase();
+				hoverInfo.textContent = `${def.icon} ${def.label}${regionStr ? ' (' + regionStr + ')' : ''}`;
+			}
+		});
+
+		path.addEventListener('mouseleave', () => {
+			if (hoverInfo) hoverInfo.textContent = 'Hover or tap any muscle on the model';
+		});
+
+		path.addEventListener('click', (e) => {
+			e.stopPropagation();
+			if (!muscleId) return;
+
+			if (activePickerMode === 'primary') {
+				if (selectedPrimary.has(muscleId)) {
+					selectedPrimary.delete(muscleId);
+				} else {
+					selectedPrimary.add(muscleId);
+					selectedSecondary.delete(muscleId);
+				}
+			} else {
+				if (selectedSecondary.has(muscleId)) {
+					selectedSecondary.delete(muscleId);
+				} else {
+					selectedSecondary.add(muscleId);
+					selectedPrimary.delete(muscleId);
+				}
+			}
+			syncAnatomyState();
+		});
+	});
+
+	syncAnatomyState();
 
 	const submitBtn = modal.querySelector('#btn-submit-create-ex');
 	submitBtn.addEventListener('click', async () => {

@@ -19,10 +19,6 @@ import {
 	filterExercises,
 	deleteCustomExercise,
 } from './exercises.js';
-import {
-	showExerciseVariationsModal,
-	showCreateExerciseModal,
-} from './exercises_view.js';
 import { escapeHtml, formatTime } from './utils.js';
 import { showConfirm } from './modal.js';
 export { MUSCLE_DEFINITIONS };
@@ -30,7 +26,7 @@ export { MUSCLE_DEFINITIONS };
 /**
  * Clean, proportionate SVG markup for the Anterior (Front) body view with expanded anatomy.
  */
-function getFrontBodySvg() {
+export function getFrontBodySvg() {
 	return `
 	<svg class="body-svg front-svg" viewBox="0 0 200 380" xmlns="http://www.w3.org/2000/svg">
 		<!-- Base Silhouette Outlines -->
@@ -97,7 +93,7 @@ function getFrontBodySvg() {
 /**
  * Clean, proportionate SVG markup for the Posterior (Back) body view with expanded anatomy.
  */
-function getBackBodySvg() {
+export function getBackBodySvg() {
 	return `
 	<svg class="body-svg back-svg" viewBox="0 0 200 380" xmlns="http://www.w3.org/2000/svg">
 		<!-- Base Silhouette Outlines -->
@@ -371,6 +367,7 @@ export function createBodyMap(container, options = {}) {
 export function renderAnatomyExplorer(container, options = {}) {
 	const onPlayExercise = options.onPlayExercise || (() => {});
 	const onAddToRoutine = options.onAddToRoutine || (() => {});
+	const onOpenExerciseDetails = options.onOpenExerciseDetails || null;
 
 	container.innerHTML = `
 		<div class="anatomy-explorer-container">
@@ -523,11 +520,13 @@ export function renderAnatomyExplorer(container, options = {}) {
 
 			// Entire card is clickable to open top-layer detail & variations overlay
 			card.addEventListener('click', () => {
-				showExerciseVariationsModal(ex, {
-					onPlayAsset: (asset) => onPlayExercise(ex, asset),
-					onAddToRoutine: (targetEx, btn) => onAddToRoutine(targetEx || ex, btn),
-					onUpdated: () => renderGrid()
-				});
+				if (typeof onOpenExerciseDetails === 'function') {
+					onOpenExerciseDetails(ex, {
+						onPlayAsset: (asset) => onPlayExercise(ex, asset),
+						onAddToRoutine: (targetEx, btn) => onAddToRoutine(targetEx || ex, btn),
+						onUpdated: () => renderGrid()
+					});
+				}
 			});
 
 			gridContainer.appendChild(card);

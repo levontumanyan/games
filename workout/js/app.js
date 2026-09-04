@@ -487,7 +487,13 @@ function switchTab(tab) {
 					unlockAudio();
 					startRoutine(previewRoutine, 0, true);
 				},
-				onAddToRoutine: (exercise, triggerBtn) => handleAddToRoutineWithPicker(exercise, triggerBtn, 'exercise')
+				onAddToRoutine: (exercise, triggerBtn) => handleAddToRoutineWithPicker(exercise, triggerBtn, 'exercise'),
+				onOpenExerciseDetails: (exercise, customOpts = {}) => {
+					showExerciseVariationsModal(exercise, {
+						...customOpts,
+						onAddToRoutine: (targetEx, btn) => handleAddToRoutineWithPicker(targetEx || exercise, btn, 'exercise')
+					});
+				}
 			});
 		}
 	} else if (tab === 'stats') {
