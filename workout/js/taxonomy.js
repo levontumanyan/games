@@ -66,7 +66,7 @@ export const MUSCLE_DEFINITIONS = {
 		region: 'core',
 		color: '#5fa778',
 		paths: {
-			front: ['path-abs-core'],
+			front: ['path-abs-upper', 'path-abs-mid', 'path-abs-lower'],
 			back: [],
 		},
 	},
@@ -88,8 +88,8 @@ export const MUSCLE_DEFINITIONS = {
 		region: 'core',
 		color: '#8195a2',
 		paths: {
-			front: ['path-pelvic-floor'],
-			back: [],
+			front: ['path-pelvic-front'],
+			back: ['path-pelvic-back'],
 		},
 	},
 	groin: {
@@ -110,7 +110,7 @@ export const MUSCLE_DEFINITIONS = {
 		region: 'core',
 		color: '#d19e5b',
 		paths: {
-			front: ['path-hipflexor-left', 'path-hipflexor-right'],
+			front: ['path-hip-flexor-left', 'path-hip-flexor-right'],
 			back: [],
 		},
 	},
@@ -177,7 +177,7 @@ export const MUSCLE_DEFINITIONS = {
 		color: '#5fa778',
 		paths: {
 			front: [],
-			back: ['path-lat-left', 'path-lat-right'],
+			back: ['path-lats-left', 'path-lats-right'],
 		},
 	},
 	lower_back: {
@@ -188,7 +188,7 @@ export const MUSCLE_DEFINITIONS = {
 		color: '#cbb07a',
 		paths: {
 			front: [],
-			back: ['path-lowerback-core'],
+			back: ['path-lower-back'],
 		},
 	},
 	traps: {

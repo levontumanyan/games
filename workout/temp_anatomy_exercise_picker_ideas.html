@@ -1,0 +1,1142 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="matcha-dark">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Anatomy Exercise Picker - UX Explorations</title>
+	<link rel="stylesheet" href="css/styles.css">
+	<style>
+		:root {
+			--pri-color: #ef4444;
+			--pri-glow: rgba(239, 68, 68, 0.45);
+			--sec-color: #f59e0b;
+			--sec-glow: rgba(245, 158, 11, 0.45);
+		}
+
+		html, body {
+			height: auto !important;
+			min-height: 100% !important;
+			overflow-y: auto !important;
+			overflow-x: hidden !important;
+		}
+
+		body {
+			background: var(--bg-primary, #121513);
+			color: var(--text-primary, #e6eae6);
+			font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+			padding: 24px;
+			margin: 0;
+			line-height: 1.5;
+		}
+
+		.showcase-header {
+			max-width: 1100px;
+			margin: 0 auto 28px;
+			padding-bottom: 20px;
+			border-bottom: 1px solid var(--border, #2a352e);
+		}
+
+		.showcase-title {
+			font-size: 1.8rem;
+			font-weight: 800;
+			color: var(--accent, #5fa778);
+			display: flex;
+			align-items: center;
+			gap: 12px;
+			margin: 0 0 8px 0;
+		}
+
+		.showcase-subtitle {
+			color: var(--text-muted, #97a39b);
+			margin: 0 0 20px 0;
+			font-size: 0.95rem;
+		}
+
+		.idea-tabs-nav {
+			display: flex;
+			gap: 10px;
+			flex-wrap: wrap;
+		}
+
+		.idea-tab-btn {
+			background: var(--bg-card, #1c221e);
+			color: var(--text-muted, #97a39b);
+			border: 1px solid var(--border, #2a352e);
+			padding: 10px 18px;
+			border-radius: var(--radius-md, 10px);
+			cursor: pointer;
+			font-size: 0.92rem;
+			font-weight: 700;
+			display: flex;
+			align-items: center;
+			gap: 8px;
+			transition: all 0.2s ease;
+		}
+
+		.idea-tab-btn:hover {
+			background: var(--bg-card-elevated, #242c27);
+			color: var(--text-primary, #ffffff);
+			border-color: var(--border-light, #3c4b42);
+		}
+
+		.idea-tab-btn.active {
+			background: var(--accent, #5fa778);
+			color: #ffffff;
+			border-color: var(--accent, #5fa778);
+			box-shadow: 0 4px 14px rgba(95, 167, 120, 0.35);
+		}
+
+		.idea-tab-btn .badge-rec {
+			background: rgba(0, 0, 0, 0.25);
+			color: #ffffff;
+			font-size: 0.72rem;
+			padding: 2px 7px;
+			border-radius: 6px;
+			font-weight: 800;
+			letter-spacing: 0.04em;
+			text-transform: uppercase;
+		}
+
+		.idea-view-pane {
+			display: none;
+			max-width: 1100px;
+			margin: 0 auto;
+		}
+
+		.idea-view-pane.active {
+			display: block;
+			animation: fadeIn 0.2s ease-out;
+		}
+
+		@keyframes fadeIn {
+			from { opacity: 0; transform: translateY(6px); }
+			to { opacity: 1; transform: translateY(0); }
+		}
+
+		.concept-meta-card {
+			background: var(--bg-card, #1c221e);
+			border: 1px solid var(--border, #2a352e);
+			border-radius: var(--radius-lg, 12px);
+			padding: 18px 22px;
+			margin-bottom: 24px;
+		}
+
+		.concept-meta-card h3 {
+			margin: 0 0 8px 0;
+			font-size: 1.15rem;
+			color: var(--text-primary, #ffffff);
+			display: flex;
+			align-items: center;
+			gap: 10px;
+		}
+
+		.concept-meta-card p {
+			margin: 0 0 10px 0;
+			color: var(--text-muted, #97a39b);
+			font-size: 0.92rem;
+		}
+
+		.concept-props {
+			display: flex;
+			gap: 16px;
+			flex-wrap: wrap;
+			margin-top: 10px;
+		}
+
+		.concept-prop-item {
+			font-size: 0.8rem;
+			padding: 4px 10px;
+			border-radius: 6px;
+			background: var(--bg-surface, #141816);
+			border: 1px solid var(--border, #2a352e);
+			display: inline-flex;
+			align-items: center;
+			gap: 6px;
+		}
+
+		/* Mockup Modal Container */
+		.modal-mock-stage {
+			background: var(--bg-card, #1c221e);
+			border: 1px solid var(--border, #2a352e);
+			border-radius: var(--radius-lg, 14px);
+			overflow: hidden;
+			box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
+		}
+
+		.modal-mock-header {
+			background: var(--bg-card-elevated, #242c27);
+			padding: 16px 22px;
+			border-bottom: 1px solid var(--border, #2a352e);
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+		}
+
+		.modal-mock-header h4 {
+			margin: 0;
+			font-size: 1.05rem;
+			font-weight: 700;
+		}
+
+		.mock-body-layout {
+			padding: 24px;
+			display: grid;
+			grid-template-columns: 1fr 340px;
+			gap: 24px;
+		}
+
+		@media (max-width: 860px) {
+			.mock-body-layout {
+				grid-template-columns: 1fr;
+			}
+		}
+
+		/* Form side */
+		.mock-form-side {
+			display: flex;
+			flex-direction: column;
+			gap: 16px;
+		}
+
+		.mock-field {
+			display: flex;
+			flex-direction: column;
+			gap: 6px;
+		}
+
+		.mock-field label {
+			font-size: 0.82rem;
+			font-weight: 700;
+			text-transform: uppercase;
+			letter-spacing: 0.04em;
+			color: var(--text-muted, #97a39b);
+		}
+
+		.mock-input {
+			background: var(--bg-surface, #141816);
+			border: 1px solid var(--border, #2a352e);
+			border-radius: var(--radius-md, 8px);
+			padding: 10px 12px;
+			color: var(--text-primary, #ffffff);
+			font-size: 0.92rem;
+		}
+
+		/* Anatomy side */
+		.mock-anatomy-panel {
+			background: var(--bg-surface, #141816);
+			border: 1px solid var(--border, #2a352e);
+			border-radius: var(--radius-lg, 12px);
+			padding: 16px;
+			display: flex;
+			flex-direction: column;
+			gap: 14px;
+		}
+
+		.anatomy-controls-row {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: 8px;
+			flex-wrap: wrap;
+		}
+
+		/* Mode switch */
+		.picker-mode-switch {
+			display: flex;
+			background: var(--bg-card, #1c221e);
+			border: 1px solid var(--border, #2a352e);
+			border-radius: 20px;
+			padding: 2px;
+			gap: 2px;
+		}
+
+		.picker-mode-btn {
+			border: none;
+			background: transparent;
+			color: var(--text-muted, #97a39b);
+			padding: 5px 12px;
+			border-radius: 16px;
+			cursor: pointer;
+			font-size: 0.78rem;
+			font-weight: 700;
+			display: flex;
+			align-items: center;
+			gap: 6px;
+			transition: all 0.15s ease;
+		}
+
+		.picker-mode-btn.active.mode-pri {
+			background: var(--pri-color);
+			color: #ffffff;
+			box-shadow: 0 2px 8px var(--pri-glow);
+		}
+
+		.picker-mode-btn.active.mode-sec {
+			background: var(--sec-color);
+			color: #121513;
+			box-shadow: 0 2px 8px var(--sec-glow);
+		}
+
+		/* Dual SVG stage */
+		.mini-body-stage {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			gap: 14px;
+			background: rgba(0, 0, 0, 0.25);
+			padding: 12px 6px;
+			border-radius: 10px;
+			border: 1px solid var(--border, #2a352e);
+		}
+
+		.mini-body-view {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			gap: 4px;
+			flex: 1;
+			max-width: 140px;
+		}
+
+		.mini-body-view span {
+			font-size: 0.7rem;
+			font-weight: 700;
+			color: var(--text-muted, #97a39b);
+			text-transform: uppercase;
+			letter-spacing: 0.05em;
+		}
+
+		/* SVG styling */
+		.body-vector-svg {
+			width: 100%;
+			height: 240px;
+			display: block;
+		}
+
+		.body-base {
+			fill: #222b26;
+			stroke: #334039;
+			stroke-width: 1.2;
+		}
+
+		.muscle-path {
+			fill: #2d3832;
+			stroke: #161a18;
+			stroke-width: 1;
+			cursor: pointer;
+			transition: fill 0.15s ease, stroke 0.15s ease, filter 0.15s ease;
+		}
+
+		.muscle-path:hover {
+			fill: #44544b;
+			filter: brightness(1.25);
+		}
+
+		.muscle-path.is-primary {
+			fill: var(--pri-color) !important;
+			stroke: #ffffff !important;
+			stroke-width: 1.5;
+			filter: drop-shadow(0 0 6px var(--pri-glow));
+		}
+
+		.muscle-path.is-secondary {
+			fill: var(--sec-color) !important;
+			stroke: #ffffff !important;
+			stroke-width: 1.5;
+			filter: drop-shadow(0 0 6px var(--sec-glow));
+		}
+
+		/* Pelvic floor path styling */
+		.muscle-path[data-muscle="pelvic_floor"] {
+			stroke-dasharray: 2, 2;
+		}
+
+		/* Live Badges Tray */
+		.selected-badges-tray {
+			display: flex;
+			flex-direction: column;
+			gap: 8px;
+		}
+
+		.badge-group-row {
+			display: flex;
+			flex-direction: column;
+			gap: 4px;
+		}
+
+		.badge-group-label {
+			font-size: 0.72rem;
+			font-weight: 800;
+			text-transform: uppercase;
+			letter-spacing: 0.04em;
+			display: flex;
+			align-items: center;
+			gap: 6px;
+		}
+
+		.label-pri { color: var(--pri-color); }
+		.label-sec { color: var(--sec-color); }
+
+		.badges-pill-wrap {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 6px;
+			min-height: 28px;
+			align-items: center;
+		}
+
+		.empty-badge-hint {
+			font-size: 0.75rem;
+			color: var(--text-muted, #97a39b);
+			font-style: italic;
+		}
+
+		.target-pill {
+			display: inline-flex;
+			align-items: center;
+			gap: 6px;
+			font-size: 0.76rem;
+			font-weight: 700;
+			padding: 4px 8px 4px 10px;
+			border-radius: 14px;
+			transition: transform 0.1s ease;
+		}
+
+		.target-pill.pri-pill {
+			background: rgba(239, 68, 68, 0.18);
+			border: 1px solid var(--pri-color);
+			color: #fca5a5;
+		}
+
+		.target-pill.sec-pill {
+			background: rgba(245, 158, 11, 0.18);
+			border: 1px solid var(--sec-color);
+			color: #fde68a;
+		}
+
+		.target-pill .btn-pill-remove {
+			background: transparent;
+			border: none;
+			color: inherit;
+			cursor: pointer;
+			padding: 0 2px;
+			font-size: 0.8rem;
+			font-weight: 800;
+			line-height: 1;
+			opacity: 0.75;
+		}
+
+		.target-pill .btn-pill-remove:hover {
+			opacity: 1;
+			transform: scale(1.2);
+		}
+
+		/* Hover Info Bar */
+		.muscle-hover-info {
+			font-size: 0.75rem;
+			color: var(--text-muted, #97a39b);
+			min-height: 18px;
+			text-align: center;
+			font-style: italic;
+		}
+
+		.modal-mock-footer {
+			background: var(--bg-card-elevated, #242c27);
+			padding: 14px 24px;
+			border-top: 1px solid var(--border, #2a352e);
+			display: flex;
+			justify-content: flex-end;
+			gap: 10px;
+		}
+
+		/* Option 2: 1-Click State Cycle Badge Style */
+		.cycle-legend {
+			display: flex;
+			justify-content: space-around;
+			font-size: 0.72rem;
+			background: var(--bg-card, #1c221e);
+			padding: 6px;
+			border-radius: 8px;
+			border: 1px solid var(--border, #2a352e);
+		}
+
+		/* Option 3: Collapsible Drawer styling */
+		.drawer-toggle-card {
+			background: var(--bg-surface, #141816);
+			border: 1px dashed var(--border, #2a352e);
+			border-radius: var(--radius-md, 8px);
+			padding: 12px 16px;
+			cursor: pointer;
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			transition: all 0.15s ease;
+		}
+
+		.drawer-toggle-card:hover {
+			border-color: var(--accent, #5fa778);
+			background: var(--bg-hover, #1f2622);
+		}
+
+		/* Option 4: Regional Focus Tabs */
+		.region-focus-bar {
+			display: flex;
+			gap: 6px;
+			background: var(--bg-card, #1c221e);
+			padding: 4px;
+			border-radius: 8px;
+			border: 1px solid var(--border, #2a352e);
+		}
+
+		.region-focus-btn {
+			flex: 1;
+			border: none;
+			background: transparent;
+			color: var(--text-muted, #97a39b);
+			font-size: 0.76rem;
+			font-weight: 700;
+			padding: 6px 4px;
+			border-radius: 6px;
+			cursor: pointer;
+		}
+
+		.region-focus-btn.active {
+			background: var(--accent, #5fa778);
+			color: #ffffff;
+		}
+	</style>
+</head>
+<body>
+
+	<div class="showcase-header">
+		<h1 class="showcase-title">🧬 Human Anatomy Exercise Picker Explorations</h1>
+		<p class="showcase-subtitle">Testing 4 interactive UX architectures where the <strong>human body diagram is the single source of truth</strong> for muscle targeting. Click between the 4 prototypes below and interact directly with the body models!</p>
+		
+		<div class="idea-tabs-nav">
+			<button type="button" class="idea-tab-btn active" data-target="pane-opt1">
+				<span>Idea 1: Split Canvas & Target Mode Switcher</span>
+				<span class="badge-rec">Recommended</span>
+			</button>
+			<button type="button" class="idea-tab-btn" data-target="pane-opt2">
+				<span>Idea 2: 1-Click State Cycle (Primary ➔ Secondary ➔ Off)</span>
+			</button>
+			<button type="button" class="idea-tab-btn" data-target="pane-opt3">
+				<span>Idea 3: Expandable Anatomy Drawer with Preview</span>
+			</button>
+			<button type="button" class="idea-tab-btn" data-target="pane-opt4">
+				<span>Idea 4: Region-Guided Zoom (Upper / Core & Pelvis / Lower)</span>
+			</button>
+		</div>
+	</div>
+
+	<!-- ================================================================= -->
+	<!-- OPTION 1: Split Canvas + Mode Switcher (RECOMMENDED) -->
+	<!-- ================================================================= -->
+	<div id="pane-opt1" class="idea-view-pane active">
+		<div class="concept-meta-card">
+			<h3>✨ Idea 1: Split Canvas with Target Mode Switcher (Recommended)</h3>
+			<p>Direct side-by-side integration. The anatomy model is always visible right next to the exercise fields. A clean mode toggle lets you tap any muscle to instantly assign it as Primary Target (Red) or Secondary Synergist (Amber). The 34 static chips are completely eliminated in favor of live dynamic badges with instant ✕ remove buttons.</p>
+			<div class="concept-props">
+				<span class="concept-prop-item">🎯 <strong>Mental Model:</strong> Point and paint</span>
+				<span class="concept-prop-item">⚡ <strong>Clicks to pick:</strong> 1 tap per muscle</span>
+				<span class="concept-prop-item">🧹 <strong>Clutter:</strong> Zero redundant chips</span>
+				<span class="concept-prop-item">⚓ <strong>Pelvic Floor:</strong> Distinct sub-pubic & perineal basin</span>
+			</div>
+		</div>
+
+		<div class="modal-mock-stage" id="mock-opt1">
+			<div class="modal-mock-header">
+				<h4>➕ Create Custom Exercise (Idea 1)</h4>
+				<span style="color:var(--text-muted);cursor:pointer;">✕</span>
+			</div>
+
+			<div class="mock-body-layout">
+				<!-- Form Side -->
+				<div class="mock-form-side">
+					<div class="mock-field">
+						<label>Exercise Name</label>
+						<input type="text" class="mock-input" value="Kegel Floor Squeeze & Hold">
+					</div>
+					<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+						<div class="mock-field">
+							<label>Category</label>
+							<select class="mock-input">
+								<option selected>💪 Strength / Force</option>
+								<option>🧘 Stretch & Recovery</option>
+								<option>🔄 Mobility & Joints</option>
+							</select>
+						</div>
+						<div class="mock-field">
+							<label>Default Mode</label>
+							<select class="mock-input">
+								<option selected>⏱️ Timed (45s)</option>
+								<option>🔢 Reps</option>
+							</select>
+						</div>
+					</div>
+
+					<!-- Targeted Anatomy Badges Summary -->
+					<div class="selected-badges-tray">
+						<div class="badge-group-row">
+							<span class="badge-group-label label-pri">🔴 Primary Target Muscles</span>
+							<div class="badges-pill-wrap" id="opt1-pri-badges">
+								<!-- dynamically updated -->
+							</div>
+						</div>
+						<div class="badge-group-row">
+							<span class="badge-group-label label-sec">🟡 Secondary Synergist Muscles</span>
+							<div class="badges-pill-wrap" id="opt1-sec-badges">
+								<!-- dynamically updated -->
+							</div>
+						</div>
+					</div>
+
+					<div class="mock-field">
+						<label>Description & Form Cues</label>
+						<textarea class="mock-input" rows="3">Deep pelvic floor isolation. Lying supine, exhale and contract perineal/pelvic muscles upward and inward.</textarea>
+					</div>
+				</div>
+
+				<!-- Anatomy Side -->
+				<div class="mock-anatomy-panel">
+					<div class="anatomy-controls-row">
+						<span style="font-size:0.78rem;font-weight:800;color:var(--text-primary);">🧬 Tap Muscle:</span>
+						<div class="picker-mode-switch" id="opt1-mode-switch">
+							<button type="button" class="picker-mode-btn active mode-pri" data-mode="primary">🔴 Primary</button>
+							<button type="button" class="picker-mode-btn mode-sec" data-mode="secondary">🟡 Secondary</button>
+						</div>
+					</div>
+
+					<div class="mini-body-stage">
+						<div class="mini-body-view">
+							<span>Front (Anterior)</span>
+							<svg class="body-vector-svg" viewBox="0 0 200 380" data-opt="opt1">
+								<g class="body-silhouette">
+									<path class="body-base" d="M 92 20 C 92 12 108 12 108 20 C 108 28 92 28 92 20 Z M 95 28 L 95 42 L 105 42 L 105 28 Z" />
+									<path class="body-base" d="M 95 42 L 68 49 L 52 75 L 42 120 L 36 170 L 46 172 L 54 128 L 62 82 L 72 75 L 72 165 L 80 200 L 70 270 L 68 335 L 73 365 L 87 365 L 88 330 L 92 265 L 97 210 L 103 210 L 108 265 L 112 330 L 113 365 L 127 365 L 132 335 L 130 270 L 120 200 L 128 165 L 128 75 L 138 82 L 146 128 L 154 172 L 164 170 L 158 120 L 148 75 L 132 49 L 105 42 Z" />
+								</g>
+								<g class="muscle-paths">
+									<path id="opt1-f-shoulders-l" data-muscle="shoulders" class="muscle-path" d="M 68 49 C 55 55 50 68 52 82 C 57 80 64 74 69 70 Z" />
+									<path id="opt1-f-shoulders-r" data-muscle="shoulders" class="muscle-path" d="M 132 49 C 145 55 150 68 148 82 C 143 80 136 74 131 70 Z" />
+									<path id="opt1-f-chest-l" data-muscle="chest" class="muscle-path" d="M 72 58 C 82 56 97 58 98 76 C 98 88 84 94 72 88 C 66 84 66 65 72 58 Z" />
+									<path id="opt1-f-chest-r" data-muscle="chest" class="muscle-path" d="M 128 58 C 118 56 103 58 102 76 C 102 88 116 94 128 88 C 134 84 134 65 128 58 Z" />
+									<path id="opt1-f-bicep-l" data-muscle="biceps" class="muscle-path" d="M 52 86 C 47 98 44 116 50 124 C 54 122 58 108 60 92 Z" />
+									<path id="opt1-f-bicep-r" data-muscle="biceps" class="muscle-path" d="M 148 86 C 153 98 156 116 150 124 C 146 122 142 108 140 92 Z" />
+									<path id="opt1-f-abs" data-muscle="abs" class="muscle-path" d="M 88 82 L 112 82 L 112 136 L 88 136 Z" />
+									<path id="opt1-f-obliques-l" data-muscle="obliques" class="muscle-path" d="M 74 95 C 73 115 75 135 83 142 L 85 106 Z" />
+									<path id="opt1-f-obliques-r" data-muscle="obliques" class="muscle-path" d="M 126 95 C 127 115 125 135 117 142 L 115 106 Z" />
+									<path id="opt1-f-hipflexor-l" data-muscle="hip_flexors" class="muscle-path" d="M 87 140 C 81 146 76 156 75 166 L 86 162 C 90 154 90 144 87 140 Z" />
+									<path id="opt1-f-hipflexor-r" data-muscle="hip_flexors" class="muscle-path" d="M 113 140 C 119 146 124 156 125 166 L 114 162 C 110 154 110 144 113 140 Z" />
+									<!-- Pelvic Floor (Anterior) -->
+									<path id="opt1-f-pelvic" data-muscle="pelvic_floor" class="muscle-path" d="M 91 140 L 109 140 C 108 152 105 167 100 172 C 95 167 92 152 91 140 Z" />
+									<path id="opt1-f-groin-l" data-muscle="groin" class="muscle-path" d="M 92 175 C 93 195 91 220 89 240 L 96 210 C 95 195 94 180 92 175 Z" />
+									<path id="opt1-f-groin-r" data-muscle="groin" class="muscle-path" d="M 108 175 C 107 195 109 220 111 240 L 104 210 C 105 195 106 180 108 175 Z" />
+									<path id="opt1-f-quads-l" data-muscle="quads" class="muscle-path" d="M 75 172 C 68 198 69 238 73 262 C 80 262 87 242 88 200 C 89 176 83 168 75 172 Z" />
+									<path id="opt1-f-quads-r" data-muscle="quads" class="muscle-path" d="M 125 172 C 132 198 131 238 127 262 C 120 262 113 242 112 200 C 111 176 117 168 125 172 Z" />
+									<path id="opt1-f-calves-l" data-muscle="calves" class="muscle-path" d="M 73 282 C 68 302 70 326 75 345 C 80 345 84 330 84 300 C 84 285 78 280 73 282 Z" />
+									<path id="opt1-f-calves-r" data-muscle="calves" class="muscle-path" d="M 127 282 C 132 302 130 326 125 345 C 120 345 116 330 116 300 C 116 285 122 280 127 282 Z" />
+								</g>
+							</svg>
+						</div>
+
+						<div class="mini-body-view">
+							<span>Back (Posterior)</span>
+							<svg class="body-vector-svg" viewBox="0 0 200 380" data-opt="opt1">
+								<g class="body-silhouette">
+									<path class="body-base" d="M 92 20 C 92 12 108 12 108 20 C 108 28 92 28 92 20 Z M 95 28 L 95 42 L 105 42 L 105 28 Z" />
+									<path class="body-base" d="M 95 42 L 68 49 L 52 75 L 42 120 L 36 170 L 46 172 L 54 128 L 62 82 L 72 75 L 72 165 L 80 200 L 70 270 L 68 335 L 73 365 L 87 365 L 88 330 L 92 265 L 97 210 L 103 210 L 108 265 L 112 330 L 113 365 L 127 365 L 132 335 L 130 270 L 120 200 L 128 165 L 128 75 L 138 82 L 146 128 L 154 172 L 164 170 L 158 120 L 148 75 L 132 49 L 105 42 Z" />
+								</g>
+								<g class="muscle-paths">
+									<path id="opt1-b-traps" data-muscle="traps" class="muscle-path" d="M 95 42 L 105 42 L 120 54 L 100 84 L 80 54 Z" />
+									<path id="opt1-b-delt-l" data-muscle="shoulders" class="muscle-path" d="M 68 49 C 55 55 50 68 52 82 C 57 80 65 72 74 65 Z" />
+									<path id="opt1-b-delt-r" data-muscle="shoulders" class="muscle-path" d="M 132 49 C 145 55 150 68 148 82 C 143 80 135 72 126 65 Z" />
+									<path id="opt1-b-tricep-l" data-muscle="triceps" class="muscle-path" d="M 52 86 C 47 98 45 116 50 124 C 54 122 58 108 60 92 Z" />
+									<path id="opt1-b-tricep-r" data-muscle="triceps" class="muscle-path" d="M 148 86 C 153 98 155 116 150 124 C 146 122 142 108 140 92 Z" />
+									<path id="opt1-b-lats-l" data-muscle="lats" class="muscle-path" d="M 78 72 C 68 95 72 124 82 135 L 94 92 Z" />
+									<path id="opt1-b-lats-r" data-muscle="lats" class="muscle-path" d="M 122 72 C 132 95 128 124 118 135 L 106 92 Z" />
+									<path id="opt1-b-lowback" data-muscle="lower_back" class="muscle-path" d="M 94 100 L 106 100 L 106 142 L 94 142 Z" />
+									<path id="opt1-b-glute-l" data-muscle="glutes" class="muscle-path" d="M 76 146 C 70 165 72 188 85 194 C 95 195 97 175 97 148 Z" />
+									<path id="opt1-b-glute-r" data-muscle="glutes" class="muscle-path" d="M 124 146 C 130 165 128 188 115 194 C 105 195 103 175 103 148 Z" />
+									<!-- Pelvic Floor (Posterior Perineal Basin) -->
+									<path id="opt1-b-pelvic" data-muscle="pelvic_floor" class="muscle-path" d="M 96 172 C 98 166 102 166 104 172 C 105 186 103 198 100 206 C 97 198 95 186 96 172 Z" />
+									<path id="opt1-b-hamstring-l" data-muscle="hamstrings" class="muscle-path" d="M 76 200 C 70 225 72 255 76 268 C 84 268 92 245 94 204 Z" />
+									<path id="opt1-b-hamstring-r" data-muscle="hamstrings" class="muscle-path" d="M 124 200 C 130 225 128 255 124 268 C 116 268 108 245 106 204 Z" />
+									<path id="opt1-b-calves-l" data-muscle="calves" class="muscle-path" d="M 73 282 C 67 302 70 326 75 345 C 81 345 86 330 86 300 C 86 285 78 280 73 282 Z" />
+									<path id="opt1-b-calves-r" data-muscle="calves" class="muscle-path" d="M 127 282 C 133 302 130 326 125 345 C 119 345 114 330 114 300 C 114 285 122 280 127 282 Z" />
+								</g>
+							</svg>
+						</div>
+					</div>
+
+					<div class="muscle-hover-info" id="opt1-hover-info">Hover over any muscle on the model</div>
+				</div>
+			</div>
+
+			<div class="modal-mock-footer">
+				<button class="btn btn-ghost">Cancel</button>
+				<button class="btn btn-primary">Create Exercise</button>
+			</div>
+		</div>
+	</div>
+
+	<!-- ================================================================= -->
+	<!-- OPTION 2: 1-Click State Cycle -->
+	<!-- ================================================================= -->
+	<div id="pane-opt2" class="idea-view-pane">
+		<div class="concept-meta-card">
+			<h3>🔄 Idea 2: 1-Click State Cycle (Primary ➔ Secondary ➔ Off)</h3>
+			<p>Zero mode toggle switches! Simply tap any muscle on the diagram. 1st click marks it as <strong>Primary Target</strong> (Red). Clicking the same muscle again promotes it to <strong>Secondary Synergist</strong> (Amber). A 3rd click turns it off. Fast and minimalist for touch screens.</p>
+			<div class="concept-props">
+				<span class="concept-prop-item">🎯 <strong>Mental Model:</strong> Single-button state cycle</span>
+				<span class="concept-prop-item">⚡ <strong>Clicks to pick:</strong> 1 tap for primary, 2 taps for secondary</span>
+				<span class="concept-prop-item">🧹 <strong>Clutter:</strong> Minimal interface buttons</span>
+			</div>
+		</div>
+
+		<div class="modal-mock-stage" id="mock-opt2">
+			<div class="modal-mock-header">
+				<h4>➕ Create Custom Exercise (Idea 2)</h4>
+				<span style="color:var(--text-muted);cursor:pointer;">✕</span>
+			</div>
+
+			<div class="mock-body-layout">
+				<div class="mock-form-side">
+					<div class="mock-field">
+						<label>Exercise Name</label>
+						<input type="text" class="mock-input" value="Glute Bridge with Pelvic Tilt">
+					</div>
+					<div class="cycle-legend">
+						<span>⚪ Unselected</span>
+						<span>➔ 🔴 1st Tap: Primary</span>
+						<span>➔ 🟡 2nd Tap: Secondary</span>
+						<span>➔ ⚪ 3rd Tap: Clear</span>
+					</div>
+
+					<div class="selected-badges-tray">
+						<div class="badge-group-row">
+							<span class="badge-group-label label-pri">🔴 Primary Targets</span>
+							<div class="badges-pill-wrap" id="opt2-pri-badges"></div>
+						</div>
+						<div class="badge-group-row">
+							<span class="badge-group-label label-sec">🟡 Secondary Synergists</span>
+							<div class="badges-pill-wrap" id="opt2-sec-badges"></div>
+						</div>
+					</div>
+				</div>
+
+				<div class="mock-anatomy-panel">
+					<div style="font-size:0.78rem;font-weight:700;color:var(--text-muted);text-align:center;">
+						Tap any muscle to cycle state
+					</div>
+					<div class="mini-body-stage" id="opt2-body-stage"></div>
+					<div class="muscle-hover-info" id="opt2-hover-info">Hover over any muscle to inspect</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- ================================================================= -->
+	<!-- OPTION 3: Expandable Anatomy Drawer -->
+	<!-- ================================================================= -->
+	<div id="pane-opt3" class="idea-view-pane">
+		<div class="concept-meta-card">
+			<h3>📂 Idea 3: Expandable Anatomy Drawer with Preview</h3>
+			<p>Preserves a compact default form layout. The exercise form displays a sleek "Anatomy Map" trigger tile showing a miniature silhouette preview of chosen muscles. Clicking "Open Muscle Anatomy Map" expands an interactive modal canvas or drawer to select muscles comfortably.</p>
+			<div class="concept-props">
+				<span class="concept-prop-item">🎯 <strong>Mental Model:</strong> Progressive disclosure</span>
+				<span class="concept-prop-item">📱 <strong>Best for:</strong> Small mobile screens</span>
+			</div>
+		</div>
+
+		<div class="modal-mock-stage" id="mock-opt3">
+			<div class="modal-mock-header">
+				<h4>➕ Create Custom Exercise (Idea 3)</h4>
+				<span style="color:var(--text-muted);cursor:pointer;">✕</span>
+			</div>
+
+			<div style="padding:24px;display:flex;flex-direction:column;gap:18px;">
+				<div class="mock-field">
+					<label>Exercise Name</label>
+					<input type="text" class="mock-input" value="Dead Bug with Pelvic Brace">
+				</div>
+
+				<div class="drawer-toggle-card" id="opt3-drawer-trigger">
+					<div style="display:flex;align-items:center;gap:12px;">
+						<span style="font-size:1.4rem;">🧬</span>
+						<div>
+							<div style="font-size:0.9rem;font-weight:700;">Target Anatomy: <span id="opt3-count-label" style="color:var(--accent);">2 Selected</span></div>
+							<div style="font-size:0.76rem;color:var(--text-muted);">Tap to expand full human anatomy map</div>
+						</div>
+					</div>
+					<button type="button" class="btn btn-sm btn-ghost" id="opt3-toggle-btn">Expand Map ▼</button>
+				</div>
+
+				<div id="opt3-drawer-content" style="display:none;background:var(--bg-surface);border:1px solid var(--border);border-radius:12px;padding:16px;">
+					<div class="mini-body-stage" id="opt3-body-stage"></div>
+				</div>
+
+				<div class="selected-badges-tray">
+					<div class="badge-group-row">
+						<span class="badge-group-label label-pri">🔴 Primary Targets</span>
+						<div class="badges-pill-wrap" id="opt3-pri-badges"></div>
+					</div>
+					<div class="badge-group-row">
+						<span class="badge-group-label label-sec">🟡 Secondary Synergists</span>
+						<div class="badges-pill-wrap" id="opt3-sec-badges"></div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- ================================================================= -->
+	<!-- OPTION 4: Region-Guided Zoom -->
+	<!-- ================================================================= -->
+	<div id="pane-opt4" class="idea-view-pane">
+		<div class="concept-meta-card">
+			<h3>🔍 Idea 4: Region-Guided Zoom (Upper / Core & Pelvis / Lower)</h3>
+			<p>Divides the body into 3 anatomical zones: <strong>Upper Body</strong>, <strong>Core & Pelvis</strong>, and <strong>Lower Body</strong>. Selecting "Core & Pelvis" highlights and zooms into the abdominal wall, obliques, psoas, and pelvic floor basin with maximum tap precision.</p>
+			<div class="concept-props">
+				<span class="concept-prop-item">🎯 <strong>Mental Model:</strong> Anatomical quadrant zoom</span>
+				<span class="concept-prop-item">🔎 <strong>Precision:</strong> Ideal for smaller deep pelvic/hip muscles</span>
+			</div>
+		</div>
+
+		<div class="modal-mock-stage" id="mock-opt4">
+			<div class="modal-mock-header">
+				<h4>➕ Create Custom Exercise (Idea 4)</h4>
+				<span style="color:var(--text-muted);cursor:pointer;">✕</span>
+			</div>
+
+			<div class="mock-body-layout">
+				<div class="mock-form-side">
+					<div class="mock-field">
+						<label>Exercise Name</label>
+						<input type="text" class="mock-input" value="Supine Pelvic Clock Tilts">
+					</div>
+					<div class="selected-badges-tray">
+						<div class="badge-group-row">
+							<span class="badge-group-label label-pri">🔴 Primary Targets</span>
+							<div class="badges-pill-wrap" id="opt4-pri-badges"></div>
+						</div>
+						<div class="badge-group-row">
+							<span class="badge-group-label label-sec">🟡 Secondary Synergists</span>
+							<div class="badges-pill-wrap" id="opt4-sec-badges"></div>
+						</div>
+					</div>
+				</div>
+
+				<div class="mock-anatomy-panel">
+					<div class="region-focus-bar" id="opt4-region-bar">
+						<button type="button" class="region-focus-btn" data-region="upper">Upper Body</button>
+						<button type="button" class="region-focus-btn active" data-region="core">Core & Pelvis</button>
+						<button type="button" class="region-focus-btn" data-region="lower">Lower Body</button>
+					</div>
+					<div class="mini-body-stage" id="opt4-body-stage"></div>
+					<div class="muscle-hover-info" id="opt4-hover-info">Core & Pelvis focused view</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- Interactive Prototype Logic -->
+	<script>
+		// Taxonomy Metadata derived directly from SVG vector IDs
+		const MUSCLES = {
+			pelvic_floor: { id: 'pelvic_floor', label: 'Pelvic Floor & Base', icon: '⚓', region: 'core' },
+			abs: { id: 'abs', label: 'Abs & Core', icon: '🍫', region: 'core' },
+			obliques: { id: 'obliques', label: 'Obliques', icon: '📐', region: 'core' },
+			hip_flexors: { id: 'hip_flexors', label: 'Hip Flexors & Psoas', icon: '⚡', region: 'core' },
+			lower_back: { id: 'lower_back', label: 'Lower Back', icon: '🪵', region: 'core' },
+			glutes: { id: 'glutes', label: 'Glutes & Hips', icon: '🍑', region: 'lower' },
+			groin: { id: 'groin', label: 'Groin & Adductors', icon: '🌿', region: 'lower' },
+			quads: { id: 'quads', label: 'Quadriceps', icon: '🦵', region: 'lower' },
+			hamstrings: { id: 'hamstrings', label: 'Hamstrings', icon: '🍗', region: 'lower' },
+			calves: { id: 'calves', label: 'Calves', icon: '🦿', region: 'lower' },
+			chest: { id: 'chest', label: 'Chest (Pectorals)', icon: '🫁', region: 'upper' },
+			shoulders: { id: 'shoulders', label: 'Shoulders (Deltoids)', icon: '🥋', region: 'upper' },
+			biceps: { id: 'biceps', label: 'Biceps', icon: '💪', region: 'upper' },
+			triceps: { id: 'triceps', label: 'Triceps', icon: '🦾', region: 'upper' },
+			traps: { id: 'traps', label: 'Trapezius', icon: '🦅', region: 'upper' },
+			lats: { id: 'lats', label: 'Lats (Back)', icon: '🦇', region: 'upper' },
+		};
+
+		// Tab navigation
+		document.querySelectorAll('.idea-tab-btn').forEach(btn => {
+			btn.addEventListener('click', () => {
+				document.querySelectorAll('.idea-tab-btn').forEach(b => b.classList.remove('active'));
+				document.querySelectorAll('.idea-view-pane').forEach(p => p.classList.remove('active'));
+				btn.classList.add('active');
+				const target = document.getElementById(btn.dataset.target);
+				if (target) target.classList.add('active');
+			});
+		});
+
+		// Helper to clone front & back SVGs from opt1 to other options
+		function copySvgsTo(containerId, optPrefix) {
+			const sourceStage = document.querySelector('#mock-opt1 .mini-body-stage');
+			const targetContainer = document.getElementById(containerId);
+			if (!sourceStage || !targetContainer) return;
+			targetContainer.innerHTML = sourceStage.innerHTML;
+			targetContainer.querySelectorAll('.body-vector-svg').forEach(s => s.setAttribute('data-opt', optPrefix));
+		}
+
+		copySvgsTo('opt2-body-stage', 'opt2');
+		copySvgsTo('opt3-body-stage', 'opt3');
+		copySvgsTo('opt4-body-stage', 'opt4');
+
+		// -------------------------------------------------------------
+		// OPTION 1 CONTROLLER (Split Stage + Mode Toggle)
+		// -------------------------------------------------------------
+		const opt1State = {
+			mode: 'primary',
+			primary: new Set(['pelvic_floor']),
+			secondary: new Set(['abs', 'glutes']),
+		};
+
+		const opt1ModeBtns = document.querySelectorAll('#opt1-mode-switch .picker-mode-btn');
+		opt1ModeBtns.forEach(b => {
+			b.addEventListener('click', () => {
+				opt1ModeBtns.forEach(btn => btn.classList.remove('active'));
+				b.classList.add('active');
+				opt1State.mode = b.dataset.mode;
+			});
+		});
+
+		function syncOpt1Highlights() {
+			document.querySelectorAll('svg[data-opt="opt1"] .muscle-path').forEach(p => {
+				const m = p.dataset.muscle;
+				p.classList.toggle('is-primary', opt1State.primary.has(m));
+				p.classList.toggle('is-secondary', opt1State.secondary.has(m));
+			});
+
+			renderBadges('opt1', opt1State, (m, role) => {
+				if (role === 'primary') opt1State.primary.delete(m);
+				if (role === 'secondary') opt1State.secondary.delete(m);
+				syncOpt1Highlights();
+			});
+		}
+
+		document.querySelectorAll('svg[data-opt="opt1"] .muscle-path').forEach(p => {
+			const m = p.dataset.muscle;
+			p.addEventListener('mouseenter', () => {
+				const def = MUSCLES[m];
+				if (def) document.getElementById('opt1-hover-info').textContent = `${def.icon} ${def.label} (${def.region.toUpperCase()})`;
+			});
+			p.addEventListener('mouseleave', () => {
+				document.getElementById('opt1-hover-info').textContent = 'Hover over any muscle on the model';
+			});
+			p.addEventListener('click', (e) => {
+				e.stopPropagation();
+				if (opt1State.mode === 'primary') {
+					if (opt1State.primary.has(m)) {
+						opt1State.primary.delete(m);
+					} else {
+						opt1State.primary.add(m);
+						opt1State.secondary.delete(m);
+					}
+				} else {
+					if (opt1State.secondary.has(m)) {
+						opt1State.secondary.delete(m);
+					} else {
+						opt1State.secondary.add(m);
+						opt1State.primary.delete(m);
+					}
+				}
+				syncOpt1Highlights();
+			});
+		});
+		syncOpt1Highlights();
+
+		// -------------------------------------------------------------
+		// OPTION 2 CONTROLLER (1-Click Cycle: Off -> Pri -> Sec -> Off)
+		// -------------------------------------------------------------
+		const opt2State = {
+			primary: new Set(['glutes', 'pelvic_floor']),
+			secondary: new Set(['hamstrings', 'lower_back']),
+		};
+
+		function syncOpt2Highlights() {
+			document.querySelectorAll('svg[data-opt="opt2"] .muscle-path').forEach(p => {
+				const m = p.dataset.muscle;
+				p.classList.toggle('is-primary', opt2State.primary.has(m));
+				p.classList.toggle('is-secondary', opt2State.secondary.has(m));
+			});
+			renderBadges('opt2', opt2State, (m, role) => {
+				if (role === 'primary') opt2State.primary.delete(m);
+				if (role === 'secondary') opt2State.secondary.delete(m);
+				syncOpt2Highlights();
+			});
+		}
+
+		document.querySelectorAll('svg[data-opt="opt2"] .muscle-path').forEach(p => {
+			const m = p.dataset.muscle;
+			p.addEventListener('mouseenter', () => {
+				const def = MUSCLES[m];
+				const stateStr = opt2State.primary.has(m) ? ' (Primary)' : (opt2State.secondary.has(m) ? ' (Secondary)' : '');
+				if (def) document.getElementById('opt2-hover-info').textContent = `${def.icon} ${def.label}${stateStr}`;
+			});
+			p.addEventListener('mouseleave', () => {
+				document.getElementById('opt2-hover-info').textContent = 'Tap any muscle to cycle state';
+			});
+			p.addEventListener('click', (e) => {
+				e.stopPropagation();
+				if (opt2State.primary.has(m)) {
+					opt2State.primary.delete(m);
+					opt2State.secondary.add(m);
+				} else if (opt2State.secondary.has(m)) {
+					opt2State.secondary.delete(m);
+				} else {
+					opt2State.primary.add(m);
+				}
+				syncOpt2Highlights();
+			});
+		});
+		syncOpt2Highlights();
+
+		// -------------------------------------------------------------
+		// OPTION 3 CONTROLLER (Expandable Drawer)
+		// -------------------------------------------------------------
+		const opt3State = {
+			primary: new Set(['pelvic_floor', 'abs']),
+			secondary: new Set(['hip_flexors']),
+		};
+		const opt3Trigger = document.getElementById('opt3-drawer-trigger');
+		const opt3Content = document.getElementById('opt3-drawer-content');
+		const opt3Btn = document.getElementById('opt3-toggle-btn');
+		let opt3Open = false;
+
+		opt3Trigger.addEventListener('click', () => {
+			opt3Open = !opt3Open;
+			opt3Content.style.display = opt3Open ? 'block' : 'none';
+			opt3Btn.textContent = opt3Open ? 'Collapse Map ▲' : 'Expand Map ▼';
+		});
+
+		function syncOpt3Highlights() {
+			document.querySelectorAll('svg[data-opt="opt3"] .muscle-path').forEach(p => {
+				const m = p.dataset.muscle;
+				p.classList.toggle('is-primary', opt3State.primary.has(m));
+				p.classList.toggle('is-secondary', opt3State.secondary.has(m));
+			});
+			const total = opt3State.primary.size + opt3State.secondary.size;
+			document.getElementById('opt3-count-label').textContent = `${total} Selected`;
+			renderBadges('opt3', opt3State, (m, role) => {
+				if (role === 'primary') opt3State.primary.delete(m);
+				if (role === 'secondary') opt3State.secondary.delete(m);
+				syncOpt3Highlights();
+			});
+		}
+
+		document.querySelectorAll('svg[data-opt="opt3"] .muscle-path').forEach(p => {
+			const m = p.dataset.muscle;
+			p.addEventListener('click', (e) => {
+				e.stopPropagation();
+				if (opt3State.primary.has(m)) {
+					opt3State.primary.delete(m);
+				} else {
+					opt3State.primary.add(m);
+					opt3State.secondary.delete(m);
+				}
+				syncOpt3Highlights();
+			});
+		});
+		syncOpt3Highlights();
+
+		// -------------------------------------------------------------
+		// OPTION 4 CONTROLLER (Region-Guided Focus)
+		// -------------------------------------------------------------
+		const opt4State = {
+			region: 'core',
+			primary: new Set(['pelvic_floor', 'lower_back']),
+			secondary: new Set(['abs', 'hip_flexors']),
+		};
+
+		const opt4RegionBtns = document.querySelectorAll('#opt4-region-bar .region-focus-btn');
+		opt4RegionBtns.forEach(btn => {
+			btn.addEventListener('click', () => {
+				opt4RegionBtns.forEach(b => b.classList.remove('active'));
+				btn.classList.add('active');
+				opt4State.region = btn.dataset.region;
+				highlightRegionPaths(opt4State.region);
+			});
+		});
+
+		function highlightRegionPaths(region) {
+			document.querySelectorAll('svg[data-opt="opt4"] .muscle-path').forEach(p => {
+				const m = p.dataset.muscle;
+				const def = MUSCLES[m];
+				if (def && def.region === region) {
+					p.style.opacity = '1';
+				} else {
+					p.style.opacity = '0.35';
+				}
+			});
+		}
+
+		function syncOpt4Highlights() {
+			document.querySelectorAll('svg[data-opt="opt4"] .muscle-path').forEach(p => {
+				const m = p.dataset.muscle;
+				p.classList.toggle('is-primary', opt4State.primary.has(m));
+				p.classList.toggle('is-secondary', opt4State.secondary.has(m));
+			});
+			highlightRegionPaths(opt4State.region);
+			renderBadges('opt4', opt4State, (m, role) => {
+				if (role === 'primary') opt4State.primary.delete(m);
+				if (role === 'secondary') opt4State.secondary.delete(m);
+				syncOpt4Highlights();
+			});
+		}
+
+		document.querySelectorAll('svg[data-opt="opt4"] .muscle-path').forEach(p => {
+			const m = p.dataset.muscle;
+			p.addEventListener('click', (e) => {
+				e.stopPropagation();
+				if (opt4State.primary.has(m)) {
+					opt4State.primary.delete(m);
+				} else {
+					opt4State.primary.add(m);
+					opt4State.secondary.delete(m);
+				}
+				syncOpt4Highlights();
+			});
+		});
+		syncOpt4Highlights();
+
+		// Universal Badges Renderer
+		function renderBadges(prefix, state, onRemove) {
+			const priContainer = document.getElementById(`${prefix}-pri-badges`);
+			const secContainer = document.getElementById(`${prefix}-sec-badges`);
+			if (!priContainer || !secContainer) return;
+
+			priContainer.innerHTML = '';
+			secContainer.innerHTML = '';
+
+			if (state.primary.size === 0) {
+				priContainer.innerHTML = '<span class="empty-badge-hint">None selected (tap body to pick)</span>';
+			} else {
+				state.primary.forEach(m => {
+					const def = MUSCLES[m] || { label: m, icon: '💪' };
+					const pill = document.createElement('span');
+					pill.className = 'target-pill pri-pill';
+					pill.innerHTML = `<span>${def.icon} ${def.label}</span> <button type="button" class="btn-pill-remove" title="Remove">✕</button>`;
+					pill.querySelector('.btn-pill-remove').addEventListener('click', () => onRemove(m, 'primary'));
+					priContainer.appendChild(pill);
+				});
+			}
+
+			if (state.secondary.size === 0) {
+				secContainer.innerHTML = '<span class="empty-badge-hint">None selected (optional)</span>';
+			} else {
+				state.secondary.forEach(m => {
+					const def = MUSCLES[m] || { label: m, icon: '💪' };
+					const pill = document.createElement('span');
+					pill.className = 'target-pill sec-pill';
+					pill.innerHTML = `<span>${def.icon} ${def.label}</span> <button type="button" class="btn-pill-remove" title="Remove">✕</button>`;
+					pill.querySelector('.btn-pill-remove').addEventListener('click', () => onRemove(m, 'secondary'));
+					secContainer.appendChild(pill);
+				});
+			}
+		}
+	</script>
+</body>
+</html>
