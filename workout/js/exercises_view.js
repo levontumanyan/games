@@ -193,8 +193,8 @@ export function renderExercisesCatalog(container, options = {}) {
 					<button class="btn btn-sm btn-ghost btn-play-ex" title="Test in Preview Mode">
 						▶ Preview
 					</button>
-					<button class="btn btn-sm btn-primary btn-add-routine" title="Add to current workout">
-						+ Add to Workout
+					<button class="btn btn-sm btn-primary btn-add-routine" title="Add to workout">
+						+ Add to Workout ▾
 					</button>
 				</div>
 			`;
@@ -209,14 +209,14 @@ export function renderExercisesCatalog(container, options = {}) {
 			const addRoutineBtn = card.querySelector('.btn-add-routine');
 			addRoutineBtn.addEventListener('click', (e) => {
 				e.stopPropagation();
-				onAddToRoutine(ex);
+				onAddToRoutine(ex, addRoutineBtn);
 			});
 
 			// Entire card is clickable to open top-layer detail & variations overlay
 			card.addEventListener('click', () => {
 				showExerciseVariationsModal(ex, {
 					onPlayAsset: (asset) => onPlayExercise(ex, asset),
-					onAddToRoutine: () => onAddToRoutine(ex),
+					onAddToRoutine: (targetEx, btn) => onAddToRoutine(targetEx || ex, btn),
 					onUpdated: () => renderGrid()
 				});
 			});
@@ -387,7 +387,7 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 
 				<div class="hud-left-actions">
 					<button class="btn btn-primary btn-hud-play-ex" style="width:100%;">▶ Preview Follow-Along</button>
-					<button class="btn btn-ghost btn-hud-add-ex" style="width:100%;">+ Add to Workout</button>
+					<button class="btn btn-ghost btn-hud-add-ex" style="width:100%;">+ Add to Workout ▾</button>
 					${onOpenInLibrary ? '<button class="btn btn-ghost btn-hud-open-lib" style="width:100%;font-size:0.8rem;opacity:0.85;">🔍 Show in Movement Library</button>' : ''}
 				</div>
 			</div>
@@ -578,9 +578,9 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 
 		const addExBtn = modal.querySelector('.btn-hud-add-ex');
 		if (addExBtn) {
-			addExBtn.addEventListener('click', () => {
-				close();
-				onAddToRoutine();
+			addExBtn.addEventListener('click', (e) => {
+				e.stopPropagation();
+				onAddToRoutine(exercise, addExBtn);
 			});
 		}
 

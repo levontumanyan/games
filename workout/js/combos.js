@@ -263,7 +263,7 @@ export function renderCombosCatalog(container, options = {}) {
 						▶ Play Flow
 					</button>
 					<button class="btn btn-sm btn-primary btn-add-combo-routine" title="Add continuous combo to current workout">
-						+ Add to Workout
+						+ Add to Workout ▾
 					</button>
 				</div>
 			`;
@@ -277,7 +277,7 @@ export function renderCombosCatalog(container, options = {}) {
 			const addRoutineBtn = card.querySelector('.btn-add-combo-routine');
 			addRoutineBtn.addEventListener('click', (e) => {
 				e.stopPropagation();
-				onAddToRoutine(combo);
+				onAddToRoutine(combo, addRoutineBtn);
 			});
 
 			const delBtn = card.querySelector('.btn-del-combo');
@@ -392,7 +392,7 @@ export function showComboDetailModal(combo, options = {}) {
 			<div class="hud-left-actions">
 				<button class="btn btn-primary btn-hud-play" style="width:100%;">▶ Play Continuous Flow</button>
 				<button class="btn btn-ghost btn-hud-breakdown" style="width:100%;">⚡ Break Down into Steps</button>
-				<button class="btn btn-ghost btn-hud-add" style="width:100%;">+ Add to Workout</button>
+				<button class="btn btn-ghost btn-hud-add" style="width:100%;">+ Add to Workout ▾</button>
 				${(combo.user_id && combo.user_id !== 'system') ? '<button class="btn btn-danger btn-sm btn-hud-del" style="width:100%;margin-top:8px;">🗑 Delete Combo</button>' : ''}
 			</div>
 		</div>
@@ -503,6 +503,12 @@ export function showComboDetailModal(combo, options = {}) {
 	}
 
 	const addRoutineBtn = modal.querySelector('.btn-hud-add');
+	if (addRoutineBtn) {
+		addRoutineBtn.addEventListener('click', (e) => {
+			e.stopPropagation();
+			onAddToRoutine(combo, addRoutineBtn);
+		});
+	}
 	const delComboBtn = modal.querySelector('.btn-hud-del');
 	if (delComboBtn) {
 		delComboBtn.addEventListener('click', async () => {

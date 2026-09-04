@@ -4685,6 +4685,122 @@ textarea.input {
 	background: rgba(16, 185, 129, 0.15) !important;
 }
 
+/* ── Target Workout Popover Picker (Add to Workout) ─────────────────────── */
+.popover-menu {
+	position: fixed;
+	width: 290px;
+	background: var(--bg-card-elevated, #27312c);
+	border: 1px solid var(--accent, #5fa778);
+	border-radius: var(--radius-md, 10px);
+	box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6), 0 0 20px var(--accent-glow, rgba(95, 167, 120, 0.2));
+	z-index: 10000;
+	padding: 8px 0;
+	animation: fadeInScale 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+	max-height: min(340px, 80vh);
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+}
+
+.popover-header {
+	padding: 6px 14px 8px;
+	font-size: 0.72rem;
+	font-weight: 700;
+	letter-spacing: 0.08em;
+	color: var(--text-muted, #5e6b62);
+	text-transform: uppercase;
+	border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+	margin-bottom: 4px;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.popover-list {
+	overflow-y: auto;
+	flex: 1;
+	min-height: 0;
+	padding: 2px 0;
+}
+
+.popover-item {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 8px 14px;
+	cursor: pointer;
+	font-size: 0.88rem;
+	transition: background 0.12s ease;
+	color: var(--text-primary);
+	gap: 8px;
+}
+
+.popover-item:hover {
+	background: var(--bg-hover, #2e3b34);
+}
+
+.popover-item-title {
+	font-weight: 600;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	flex: 1;
+}
+
+.popover-item-meta {
+	font-size: 0.75rem;
+	color: var(--text-secondary);
+	white-space: nowrap;
+}
+
+.popover-badge {
+	font-size: 0.7rem;
+	background: var(--accent-subtle, rgba(95, 167, 120, 0.15));
+	color: var(--accent, #5fa778);
+	border: 1px solid rgba(95, 167, 120, 0.3);
+	padding: 1px 6px;
+	border-radius: 4px;
+	font-weight: 600;
+}
+
+.popover-footer {
+	border-top: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+	margin-top: 4px;
+	padding: 4px 8px 2px;
+}
+
+.popover-item-create {
+	color: var(--accent, #5fa778);
+	font-weight: 700;
+	border-radius: 6px;
+}
+
+.popover-item-create:hover {
+	background: var(--accent-subtle, rgba(95, 167, 120, 0.15));
+}
+
+.popover-item-success {
+	color: #34d399 !important;
+	font-weight: 700;
+}
+
+.toast-link-btn {
+	background: var(--accent);
+	color: #ffffff;
+	border: none;
+	border-radius: 14px;
+	padding: 2px 10px;
+	font-size: 0.78rem;
+	font-weight: 700;
+	cursor: pointer;
+	margin-left: 6px;
+	transition: opacity 0.15s ease;
+}
+
+.toast-link-btn:hover {
+	opacity: 0.9;
+}
+
 /* ── Responsive & Mobile Navigation ──────────────────────────────────────── */
 
 .mobile-bottom-nav {

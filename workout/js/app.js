@@ -37,6 +37,7 @@ import { renderExercisesCatalog, showExerciseVariationsModal, highlightExerciseC
 import { loadCombos, renderCombosCatalog } from './combos.js';
 import { renderAnatomyExplorer } from './body_map.js';
 import { initTheme } from './theme.js';
+import { showRoutinePickerPopover } from './routine_picker.js';
 
 let routines = [];
 let selectedRoutineId = null;
@@ -376,6 +377,42 @@ async function syncWithServerOnStartup() {
  * Switch active navigation tab (Routines vs Combos vs Exercises vs Stats).
  * @param {'routines' | 'combos' | 'exercises' | 'anatomy' | 'stats'} tab
  */
+/**
+ * Handle adding an exercise or combo with the target routine picker popover.
+ * @param {Object} item - Exercise or Combo object
+ * @param {HTMLElement} [triggerBtn] - Trigger button element for popover anchoring
+ * @param {'exercise'|'combo'} [type='exercise'] - Type of item
+ */
+function handleAddToRoutineWithPicker(item, triggerBtn, type = 'exercise') {
+	if (!triggerBtn) {
+		let routine = getSelectedRoutine();
+		if (!routine) {
+			routine = createRoutine('New Workout');
+			routines.push(routine);
+			selectedRoutineId = routine.id;
+		}
+		const newStep = type === 'combo' ? createStepFromCombo(item) : createStepFromExercise(item);
+		routine.steps.push(newStep);
+		expandStep(newStep.id);
+		persist();
+		showToast(`Added "${item.name}" to ${routine.title}!`);
+		return;
+	}
+
+	showRoutinePickerPopover(triggerBtn, item, type, {
+		routines,
+		selectedRoutineId,
+		onSave: () => persist(),
+		onSelectRoutine: (id) => {
+			selectedRoutineId = id;
+		},
+		onSwitchToEditor: () => {
+			currentMode = 'edit';
+			switchTab('routines');
+		}
+	});
+}
+
 function switchTab(tab) {
 	currentTab = tab;
 
@@ -423,6 +460,7 @@ function switchTab(tab) {
 					const chosenAsset = asset || getExerciseFollowAlongMedia(exercise);
 					const isVideo = chosenAsset && (chosenAsset.type === 'video' || Boolean(chosenAsset.videoId));
 					const isTutorial = chosenAsset && chosenAsset.kind === 'instruction';
+					const isExReps = (exercise.default_mode || 'reps') === 'reps';
 					const step = isVideo ? {
 						id: 'preview-step',
 						type: 'clip',
@@ -434,9 +472,9 @@ function switchTab(tab) {
 					} : {
 						id: 'preview-step',
 						type: 'timer',
-						stepMode: exercise.default_mode || 'reps',
-						targetReps: exercise.default_quantity || 20,
-						durationSeconds: exercise.default_quantity || 30,
+						stepMode: isExReps ? 'reps' : 'time',
+						targetReps: isExReps ? (exercise.default_quantity || 20) : 0,
+						durationSeconds: !isExReps ? (exercise.default_quantity || 30) : 30,
 						label: exercise.name,
 						gifUrl: (chosenAsset && chosenAsset.type === 'image' ? chosenAsset.url : '') || (exercise.media_url && !exercise.media_url.includes('youtube') && !exercise.media_url.includes('youtu.be') ? exercise.media_url : ''),
 						exercises: [exercise]
@@ -449,21 +487,7 @@ function switchTab(tab) {
 					unlockAudio();
 					startRoutine(previewRoutine, 0, true);
 				},
-				onAddToRoutine: (exercise) => {
-					let routine = getSelectedRoutine();
-					if (!routine) {
-						routine = createRoutine('New Workout');
-						routines.push(routine);
-						selectedRoutineId = routine.id;
-					}
-					const newStep = createStepFromExercise(exercise);
-					routine.steps.push(newStep);
-					expandStep(newStep.id);
-					persist();
-					currentMode = 'edit';
-					switchTab('routines');
-					showToast(`Added "${exercise.name}" to workout!`);
-				}
+				onAddToRoutine: (exercise, triggerBtn) => handleAddToRoutineWithPicker(exercise, triggerBtn, 'exercise')
 			});
 		}
 	} else if (tab === 'stats') {
@@ -548,23 +572,10 @@ function switchTab(tab) {
 					unlockAudio();
 					startRoutine(previewRoutine, 0, true);
 				},
-				onAddToRoutine: (combo) => {
-					let routine = getSelectedRoutine();
-					if (!routine) {
-						routine = createRoutine('New Workout');
-						routines.push(routine);
-						selectedRoutineId = routine.id;
-					}
-					const newStep = createStepFromCombo(combo);
-					routine.steps.push(newStep);
-					expandStep(newStep.id);
-					persist();
-					currentMode = 'edit';
-					switchTab('routines');
-					showToast(`Added "${combo.name}" to workout!`);
-				},
+				onAddToRoutine: (combo, triggerBtn) => handleAddToRoutineWithPicker(combo, triggerBtn, 'combo'),
 				onPlayExercise: (exercise, asset) => {
 					const isVideo = asset && (asset.type === 'video' || Boolean(asset.videoId));
+					const isExReps = (exercise.default_mode || 'time') === 'reps';
 					const step = isVideo ? {
 						id: 'preview-step',
 						type: 'clip',
@@ -576,9 +587,9 @@ function switchTab(tab) {
 					} : {
 						id: 'preview-step',
 						type: 'timer',
-						stepMode: exercise.default_mode || 'time',
-						targetReps: exercise.default_quantity || 20,
-						durationSeconds: exercise.default_quantity || 30,
+						stepMode: isExReps ? 'reps' : 'time',
+						targetReps: isExReps ? (exercise.default_quantity || 20) : 0,
+						durationSeconds: !isExReps ? (exercise.default_quantity || 30) : 30,
 						label: exercise.name,
 						gifUrl: asset?.url || exercise.media_url || '',
 						exercises: [exercise]
@@ -607,6 +618,7 @@ function switchTab(tab) {
 					const chosenAsset = asset || getExerciseFollowAlongMedia(exercise);
 					const isVideo = chosenAsset && (chosenAsset.type === 'video' || Boolean(chosenAsset.videoId));
 					const isTutorial = chosenAsset && chosenAsset.kind === 'instruction';
+					const isExReps = (exercise.default_mode || 'reps') === 'reps';
 					const step = isVideo ? {
 						id: 'preview-step',
 						type: 'clip',
@@ -618,9 +630,9 @@ function switchTab(tab) {
 					} : {
 						id: 'preview-step',
 						type: 'timer',
-						stepMode: exercise.default_mode || 'reps',
-						targetReps: exercise.default_quantity || 20,
-						durationSeconds: exercise.default_quantity || 30,
+						stepMode: isExReps ? 'reps' : 'time',
+						targetReps: isExReps ? (exercise.default_quantity || 20) : 0,
+						durationSeconds: !isExReps ? (exercise.default_quantity || 30) : 30,
 						label: exercise.name,
 						gifUrl: (chosenAsset && chosenAsset.type === 'image' ? chosenAsset.url : '') || (exercise.media_url && !exercise.media_url.includes('youtube') && !exercise.media_url.includes('youtu.be') ? exercise.media_url : ''),
 						exercises: [exercise]
@@ -633,21 +645,7 @@ function switchTab(tab) {
 					unlockAudio();
 					startRoutine(previewRoutine, 0, true);
 				},
-				onAddToRoutine: (exercise) => {
-					let routine = getSelectedRoutine();
-					if (!routine) {
-						routine = createRoutine('New Workout');
-						routines.push(routine);
-						selectedRoutineId = routine.id;
-					}
-					const newStep = createStepFromExercise(exercise);
-					routine.steps.push(newStep);
-					expandStep(newStep.id);
-					persist();
-					currentMode = 'edit';
-					switchTab('routines');
-					showToast(`Added "${exercise.name}" to workout!`);
-				}
+				onAddToRoutine: (exercise, triggerBtn) => handleAddToRoutineWithPicker(exercise, triggerBtn, 'exercise')
 			});
 		}
 	} else {
@@ -1053,6 +1051,7 @@ function goToExercise(exerciseOrId) {
 	showExerciseVariationsModal(fullEx, {
 		onPlayAsset: (asset) => {
 			const isVideo = asset && (asset.type === 'video' || Boolean(asset.videoId));
+			const isExReps = (fullEx.default_mode || 'reps') === 'reps';
 			const step = isVideo ? {
 				id: 'preview-step',
 				type: 'clip',
@@ -1063,9 +1062,9 @@ function goToExercise(exerciseOrId) {
 			} : {
 				id: 'preview-step',
 				type: 'timer',
-				stepMode: fullEx.default_mode || 'reps',
-				targetReps: fullEx.default_quantity || 20,
-				durationSeconds: fullEx.default_quantity || 30,
+				stepMode: isExReps ? 'reps' : 'time',
+				targetReps: isExReps ? (fullEx.default_quantity || 20) : 0,
+				durationSeconds: !isExReps ? (fullEx.default_quantity || 30) : 30,
 				label: fullEx.name,
 				gifUrl: asset?.url || fullEx.media_url || '',
 				exercises: [fullEx]

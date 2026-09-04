@@ -495,8 +495,8 @@ export function renderAnatomyExplorer(container, options = {}) {
 					<button class="btn btn-sm btn-ghost btn-play-ex" title="Test in Preview Mode">
 						▶ Preview
 					</button>
-					<button class="btn btn-sm btn-primary btn-add-routine" title="Add to current workout">
-						+ Add to Workout
+					<button class="btn btn-sm btn-primary btn-add-routine" title="Add to workout">
+						+ Add to Workout ▾
 					</button>
 				</div>
 			`;
@@ -518,14 +518,14 @@ export function renderAnatomyExplorer(container, options = {}) {
 			const addRoutineBtn = card.querySelector('.btn-add-routine');
 			addRoutineBtn.addEventListener('click', (e) => {
 				e.stopPropagation();
-				onAddToRoutine(ex);
+				onAddToRoutine(ex, addRoutineBtn);
 			});
 
 			// Entire card is clickable to open top-layer detail & variations overlay
 			card.addEventListener('click', () => {
 				showExerciseVariationsModal(ex, {
 					onPlayAsset: (asset) => onPlayExercise(ex, asset),
-					onAddToRoutine: () => onAddToRoutine(ex),
+					onAddToRoutine: (targetEx, btn) => onAddToRoutine(targetEx || ex, btn),
 					onUpdated: () => renderGrid()
 				});
 			});

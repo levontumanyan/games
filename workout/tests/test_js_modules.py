@@ -421,3 +421,50 @@ def test_combo_substep_reps_and_duration_division():
 		text=True,
 	)
 	assert res.returncode == 0, f"Node test for reps/duration division failed:\n{res.stderr}"
+
+
+def test_routine_picker_module():
+	"""Verify routine_picker.js module exports and popover helpers."""
+	import shutil
+	import subprocess
+
+	if not shutil.which("node"):
+		return
+
+	js_dir = Path(__file__).parent.parent / "js"
+	node_script = f"""
+	globalThis.localStorage = {{ getItem: () => null, setItem: () => {{}}, removeItem: () => {{}} }};
+	globalThis.document = {{
+		createElement: () => ({{
+			className: '',
+			style: {{}},
+			classList: {{ add: () => {{}}, remove: () => {{}}, toggle: () => {{}} }},
+			addEventListener: () => {{}},
+			removeEventListener: () => {{}},
+			appendChild: () => {{}},
+			remove: () => {{}},
+			querySelector: () => null,
+			querySelectorAll: () => []
+		}}),
+		body: {{ appendChild: () => {{}} }},
+		addEventListener: () => {{}},
+		removeEventListener: () => {{}}
+	}};
+	globalThis.window = {{
+		addEventListener: () => {{}},
+		removeEventListener: () => {{}},
+		innerHeight: 900,
+		innerWidth: 1200
+	}};
+
+	const {{ showRoutinePickerPopover, closeRoutinePickerPopover }} = await import('{js_dir}/routine_picker.js');
+	if (typeof showRoutinePickerPopover !== 'function') throw new Error('showRoutinePickerPopover not exported');
+	if (typeof closeRoutinePickerPopover !== 'function') throw new Error('closeRoutinePickerPopover not exported');
+	"""
+
+	res = subprocess.run(
+		["node", "--input-type=module", "-e", node_script],
+		capture_output=True,
+		text=True,
+	)
+	assert res.returncode == 0, f"Node test for routine picker failed:\n{res.stderr}"

@@ -1011,6 +1011,8 @@ function createExercisePicker(step, onUpdate) {
 							step.stepMode = item.default_mode;
 							if (item.default_mode === 'reps' && item.default_quantity) {
 								step.targetReps = item.default_quantity;
+							} else if (item.default_mode === 'time' && item.default_quantity) {
+								step.durationSeconds = item.default_quantity;
 							}
 						}
 						input.value = '';
@@ -1479,7 +1481,7 @@ export function createTimerStep() {
 		type: 'timer',
 		stepMode: 'time',
 		durationSeconds: 30,
-		targetReps: 20,
+		targetReps: 0,
 		label: 'Exercise',
 		exercises: [],
 		musicTracks: [],
@@ -1682,6 +1684,10 @@ export function showAddExerciseModal(routine, onUpdate, insertIndex = -1) {
 	};
 
 	const handleEsc = (e) => {
+		const modalDlg = document.getElementById('modal-backdrop');
+		if (modalDlg && !modalDlg.classList.contains('hidden')) {
+			return;
+		}
 		if (e.key === 'Escape' || e.keyCode === 27) close();
 	};
 	document.addEventListener('keydown', handleEsc);
