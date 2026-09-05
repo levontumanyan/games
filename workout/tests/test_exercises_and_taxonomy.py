@@ -78,13 +78,13 @@ def test_exercises_filtering_and_taxonomy(client: TestClient):
 	res = client.get("/api/exercises", headers={"X-User-Id": "levon"})
 	assert res.status_code == 200
 	exercises = res.json()
-	assert len(exercises) >= 20
+	assert len(exercises) == len(sample_exercises)
 
 	# Test category filter
 	res_stretch = client.get("/api/exercises?category=stretch", headers={"X-User-Id": "levon"})
 	assert res_stretch.status_code == 200
 	stretch_list = res_stretch.json()
-	assert len(stretch_list) >= 5
+	assert len(stretch_list) == 2
 	assert all(e["category"] == "stretch" for e in stretch_list)
 	assert any(e["name"] == "Cobra Pose & Hip Opener" for e in stretch_list)
 
@@ -624,3 +624,130 @@ def test_update_exercise_description(client: TestClient):
 		found["description"]
 		== "Hinge at the hips with a flat back, maintaining neutral pelvic alignment and soft knee bend."
 	)
+
+
+def test_combo_update_cascades_to_routines(client: TestClient):
+	# 1. Create two exercises
+	e1 = client.post(
+		"/api/exercises",
+		json={
+			"name": "Cascade Pushup A",
+			"category": "strength",
+			"discipline": "calisthenics",
+			"default_mode": "reps",
+			"default_quantity": 10,
+			"primary_muscles": ["chest"],
+			"secondary_muscles": ["triceps"],
+		},
+		headers={"X-User-Id": "levon"},
+	).json()
+
+	e2 = client.post(
+		"/api/exercises",
+		json={
+			"name": "Cascade Pushup B (Diamond)",
+			"category": "strength",
+			"discipline": "calisthenics",
+			"default_mode": "reps",
+			"default_quantity": 10,
+			"primary_muscles": ["triceps"],
+			"secondary_muscles": ["chest"],
+		},
+		headers={"X-User-Id": "levon"},
+	).json()
+
+	# 2. Create combo with [e1, e2]
+	combo = client.post(
+		"/api/combos",
+		json={
+			"name": "Test Cascade Combo",
+			"category": "strength",
+			"discipline": "calisthenics",
+			"flow_type": "superset",
+			"exercise_ids": [e1["id"], e2["id"]],
+			"default_mode": "reps",
+			"default_quantity": 20,
+		},
+		headers={"X-User-Id": "levon"},
+	).json()
+
+	assert combo["exercise_ids"] == [e1["id"], e2["id"]]
+
+	# 3. Create a routine that includes this combo as a step
+	routine_id = "test-cascade-routine"
+	routine_payload = {
+		"id": routine_id,
+		"title": "Cascade Test Routine",
+		"steps": [
+			{
+				"id": "step-combo-1",
+				"type": "timer",
+				"stepMode": "reps",
+				"targetReps": 20,
+				"combo_id": combo["id"],
+				"label": "Test Cascade Combo",
+				"flow_type": "superset",
+				"exercises": [{"id": e1["id"]}, {"id": e2["id"]}],
+			}
+		],
+		"musicTracks": [],
+	}
+	save_res = client.put(
+		f"/api/routines/{routine_id}",
+		json=routine_payload,
+		headers={"X-User-Id": "levon"},
+	)
+	assert save_res.status_code == 200
+
+	# 4. Create exercise 3
+	e3 = client.post(
+		"/api/exercises",
+		json={
+			"name": "Cascade Pushup C (Close-Grip)",
+			"category": "strength",
+			"discipline": "calisthenics",
+			"default_mode": "reps",
+			"default_quantity": 10,
+			"primary_muscles": ["triceps"],
+			"secondary_muscles": ["chest"],
+		},
+		headers={"X-User-Id": "levon"},
+	).json()
+
+	# 5. Update combo to swap e2 for e3
+	update_combo_res = client.post(
+		"/api/combos",
+		json={
+			"id": combo["id"],
+			"name": "Test Cascade Combo",
+			"category": "strength",
+			"discipline": "calisthenics",
+			"flow_type": "superset",
+			"exercise_ids": [e1["id"], e3["id"]],
+			"default_mode": "reps",
+			"default_quantity": 20,
+		},
+		headers={"X-User-Id": "levon"},
+	)
+	assert update_combo_res.status_code == 200
+
+	# 6. Fetch routine via GET /api/routines/{id} and verify it automatically updated
+	get_routine_res = client.get(
+		f"/api/routines/{routine_id}",
+		headers={"X-User-Id": "levon"},
+	)
+	assert get_routine_res.status_code == 200
+	routine_data = get_routine_res.json()
+	updated_step = routine_data["steps"][0]
+	step_exercise_ids = [ex["id"] for ex in updated_step["exercises"]]
+	assert step_exercise_ids == [e1["id"], e3["id"]]
+	assert e2["id"] not in step_exercise_ids
+
+	# 7. Also verify via GET /api/routines (list)
+	list_routines_res = client.get(
+		"/api/routines",
+		headers={"X-User-Id": "levon"},
+	)
+	assert list_routines_res.status_code == 200
+	found_r = next(r for r in list_routines_res.json() if r["id"] == routine_id)
+	assert [ex["id"] for ex in found_r["steps"][0]["exercises"]] == [e1["id"], e3["id"]]

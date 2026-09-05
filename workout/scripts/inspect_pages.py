@@ -11,7 +11,10 @@ async def capture_views(base_url: str, output_dir: str):
 		browser = await p.chromium.launch(headless=True)
 
 		# ── Desktop Viewport (1440x900) ──────────────────────────────────────────
-		page = await browser.new_page(viewport={"width": 1440, "height": 900})
+		page = await browser.new_page(
+			viewport={"width": 1440, "height": 900},
+			extra_http_headers={"X-User-Id": "levon"},
+		)
 
 		# 1. Workouts view
 		await page.goto(f"{base_url.rstrip('/')}/")
@@ -47,7 +50,10 @@ async def capture_views(base_url: str, output_dir: str):
 			await page.screenshot(path=os.path.join(output_dir, "view_anatomy_selected.png"))
 
 		# ── Mobile Viewport (390x844) ────────────────────────────────────────────
-		mobile_page = await browser.new_page(viewport={"width": 390, "height": 844})
+		mobile_page = await browser.new_page(
+			viewport={"width": 390, "height": 844},
+			extra_http_headers={"X-User-Id": "levon"},
+		)
 		await mobile_page.goto(f"{base_url.rstrip('/')}/")
 		await mobile_page.wait_for_timeout(1000)
 		await mobile_page.screenshot(path=os.path.join(output_dir, "mobile_workouts.png"))

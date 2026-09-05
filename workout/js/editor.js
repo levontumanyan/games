@@ -1605,6 +1605,7 @@ export function createStepFromCombo(combo) {
 			newStep.mediaUrl = asset?.url || combo.media_url || '';
 		}
 	}
+	newStep.combo_id = combo.id;
 	newStep.flow_type = combo.flow_type || 'alternating';
 	newStep.exercises = exList;
 	return newStep;

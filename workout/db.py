@@ -168,539 +168,6 @@ class Database:
 					("levon", "Levon", datetime.now().isoformat()),
 				)
 
-			self._seed_default_exercises(conn)
-
-	def _seed_default_exercises(self, conn: sqlite3.Connection) -> None:
-		defaults = [
-			{
-				"id": "ex-standard-pushups",
-				"name": "Standard Pushups",
-				"category": "strength",
-				"discipline": "calisthenics",
-				"default_mode": "reps",
-				"default_quantity": 20,
-				"description": "Chest-to-floor push-ups with locked core. Setup: Hands slightly wider than shoulders, fingers spread. Execution: Lower until sternum touches floor, elbows tucked 45°, drive through mid-chest to lockout.",
-				"media_url": "/workout/media/pushups.svg",
-				"media_assets": [
-					{
-						"id": "asset-pushups-anim",
-						"kind": "animation",
-						"type": "image",
-						"title": "Standard Push-up Form Animation",
-						"url": "/workout/media/pushups.svg",
-					}
-				],
-				"primary_muscles": ["chest", "triceps"],
-				"secondary_muscles": ["shoulders", "abs", "forearms"],
-			},
-			{
-				"id": "ex-decline-pushups",
-				"name": "Decline Pushups",
-				"category": "strength",
-				"discipline": "calisthenics",
-				"default_mode": "reps",
-				"default_quantity": 15,
-				"description": 'Feet-elevated pushups shifting bodyweight upward. Setup: Feet elevated 12-18" on a bench or block, hands shoulder-width. Execution: Press diagonally upward into clavicular upper chest and anterior delts.',
-				"media_url": "/workout/media/decline-pushups.svg",
-				"media_assets": [
-					{
-						"id": "asset-decline-pushups-anim",
-						"kind": "animation",
-						"type": "image",
-						"title": "Decline Push-up Form Animation",
-						"url": "/workout/media/decline-pushups.svg",
-					}
-				],
-				"primary_muscles": ["chest", "shoulders"],
-				"secondary_muscles": ["triceps", "abs", "forearms"],
-			},
-			{
-				"id": "ex-pike-pushups",
-				"name": "Pike Pushups",
-				"category": "strength",
-				"discipline": "calisthenics",
-				"default_mode": "reps",
-				"default_quantity": 12,
-				"description": "Inverted V vertical pressing pushups. Setup: Hips hinged high in a pike, heels lifted. Execution: Lower head forward between hands to form a tripod, then press vertically back into shoulders and traps.",
-				"media_url": "/workout/media/pike-pushups.svg",
-				"media_assets": [
-					{
-						"id": "asset-pike-pushups-anim",
-						"kind": "animation",
-						"type": "image",
-						"title": "Pike Push-up Form Animation",
-						"url": "/workout/media/pike-pushups.svg",
-					}
-				],
-				"primary_muscles": ["shoulders", "triceps"],
-				"secondary_muscles": ["chest", "traps", "abs"],
-			},
-			{
-				"id": "ex-diamond-pushups",
-				"name": "Diamond Pushups",
-				"category": "strength",
-				"discipline": "calisthenics",
-				"default_mode": "reps",
-				"default_quantity": 15,
-				"description": "Close-grip push-ups for tricep overload. Setup: Thumbs and index fingers together forming diamond shape under mid-chest. Execution: Lower with elbows pinned against ribs, pressing through triceps.",
-				"media_url": "/workout/media/diamond-pushups.gif",
-				"media_assets": [
-					{
-						"id": "asset-diamond-pushups-anim",
-						"kind": "animation",
-						"type": "image",
-						"title": "Diamond Push-up Form Animation",
-						"url": "/workout/media/diamond-pushups.gif",
-					}
-				],
-				"primary_muscles": ["triceps", "chest"],
-				"secondary_muscles": ["shoulders", "abs", "forearms"],
-			},
-			{
-				"id": "ex-plank-shoulder-taps",
-				"name": "Plank Shoulder Taps",
-				"category": "strength",
-				"discipline": "calisthenics",
-				"default_mode": "reps",
-				"default_quantity": 20,
-				"description": "High plank anti-rotation touches. Setup: Strong pushup plank with wide foot stance for stability. Execution: Tap opposite shoulder with zero hip sway or torso rotation, maintaining tight core tension.",
-				"media_url": "/workout/media/shoulder-taps.svg",
-				"media_assets": [
-					{
-						"id": "asset-taps-anim",
-						"kind": "animation",
-						"type": "image",
-						"title": "Plank Shoulder Taps Form Animation",
-						"url": "/workout/media/shoulder-taps.svg",
-					}
-				],
-				"primary_muscles": ["abs", "obliques", "shoulders"],
-				"secondary_muscles": ["chest", "triceps", "forearms"],
-			},
-			{
-				"id": "ex-mountain-climbers",
-				"name": "Mountain Climbers",
-				"category": "cardio",
-				"discipline": "general",
-				"default_mode": "time",
-				"default_quantity": 60,
-				"description": "High tempo alternating knee drives. Setup: Pushup plank position, hands stacked under shoulders. Execution: Drive knees alternately toward chest in rapid, controlled cadence while keeping hips level.",
-				"media_url": "/workout/media/mountain-climbers.svg",
-				"media_assets": [
-					{
-						"id": "asset-mountain-climbers-anim",
-						"kind": "animation",
-						"type": "image",
-						"title": "Mountain Climbers Animation",
-						"url": "/workout/media/mountain-climbers.svg",
-					},
-					{
-						"id": "asset-mountain-climbers-demo",
-						"kind": "demonstration",
-						"type": "video",
-						"title": "Mountain Climbers Cardio Pace",
-						"videoId": "7sLw5dHdRG4",
-						"startSeconds": 492,
-						"endSeconds": 552,
-					},
-				],
-				"primary_muscles": ["abs", "hip_flexors", "shoulders"],
-				"secondary_muscles": ["quads", "chest", "calves"],
-			},
-			{
-				"id": "ex-star-jumps",
-				"name": "Star Jumps",
-				"category": "drill",
-				"discipline": "general",
-				"default_mode": "time",
-				"default_quantity": 45,
-				"description": "Explosive jumping jack variation. Setup: Athletic crouch with feet close. Execution: Explode upward extending arms and legs into wide star shape at apex, landing softly on balls of feet.",
-				"media_url": "https://www.youtube.com/watch?v=ZWZWzRnLpVM",
-				"media_assets": [
-					{
-						"id": "asset-star-jumps-demo",
-						"kind": "demonstration",
-						"type": "video",
-						"title": "Star Jumps Drill Cadence",
-						"videoId": "ZWZWzRnLpVM",
-						"startSeconds": 60,
-						"endSeconds": 250,
-					}
-				],
-				"primary_muscles": ["calves", "quads", "groin"],
-				"secondary_muscles": ["shoulders", "abs"],
-			},
-			{
-				"id": "ex-coordination-drills",
-				"name": "Coordination Footwork Drills",
-				"category": "drill",
-				"discipline": "general",
-				"default_mode": "time",
-				"default_quantity": 45,
-				"description": "Fast agility footwork and bounce rhythm. Setup: Boxing/Muay Thai stance on toes. Execution: Quick rhythmic footwork drills, changing angles and maintaining guard balance.",
-				"media_url": "https://www.youtube.com/watch?v=ZWZWzRnLpVM",
-				"media_assets": [
-					{
-						"id": "asset-coord-drills-demo",
-						"kind": "demonstration",
-						"type": "video",
-						"title": "Coordination Footwork Cadence",
-						"videoId": "ZWZWzRnLpVM",
-						"startSeconds": 60,
-						"endSeconds": 250,
-					}
-				],
-				"primary_muscles": ["calves", "quads", "groin"],
-				"secondary_muscles": ["abs", "glutes"],
-			},
-			{
-				"id": "ex-lateral-jumps",
-				"name": "Lateral Jumps",
-				"category": "drill",
-				"discipline": "general",
-				"default_mode": "time",
-				"default_quantity": 45,
-				"description": "Side-to-side explosive bounding. Setup: Athletic stance loaded on one leg. Execution: Bound laterally onto opposite foot, absorbing impact with soft knee and driving explosively side-to-side.",
-				"media_url": "https://www.youtube.com/watch?v=ZWZWzRnLpVM",
-				"media_assets": [
-					{
-						"id": "asset-lateral-jumps-demo",
-						"kind": "demonstration",
-						"type": "video",
-						"title": "Lateral Jumps Drill",
-						"videoId": "ZWZWzRnLpVM",
-						"startSeconds": 585,
-						"endSeconds": 770,
-					}
-				],
-				"primary_muscles": ["quads", "calves", "groin"],
-				"secondary_muscles": ["glutes", "obliques"],
-			},
-			{
-				"id": "ex-check-repeats",
-				"name": "Check Repeats (Lead & Rear Block)",
-				"category": "technique",
-				"discipline": "muay_thai",
-				"default_mode": "time",
-				"default_quantity": 60,
-				"description": "Muay Thai shin check defense. Setup: High guard stance. Execution: Raise shin at 45° angle outside elbow with toes pointed down, rapidly alternating lead and rear leg blocks.",
-				"media_url": "https://www.youtube.com/watch?v=wPGC3uFIOBA",
-				"media_assets": [
-					{
-						"id": "asset-check-repeats-demo",
-						"kind": "demonstration",
-						"type": "video",
-						"title": "Check Repeats Technique & Cadence",
-						"videoId": "wPGC3uFIOBA",
-						"startSeconds": 0,
-						"endSeconds": 60,
-					}
-				],
-				"primary_muscles": ["hip_flexors", "obliques", "quads"],
-				"secondary_muscles": ["calves", "groin"],
-			},
-			{
-				"id": "ex-jab-cross",
-				"name": "Jab-Cross Combo",
-				"category": "technique",
-				"discipline": "boxing",
-				"default_mode": "time",
-				"default_quantity": 184,
-				"description": "Fundamental straight punch combo. Setup: Boxing stance with hands protecting chin. Execution: Snap lead jab with small step, follow immediately with power cross driven by rear foot pivot and hip turn.",
-				"media_url": "https://www.youtube.com/watch?v=7sLw5dHdRG4",
-				"media_assets": [
-					{
-						"id": "asset-jab-cross-inst",
-						"kind": "instruction",
-						"type": "video",
-						"title": "Jab Cross Punching Mechanics & Stance",
-						"videoId": "7sLw5dHdRG4",
-						"startSeconds": 662,
-						"endSeconds": 846,
-					}
-				],
-				"primary_muscles": ["shoulders", "obliques"],
-				"secondary_muscles": ["triceps", "forearms", "calves"],
-			},
-			{
-				"id": "ex-knee-strike",
-				"name": "Rear Knee / Switch Knee Thrust",
-				"category": "technique",
-				"discipline": "muay_thai",
-				"default_mode": "time",
-				"default_quantity": 60,
-				"description": "Muay Thai explosive knee thrust. Setup: Clinch posture with guard up. Execution: Lean torso back, pull hands downward for leverage, and thrust knee forward and upward with toes pointed straight down.",
-				"media_url": "https://www.youtube.com/watch?v=z37V3X6tPG4",
-				"media_assets": [
-					{
-						"id": "asset-knee-demo",
-						"kind": "demonstration",
-						"type": "video",
-						"title": "Knee Strike Execution",
-						"videoId": "z37V3X6tPG4",
-						"startSeconds": 694,
-						"endSeconds": 938,
-					}
-				],
-				"primary_muscles": ["hip_flexors", "abs", "glutes"],
-				"secondary_muscles": ["quads", "calves"],
-			},
-			{
-				"id": "ex-elbow-strikes",
-				"name": "Lead & Rear Elbow Strikes",
-				"category": "technique",
-				"discipline": "muay_thai",
-				"default_mode": "time",
-				"default_quantity": 60,
-				"description": "Horizontal and slashing close-quarters elbow strikes. Setup: Close guard posture. Execution: Drive elbow across opponent line with tight forearm fold, pivoting on lead/rear foot while opposite hand shields temple.",
-				"media_url": "https://www.youtube.com/watch?v=z37V3X6tPG4",
-				"media_assets": [
-					{
-						"id": "asset-elbow-demo",
-						"kind": "demonstration",
-						"type": "video",
-						"title": "Elbow Strikes Flow",
-						"videoId": "z37V3X6tPG4",
-						"startSeconds": 1000,
-						"endSeconds": 1243,
-					}
-				],
-				"primary_muscles": ["shoulders", "obliques", "lats"],
-				"secondary_muscles": ["traps", "triceps", "biceps"],
-			},
-			{
-				"id": "ex-cobra-pose",
-				"name": "Cobra Pose & Hip Opener",
-				"category": "stretch",
-				"discipline": "yoga",
-				"default_mode": "time",
-				"default_quantity": 45,
-				"description": "Prone spine extension and abdominal stretch. Setup: Lie prone, hands flat beneath shoulders. Execution: Press chest gently upward while relaxing glutes and keeping pelvis anchored to floor; breathe deeply into belly.",
-				"media_url": "/workout/media/cobra-stretch.jpg",
-				"media_assets": [
-					{
-						"id": "asset-cobra-photo",
-						"kind": "photo",
-						"type": "image",
-						"title": "Cobra Pose Alignment Photo",
-						"url": "/workout/media/cobra-stretch.jpg",
-					}
-				],
-				"primary_muscles": ["abs", "hip_flexors", "lower_back"],
-				"secondary_muscles": ["groin", "shoulders"],
-			},
-			{
-				"id": "ex-overhead-tricep-stretch",
-				"name": "Overhead Tricep & Shoulder Stretch",
-				"category": "stretch",
-				"discipline": "general",
-				"default_mode": "time",
-				"default_quantity": 30,
-				"description": "Overhead elbow pull for triceps and lats. Setup: Standing or seated tall. Execution: Raise elbow behind head, use opposite hand to pull gently downward and inward, lengthening the long head of triceps and lats.",
-				"media_url": "/workout/media/overhead-tricep-stretch.jpg",
-				"media_assets": [
-					{
-						"id": "asset-overhead-tricep-photo",
-						"kind": "photo",
-						"type": "image",
-						"title": "Overhead Tricep Stretch Reference Photo",
-						"url": "/workout/media/overhead-tricep-stretch.jpg",
-					}
-				],
-				"primary_muscles": ["triceps", "shoulders", "lats"],
-				"secondary_muscles": ["traps"],
-			},
-			{
-				"id": "ex-pigeon-pose",
-				"name": "Pigeon Pose Hip Opener",
-				"category": "stretch",
-				"discipline": "yoga",
-				"default_mode": "time",
-				"default_quantity": 45,
-				"description": "Deep unilateral hip opener. Setup: Bring one shin forward across mat (angled 45-90°), extend rear leg straight back. Execution: Square hips to floor and sink gently downward to release the piriformis and glutes.",
-				"media_url": "/workout/media/pigeon-pose.jpg",
-				"media_assets": [
-					{
-						"id": "asset-pigeon-photo",
-						"kind": "photo",
-						"type": "image",
-						"title": "Pigeon Pose Reference Photo",
-						"url": "/workout/media/pigeon-pose.jpg",
-					}
-				],
-				"primary_muscles": ["glutes", "groin", "hip_flexors"],
-				"secondary_muscles": ["hamstrings", "lower_back"],
-			},
-			{
-				"id": "ex-seated-hamstring-fold",
-				"name": "Seated Forward Hamstring Fold",
-				"category": "stretch",
-				"discipline": "yoga",
-				"default_mode": "time",
-				"default_quantity": 45,
-				"description": "Seated straight-leg forward hinge. Setup: Sit upright on floor with legs fully extended in front. Execution: Hinge forward from hips with long spine, reaching toward ankles/toes without forcing neck or rounding lumbar.",
-				"media_url": "/workout/media/seated-hamstring-fold.jpg",
-				"media_assets": [
-					{
-						"id": "asset-hamstring-photo",
-						"kind": "photo",
-						"type": "image",
-						"title": "Hamstring Fold Reference Photo",
-						"url": "/workout/media/seated-hamstring-fold.jpg",
-					}
-				],
-				"primary_muscles": ["hamstrings", "lower_back"],
-				"secondary_muscles": ["calves", "groin"],
-			},
-			{
-				"id": "ex-childs-pose",
-				"name": "Extended Child's Pose Spine & Lat Stretch",
-				"category": "stretch",
-				"discipline": "yoga",
-				"default_mode": "time",
-				"default_quantity": 60,
-				"description": "Kneeling restful spine and lat stretch. Setup: Knees wide on mat, big toes touching. Execution: Sit hips back onto heels, reach fingertips forward along mat, and press chest toward floor to decompress lats and spine.",
-				"media_url": "/workout/media/childs-pose.jpg",
-				"media_assets": [
-					{
-						"id": "asset-child-photo",
-						"kind": "photo",
-						"type": "image",
-						"title": "Child's Pose Reference Photo",
-						"url": "/workout/media/childs-pose.jpg",
-					}
-				],
-				"primary_muscles": ["lats", "lower_back", "traps"],
-				"secondary_muscles": ["groin", "glutes"],
-			},
-			{
-				"id": "ex-cat-cow",
-				"name": "Cat-Cow Spinal Mobility",
-				"category": "mobility",
-				"discipline": "yoga",
-				"default_mode": "time",
-				"default_quantity": 45,
-				"description": "Spinal wave mobility flow. Setup: Tabletop position on hands and knees. Execution: Inhale to Cow (drop belly, lift tailbone and gaze); exhale to Cat (round spine upward, tuck chin and pelvis toward navel).",
-				"media_url": "",
-				"media_assets": [],
-				"primary_muscles": ["lower_back", "abs"],
-				"secondary_muscles": ["traps", "shoulders"],
-			},
-			{
-				"id": "ex-lat-stretch",
-				"name": "Kneeling Lat & Chest Stretch",
-				"category": "stretch",
-				"discipline": "yoga",
-				"default_mode": "time",
-				"default_quantity": 45,
-				"description": "Kneeling puppy pose lat and chest opener. Setup: Knees under hips, reach hands far forward. Execution: Keep hips high over knees, sink sternum toward floor to stretch the latissimus dorsi, serratus, and pectorals.",
-				"media_url": "",
-				"media_assets": [],
-				"primary_muscles": ["lats", "chest", "shoulders"],
-				"secondary_muscles": ["traps", "lower_back"],
-			},
-			{
-				"id": "ex-kegel-holds",
-				"name": "Kegel Floor Squeeze & Hold",
-				"category": "strength",
-				"discipline": "general",
-				"default_mode": "time",
-				"default_quantity": 45,
-				"description": "Deep pelvic floor neuromuscular isolation. Setup: Supine with knees bent and feet flat on floor. Execution: Exhale and draw the pelvic floor muscles upward and inward as if stopping urination midstream. Hold steady with normal breathing, avoid squeezing glutes or inner thighs.",
-				"media_url": "",
-				"media_assets": [],
-				"primary_muscles": ["pelvic_floor"],
-				"secondary_muscles": ["abs", "glutes"],
-			},
-			{
-				"id": "ex-glute-bridge-pelvic-tilt",
-				"name": "Glute Bridge with Pelvic Tilt",
-				"category": "strength",
-				"discipline": "general",
-				"default_mode": "reps",
-				"default_quantity": 15,
-				"description": "Bodyweight hip bridge with posterior pelvic tilt emphasis. Setup: Lie on back with knees bent, feet hip-width. Execution: Flatten lower back against floor into posterior pelvic tilt, drive heels down to raise hips until torso forms straight line, squeezing glutes and drawing pelvic floor upward at peak.",
-				"media_url": "",
-				"media_assets": [],
-				"primary_muscles": ["glutes", "pelvic_floor"],
-				"secondary_muscles": ["hamstrings", "lower_back", "abs"],
-			},
-			{
-				"id": "ex-dead-bug-pelvic-brace",
-				"name": "Dead Bug with Pelvic Brace",
-				"category": "strength",
-				"discipline": "calisthenics",
-				"default_mode": "reps",
-				"default_quantity": 16,
-				"description": "Anti-extension core and pelvic stabilization. Setup: Supine with arms reaching toward ceiling and knees at 90 degrees tabletop. Execution: Brace lower back and pelvis flush against floor; extend opposite arm and leg slowly without letting the pelvis rotate or lower back arch.",
-				"media_url": "",
-				"media_assets": [],
-				"primary_muscles": ["abs", "pelvic_floor"],
-				"secondary_muscles": ["hip_flexors", "lower_back"],
-			},
-			{
-				"id": "ex-supine-pelvic-clock",
-				"name": "Supine Pelvic Clock Tilts",
-				"category": "mobility",
-				"discipline": "yoga",
-				"default_mode": "reps",
-				"default_quantity": 12,
-				"description": "Pelvic mobility and proprioception drill. Setup: Supine with knees bent and feet relaxed. Execution: Imagine a clock face beneath pelvis: rock pelvis to 12 o'clock (flatten lumbar), then to 6 o'clock (slight arch), then smoothly transition in circular motions from 3 to 9 o'clock.",
-				"media_url": "",
-				"media_assets": [],
-				"primary_muscles": ["pelvic_floor", "lower_back"],
-				"secondary_muscles": ["abs", "hip_flexors"],
-			},
-			{
-				"id": "ex-butterfly-bridge",
-				"name": "Butterfly Bridge (Frog Pump)",
-				"category": "strength",
-				"discipline": "general",
-				"default_mode": "reps",
-				"default_quantity": 20,
-				"description": "Zero-equipment adductor and pelvic base bridge. Setup: Supine with soles of feet pressed together and knees flared wide in butterfly position. Execution: Drive outer edges of feet into floor and press hips upward, engaging deep pelvic floor, adductors, and glutes at full extension.",
-				"media_url": "",
-				"media_assets": [],
-				"primary_muscles": ["pelvic_floor", "glutes", "groin"],
-				"secondary_muscles": ["hamstrings", "abs"],
-			},
-		]
-
-		for d in defaults:
-			conn.execute(
-				"""
-				INSERT INTO exercises (
-					id, user_id, name, category, discipline, default_mode, default_quantity,
-					description, media_url, media_assets_json, primary_muscles_json, secondary_muscles_json, created_at
-				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
-				ON CONFLICT(id) DO UPDATE SET
-					name = excluded.name,
-					category = excluded.category,
-					discipline = excluded.discipline,
-					default_mode = excluded.default_mode,
-					default_quantity = excluded.default_quantity,
-					description = excluded.description,
-					media_url = excluded.media_url,
-					media_assets_json = excluded.media_assets_json,
-					primary_muscles_json = excluded.primary_muscles_json,
-					secondary_muscles_json = excluded.secondary_muscles_json
-				""",
-				(
-					d["id"],
-					None,
-					d["name"],
-					d["category"],
-					d["discipline"],
-					d["default_mode"],
-					d["default_quantity"],
-					d["description"],
-					d["media_url"],
-					json.dumps(d["media_assets"], ensure_ascii=False),
-					json.dumps(d["primary_muscles"], ensure_ascii=False),
-					json.dumps(d["secondary_muscles"], ensure_ascii=False),
-				),
-			)
-
 	# ── Users ────────────────────────────────────────────────────────────────
 
 	def list_users(self) -> list[dict[str, Any]]:
@@ -728,6 +195,67 @@ class Database:
 
 	# ── Routines ─────────────────────────────────────────────────────────────
 
+	def _hydrate_routine_steps(
+		self, conn: sqlite3.Connection, steps: list[dict[str, Any]], user_id: str | None = None
+	) -> list[dict[str, Any]]:
+		if not steps:
+			return []
+		clean_user = user_id.strip().lower() if user_id else "levon"
+		rows = conn.execute(
+			"SELECT id, name, flow_type, exercise_ids_json FROM combos WHERE user_id = ? OR user_id IS NULL",
+			(clean_user,),
+		).fetchall()
+		combos_by_id = {}
+		combos_by_name = {}
+		for r in rows:
+			c_id = r["id"]
+			c_name = r["name"].strip().lower()
+			try:
+				ex_ids = json.loads(r["exercise_ids_json"] or "[]")
+			except Exception:
+				ex_ids = []
+			info = {
+				"id": c_id,
+				"name": r["name"],
+				"flow_type": r["flow_type"],
+				"exercise_ids": ex_ids,
+			}
+			combos_by_id[c_id] = info
+			combos_by_name[c_name] = info
+
+		ex_rows = conn.execute("SELECT id, name, category, discipline FROM exercises").fetchall()
+		ex_map = {row["id"]: dict(row) for row in ex_rows}
+
+		hydrated = []
+		for step in steps:
+			s = dict(step)
+			combo = None
+			if s.get("combo_id") and s["combo_id"] in combos_by_id:
+				combo = combos_by_id[s["combo_id"]]
+			elif s.get("label") and s["label"].strip().lower() in combos_by_name:
+				combo = combos_by_name[s["label"].strip().lower()]
+
+			if combo:
+				s["combo_id"] = combo["id"]
+				s["flow_type"] = combo["flow_type"]
+				hydrated_exs = []
+				for ex_id in combo["exercise_ids"]:
+					eid = ex_id if isinstance(ex_id, str) else ex_id.get("id")
+					if eid in ex_map:
+						hydrated_exs.append(
+							{
+								"id": eid,
+								"name": ex_map[eid]["name"],
+								"category": ex_map[eid]["category"],
+								"discipline": ex_map[eid]["discipline"],
+							}
+						)
+					else:
+						hydrated_exs.append({"id": eid})
+				s["exercises"] = hydrated_exs
+			hydrated.append(s)
+		return hydrated
+
 	def get_routines(self, user_id: str) -> list[dict[str, Any]]:
 		with self.get_connection() as conn:
 			rows = conn.execute(
@@ -740,6 +268,7 @@ class Database:
 					steps = json.loads(row["steps_json"])
 				except Exception:
 					steps = []
+				steps = self._hydrate_routine_steps(conn, steps, user_id)
 				try:
 					music = json.loads(row["music_tracks_json"])
 				except Exception:
@@ -800,6 +329,7 @@ class Database:
 				steps = json.loads(row["steps_json"])
 			except Exception:
 				steps = []
+			steps = self._hydrate_routine_steps(conn, steps, clean_user)
 			try:
 				music = json.loads(row["music_tracks_json"])
 			except Exception:
@@ -1009,6 +539,37 @@ class Database:
 					now,
 				),
 			)
+
+			# Cascade combo update to any routines that reference this combo
+			routine_rows = conn.execute(
+				"SELECT id, steps_json FROM routines WHERE user_id = ?",
+				(clean_user,),
+			).fetchall()
+			for r_row in routine_rows:
+				try:
+					r_steps = json.loads(r_row["steps_json"])
+				except Exception:
+					continue
+				needs_update = False
+				for st in r_steps:
+					is_match = (st.get("combo_id") == c_id) or (
+						not st.get("combo_id")
+						and st.get("label")
+						and st["label"].strip().lower() == name.lower()
+					)
+					if is_match:
+						st["combo_id"] = c_id
+						st["flow_type"] = flow_type
+						st["exercises"] = [
+							{"id": eid if isinstance(eid, str) else eid.get("id")}
+							for eid in exercise_ids
+						]
+						needs_update = True
+				if needs_update:
+					conn.execute(
+						"UPDATE routines SET steps_json = ?, updated_at = ? WHERE id = ? AND user_id = ?",
+						(json.dumps(r_steps, ensure_ascii=False), now, r_row["id"], clean_user),
+					)
 		return {
 			"id": c_id,
 			"user_id": clean_user,

@@ -5,12 +5,15 @@ When given a workout link (`https://levon.ajwest.ca/workout/#u=<user>&r=<id>` or
 - Fetch the routine JSON directly via `GET https://levon.ajwest.ca/workout/api/routines/<id>?user_id=<user>` (fallback user: `levon`).
 
 ## YouTube Video Searching
-- Use youtube search python tool to find real, verified YouTube videos instead of guessing URLs.
+- Use the script [`scripts/search_youtube.py`](file:///Users/levontumanyan/repos/games/workout/scripts/search_youtube.py) to search verified YouTube videos and inspect remote exercises:
+	`uv run python scripts/search_youtube.py "<query>" [--max 5]`
+	`uv run python scripts/search_youtube.py --list-exercises [--category drill]`
 
 # API & Agent Workflows
 
 ## Remote-First Execution
 - Always perform routine and combo creations/updates on the remote live instance (`https://levon.ajwest.ca/workout/api/...`) via HTTP requests (`X-User-Id: levon`). Do not directly edit local database files for live routines.
+- **Required Headers**: When sending HTTP requests to the live Cloudflare-tunneled host, always include a standard browser `User-Agent` (e.g. `Mozilla/5.0`) along with `X-User-Id: levon`. Default Python `urllib` without `User-Agent` is blocked with HTTP 403.
 
 ## User Identity
 - Identify active user via `X-User-Id` header (fallback: `levon`). Base subpath is `/workout/api/` (or `/api/`).
