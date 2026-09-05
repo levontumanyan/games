@@ -1646,9 +1646,9 @@ export function showAddExerciseModal(routine, onUpdate, insertIndex = -1) {
 		<div class="modal-body">
 			<!-- Filter Toolbar -->
 			<div class="nav-filter-toolbar">
-				<div class="nav-search-wrap">
+				<div class="search-box-wrapper">
 					<span class="search-icon">🔍</span>
-					<input type="text" class="nav-search-input" id="nav-search" placeholder="Search exercises, disciplines, or muscles (e.g. Teep, Quads, Push-ups)..." autofocus>
+					<input type="text" class="input search-box-input nav-search-input" id="nav-search" placeholder="Search exercises, disciplines, or muscles (e.g. Teep, Quads, Push-ups)..." autofocus autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
 				</div>
 
 				<div class="nav-pills-row" id="nav-discipline-pills">
@@ -1950,7 +1950,7 @@ export function showAddComboModal(routine, onUpdate, insertIndex = -1) {
 		<div class="modal-body">
 			<div class="search-box-wrapper" style="margin-bottom:12px;">
 				<span class="search-icon">🔍</span>
-				<input type="text" id="add-combo-search" class="input combo-search-input" placeholder="Search combos (Star Jumps ⮀ Coordination, Lateral Taps, Jab Knee)..." autofocus>
+				<input type="text" id="add-combo-search" class="input search-box-input combo-search-input" placeholder="Search combos (Star Jumps ⮀ Coordination, Lateral Taps, Jab Knee)..." autofocus autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
 			</div>
 
 			<div id="add-combo-list" class="add-picker-list"></div>

@@ -15,6 +15,7 @@ Each sub-app directory maintains its own domain-specific `AGENTS.md` (e.g. `work
 - **Indentation**: Use **tabs** exclusively for all code (Python, Shell scripts, Makefiles, JS, CSS, HTML). Never use spaces except in YAML.
 - **Python Tooling**: Use `uv` for Python environments and dependencies.
 - **Linting & Formatting**: Ruff is configured across all sub-projects with tab indentation and standard lint rules.
+- **Shared Components**: Always maximize reuse of shared UI styles, classes, and components across views and apps rather than creating one-offs.
 
 # Development Workflows
 

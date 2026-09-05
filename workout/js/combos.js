@@ -145,7 +145,7 @@ export function renderCombosCatalog(container, options = {}) {
 			<div class="combos-filter-bar">
 				<div class="search-box-wrapper">
 					<span class="search-icon">🔍</span>
-					<input type="text" id="combo-search-input" class="input combo-search-input" placeholder="Search combos, alternating flows, supersets...">
+					<input type="text" id="combo-search-input" class="input search-box-input combo-search-input" placeholder="Search combos, alternating flows, supersets..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
 				</div>
 				<div class="combo-filter-chips" id="combo-filter-chips"></div>
 			</div>

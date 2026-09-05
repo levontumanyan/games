@@ -1088,14 +1088,28 @@
 			background: var(--surface);
 			color: var(--text);
 			font-family: 'Inter', sans-serif;
-			font-size: .9rem;
+			font-size: .95rem;
+			caret-color: var(--accent);
 			outline: none;
 			width: 100%;
 			box-sizing: border-box;
+			transition: border-color 0.15s ease, box-shadow 0.15s ease;
 		}
 
 		.text-input:focus, .select-input:focus {
 			border-color: var(--accent);
+			box-shadow: 0 0 0 3px rgba(234, 179, 8, 0.2);
+		}
+
+		.text-input::placeholder {
+			color: var(--text-muted);
+			opacity: 1;
+			transition: opacity 0.15s ease, color 0.15s ease;
+		}
+
+		.text-input:focus::placeholder {
+			opacity: 0;
+			color: transparent;
 		}
 
 		.lobby-grid-2 {
@@ -1783,7 +1797,7 @@
 			<!-- Nickname input -->
 			<div class="input-group">
 				<label class="input-label" for="input-nickname">Your Nickname</label>
-				<input class="text-input" id="input-nickname" type="text" maxlength="16" placeholder="Enter nickname…" />
+				<input class="text-input" id="input-nickname" type="text" maxlength="16" placeholder="Enter nickname…" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
 			</div>
 
 			<!-- Host Room Settings -->
@@ -1873,7 +1887,7 @@
 			<div class="input-group" style="margin-top:4px">
 				<label class="input-label">Join Another Room by Code</label>
 				<div class="join-code-row">
-					<input class="text-input" id="input-join-code" type="text" placeholder="e.g. BEE-123" style="text-transform:uppercase" />
+					<input class="text-input" id="input-join-code" type="text" placeholder="e.g. BEE-123" style="text-transform:uppercase" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
 					<button class="btn-lobby-secondary" id="btn-join-code">Join</button>
 				</div>
 			</div>
