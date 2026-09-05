@@ -585,3 +585,42 @@ def test_exercise_media_kinds_and_roles(client: TestClient):
 	demonstration_asset = next(a for a in found["media_assets"] if a["kind"] == "demonstration")
 	assert instruction_asset["title"] == "Kick Biomechanics & Hip Turn Breakdown"
 	assert demonstration_asset["title"] == "Padwork Continuous Kicking Drill"
+
+
+def test_update_exercise_description(client: TestClient):
+	payload = {
+		"name": "Single Leg RDL Balance",
+		"category": "mobility",
+		"discipline": "general",
+		"default_mode": "reps",
+		"default_quantity": 12,
+		"description": "Initial setup cues and posture check.",
+		"primary_muscles": ["hamstrings", "glutes"],
+		"secondary_muscles": ["core", "calves"],
+	}
+	create_res = client.post("/api/exercises", json=payload, headers={"X-User-Id": "levon"})
+	assert create_res.status_code == 200
+	created = create_res.json()
+	assert created["description"] == "Initial setup cues and posture check."
+
+	# Update description
+	updated_payload = {
+		**created,
+		"description": "Hinge at the hips with a flat back, maintaining neutral pelvic alignment and soft knee bend.",
+	}
+	update_res = client.post("/api/exercises", json=updated_payload, headers={"X-User-Id": "levon"})
+	assert update_res.status_code == 200
+	updated = update_res.json()
+	assert (
+		updated["description"]
+		== "Hinge at the hips with a flat back, maintaining neutral pelvic alignment and soft knee bend."
+	)
+
+	# Verify via GET /api/exercises
+	get_res = client.get("/api/exercises", headers={"X-User-Id": "levon"})
+	assert get_res.status_code == 200
+	found = next(e for e in get_res.json() if e["id"] == created["id"])
+	assert (
+		found["description"]
+		== "Hinge at the hips with a flat back, maintaining neutral pelvic alignment and soft knee bend."
+	)

@@ -7542,17 +7542,89 @@ textarea.input {
 	gap: 5px;
 }
 
+.hud-desc-section {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.hud-desc-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
 .hud-description-box {
 	background: rgba(255, 255, 255, 0.02);
 	border: 1px solid var(--border);
 	border-radius: var(--radius-md);
 	padding: 12px 16px;
+	position: relative;
+	transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.hud-description-box.hud-desc-empty {
+	border-style: dashed;
+	cursor: pointer;
+	padding: 14px 16px;
+}
+
+.hud-description-box.hud-desc-empty:hover {
+	border-color: var(--primary, #e25822);
+	background: rgba(255, 255, 255, 0.04);
+}
+
+.hud-description-box.is-editing {
+	border-color: var(--primary, #e25822);
+	background: var(--bg-card, #1c1917);
+	padding: 10px 12px;
 }
 
 .hud-desc-text {
 	font-size: 0.88rem;
 	line-height: 1.5;
 	color: var(--text-secondary);
+	margin: 0;
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+.hud-desc-placeholder {
+	color: var(--text-muted, #78716c);
+	font-style: italic;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	margin: 0;
+}
+
+.hud-desc-edit-form {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.hud-desc-textarea {
+	width: 100%;
+	min-height: 72px;
+	font-family: inherit;
+	font-size: 0.88rem;
+	line-height: 1.5;
+	padding: 8px 10px;
+	resize: vertical;
+	box-sizing: border-box;
+}
+
+.hud-desc-actions {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.hud-desc-hint {
+	font-size: 0.75rem;
+	color: var(--text-muted, #78716c);
+	margin-left: auto;
 }
 
 .hud-constituents-deck {

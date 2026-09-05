@@ -23,6 +23,7 @@ import {
 	getExerciseFollowAlongMedia,
 	inferMusclesForExercise,
 	renderExerciseCardElement,
+	updateExerciseDescription,
 } from './exercises.js';
 import { showConfirm, showAlert } from './modal.js';
 import { uploadImageFile } from './storage.js';
@@ -234,12 +235,19 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 		backdrop.remove();
 	};
 
+	let isEditingDesc = false;
+
 	const handleEsc = (e) => {
 		const modalDlg = document.getElementById('modal-backdrop');
 		if (modalDlg && !modalDlg.classList.contains('hidden')) {
 			return;
 		}
 		if (e.key === 'Escape' || e.keyCode === 27) {
+			if (isEditingDesc) {
+				isEditingDesc = false;
+				renderModalContent();
+				return;
+			}
 			close();
 		}
 	};
@@ -369,8 +377,27 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 					<button class="modal-close-btn" title="Close (ESC)">✕</button>
 				</div>
 
-				<div class="hud-description-box">
-					<p class="hud-desc-text">${escapeHtml(exercise.description || 'Movement execution, coaching cues, and form tutorials.')}</p>
+				<div class="hud-desc-section">
+					<div class="hud-desc-header">
+						<div class="hud-section-label" style="margin-bottom:0;">📝 Description & Coaching Cues</div>
+						${!isEditingDesc ? `<button type="button" class="btn btn-ghost btn-xs btn-edit-desc" title="${exercise.description ? 'Edit description' : 'Add description'}">✏️ ${exercise.description ? 'Edit' : '+ Add Description'}</button>` : ''}
+					</div>
+					<div class="hud-description-box ${!exercise.description && !isEditingDesc ? 'hud-desc-empty' : ''} ${isEditingDesc ? 'is-editing' : ''}">
+						${isEditingDesc ? `
+							<div class="hud-desc-edit-form">
+								<textarea id="hud-desc-editor" class="input hud-desc-textarea" rows="3" placeholder="Describe movement mechanics, setup, cues, or tips...">${escapeHtml(exercise.description || '')}</textarea>
+								<div class="hud-desc-actions">
+									<button type="button" class="btn btn-primary btn-xs btn-save-desc">Save</button>
+									<button type="button" class="btn btn-ghost btn-xs btn-cancel-desc">Cancel</button>
+									<span class="hud-desc-hint">⌘+Enter to save, Esc to cancel</span>
+								</div>
+							</div>
+						` : (exercise.description ? `
+							<p class="hud-desc-text">${escapeHtml(exercise.description)}</p>
+						` : `
+							<p class="hud-desc-text hud-desc-placeholder"><span>➕</span> Add coaching cues, technique pointers, or form execution details...</p>
+						`)}
+					</div>
 				</div>
 
 				<div class="hud-constituents-deck">
@@ -484,6 +511,79 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 		modal.querySelectorAll('.modal-close-btn').forEach(b => {
 			b.addEventListener('click', close);
 		});
+
+		const editDescBtn = modal.querySelector('.btn-edit-desc');
+		if (editDescBtn) {
+			editDescBtn.addEventListener('click', () => {
+				isEditingDesc = true;
+				renderModalContent();
+			});
+		}
+
+		const descEmptyBox = modal.querySelector('.hud-description-box.hud-desc-empty');
+		if (descEmptyBox) {
+			descEmptyBox.addEventListener('click', () => {
+				isEditingDesc = true;
+				renderModalContent();
+			});
+		}
+
+		const saveDescBtn = modal.querySelector('.btn-save-desc');
+		const cancelDescBtn = modal.querySelector('.btn-cancel-desc');
+		const descEditor = modal.querySelector('#hud-desc-editor');
+
+		const handleSaveDesc = async () => {
+			if (!descEditor) return;
+			const newDesc = descEditor.value.trim();
+			if (saveDescBtn) {
+				saveDescBtn.disabled = true;
+				saveDescBtn.textContent = 'Saving...';
+			}
+			try {
+				const updated = await updateExerciseDescription(exercise.id || exercise, newDesc);
+				Object.assign(exercise, updated);
+				isEditingDesc = false;
+				renderModalContent();
+				onUpdated();
+				showToast(`Updated description for "${exercise.name}".`);
+			} catch (err) {
+				if (saveDescBtn) {
+					saveDescBtn.disabled = false;
+					saveDescBtn.textContent = 'Save';
+				}
+				await showAlert({ title: 'Error', message: 'Could not save description: ' + err.message });
+			}
+		};
+
+		if (saveDescBtn) {
+			saveDescBtn.addEventListener('click', handleSaveDesc);
+		}
+
+		if (cancelDescBtn) {
+			cancelDescBtn.addEventListener('click', () => {
+				isEditingDesc = false;
+				renderModalContent();
+			});
+		}
+
+		if (descEditor) {
+			setTimeout(() => {
+				descEditor.focus();
+				descEditor.setSelectionRange(descEditor.value.length, descEditor.value.length);
+			}, 0);
+
+			descEditor.addEventListener('keydown', (e) => {
+				if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+					e.preventDefault();
+					handleSaveDesc();
+				} else if (e.key === 'Escape') {
+					e.preventDefault();
+					e.stopPropagation();
+					isEditingDesc = false;
+					renderModalContent();
+				}
+			});
+		}
 
 		const editExBtn = modal.querySelector('.btn-edit-this-ex');
 		if (editExBtn) {

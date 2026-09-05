@@ -185,6 +185,24 @@ export async function removeMediaAssetFromExercise(exerciseOrId, assetId, assetU
 }
 
 /**
+ * Update an exercise's description and persist to server.
+ * @param {string|Object} exerciseOrId
+ * @param {string} description
+ * @returns {Promise<Object>}
+ */
+export async function updateExerciseDescription(exerciseOrId, description) {
+	const ex = typeof exerciseOrId === 'string' ? getExerciseById(exerciseOrId) : (getExerciseById(exerciseOrId?.id) || exerciseOrId);
+	if (!ex) throw new Error('Exercise not found');
+
+	const updated = await createCustomExercise({
+		...ex,
+		description: (description || '').trim()
+	});
+
+	return updated;
+}
+
+/**
  * Load exercises from server into memory cache.
  * @returns {Promise<Array>}
  */
