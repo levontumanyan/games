@@ -7,7 +7,8 @@ import { saveAudioFile, deleteAudioFile } from './musicdb.js';
 import { showPrompt, showAlert, createCustomModal } from './modal.js';
 import { getTimerIcon, getBreakIcon, getComboIcon, getExerciseIcon, getDuplicateIcon, getPlusIcon } from './icons.js';
 import {
-	getCategoryBadgeHtml, getDisciplineBadgeHtml, getMuscleBadgeHtml, getDisciplineFilterPillsHtml
+	getCategoryBadgeHtml, getDisciplineBadgeHtml, getMuscleBadgeHtml, getDisciplineFilterPillsHtml,
+	ANATOMICAL_REGIONS
 } from './taxonomy.js';
 import {
 	getExercises, getExerciseById, filterExercises, createCustomExercise,
@@ -1629,18 +1630,7 @@ export function createRoutine(title) {
  * Open a quick selection modal to add an exercise into the active routine.
  * @param {Object} routine
  * @param {Function} onUpdate
- */
-/**
- * Anatomical region definitions for the Option 4 Muscle Navigator exercise picker.
- */
-const ANATOMICAL_REGIONS = [
-	{ id: 'all', label: 'All Movements', icon: '🎯' },
-	{ id: 'lower', label: 'Lower Body & Legs', icon: '🦵', muscles: ['quads', 'hamstrings', 'glutes', 'calves', 'adductors', 'groin', 'ankles'] },
-	{ id: 'core', label: 'Core & Hip Flexors', icon: '🛡️', muscles: ['abs', 'obliques', 'lower_back', 'hip_flexors'] },
-	{ id: 'arms', label: 'Arms & Grip', icon: '💪', muscles: ['biceps', 'triceps', 'forearms', 'wrists'] },
-	{ id: 'upper', label: 'Shoulders & Upper', icon: '🥊', muscles: ['shoulders', 'chest', 'back', 'lats', 'traps', 'upper_back', 'rotators'] },
-	{ id: 'stretch', label: 'Stretch & Mobility', icon: '🧘', categories: ['stretch', 'mobility'], disciplines: ['yoga'] }
-];
+
 
 /**
  * Open the Anatomical Muscle Navigator modal to browse, inspect, and add exercises to the active routine.

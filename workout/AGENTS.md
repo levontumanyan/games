@@ -26,6 +26,7 @@ When given a workout link (`https://levon.ajwest.ca/workout/#u=<user>&r=<id>` or
 ## Combo & Exercise Endpoints
 - `POST /workout/api/combos` — Create or update a custom combo.
 - `POST /workout/api/exercises` — Create or update an exercise in the DB (never hardcode exercises in frontend JS).
+- `GET /workout/api/taxonomy` — Fetch canonical taxonomy (muscles, anatomical regions, categories, disciplines, aliases).
 
 # Development & UI Verification
 

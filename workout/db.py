@@ -160,6 +160,17 @@ class Database:
 				except Exception:
 					pass
 
+			# Migrate legacy 'groin' to 'adductors' in exercises table
+			try:
+				conn.execute(
+					"UPDATE exercises SET primary_muscles_json = replace(primary_muscles_json, '\"groin\"', '\"adductors\"') WHERE primary_muscles_json LIKE '%\"groin\"%'"
+				)
+				conn.execute(
+					"UPDATE exercises SET secondary_muscles_json = replace(secondary_muscles_json, '\"groin\"', '\"adductors\"') WHERE secondary_muscles_json LIKE '%\"groin\"%'"
+				)
+			except Exception:
+				pass
+
 			# Ensure default user 'levon' exists
 			cursor = conn.execute("SELECT id FROM users WHERE id = ?", ("levon",))
 			if not cursor.fetchone():
@@ -627,11 +638,17 @@ class Database:
 			params.extend([term, term])
 
 		if muscle and muscle.strip() and muscle.strip().lower() != "all":
-			m = f"%{muscle.strip().lower()}%"
-			query += (
-				" AND (LOWER(primary_muscles_json) LIKE ? OR LOWER(secondary_muscles_json) LIKE ?)"
-			)
-			params.extend([m, m])
+			clean_m = muscle.strip().lower()
+			if clean_m in ("adductors", "adductor", "groin"):
+				query += (
+					" AND (LOWER(primary_muscles_json) LIKE ? OR LOWER(secondary_muscles_json) LIKE ?"
+					" OR LOWER(primary_muscles_json) LIKE ? OR LOWER(secondary_muscles_json) LIKE ?)"
+				)
+				params.extend(["%adductor%", "%adductor%", "%groin%", "%groin%"])
+			else:
+				m = f"%{clean_m}%"
+				query += " AND (LOWER(primary_muscles_json) LIKE ? OR LOWER(secondary_muscles_json) LIKE ?)"
+				params.extend([m, m])
 
 		query += " ORDER BY name ASC"
 
@@ -731,14 +748,12 @@ class Database:
 				}
 			]
 		media_assets_json = json.dumps(media_assets, ensure_ascii=False)
-		primary_muscles = data.get("primary_muscles", [])
-		if not isinstance(primary_muscles, list):
-			primary_muscles = []
+		from taxonomy import normalize_muscles_list
+
+		primary_muscles = normalize_muscles_list(data.get("primary_muscles", []))
 		primary_muscles_json = json.dumps(primary_muscles, ensure_ascii=False)
 
-		secondary_muscles = data.get("secondary_muscles", [])
-		if not isinstance(secondary_muscles, list):
-			secondary_muscles = []
+		secondary_muscles = normalize_muscles_list(data.get("secondary_muscles", []))
 		secondary_muscles_json = json.dumps(secondary_muscles, ensure_ascii=False)
 		now = datetime.now().isoformat()
 

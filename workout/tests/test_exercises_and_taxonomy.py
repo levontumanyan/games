@@ -39,7 +39,7 @@ def test_exercises_filtering_and_taxonomy(client: TestClient):
 			"discipline": "general",
 			"default_mode": "time",
 			"default_quantity": 45,
-			"primary_muscles": ["calves", "quads", "groin"],
+			"primary_muscles": ["calves", "quads", "adductors"],
 			"secondary_muscles": ["shoulders"],
 		},
 		{
@@ -58,7 +58,7 @@ def test_exercises_filtering_and_taxonomy(client: TestClient):
 			"default_mode": "time",
 			"default_quantity": 45,
 			"primary_muscles": ["abs", "hip_flexors"],
-			"secondary_muscles": ["groin"],
+			"secondary_muscles": ["adductors"],
 		},
 		{
 			"name": "Pigeon Pose Hip Opener",
@@ -66,7 +66,7 @@ def test_exercises_filtering_and_taxonomy(client: TestClient):
 			"discipline": "yoga",
 			"default_mode": "time",
 			"default_quantity": 45,
-			"primary_muscles": ["glutes", "groin", "hip_flexors"],
+			"primary_muscles": ["glutes", "adductors", "hip_flexors"],
 			"secondary_muscles": ["hamstrings"],
 		},
 	]
@@ -99,7 +99,14 @@ def test_exercises_filtering_and_taxonomy(client: TestClient):
 	assert any(e["name"] == "Standard Pushups" for e in chest_list)
 	assert any(e["name"] == "Diamond Pushups" for e in chest_list)
 
-	# Test groin filter
+	# Test adductors filter
+	res_adductors = client.get("/api/exercises?muscle=adductors", headers={"X-User-Id": "levon"})
+	assert res_adductors.status_code == 200
+	adductors_list = res_adductors.json()
+	assert any(e["name"] == "Pigeon Pose Hip Opener" for e in adductors_list)
+	assert any(e["name"] == "Star Jumps" for e in adductors_list)
+
+	# Test backward compatibility groin filter alias
 	res_groin = client.get("/api/exercises?muscle=groin", headers={"X-User-Id": "levon"})
 	assert res_groin.status_code == 200
 	groin_list = res_groin.json()
@@ -751,3 +758,40 @@ def test_combo_update_cascades_to_routines(client: TestClient):
 	assert list_routines_res.status_code == 200
 	found_r = next(r for r in list_routines_res.json() if r["id"] == routine_id)
 	assert [ex["id"] for ex in found_r["steps"][0]["exercises"]] == [e1["id"], e3["id"]]
+
+
+def test_taxonomy_endpoint_and_muscle_normalization(client: TestClient):
+	# Test GET /api/taxonomy
+	res = client.get("/api/taxonomy", headers={"X-User-Id": "levon"})
+	assert res.status_code == 200
+	tax = res.json()
+	assert "muscles" in tax
+	assert "regions" in tax
+	assert "categories" in tax
+	assert "disciplines" in tax
+
+	# Verify adductors and hip_flexors are present
+	muscle_ids = [m["id"] for m in tax["muscles"]]
+	assert "adductors" in muscle_ids
+	assert "hip_flexors" in muscle_ids
+	assert "groin" not in muscle_ids  # groin is an alias, not a canonical id
+
+	# Test that creating an exercise with legacy 'groin' is automatically normalized to 'adductors'
+	create_res = client.post(
+		"/api/exercises",
+		json={
+			"name": "Taxonomy Test Copenhagen Plank",
+			"category": "strength",
+			"discipline": "calisthenics",
+			"primary_muscles": ["groin", "hip-flexors"],
+			"secondary_muscles": ["obliques", "adductor"],
+		},
+		headers={"X-User-Id": "levon"},
+	)
+	assert create_res.status_code == 200
+	created_ex = create_res.json()
+	assert "adductors" in created_ex["primary_muscles"]
+	assert "hip_flexors" in created_ex["primary_muscles"]
+	assert "groin" not in created_ex["primary_muscles"]
+	assert "adductors" in created_ex["secondary_muscles"]
+	assert "adductor" not in created_ex["secondary_muscles"]

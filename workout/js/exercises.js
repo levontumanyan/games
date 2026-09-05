@@ -256,8 +256,8 @@ export function inferMusclesForExercise(ex) {
 	if (!ex) return { primary: [], secondary: [] };
 	if (Array.isArray(ex.primary_muscles) && ex.primary_muscles.length > 0) {
 		return {
-			primary: ex.primary_muscles,
-			secondary: Array.isArray(ex.secondary_muscles) ? ex.secondary_muscles : [],
+			primary: ex.primary_muscles.map(m => m === 'groin' ? 'adductors' : m),
+			secondary: (Array.isArray(ex.secondary_muscles) ? ex.secondary_muscles : []).map(m => m === 'groin' ? 'adductors' : m),
 		};
 	}
 	const name = (ex.name || '').toLowerCase();
@@ -265,19 +265,19 @@ export function inferMusclesForExercise(ex) {
 	const combined = `${name} ${desc}`;
 
 	if (combined.includes('pelvic') || combined.includes('kegel') || combined.includes('perineal') || combined.includes('diaphragm')) {
-		return { primary: ['pelvic_floor', 'abs'], secondary: ['glutes', 'lower_back', 'groin'] };
+		return { primary: ['pelvic_floor', 'abs'], secondary: ['glutes', 'lower_back', 'adductors'] };
 	}
 	if (combined.includes('bridge')) {
-		return { primary: ['glutes', 'pelvic_floor'], secondary: ['hamstrings', 'abs', 'groin'] };
+		return { primary: ['glutes', 'pelvic_floor'], secondary: ['hamstrings', 'abs', 'adductors'] };
 	}
 	if (combined.includes('pushup') || combined.includes('push-up') || combined.includes('press')) {
 		return { primary: ['chest', 'triceps'], secondary: ['shoulders', 'abs', 'forearms'] };
 	}
 	if (combined.includes('jump') || combined.includes('squat') || combined.includes('lunge')) {
-		return { primary: ['quads', 'calves', 'groin'], secondary: ['glutes', 'abs', 'pelvic_floor'] };
+		return { primary: ['quads', 'calves', 'adductors'], secondary: ['glutes', 'abs', 'pelvic_floor'] };
 	}
 	if (combined.includes('knee') || combined.includes('kick')) {
-		return { primary: ['hip_flexors', 'abs', 'quads'], secondary: ['glutes', 'calves', 'groin', 'pelvic_floor'] };
+		return { primary: ['hip_flexors', 'abs', 'quads'], secondary: ['glutes', 'calves', 'adductors', 'pelvic_floor'] };
 	}
 	if (combined.includes('jab') || combined.includes('cross') || combined.includes('punch') || combined.includes('elbow')) {
 		return { primary: ['shoulders', 'obliques'], secondary: ['triceps', 'forearms', 'calves'] };
@@ -286,13 +286,13 @@ export function inferMusclesForExercise(ex) {
 		return { primary: ['abs', 'obliques', 'shoulders'], secondary: ['chest', 'triceps', 'forearms', 'pelvic_floor'] };
 	}
 	if (combined.includes('cobra') || combined.includes('child') || combined.includes('pose') || combined.includes('stretch')) {
-		return { primary: ['abs', 'hip_flexors', 'lower_back'], secondary: ['groin', 'shoulders', 'lats', 'pelvic_floor'] };
+		return { primary: ['abs', 'hip_flexors', 'lower_back'], secondary: ['adductors', 'shoulders', 'lats', 'pelvic_floor'] };
 	}
 	if (combined.includes('pigeon')) {
-		return { primary: ['glutes', 'groin', 'hip_flexors'], secondary: ['hamstrings', 'lower_back', 'pelvic_floor'] };
+		return { primary: ['glutes', 'adductors', 'hip_flexors'], secondary: ['hamstrings', 'lower_back', 'pelvic_floor'] };
 	}
 	if (combined.includes('fold') || combined.includes('hamstring')) {
-		return { primary: ['hamstrings', 'lower_back'], secondary: ['calves', 'groin'] };
+		return { primary: ['hamstrings', 'lower_back'], secondary: ['calves', 'adductors'] };
 	}
 	return { primary: ['abs'], secondary: ['shoulders', 'pelvic_floor'] };
 }
@@ -318,7 +318,8 @@ export function filterExercises(query = '', category = '', discipline = '', musc
 		if (mus && mus !== 'all') {
 			const targetMuscles = inferMusclesForExercise(ex);
 			const allExMuscles = [...(targetMuscles.primary || []), ...(targetMuscles.secondary || [])].map(m => m.toLowerCase());
-			if (!allExMuscles.includes(mus)) return false;
+			const queryMus = mus === 'groin' ? 'adductors' : mus;
+			if (!allExMuscles.includes(queryMus) && !allExMuscles.includes(mus)) return false;
 		}
 		if (q) {
 			const nameMatch = (ex.name || '').toLowerCase().includes(q);

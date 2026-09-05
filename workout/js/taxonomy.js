@@ -92,15 +92,15 @@ export const MUSCLE_DEFINITIONS = {
 			back: ['path-pelvic-back'],
 		},
 	},
-	groin: {
-		id: 'groin',
-		label: 'Groin & Adductors',
+	adductors: {
+		id: 'adductors',
+		label: 'Adductors',
 		icon: '🌿',
 		region: 'lower',
 		color: '#78a88a',
 		paths: {
-			front: ['path-groin-left', 'path-groin-right'],
-			back: ['path-groin-back-left', 'path-groin-back-right'],
+			front: ['path-adductor-left', 'path-adductor-right'],
+			back: ['path-adductor-back-left', 'path-adductor-back-right'],
 		},
 	},
 	hip_flexors: {
@@ -204,7 +204,23 @@ export const MUSCLE_DEFINITIONS = {
 	},
 };
 
+// Backward-compatibility alias for legacy groin data
+MUSCLE_DEFINITIONS.groin = MUSCLE_DEFINITIONS.adductors;
+
 export const MUSCLE_GROUPS = MUSCLE_DEFINITIONS;
+
+/**
+ * Single source of truth for high-level anatomical regions used across
+ * the Muscle Navigator, exercise pickers, and body filtering.
+ */
+export const ANATOMICAL_REGIONS = [
+	{ id: 'all', label: 'All Movements', icon: '🎯' },
+	{ id: 'lower', label: 'Lower Body & Legs', icon: '🦵', muscles: ['quads', 'hamstrings', 'glutes', 'calves', 'adductors'] },
+	{ id: 'core', label: 'Core & Hip Flexors', icon: '🛡️', muscles: ['abs', 'obliques', 'lower_back', 'hip_flexors', 'pelvic_floor'] },
+	{ id: 'arms', label: 'Arms & Grip', icon: '💪', muscles: ['biceps', 'triceps', 'forearms'] },
+	{ id: 'upper', label: 'Shoulders & Upper', icon: '🥊', muscles: ['shoulders', 'chest', 'traps', 'upper_back', 'lats'] },
+	{ id: 'stretch', label: 'Stretch & Mobility', icon: '🧘', categories: ['stretch', 'mobility'], disciplines: ['yoga'] },
+];
 
 export const CATEGORIES = {
 	strength: { label: 'Strength / Force', icon: '💪', color: '#5fa778', bg: 'rgba(95, 167, 120, 0.14)' },

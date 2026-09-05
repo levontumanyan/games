@@ -75,9 +75,9 @@ export function getFrontBodySvg() {
 			<!-- Pelvic Floor (Anterior Sub-Pubic Basin) -->
 			<path id="path-pelvic-front" data-muscle="pelvic_floor" class="muscle-group-path" d="M 91 140 L 109 140 C 108 152 105 167 100 172 C 95 167 92 152 91 140 Z" />
 
-			<!-- Groin & Adductors (Inner Thigh) -->
-			<path id="path-groin-left" data-muscle="groin" class="muscle-group-path" d="M 92 175 C 93 195 91 220 89 240 L 96 210 C 95 195 94 180 92 175 Z" />
-			<path id="path-groin-right" data-muscle="groin" class="muscle-group-path" d="M 108 175 C 107 195 109 220 111 240 L 104 210 C 105 195 106 180 108 175 Z" />
+			<!-- Adductors (Inner Thigh) -->
+			<path id="path-adductor-left" data-muscle="adductors" class="muscle-group-path" d="M 97 210 C 96 226 94 245 91 258 C 88 250 87 232 88 210 Z" />
+			<path id="path-adductor-right" data-muscle="adductors" class="muscle-group-path" d="M 103 210 C 104 226 106 245 109 258 C 112 250 113 232 112 210 Z" />
 
 			<!-- Quads (Quadriceps Femoris) -->
 			<path id="path-quad-left" data-muscle="quads" class="muscle-group-path" d="M 75 172 C 68 198 69 238 73 262 C 80 262 87 242 88 200 C 89 176 83 168 75 172 Z" />
@@ -142,6 +142,10 @@ export function getBackBodySvg() {
 			<!-- Hamstrings -->
 			<path id="path-hamstring-left" data-muscle="hamstrings" class="muscle-group-path" d="M 76 200 C 70 225 72 255 76 268 C 84 268 92 245 94 204 Z" />
 			<path id="path-hamstring-right" data-muscle="hamstrings" class="muscle-group-path" d="M 124 200 C 130 225 128 255 124 268 C 116 268 108 245 106 204 Z" />
+
+			<!-- Adductors (Inner Thigh - Posterior) -->
+			<path id="path-adductor-back-left" data-muscle="adductors" class="muscle-group-path" d="M 97 210 C 96 225 94 245 91 258 C 89 250 91 230 94 210 Z" />
+			<path id="path-adductor-back-right" data-muscle="adductors" class="muscle-group-path" d="M 103 210 C 104 225 106 245 109 258 C 111 250 109 230 106 210 Z" />
 
 			<!-- Calves (Gastrocnemius & Soleus) -->
 			<path id="path-calf-back-left" data-muscle="calves" class="muscle-group-path" d="M 73 282 C 67 302 70 326 75 345 C 81 345 86 330 86 300 C 86 285 78 280 73 282 Z" />
@@ -320,8 +324,14 @@ export function createBodyMap(container, options = {}) {
 				p.classList.remove('muscle-primary', 'muscle-secondary', 'muscle-pulse');
 			});
 
-			const pri = (primaryMuscles || []).map(m => String(m).toLowerCase());
-			const sec = (secondaryMuscles || []).map(m => String(m).toLowerCase());
+			const pri = (primaryMuscles || []).map(m => {
+				const s = String(m).toLowerCase();
+				return s === 'groin' ? 'adductors' : s;
+			});
+			const sec = (secondaryMuscles || []).map(m => {
+				const s = String(m).toLowerCase();
+				return s === 'groin' ? 'adductors' : s;
+			});
 
 			pri.forEach(m => {
 				wrapper.querySelectorAll(`.muscle-group-path[data-muscle="${m}"]`).forEach(el => {
@@ -346,7 +356,7 @@ export function createBodyMap(container, options = {}) {
 		},
 
 		setSelectedMuscle(muscleId) {
-			selectedMuscle = muscleId;
+			selectedMuscle = muscleId === 'groin' ? 'adductors' : muscleId;
 			renderSelectedState();
 		},
 

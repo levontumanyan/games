@@ -7,6 +7,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from db import Database
+from taxonomy import get_taxonomy_payload
 
 
 def create_app(data_dir: Path | None = None) -> FastAPI:
@@ -143,6 +144,12 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 		user_id = get_user_id(request)
 		tz_offset = int(request.query_params.get("tz_offset", 0))
 		return JSONResponse(content=db.get_stats(user_id, timezone_offset_minutes=tz_offset))
+
+	# ── Taxonomy API ──────────────────────────────────────────────────────────
+
+	@api_router.get("/taxonomy")
+	async def get_taxonomy():
+		return JSONResponse(content=get_taxonomy_payload())
 
 	# ── Exercises API ─────────────────────────────────────────────────────────
 
