@@ -26,8 +26,11 @@ When given a workout link (`https://levon.ajwest.ca/workout/#u=<user>&r=<id>` or
 
 # Development & UI Verification
 
-## UI Components & Design Tokens
-- Consult [UI_TOKENS.md](file:///Users/levontumanyan/repos/games/workout/UI_TOKENS.md) for canonical classes, buttons, search inputs, modal factories (`createCustomModal`), and exercise card renderers (`renderExerciseCardElement`). Never create one-off styling classes for common primitives.
+## Shared UI Primitives
+- **Modals**: Use [`createCustomModal()`](file:///Users/levontumanyan/repos/games/workout/js/modal.js) from `modal.js` (handles backdrop, click-outside, and <kbd>Esc</kbd> dismissal).
+- **Cards**: Use [`renderExerciseCardElement()`](file:///Users/levontumanyan/repos/games/workout/js/exercises.js) from `exercises.js` for exercise library cards.
+- **Search & Inputs**: Use `.search-box-wrapper` with `.search-box-input` and always set `autocomplete="off"`.
+- **Badges**: Use `getCategoryBadgeHtml()`, `getDisciplineBadgeHtml()`, and `getMuscleBadgeHtml()` from `taxonomy.js`.
 
 ## Playwright Visual Inspection
 - `uv run --with playwright python scripts/inspect_pages.py` — Capture desktop and mobile screenshots across all primary views (saved to `/tmp/workout_screenshots/`).
