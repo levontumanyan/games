@@ -25,7 +25,7 @@ When given a workout link (`https://levon.ajwest.ca/workout/#u=<user>&r=<id>` or
 
 ## Combo & Exercise Endpoints
 - `POST /workout/api/combos` — Create or update a custom combo.
-- `POST /workout/api/exercises` — Create or update a custom exercise.
+- `POST /workout/api/exercises` — Create or update an exercise in the DB (never hardcode exercises in frontend JS).
 
 # Development & UI Verification
 
