@@ -15,6 +15,9 @@ import {
 	getCategoryBadgeHtml,
 	getDisciplineBadgeHtml,
 	getMuscleBadgeHtml,
+	getCategoryOptionsHtml,
+	getDisciplineOptionsHtml,
+	getDisciplineFilterPillsHtml,
 } from './taxonomy.js';
 
 // Re-export taxonomy definitions and badge helpers for seamless compatibility
@@ -29,6 +32,9 @@ export {
 	getCategoryBadgeHtml,
 	getDisciplineBadgeHtml,
 	getMuscleBadgeHtml,
+	getCategoryOptionsHtml,
+	getDisciplineOptionsHtml,
+	getDisciplineFilterPillsHtml,
 };
 
 let cachedExercises = [];

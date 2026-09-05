@@ -2202,7 +2202,8 @@ html, body {
 
 /* ── Inputs ──────────────────────────────────────────────────────────────── */
 
-.input {
+.input,
+.clean-input {
 	width: 100%;
 	padding: 9px 12px;
 	background: var(--bg-input);
@@ -2214,20 +2215,23 @@ html, body {
 	transition: all var(--transition-fast);
 }
 
-.input:focus {
+.input:focus,
+.clean-input:focus {
 	outline: none;
 	border-color: var(--accent);
 	box-shadow: 0 0 0 3px var(--accent-glow);
 	background: var(--bg-input);
 }
 
-.input::placeholder {
+.input::placeholder,
+.clean-input::placeholder {
 	color: var(--text-muted);
 	opacity: 1;
 	transition: opacity var(--transition-fast) ease, color var(--transition-fast) ease;
 }
 
-.input:focus::placeholder {
+.input:focus::placeholder,
+.clean-input:focus::placeholder {
 	opacity: 0;
 	color: transparent;
 }

@@ -7,7 +7,7 @@ import { saveAudioFile, deleteAudioFile } from './musicdb.js';
 import { showPrompt, showAlert, createCustomModal } from './modal.js';
 import { getTimerIcon, getBreakIcon, getComboIcon, getExerciseIcon, getDuplicateIcon, getPlusIcon } from './icons.js';
 import {
-	getCategoryBadgeHtml, getDisciplineBadgeHtml, getMuscleBadgeHtml
+	getCategoryBadgeHtml, getDisciplineBadgeHtml, getMuscleBadgeHtml, getDisciplineFilterPillsHtml
 } from './taxonomy.js';
 import {
 	getExercises, getExerciseById, filterExercises, createCustomExercise,
@@ -1653,12 +1653,7 @@ export function showAddExerciseModal(routine, onUpdate, insertIndex = -1) {
 
 				<div class="nav-pills-row" id="nav-discipline-pills">
 					<span class="nav-pill-label">Discipline</span>
-					<button type="button" class="nav-filter-pill active" data-disc="all">All</button>
-					<button type="button" class="nav-filter-pill" data-disc="calisthenics">🤸 Calisthenics</button>
-					<button type="button" class="nav-filter-pill" data-disc="muay_thai">🥊 Muay Thai</button>
-					<button type="button" class="nav-filter-pill" data-disc="boxing">🥊 Boxing</button>
-					<button type="button" class="nav-filter-pill" data-disc="yoga">🧘 Yoga</button>
-					<button type="button" class="nav-filter-pill" data-disc="general">🏋️ General</button>
+					${getDisciplineFilterPillsHtml()}
 				</div>
 
 				<div class="nav-pills-row" id="nav-media-pills">

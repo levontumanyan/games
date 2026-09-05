@@ -10,6 +10,8 @@ import {
 	getDisciplineBadgeHtml,
 	getMuscleBadgeHtml,
 	getMediaKindBadgeHtml,
+	getCategoryOptionsHtml,
+	getDisciplineOptionsHtml,
 } from './taxonomy.js';
 import {
 	getExercises,
@@ -93,15 +95,8 @@ export function renderExercisesCatalog(container, options = {}) {
 
 	const filterOptions = [
 		{ id: 'all', label: 'All Movements' },
-		{ id: 'disc:muay_thai', label: 'Muay Thai' },
-		{ id: 'disc:boxing', label: 'Boxing' },
-		{ id: 'disc:calisthenics', label: 'Calisthenics' },
-		{ id: 'disc:yoga', label: 'Yoga' },
-		{ id: 'cat:strength', label: 'Strength' },
-		{ id: 'cat:drill', label: 'Drills' },
-		{ id: 'cat:technique', label: 'Technique' },
-		{ id: 'cat:stretch', label: 'Stretch' },
-		{ id: 'cat:cardio', label: 'Cardio' },
+		...Object.entries(DISCIPLINES).map(([k, d]) => ({ id: `disc:${k}`, label: d.label })),
+		...Object.entries(CATEGORIES).map(([k, c]) => ({ id: `cat:${k}`, label: c.label.split(' / ')[0].split(' & ')[0] })),
 	];
 
 	function renderFilterChips() {
@@ -1442,23 +1437,14 @@ export function showEditExerciseModal(exercise = null, options = {}) {
 						<div class="field-group">
 							<label>Category</label>
 							<select id="create-ex-category" class="input">
-								<option value="strength" ${isEdit && exercise.category === 'strength' ? 'selected' : ''}>💪 Strength / Force</option>
-								<option value="drill" ${isEdit && exercise.category === 'drill' ? 'selected' : ''}>⚡ Drills & Speed</option>
-								<option value="technique" ${isEdit && exercise.category === 'technique' ? 'selected' : ''}>🥋 Technique & Form</option>
-								<option value="stretch" ${isEdit && exercise.category === 'stretch' ? 'selected' : ''}>🧘 Stretch & Recovery</option>
-								<option value="cardio" ${isEdit && exercise.category === 'cardio' ? 'selected' : ''}>🫀 Cardio & HIIT</option>
-								<option value="mobility" ${isEdit && exercise.category === 'mobility' ? 'selected' : ''}>🔄 Mobility & Joints</option>
+								${getCategoryOptionsHtml(isEdit ? exercise.category : 'strength')}
 							</select>
 						</div>
 
 						<div class="field-group">
 							<label>Discipline</label>
 							<select id="create-ex-discipline" class="input">
-								<option value="general" ${isEdit && exercise.discipline === 'general' ? 'selected' : ''}>🏋️ General Fitness</option>
-								<option value="muay_thai" ${isEdit && exercise.discipline === 'muay_thai' ? 'selected' : ''}>🥊 Muay Thai</option>
-								<option value="boxing" ${isEdit && exercise.discipline === 'boxing' ? 'selected' : ''}>🥊 Boxing</option>
-								<option value="calisthenics" ${isEdit && exercise.discipline === 'calisthenics' ? 'selected' : ''}>🤸 Calisthenics</option>
-								<option value="yoga" ${isEdit && exercise.discipline === 'yoga' ? 'selected' : ''}>🧘 Yoga</option>
+								${getDisciplineOptionsHtml(isEdit ? exercise.discipline : 'general')}
 							</select>
 						</div>
 					</div>

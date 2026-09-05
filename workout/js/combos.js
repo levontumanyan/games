@@ -3,7 +3,7 @@
  */
 
 import { fetchServerCombos, saveCustomComboOnServer, deleteCustomComboOnServer } from './storage.js';
-import { getCategoryBadgeHtml, getDisciplineBadgeHtml, getMuscleBadgeHtml, CATEGORIES, DISCIPLINES } from './taxonomy.js';
+import { getCategoryBadgeHtml, getDisciplineBadgeHtml, getMuscleBadgeHtml, getDisciplineOptionsHtml, CATEGORIES, DISCIPLINES } from './taxonomy.js';
 import { getExerciseById, getExercises, inferMusclesForExercise } from './exercises.js';
 import { showExerciseVariationsModal } from './exercises_view.js';
 import { escapeHtml, formatTime, parseYouTubeId } from './utils.js';
@@ -176,10 +176,7 @@ export function renderCombosCatalog(container, options = {}) {
 		{ id: 'flow:alternating', label: 'Alternating' },
 		{ id: 'flow:sequence', label: 'Flow' },
 		{ id: 'flow:superset', label: 'Superset' },
-		{ id: 'disc:muay_thai', label: 'Muay Thai' },
-		{ id: 'disc:boxing', label: 'Boxing' },
-		{ id: 'disc:calisthenics', label: 'Calisthenics' },
-		{ id: 'disc:yoga', label: 'Yoga' },
+		...Object.entries(DISCIPLINES).filter(([k]) => k !== 'general').map(([k, d]) => ({ id: `disc:${k}`, label: d.label })),
 	];
 
 	function renderFilterChips() {
@@ -575,11 +572,7 @@ export function showCreateComboModal(options = {}) {
 				<div class="field-group">
 					<label>Discipline</label>
 					<select id="create-combo-discipline" class="input">
-						<option value="general">🏋️ General Fitness</option>
-						<option value="muay_thai">🥊 Muay Thai</option>
-						<option value="boxing">🥊 Boxing</option>
-						<option value="calisthenics">🤸 Calisthenics</option>
-						<option value="yoga">🧘 Yoga</option>
+						${getDisciplineOptionsHtml('general')}
 					</select>
 				</div>
 			</div>

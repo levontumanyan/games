@@ -294,3 +294,40 @@ export function getMuscleBadgeHtml(muscleKey, isPrimary = true) {
 		<span class="muscle-label">${isPrimary ? '• ' : ''}${def.label}</span>
 	</span>`;
 }
+
+/**
+ * Generate <option> markup for category selection dropdowns.
+ * @param {string} [selected='strength']
+ * @returns {string}
+ */
+export function getCategoryOptionsHtml(selected = 'strength') {
+	const current = (selected || 'strength').toLowerCase();
+	return Object.entries(CATEGORIES)
+		.map(([key, info]) => `<option value="${key}" ${key === current ? 'selected' : ''}>${info.icon} ${info.label}</option>`)
+		.join('\n');
+}
+
+/**
+ * Generate <option> markup for discipline selection dropdowns.
+ * @param {string} [selected='general']
+ * @returns {string}
+ */
+export function getDisciplineOptionsHtml(selected = 'general') {
+	const current = (selected || 'general').toLowerCase();
+	return Object.entries(DISCIPLINES)
+		.map(([key, info]) => `<option value="${key}" ${key === current ? 'selected' : ''}>${info.icon} ${info.label}</option>`)
+		.join('\n');
+}
+
+/**
+ * Generate filter pill buttons for discipline navigation.
+ * @param {string} [activeDisc='all']
+ * @returns {string}
+ */
+export function getDisciplineFilterPillsHtml(activeDisc = 'all') {
+	const pills = [`<button type="button" class="nav-filter-pill ${activeDisc === 'all' ? 'active' : ''}" data-disc="all">All</button>`];
+	Object.entries(DISCIPLINES).forEach(([key, info]) => {
+		pills.push(`<button type="button" class="nav-filter-pill ${activeDisc === key ? 'active' : ''}" data-disc="${key}">${info.icon} ${info.label}</button>`);
+	});
+	return pills.join('\n');
+}
