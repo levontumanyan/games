@@ -59,7 +59,7 @@ export function renderExercisesCatalog(container, options = {}) {
 			<div class="exercises-filter-bar">
 				<div class="search-box-wrapper">
 					<span class="search-icon">🔍</span>
-					<input type="text" id="exercise-search-input" class="input search-box-input exercise-search-input" placeholder="Search exercises, muscles, techniques, cues..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+					<input type="text" id="exercise-search-input" class="input search-box-input exercise-search-input clean-input" placeholder="Search exercises, muscles, techniques, cues..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
 				</div>
 				<div class="exercise-filter-chips" id="exercise-filter-chips"></div>
 			</div>
@@ -392,8 +392,11 @@ function createModernVideoSlicerDrawer({
 	sMinus.textContent = '−';
 	const startInput = document.createElement('input');
 	startInput.type = 'text';
-	startInput.className = 'modern-time-input';
+	startInput.className = 'modern-time-input clean-input';
 	startInput.value = '00:00';
+	startInput.autocomplete = 'off';
+	startInput.autocorrect = 'off';
+	startInput.autocapitalize = 'off';
 	startInput.spellcheck = false;
 	const sPlus = document.createElement('button');
 	sPlus.type = 'button';
@@ -422,8 +425,11 @@ function createModernVideoSlicerDrawer({
 	eMinus.textContent = '−';
 	const endInput = document.createElement('input');
 	endInput.type = 'text';
-	endInput.className = 'modern-time-input';
+	endInput.className = 'modern-time-input clean-input';
 	endInput.value = '01:00';
+	endInput.autocomplete = 'off';
+	endInput.autocorrect = 'off';
+	endInput.autocapitalize = 'off';
 	endInput.spellcheck = false;
 	const ePlus = document.createElement('button');
 	ePlus.type = 'button';
@@ -912,7 +918,7 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 					<div class="hud-description-box ${!exercise.description && !isEditingDesc ? 'hud-desc-empty' : ''} ${isEditingDesc ? 'is-editing' : ''}">
 						${isEditingDesc ? `
 							<div class="hud-desc-edit-form">
-								<textarea id="hud-desc-editor" class="input hud-desc-textarea" rows="3" placeholder="Describe movement mechanics, setup, cues, or tips...">${escapeHtml(exercise.description || '')}</textarea>
+								<textarea id="hud-desc-editor" class="input hud-desc-textarea clean-input" rows="3" placeholder="Describe movement mechanics, setup, cues, or tips..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">${escapeHtml(exercise.description || '')}</textarea>
 								<div class="hud-desc-actions">
 									<button type="button" class="btn btn-primary btn-xs btn-save-desc">Save</button>
 									<button type="button" class="btn btn-ghost btn-xs btn-cancel-desc">Cancel</button>
@@ -1007,12 +1013,12 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 
 							<div class="field-group" id="new-asset-title-group">
 								<label id="new-asset-title-label">Asset Title</label>
-								<input type="text" id="new-asset-title" class="input" placeholder="e.g., Coach Breakdown & Cueing">
+								<input type="text" id="new-asset-title" class="input clean-input" placeholder="e.g., Coach Breakdown & Cueing" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
 							</div>
 
 							<div class="field-group" id="new-asset-url-group">
 								<label id="new-asset-url-label">YouTube Video URL</label>
-								<input type="text" id="new-asset-url" class="input" placeholder="https://youtube.com/watch?v=... or https://youtu.be/...">
+								<input type="text" id="new-asset-url" class="input clean-input" placeholder="https://youtube.com/watch?v=... or https://youtu.be/..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
 							</div>
 
 							<!-- Modern Slicer Drawer for Video Asset -->
@@ -1430,7 +1436,7 @@ export function showEditExerciseModal(exercise = null, options = {}) {
 				<div class="exercise-form-fields">
 					<div class="field-group">
 						<label>Exercise Name</label>
-						<input type="text" id="create-ex-name" class="input" placeholder="e.g., Muay Thai Switch Kick, Diamond Push-ups..." value="${isEdit ? escapeHtml(exercise.name || '') : ''}">
+						<input type="text" id="create-ex-name" class="input clean-input" placeholder="e.g., Muay Thai Switch Kick, Diamond Push-ups..." value="${isEdit ? escapeHtml(exercise.name || '') : ''}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
 					</div>
 
 					<div class="field-row">
@@ -1460,7 +1466,7 @@ export function showEditExerciseModal(exercise = null, options = {}) {
 
 						<div class="field-group">
 							<label>Default Quantity (reps or sec)</label>
-							<input type="number" id="create-ex-quantity" class="input" min="1" value="${isEdit ? (exercise.default_quantity || 20) : 20}">
+							<input type="number" id="create-ex-quantity" class="input clean-input" min="1" value="${isEdit ? (exercise.default_quantity || 20) : 20}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
 						</div>
 					</div>
 
@@ -1478,7 +1484,7 @@ export function showEditExerciseModal(exercise = null, options = {}) {
 
 					<div class="field-group">
 						<label>Description & Technical Cues</label>
-						<textarea id="create-ex-desc" class="input" rows="4" placeholder="Key form cues, tempo, or setup instructions...">${isEdit ? escapeHtml(exercise.description || '') : ''}</textarea>
+						<textarea id="create-ex-desc" class="input clean-input" rows="4" placeholder="Key form cues, tempo, or setup instructions..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">${isEdit ? escapeHtml(exercise.description || '') : ''}</textarea>
 					</div>
 
 					<div class="field-group">
@@ -1487,7 +1493,7 @@ export function showEditExerciseModal(exercise = null, options = {}) {
 							${isEdit && currentMediaUrl ? '<button type="button" id="btn-clear-ex-media" class="btn btn-ghost btn-xs" style="color:var(--text-danger,#ef4444);padding:1px 6px;">✕ Clear Video/Media</button>' : ''}
 						</div>
 						<div class="media-input-with-upload">
-							<input type="text" id="create-ex-media" class="input" placeholder="YouTube URL, image link, or upload/paste screenshot..." value="${escapeHtml(currentMediaUrl)}">
+							<input type="text" id="create-ex-media" class="input clean-input" placeholder="YouTube URL, image link, or upload/paste screenshot..." value="${escapeHtml(currentMediaUrl)}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
 							<input type="file" id="create-ex-file-input" accept="image/*" class="hidden-file-input">
 							<button type="button" id="btn-browse-ex-photo" class="btn btn-ghost btn-sm" title="Upload local image / screenshot">📷 Upload</button>
 						</div>

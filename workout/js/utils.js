@@ -336,4 +336,71 @@ export function getEffectiveSubStepDuration(step, subIndex = 0, totalSubSteps = 
 	return Number(step?.durationSeconds) || 30;
 }
 
+/**
+ * Configure an input or textarea element with standard attributes to disable
+ * browser autocomplete suggestions, autocorrect, autocapitalize, and spellcheck.
+ * @param {HTMLElement} el
+ */
+export function applyCleanInputAttributes(el) {
+	if (!el || !(el instanceof HTMLElement)) return;
+	const tag = el.tagName.toLowerCase();
+	if (tag !== 'input' && tag !== 'textarea') return;
+	if (tag === 'input') {
+		const type = (el.getAttribute('type') || 'text').toLowerCase();
+		if (['file', 'checkbox', 'radio', 'range', 'button', 'submit', 'reset', 'hidden', 'color'].includes(type)) {
+			return;
+		}
+	}
+
+	if (!el.classList.contains('clean-input')) {
+		el.classList.add('clean-input');
+	}
+	el.setAttribute('autocomplete', 'off');
+	el.setAttribute('autocorrect', 'off');
+	el.setAttribute('autocapitalize', 'off');
+	el.setAttribute('spellcheck', 'false');
+}
+
+/**
+ * Initialize automatic enforcement of clean input attributes across all current
+ * and dynamically added inputs in the document.
+ */
+export function initInputCleanlinessEnforcer() {
+	if (typeof document === 'undefined') return;
+
+	const selector = 'input:not([type="file"]):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="hidden"]):not([type="color"]), textarea';
+
+	// Enforce on all existing matching elements
+	document.querySelectorAll(selector).forEach(applyCleanInputAttributes);
+
+	// Enforce on focusin so dynamically added/rendered inputs are guaranteed clean before first keystroke
+	document.addEventListener('focusin', (e) => {
+		if (e.target && e.target.matches && e.target.matches(selector)) {
+			applyCleanInputAttributes(e.target);
+		}
+	}, true);
+
+	// MutationObserver to catch elements as soon as they are inserted into the DOM
+	if (typeof MutationObserver !== 'undefined') {
+		const observer = new MutationObserver((mutations) => {
+			for (const mutation of mutations) {
+				for (const node of mutation.addedNodes) {
+					if (node.nodeType !== Node.ELEMENT_NODE) continue;
+					if (node.matches && node.matches(selector)) {
+						applyCleanInputAttributes(node);
+					}
+					if (node.querySelectorAll) {
+						node.querySelectorAll(selector).forEach(applyCleanInputAttributes);
+					}
+				}
+			}
+		});
+
+		observer.observe(document.body || document.documentElement, {
+			childList: true,
+			subtree: true
+		});
+	}
+}
+
 

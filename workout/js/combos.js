@@ -145,7 +145,7 @@ export function renderCombosCatalog(container, options = {}) {
 			<div class="combos-filter-bar">
 				<div class="search-box-wrapper">
 					<span class="search-icon">🔍</span>
-					<input type="text" id="combo-search-input" class="input search-box-input combo-search-input" placeholder="Search combos, alternating flows, supersets..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+					<input type="text" id="combo-search-input" class="input search-box-input combo-search-input clean-input" placeholder="Search combos, alternating flows, supersets..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
 				</div>
 				<div class="combo-filter-chips" id="combo-filter-chips"></div>
 			</div>
@@ -556,7 +556,7 @@ export function showCreateComboModal(options = {}) {
 		bodyHtml: `
 			<div class="field-group">
 				<label>Combo Name</label>
-				<input type="text" id="create-combo-name" class="input" placeholder="e.g., Star Jumps ⮀ Coordination Drills, Jab + Knee Flurry...">
+				<input type="text" id="create-combo-name" class="input clean-input" placeholder="e.g., Star Jumps ⮀ Coordination Drills, Jab + Knee Flurry..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
 			</div>
 
 			<div class="field-row">
@@ -600,29 +600,29 @@ export function showCreateComboModal(options = {}) {
 
 				<div class="field-group">
 					<label>Duration / Reps (sec or count)</label>
-					<input type="number" id="create-combo-quantity" class="input" min="1" value="190">
+					<input type="number" id="create-combo-quantity" class="input clean-input" min="1" value="190" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
 				</div>
 			</div>
 
 			<div class="field-group">
 				<label>Video URL (Optional YouTube link)</label>
-				<input type="text" id="create-combo-video-url" class="input" placeholder="https://youtube.com/watch?v=...">
+				<input type="text" id="create-combo-video-url" class="input clean-input" placeholder="https://youtube.com/watch?v=..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
 			</div>
 
 			<div class="field-row">
 				<div class="field-group">
 					<label>Start Time (sec)</label>
-					<input type="number" id="create-combo-start" class="input" min="0" value="0">
+					<input type="number" id="create-combo-start" class="input clean-input" min="0" value="0" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
 				</div>
 				<div class="field-group">
 					<label>End Time (sec)</label>
-					<input type="number" id="create-combo-end" class="input" min="1" value="190">
+					<input type="number" id="create-combo-end" class="input clean-input" min="1" value="190" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
 				</div>
 			</div>
 
 			<div class="field-group">
 				<label>Description</label>
-				<textarea id="create-combo-desc" class="input" rows="2" placeholder="Flow structure, cadence instructions, or technical pairing notes..."></textarea>
+				<textarea id="create-combo-desc" class="input clean-input" rows="2" placeholder="Flow structure, cadence instructions, or technical pairing notes..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
 			</div>
 		</div>
 

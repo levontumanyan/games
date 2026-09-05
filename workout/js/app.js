@@ -24,7 +24,7 @@ import {
 	initMusic, setVolume as setMusicVolume, nextTrack, prevTrack,
 	muteMusic, unmuteMusic, isMuted as isMusicMuted, unlockAudio
 } from './music.js';
-import { formatTime, formatFriendlyDuration, copyToClipboard, showToast, parseYouTubeId } from './utils.js';
+import { formatTime, formatFriendlyDuration, copyToClipboard, showToast, parseYouTubeId, initInputCleanlinessEnforcer } from './utils.js';
 import { getClipIcon, getTimerIcon, getBreakIcon } from './icons.js';
 import { showPrompt, showConfirm, showAlert } from './modal.js';
 import {
@@ -56,6 +56,7 @@ const dom = {};
 async function init() {
 	cacheDom();
 	initTheme();
+	initInputCleanlinessEnforcer();
 	updateProfileButtonLabel();
 
 	// Fast initial render from localStorage cache

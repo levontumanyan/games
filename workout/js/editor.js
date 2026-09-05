@@ -499,9 +499,13 @@ function createStepElement(step, index, routine, onUpdate, onTestStep) {
 		const currentVal = step.label || derivedTitle;
 		const input = document.createElement('input');
 		input.type = 'text';
-		input.className = 'input input-inline-title-edit';
+		input.className = 'input input-inline-title-edit clean-input';
 		input.value = currentVal;
 		input.placeholder = derivedTitle;
+		input.autocomplete = 'off';
+		input.autocorrect = 'off';
+		input.autocapitalize = 'off';
+		input.spellcheck = false;
 
 		const commit = () => {
 			const val = input.value.trim();
@@ -784,9 +788,13 @@ function createBreakFields(step, onUpdate) {
 
 	const customInput = document.createElement('input');
 	customInput.type = 'text';
-	customInput.className = 'break-custom-input';
+	customInput.className = 'break-custom-input clean-input';
 	customInput.placeholder = '0:30';
 	customInput.value = formatTime(curSec);
+	customInput.autocomplete = 'off';
+	customInput.autocorrect = 'off';
+	customInput.autocapitalize = 'off';
+	customInput.spellcheck = false;
 	customInput.title = 'Rest duration (scroll wheel, up/down arrows, or type MM:SS)';
 
 	const incBtn = document.createElement('button');
@@ -938,9 +946,12 @@ function createExercisePicker(step, onUpdate) {
 
 	const input = document.createElement('input');
 	input.type = 'text';
-	input.className = 'input ex-combobox-input ex-combobox-input-compact';
+	input.className = 'input ex-combobox-input ex-combobox-input-compact clean-input';
 	input.placeholder = '+ Tag movement (e.g. Teep, Push-ups)...';
 	input.autocomplete = 'off';
+	input.autocorrect = 'off';
+	input.autocapitalize = 'off';
+	input.spellcheck = false;
 
 	const dropdown = document.createElement('div');
 	dropdown.className = 'ex-combobox-dropdown hidden';
@@ -1125,8 +1136,12 @@ function createTimerFields(step, onUpdate) {
 			const repsInp = document.createElement('input');
 			repsInp.type = 'number';
 			repsInp.min = '1';
-			repsInp.className = 'break-custom-input';
+			repsInp.className = 'break-custom-input clean-input';
 			repsInp.value = curReps;
+			repsInp.autocomplete = 'off';
+			repsInp.autocorrect = 'off';
+			repsInp.autocapitalize = 'off';
+			repsInp.spellcheck = false;
 
 			const incBtn = document.createElement('button');
 			incBtn.type = 'button';
@@ -1188,9 +1203,13 @@ function createTimerFields(step, onUpdate) {
 
 			const customInput = document.createElement('input');
 			customInput.type = 'text';
-			customInput.className = 'break-custom-input';
+			customInput.className = 'break-custom-input clean-input';
 			customInput.placeholder = '0:30';
 			customInput.value = formatTime(curSec);
+			customInput.autocomplete = 'off';
+			customInput.autocorrect = 'off';
+			customInput.autocapitalize = 'off';
+			customInput.spellcheck = false;
 
 			const incBtn = document.createElement('button');
 			incBtn.type = 'button';
@@ -1284,9 +1303,13 @@ function createTimeField(labelText, valueSeconds, onChange, placeholder = '0:00'
 
 	const input = document.createElement('input');
 	input.type = 'text';
-	input.className = 'stepper-input';
+	input.className = 'stepper-input clean-input';
 	input.placeholder = placeholder;
 	input.value = (valueSeconds === 0 && emptyWhenZero) ? '' : (valueSeconds > 0 ? formatTime(valueSeconds) : '');
+	input.autocomplete = 'off';
+	input.autocorrect = 'off';
+	input.autocapitalize = 'off';
+	input.spellcheck = false;
 
 	const incBtn = document.createElement('button');
 	incBtn.type = 'button';
@@ -1382,9 +1405,13 @@ function createField(labelText, value, onChange, placeholder = '') {
 
 	const input = document.createElement('input');
 	input.type = 'text';
-	input.className = 'input';
+	input.className = 'input clean-input';
 	input.value = value || '';
 	input.placeholder = placeholder;
+	input.autocomplete = 'off';
+	input.autocorrect = 'off';
+	input.autocapitalize = 'off';
+	input.spellcheck = false;
 	input.addEventListener('change', (e) => onChange(e.target.value));
 
 	group.append(label, input);
@@ -1648,7 +1675,7 @@ export function showAddExerciseModal(routine, onUpdate, insertIndex = -1) {
 			<div class="nav-filter-toolbar">
 				<div class="search-box-wrapper">
 					<span class="search-icon">🔍</span>
-					<input type="text" class="input search-box-input nav-search-input" id="nav-search" placeholder="Search exercises, disciplines, or muscles (e.g. Teep, Quads, Push-ups)..." autofocus autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+					<input type="text" class="input search-box-input nav-search-input clean-input" id="nav-search" placeholder="Search exercises, disciplines, or muscles (e.g. Teep, Quads, Push-ups)..." autofocus autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
 				</div>
 
 				<div class="nav-pills-row" id="nav-discipline-pills">
@@ -1936,7 +1963,7 @@ export function showAddComboModal(routine, onUpdate, insertIndex = -1) {
 		bodyHtml: `
 			<div class="search-box-wrapper" style="margin-bottom:12px;">
 				<span class="search-icon">🔍</span>
-				<input type="text" id="add-combo-search" class="input search-box-input combo-search-input" placeholder="Search combos (Star Jumps ⮀ Coordination, Lateral Taps, Jab Knee)..." autofocus autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+				<input type="text" id="add-combo-search" class="input search-box-input combo-search-input clean-input" placeholder="Search combos (Star Jumps ⮀ Coordination, Lateral Taps, Jab Knee)..." autofocus autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
 			</div>
 
 			<div id="add-combo-list" class="add-picker-list"></div>
