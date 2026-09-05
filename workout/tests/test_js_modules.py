@@ -306,6 +306,57 @@ def test_step_creation_from_exercise_and_combo():
 		throw new Error('createStepFromExercise failed for reps exercise: ' + JSON.stringify(timerStep));
 	}}
 
+	// 2b. Reps exercise with instruction video (Explosive Pushups)
+	const explosivePushupsEx = {{
+		id: 'ex-explosive-pushups',
+		name: 'Explosive Plyometric Pushups',
+		category: 'strength',
+		discipline: 'calisthenics',
+		default_mode: 'reps',
+		default_quantity: 8,
+		media_url: 'https://www.youtube.com/watch?v=pdchoc-4f7Q',
+		media_assets: [
+			{{
+				id: 'asset-explosive-pushups-video',
+				kind: 'instruction',
+				type: 'video',
+				title: 'Instruction Tutorial',
+				videoId: 'pdchoc-4f7Q',
+				startSeconds: 0
+			}}
+		]
+	}};
+
+	const explosiveStep = createStepFromExercise(explosivePushupsEx);
+	if (explosiveStep.type !== 'timer' || explosiveStep.stepMode !== 'reps' || explosiveStep.targetReps !== 8) {{
+		throw new Error('createStepFromExercise failed for explosive pushups instruction video: ' + JSON.stringify(explosiveStep));
+	}}
+
+	// 2c. Timed exercise with instruction video (should not force a clip step)
+	const timedInstructionEx = {{
+		id: 'ex-timed-instruction',
+		name: 'Plank Form Coaching',
+		category: 'core',
+		discipline: 'general',
+		default_mode: 'time',
+		default_quantity: 45,
+		media_url: 'https://www.youtube.com/watch?v=example',
+		media_assets: [
+			{{
+				id: 'asset-plank-tutorial',
+				kind: 'instruction',
+				type: 'video',
+				title: 'Plank Tutorial',
+				videoId: 'example'
+			}}
+		]
+	}};
+
+	const timedInstructionStep = createStepFromExercise(timedInstructionEx);
+	if (timedInstructionStep.type !== 'timer' || timedInstructionStep.stepMode !== 'time' || timedInstructionStep.durationSeconds !== 45) {{
+		throw new Error('createStepFromExercise failed for timed instruction exercise: ' + JSON.stringify(timedInstructionStep));
+	}}
+
 	// 3. Combo with video
 	const comboWithVid = {{
 		id: 'combo-1',

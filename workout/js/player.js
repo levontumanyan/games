@@ -779,10 +779,10 @@ function executeCurrentStep() {
 		updateSessionStep(currentStepIndex);
 	}
 
-	const isExplicitReps = step.stepMode === 'reps' && !step.videoId && !step.type?.includes('clip');
+	const isExplicitReps = step.stepMode === 'reps' || (!step.stepMode && Boolean(step.targetReps) && Number(step.targetReps) > 0);
 	const videoAsset = !isExplicitReps ? resolveStepVideoAsset(step) : null;
 
-	if (step.type === 'clip' || (videoAsset && !isBreakStep(step) && step.stepMode !== 'reps')) {
+	if (!isExplicitReps && (step.type === 'clip' || (videoAsset && !isBreakStep(step)))) {
 		if (videoAsset) {
 			step.type = 'clip';
 			step.videoId = step.videoId || videoAsset.videoId;

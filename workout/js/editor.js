@@ -542,11 +542,11 @@ function createStepElement(step, index, routine, onUpdate, onTestStep) {
 
 	const headerMeta = document.createElement('span');
 	headerMeta.className = 'step-header-meta';
-	if (step.type === 'clip') {
+	if (step.stepMode === 'reps' || (!step.stepMode && Boolean(step.targetReps))) {
+		headerMeta.textContent = `${step.targetReps || 20} reps`;
+	} else if (step.type === 'clip') {
 		const dur = Math.max(0, (step.endSeconds || 60) - (step.startSeconds || 0));
 		headerMeta.textContent = `${formatTime(dur)} (${formatTime(step.startSeconds || 0)}–${formatTime(step.endSeconds || 60)})`;
-	} else if (step.stepMode === 'reps' || (!step.stepMode && Boolean(step.targetReps))) {
-		headerMeta.textContent = `${step.targetReps || 20} reps`;
 	} else {
 		headerMeta.textContent = formatFriendlyDuration(step.durationSeconds || 30);
 	}
@@ -1075,7 +1075,7 @@ function createTimerFields(step, onUpdate) {
 	frag.appendChild(createExercisePicker(step, onUpdate));
 
 	// 2. Compact Control Row: Mode + Presets + Stepper (or Fixed Video Badge)
-	const isVideoStep = Boolean(step.type === 'clip' || (step.videoId && step.endSeconds && step.endSeconds > (step.startSeconds || 0)));
+	const isVideoStep = step.stepMode !== 'reps' && Boolean(step.type === 'clip' || (step.videoId && step.endSeconds && step.endSeconds > (step.startSeconds || 0)));
 
 	const row = document.createElement('div');
 	row.className = 'timer-controls-row';
@@ -1112,6 +1112,7 @@ function createTimerFields(step, onUpdate) {
 		repsBtn.innerHTML = `🔢 Reps`;
 		repsBtn.addEventListener('click', () => {
 			step.stepMode = 'reps';
+			if (step.type === 'clip') step.type = 'timer';
 			if (!step.targetReps) step.targetReps = 20;
 			onUpdate();
 		});
@@ -1545,17 +1546,17 @@ export function createStepFromExercise(ex) {
 	if (!ex) return createTimerStep();
 	const isReps = (ex.default_mode || 'reps') === 'reps';
 	const quantity = ex.default_quantity || (isReps ? 20 : 30);
-	const asset = getExerciseFollowAlongMedia(ex) || (ex.media_assets || [])[0];
+	const asset = getExerciseFollowAlongMedia(ex);
 	const isVidAsset = asset && (asset.type === 'video' || Boolean(asset.videoId));
-	const directVid = (!isVidAsset && ex.media_url && (ex.media_url.includes('youtube') || ex.media_url.includes('youtu.be'))) ? parseYouTubeId(ex.media_url) : null;
+	const directVid = (!isVidAsset && !isReps && ex.media_url && (ex.media_url.includes('youtube') || ex.media_url.includes('youtu.be'))) ? parseYouTubeId(ex.media_url) : null;
 
 	let newStep;
-	if (isVidAsset || directVid) {
+	if (!isReps && (isVidAsset || directVid)) {
 		newStep = createClipStep();
 		newStep.label = ex.name;
 		newStep.videoId = (asset && asset.videoId) ? asset.videoId : (directVid || parseYouTubeId(asset?.url));
 		newStep.startSeconds = asset?.startSeconds || 0;
-		newStep.endSeconds = asset?.endSeconds || ((asset?.startSeconds || 0) + (isReps ? 60 : quantity));
+		newStep.endSeconds = asset?.endSeconds || ((asset?.startSeconds || 0) + quantity);
 	} else {
 		newStep = createTimerStep();
 		newStep.label = ex.name;
@@ -1581,12 +1582,13 @@ export function createStepFromExercise(ex) {
 export function createStepFromCombo(combo) {
 	if (!combo) return createTimerStep();
 	const exList = (combo.exercise_ids || []).map(id => (typeof id === 'object' ? id : { id }));
+	const isReps = combo.default_mode === 'reps';
 	const asset = (combo.media_assets || [])[0];
 	const isVideo = asset && (asset.type === 'video' || Boolean(asset.videoId));
-	const directVid = (!isVideo && combo.media_url && (combo.media_url.includes('youtube') || combo.media_url.includes('youtu.be'))) ? parseYouTubeId(combo.media_url) : null;
+	const directVid = (!isVideo && !isReps && combo.media_url && (combo.media_url.includes('youtube') || combo.media_url.includes('youtu.be'))) ? parseYouTubeId(combo.media_url) : null;
 
 	let newStep;
-	if (isVideo || directVid) {
+	if (!isReps && (isVideo || directVid)) {
 		newStep = createClipStep();
 		newStep.label = combo.name;
 		newStep.videoId = (asset && asset.videoId) ? asset.videoId : (directVid || parseYouTubeId(asset?.url || combo.media_url));
@@ -1595,7 +1597,7 @@ export function createStepFromCombo(combo) {
 	} else {
 		newStep = createTimerStep();
 		newStep.label = combo.name;
-		if (combo.default_mode === 'reps') {
+		if (isReps) {
 			newStep.stepMode = 'reps';
 			newStep.targetReps = combo.default_quantity || 20;
 		} else {
