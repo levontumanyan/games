@@ -179,6 +179,7 @@ export function renderCombosCatalog(container, options = {}) {
 		{ id: 'disc:muay_thai', label: 'Muay Thai' },
 		{ id: 'disc:boxing', label: 'Boxing' },
 		{ id: 'disc:calisthenics', label: 'Calisthenics' },
+		{ id: 'disc:yoga', label: 'Yoga' },
 	];
 
 	function renderFilterChips() {
@@ -578,7 +579,7 @@ export function showCreateComboModal(options = {}) {
 						<option value="muay_thai">🥊 Muay Thai</option>
 						<option value="boxing">🥊 Boxing</option>
 						<option value="calisthenics">🤸 Calisthenics</option>
-						<option value="yoga">🧘 Yoga & Mobility</option>
+						<option value="yoga">🧘 Yoga</option>
 					</select>
 				</div>
 			</div>

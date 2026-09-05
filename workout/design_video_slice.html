@@ -1,0 +1,1682 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="matcha-dark">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Exercise Video Slicing & Modal UX Prototypes - Workout Player</title>
+	<link rel="stylesheet" href="css/styles.css">
+	<style>
+		/* ── Modern Obsidian & Electric Matcha Design System ──────────────────────── */
+		:root {
+			--theme-mode: dark;
+			--bg-root: #0b0f0d;
+			--bg-surface: #121815;
+			--bg-surface-elevated: #17211c;
+			--bg-card: #1c2721;
+			--bg-card-hover: #223029;
+			--bg-input: #101613;
+
+			--border-glass: rgba(255, 255, 255, 0.08);
+			--border-glass-hover: rgba(255, 255, 255, 0.16);
+			--border-glass-active: rgba(34, 197, 94, 0.4);
+
+			--text-primary: #f0fdf4;
+			--text-secondary: #94a39b;
+			--text-muted: #5b6961;
+
+			--accent-neon: #22c55e;
+			--accent-neon-hover: #16a34a;
+			--accent-neon-glow: rgba(34, 197, 94, 0.25);
+			--accent-subtle-glow: rgba(34, 197, 94, 0.12);
+
+			--cyan-neon: #38bdf8;
+			--cyan-glow: rgba(56, 189, 248, 0.25);
+			--cyan-subtle: rgba(56, 189, 248, 0.12);
+
+			--amber-neon: #f59e0b;
+			--amber-glow: rgba(245, 158, 11, 0.25);
+
+			--radius-pill: 9999px;
+			--radius-lg: 16px;
+			--radius-md: 10px;
+			--radius-sm: 6px;
+		}
+
+		html, body {
+			height: auto !important;
+			min-height: 100vh !important;
+			overflow-y: auto !important;
+			overflow-x: hidden !important;
+			font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif;
+			background: var(--bg-root) !important;
+			color: var(--text-primary);
+			padding: 24px;
+			line-height: 1.5;
+		}
+
+		/* ── Header Bar ─────────────────────────────────────────────────────────── */
+		.design-header {
+			max-width: 1240px;
+			margin: 0 auto 28px;
+			padding-bottom: 22px;
+			border-bottom: 1px solid var(--border-glass);
+		}
+
+		.design-title-row {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			flex-wrap: wrap;
+			gap: 16px;
+		}
+
+		.design-title {
+			font-size: 1.85rem;
+			font-weight: 800;
+			letter-spacing: -0.02em;
+			color: #fff;
+			display: flex;
+			align-items: center;
+			gap: 12px;
+		}
+
+		.design-title .title-accent {
+			background: linear-gradient(135deg, #4ade80, #38bdf8);
+			-webkit-background-clip: text;
+			-webkit-text-fill-color: transparent;
+		}
+
+		.design-subtitle {
+			color: var(--text-secondary);
+			margin-top: 6px;
+			font-size: 0.95rem;
+			max-width: 820px;
+		}
+
+		/* ── Navigation Tabs ─────────────────────────────────────────────────────── */
+		.options-nav {
+			display: flex;
+			gap: 10px;
+			margin-top: 20px;
+			flex-wrap: wrap;
+		}
+
+		.opt-nav-btn {
+			background: var(--bg-surface);
+			color: var(--text-secondary);
+			border: 1px solid var(--border-glass);
+			padding: 10px 18px;
+			border-radius: var(--radius-md);
+			cursor: pointer;
+			font-size: 0.92rem;
+			font-weight: 600;
+			display: flex;
+			align-items: center;
+			gap: 8px;
+			transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+		}
+
+		.opt-nav-btn.active, .opt-nav-btn:hover {
+			background: var(--bg-card-hover);
+			color: #fff;
+			border-color: var(--accent-neon);
+			box-shadow: 0 4px 20px var(--accent-subtle-glow);
+		}
+
+		.opt-nav-btn .opt-badge {
+			font-size: 0.72rem;
+			padding: 2px 8px;
+			border-radius: 12px;
+			background: rgba(255, 255, 255, 0.08);
+			color: var(--text-secondary);
+		}
+
+		.opt-nav-btn.active .opt-badge {
+			background: var(--accent-subtle-glow);
+			color: var(--accent-neon);
+			font-weight: 700;
+		}
+
+		/* ── Modal Sizing Bar ────────────────────────────────────────────────────── */
+		.size-comparison-bar {
+			display: flex;
+			align-items: center;
+			gap: 12px;
+			background: var(--bg-surface);
+			padding: 10px 16px;
+			border-radius: var(--radius-md);
+			border: 1px solid var(--border-glass);
+			margin-top: 14px;
+			font-size: 0.85rem;
+		}
+
+		.size-btn {
+			background: var(--bg-card);
+			border: 1px solid var(--border-glass);
+			color: var(--text-secondary);
+			padding: 5px 14px;
+			border-radius: var(--radius-sm);
+			font-size: 0.82rem;
+			cursor: pointer;
+			font-weight: 600;
+			transition: all 0.15s ease;
+		}
+
+		.size-btn.active {
+			background: var(--accent-subtle-glow);
+			color: var(--accent-neon);
+			border-color: var(--accent-neon);
+		}
+
+		/* ── Simulated Modal Shell ───────────────────────────────────────────────── */
+		.modal-demo-wrapper {
+			margin: 24px auto 0;
+			background: var(--bg-surface);
+			border: 1px solid var(--border-glass);
+			border-radius: 20px;
+			box-shadow: 0 24px 64px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.05);
+			overflow: hidden;
+			transition: max-width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+		}
+
+		.modal-demo-wrapper.size-880 { max-width: 880px; }
+		.modal-demo-wrapper.size-1120 { max-width: 1120px; }
+		.modal-demo-wrapper.size-1240 { max-width: 1240px; }
+
+		.modal-demo-header {
+			padding: 18px 26px;
+			border-bottom: 1px solid var(--border-glass);
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			background: rgba(18, 24, 21, 0.6);
+			backdrop-filter: blur(12px);
+		}
+
+		.modal-demo-header h3 {
+			font-size: 1.2rem;
+			font-weight: 700;
+			display: flex;
+			align-items: center;
+			gap: 10px;
+		}
+
+		.modal-demo-body {
+			padding: 26px;
+		}
+
+		.modal-demo-footer {
+			padding: 16px 26px;
+			border-top: 1px solid var(--border-glass);
+			display: flex;
+			align-items: center;
+			justify-content: flex-end;
+			gap: 12px;
+			background: rgba(18, 24, 21, 0.6);
+		}
+
+		.demo-split-layout {
+			display: grid;
+			grid-template-columns: 1fr 360px;
+			gap: 28px;
+			align-items: start;
+		}
+
+		.modal-demo-wrapper.size-880 .demo-split-layout {
+			grid-template-columns: 1fr 320px;
+			gap: 20px;
+		}
+
+		.modal-demo-wrapper.size-1240 .demo-split-layout {
+			grid-template-columns: 1fr 380px;
+			gap: 32px;
+		}
+
+		.demo-form-fields {
+			display: flex;
+			flex-direction: column;
+			gap: 20px;
+		}
+
+		/* ── Reusable Component: Modern Video Card & Clean Drawer ────────────────── */
+		.modern-media-card {
+			background: var(--bg-card);
+			border: 1px solid var(--border-glass);
+			border-radius: var(--radius-lg);
+			padding: 18px 20px;
+			display: flex;
+			flex-direction: column;
+			gap: 16px;
+			transition: border-color 0.2s ease, box-shadow 0.2s ease;
+		}
+
+		.modern-media-card:focus-within {
+			border-color: rgba(34, 197, 94, 0.35);
+			box-shadow: 0 4px 24px rgba(34, 197, 94, 0.08);
+		}
+
+		/* Top Row: Video Preview Info + Full Video Mode Switch */
+		.media-header-bar {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: 16px;
+			flex-wrap: wrap;
+		}
+
+		.media-preview-meta {
+			display: flex;
+			align-items: center;
+			gap: 14px;
+		}
+
+		.media-thumb-box {
+			width: 84px;
+			height: 56px;
+			border-radius: var(--radius-md);
+			background: #000;
+			overflow: hidden;
+			position: relative;
+			flex-shrink: 0;
+			border: 1px solid var(--border-glass);
+			box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+		}
+
+		.media-thumb-box img {
+			width: 100%;
+			height: 100%;
+			object-fit: cover;
+		}
+
+		.media-thumb-badge {
+			position: absolute;
+			bottom: 3px;
+			right: 4px;
+			background: rgba(0, 0, 0, 0.8);
+			color: #fff;
+			font-size: 0.65rem;
+			font-weight: 700;
+			padding: 1px 4px;
+			border-radius: 4px;
+		}
+
+		.media-meta-text h4 {
+			font-size: 0.98rem;
+			font-weight: 700;
+			color: #fff;
+			margin-bottom: 4px;
+		}
+
+		.media-meta-sub {
+			display: flex;
+			align-items: center;
+			gap: 8px;
+			font-size: 0.78rem;
+			color: var(--text-secondary);
+		}
+
+		.media-source-pill {
+			background: rgba(255, 255, 255, 0.06);
+			color: #fff;
+			padding: 2px 7px;
+			border-radius: 4px;
+			font-weight: 600;
+		}
+
+		/* ── Modern Mode Switch: [🎬 Full Video] vs [✂️ Time Intervals] ─────────── */
+		.mode-switch-capsule {
+			display: inline-flex;
+			background: var(--bg-input);
+			border: 1px solid var(--border-glass);
+			border-radius: var(--radius-pill);
+			padding: 3px;
+			gap: 3px;
+		}
+
+		.mode-btn {
+			background: transparent;
+			border: none;
+			color: var(--text-secondary);
+			padding: 6px 14px;
+			border-radius: var(--radius-pill);
+			font-size: 0.82rem;
+			font-weight: 600;
+			cursor: pointer;
+			display: flex;
+			align-items: center;
+			gap: 6px;
+			transition: all 0.2s ease;
+		}
+
+		.mode-btn:hover {
+			color: #fff;
+		}
+
+		.mode-btn.active {
+			background: var(--accent-neon);
+			color: #051a0c;
+			font-weight: 700;
+			box-shadow: 0 2px 10px var(--accent-neon-glow);
+		}
+
+		/* ── Full Video Clean Banner (Zero Sliders, Zero Clutter) ─────────────────── */
+		.full-video-clean-banner {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			background: linear-gradient(135deg, rgba(34, 197, 94, 0.08), rgba(56, 189, 248, 0.04));
+			border: 1px solid rgba(34, 197, 94, 0.2);
+			border-radius: var(--radius-md);
+			padding: 14px 18px;
+			gap: 16px;
+			animation: fadeIn 0.2s ease;
+		}
+
+		.full-video-clean-banner.hidden {
+			display: none;
+		}
+
+		.banner-left {
+			display: flex;
+			align-items: center;
+			gap: 12px;
+		}
+
+		.banner-icon-bubble {
+			width: 36px;
+			height: 36px;
+			border-radius: 50%;
+			background: var(--accent-subtle-glow);
+			color: var(--accent-neon);
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			font-size: 1.1rem;
+		}
+
+		.banner-text h5 {
+			font-size: 0.92rem;
+			font-weight: 700;
+			color: #fff;
+			margin-bottom: 2px;
+		}
+
+		.banner-text p {
+			font-size: 0.8rem;
+			color: var(--text-secondary);
+			margin: 0;
+		}
+
+		.btn-add-slice-prompt {
+			background: var(--bg-surface-elevated);
+			border: 1px solid var(--border-glass);
+			color: var(--accent-neon);
+			padding: 7px 14px;
+			border-radius: var(--radius-sm);
+			font-size: 0.82rem;
+			font-weight: 700;
+			cursor: pointer;
+			display: flex;
+			align-items: center;
+			gap: 6px;
+			transition: all 0.15s ease;
+			white-space: nowrap;
+		}
+
+		.btn-add-slice-prompt:hover {
+			background: var(--accent-neon);
+			color: #051a0c;
+			border-color: var(--accent-neon);
+			box-shadow: 0 4px 14px var(--accent-neon-glow);
+		}
+
+		/* ── Time Windows Section (Multi-Interval Drawer with [+] Button) ────────── */
+		.intervals-drawer {
+			display: flex;
+			flex-direction: column;
+			gap: 16px;
+			padding-top: 10px;
+			border-top: 1px solid var(--border-glass);
+			animation: fadeIn 0.25s ease;
+		}
+
+		.intervals-drawer.hidden {
+			display: none;
+		}
+
+		/* Interval Windows Pill Deck */
+		.interval-windows-deck {
+			display: flex;
+			align-items: center;
+			gap: 8px;
+			flex-wrap: wrap;
+		}
+
+		.deck-label {
+			font-size: 0.72rem;
+			font-weight: 700;
+			text-transform: uppercase;
+			letter-spacing: 0.5px;
+			color: var(--text-muted);
+			margin-right: 4px;
+		}
+
+		/* Individual Time Window Pill */
+		.time-window-pill {
+			display: inline-flex;
+			align-items: center;
+			gap: 8px;
+			background: var(--bg-input);
+			border: 1px solid var(--border-glass);
+			border-radius: var(--radius-pill);
+			padding: 5px 12px 5px 14px;
+			font-size: 0.82rem;
+			cursor: pointer;
+			transition: all 0.15s ease;
+			user-select: none;
+		}
+
+		.time-window-pill:hover {
+			border-color: var(--border-glass-hover);
+			background: var(--bg-card-hover);
+		}
+
+		.time-window-pill.active {
+			background: rgba(34, 197, 94, 0.14);
+			border-color: var(--accent-neon);
+			box-shadow: 0 2px 12px var(--accent-subtle-glow);
+		}
+
+		.window-tag {
+			font-weight: 700;
+			color: #fff;
+			font-size: 0.78rem;
+		}
+
+		.time-window-pill.active .window-tag {
+			color: var(--accent-neon);
+		}
+
+		.window-timestamps {
+			font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+			font-size: 0.8rem;
+			color: var(--text-secondary);
+			font-weight: 600;
+		}
+
+		.time-window-pill.active .window-timestamps {
+			color: #fff;
+		}
+
+		.window-dur-tag {
+			background: rgba(255, 255, 255, 0.08);
+			padding: 1px 6px;
+			border-radius: 10px;
+			font-size: 0.7rem;
+			font-weight: 700;
+			color: var(--text-muted);
+		}
+
+		.time-window-pill.active .window-dur-tag {
+			background: rgba(34, 197, 94, 0.25);
+			color: var(--accent-neon);
+		}
+
+		.btn-remove-window {
+			background: transparent;
+			border: none;
+			color: var(--text-muted);
+			font-size: 0.85rem;
+			padding: 2px;
+			margin-left: 2px;
+			cursor: pointer;
+			border-radius: 50%;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			transition: color 0.15s ease;
+		}
+
+		.btn-remove-window:hover {
+			color: #ef4444;
+		}
+
+		/* ── The [+] Add Interval Button ─────────────────────────────────────────── */
+		.btn-add-interval-pill {
+			display: inline-flex;
+			align-items: center;
+			gap: 6px;
+			background: linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(56, 189, 248, 0.1));
+			border: 1px dashed rgba(34, 197, 94, 0.4);
+			border-radius: var(--radius-pill);
+			color: var(--accent-neon);
+			padding: 5px 14px;
+			font-size: 0.82rem;
+			font-weight: 700;
+			cursor: pointer;
+			transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+		}
+
+		.btn-add-interval-pill:hover {
+			background: var(--accent-neon);
+			color: #051a0c;
+			border-color: var(--accent-neon);
+			border-style: solid;
+			box-shadow: 0 4px 16px var(--accent-neon-glow);
+			transform: translateY(-1px);
+		}
+
+		.btn-add-interval-pill .plus-icon {
+			font-size: 1rem;
+			font-weight: 900;
+			line-height: 1;
+		}
+
+		/* ── Active Interval Trimmer Box (Reusing Existing Trimmer Components) ──── */
+		.active-interval-editor {
+			background: var(--bg-input);
+			border: 1px solid var(--border-glass);
+			border-radius: var(--radius-md);
+			padding: 16px 18px;
+			display: flex;
+			flex-direction: column;
+			gap: 14px;
+		}
+
+		.editor-sub-header {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			flex-wrap: wrap;
+			gap: 10px;
+		}
+
+		.editor-title-wrap {
+			display: flex;
+			align-items: center;
+			gap: 8px;
+		}
+
+		.editor-title-badge {
+			font-size: 0.75rem;
+			font-weight: 700;
+			text-transform: uppercase;
+			letter-spacing: 0.5px;
+			color: var(--accent-neon);
+			display: flex;
+			align-items: center;
+			gap: 6px;
+		}
+
+		.interval-name-input {
+			background: transparent;
+			border: 1px solid transparent;
+			border-radius: 4px;
+			color: #fff;
+			font-size: 0.9rem;
+			font-weight: 600;
+			padding: 2px 6px;
+			transition: border-color 0.15s ease;
+		}
+
+		.interval-name-input:hover, .interval-name-input:focus {
+			border-color: var(--border-glass-hover);
+			background: var(--bg-surface);
+			outline: none;
+		}
+
+		/* ── Reused .trimmer-track-wrapper with Modern High-End Styling ─────────── */
+		.trimmer-track-wrapper.modern-track {
+			position: relative;
+			height: 42px;
+			margin: 8px 4px 12px 4px;
+			cursor: pointer;
+			user-select: none;
+			touch-action: none;
+		}
+
+		.trimmer-track-bg.modern-bg {
+			position: absolute;
+			left: 0;
+			right: 0;
+			top: 12px;
+			bottom: 12px;
+			background: rgba(255, 255, 255, 0.05);
+			border-radius: 8px;
+			border: 1px solid var(--border-glass);
+		}
+
+		/* Multi-window track markers */
+		.track-other-window {
+			position: absolute;
+			top: 13px;
+			bottom: 13px;
+			background: rgba(255, 255, 255, 0.08);
+			border-radius: 4px;
+			opacity: 0.6;
+			pointer-events: none;
+		}
+
+		.trimmer-highlight.modern-highlight {
+			position: absolute;
+			top: 9px;
+			bottom: 9px;
+			background: linear-gradient(90deg, rgba(34, 197, 94, 0.35), rgba(56, 189, 248, 0.35));
+			border-top: 2px solid var(--accent-neon);
+			border-bottom: 2px solid var(--cyan-neon);
+			border-radius: 6px;
+			cursor: grab;
+			transition: background 0.15s ease;
+			box-shadow: 0 0 16px var(--accent-subtle-glow);
+		}
+
+		.trimmer-highlight.modern-highlight:active {
+			cursor: grabbing;
+			background: linear-gradient(90deg, rgba(34, 197, 94, 0.5), rgba(56, 189, 248, 0.5));
+		}
+
+		.trimmer-handle.modern-handle {
+			position: absolute;
+			top: 2px;
+			bottom: 2px;
+			width: 16px;
+			margin-left: -8px;
+			background: #ffffff;
+			border: 2px solid var(--accent-neon);
+			border-radius: 6px;
+			cursor: ew-resize;
+			box-shadow: 0 2px 14px rgba(0, 0, 0, 0.8), 0 0 10px var(--accent-neon-glow);
+			z-index: 5;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			transition: transform 0.15s ease, background 0.15s ease;
+		}
+
+		.trimmer-handle.modern-handle::after {
+			content: "";
+			width: 2px;
+			height: 14px;
+			background: #14532d;
+			border-radius: 1px;
+		}
+
+		.trimmer-handle.modern-handle:hover,
+		.trimmer-handle.modern-handle:active {
+			transform: scaleY(1.15) scaleX(1.1);
+			background: #86efac;
+			border-color: #22c55e;
+			box-shadow: 0 0 16px var(--accent-neon);
+		}
+
+		.trimmer-handle.end-handle {
+			border-color: var(--cyan-neon);
+		}
+
+		.trimmer-handle.end-handle::after {
+			background: #0369a1;
+		}
+
+		.trimmer-handle.end-handle:hover,
+		.trimmer-handle.end-handle:active {
+			background: #7dd3fc;
+			border-color: #38bdf8;
+			box-shadow: 0 0 16px var(--cyan-neon);
+		}
+
+		/* ── Modern Time Windows Controls Row with [+] and [-] Buttons ──────────── */
+		/* ── Modern Time Grid Controls Row ──────────────────────────────────────── */
+		.modern-time-grid {
+			display: grid;
+			grid-template-columns: 1fr auto 1fr;
+			align-items: center;
+			gap: 10px;
+			width: 100%;
+		}
+
+		@media (max-width: 440px) {
+			.modern-time-grid {
+				grid-template-columns: 1fr 1fr;
+				gap: 8px;
+			}
+
+			.modern-duration-capsule {
+				grid-column: 1 / -1;
+				order: -1;
+				justify-self: center;
+			}
+		}
+
+		.modern-time-box {
+			background: var(--bg-surface);
+			border: 1px solid var(--border-glass);
+			border-radius: var(--radius-sm);
+			padding: 6px 8px;
+			display: flex;
+			flex-direction: column;
+			gap: 4px;
+			min-width: 0;
+		}
+
+		.modern-time-box-header {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			font-size: 0.65rem;
+			font-weight: 700;
+			text-transform: uppercase;
+			color: var(--text-muted);
+			letter-spacing: 0.4px;
+		}
+
+		.time-format-hint {
+			font-size: 0.6rem;
+			opacity: 0.7;
+		}
+
+		.modern-stepper-wrap {
+			display: flex;
+			align-items: center;
+			gap: 4px;
+			width: 100%;
+		}
+
+		.stepper-btn {
+			background: var(--bg-card);
+			border: 1px solid var(--border-glass);
+			color: var(--text-secondary);
+			border-radius: 4px;
+			width: 28px;
+			height: 30px;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			font-size: 0.85rem;
+			font-weight: 700;
+			cursor: pointer;
+			transition: all 0.15s ease;
+			flex-shrink: 0;
+			user-select: none;
+		}
+
+		.stepper-btn:hover {
+			background: var(--bg-card-hover);
+			color: #fff;
+			border-color: var(--border-glass-hover);
+		}
+
+		.stepper-btn.plus-step:hover {
+			color: var(--accent-neon);
+			border-color: rgba(34, 197, 94, 0.4);
+		}
+
+		.modern-time-input {
+			flex: 1;
+			min-width: 0;
+			width: 100%;
+			background: var(--bg-input);
+			border: 1px solid var(--border-glass);
+			color: #fff;
+			text-align: center;
+			font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+			font-size: 0.92rem;
+			font-weight: 700;
+			height: 30px;
+			border-radius: 4px;
+			padding: 0 4px;
+			transition: border-color 0.15s ease;
+		}
+
+		.modern-time-input:focus {
+			border-color: var(--accent-neon);
+			outline: none;
+			box-shadow: 0 0 0 2px var(--accent-subtle-glow);
+		}
+
+		/* Center Floating Duration Capsule */
+		.modern-duration-capsule {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-content: center;
+			padding: 5px 12px;
+			background: var(--accent-subtle-glow);
+			border: 1px solid var(--border-glass);
+			border-radius: var(--radius-pill);
+			white-space: nowrap;
+			min-width: 76px;
+		}
+
+		.dur-capsule-label {
+			font-size: 0.62rem;
+			font-weight: 700;
+			text-transform: uppercase;
+			letter-spacing: 0.4px;
+			color: var(--accent-neon);
+		}
+
+		.dur-capsule-val {
+			font-size: 0.88rem;
+			font-weight: 800;
+			color: #fff;
+			letter-spacing: -0.01em;
+		}
+
+		/* ── Anatomy Panel & Summary Card ────────────────────────────────────────── */
+		.modern-anatomy-panel {
+			background: var(--bg-card);
+			border: 1px solid var(--border-glass);
+			border-radius: var(--radius-lg);
+			padding: 20px;
+			display: flex;
+			flex-direction: column;
+			gap: 16px;
+		}
+
+		.anatomy-panel-header {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+		}
+
+		.anatomy-header-title {
+			font-size: 0.9rem;
+			font-weight: 700;
+			color: #fff;
+		}
+
+		.demo-body-box-modern {
+			display: flex;
+			justify-content: space-around;
+			padding: 16px;
+			background: var(--bg-input);
+			border-radius: var(--radius-md);
+			border: 1px solid var(--border-glass);
+		}
+
+		/* Video Slices Summary Tray in Anatomy Panel */
+		.slices-summary-tray {
+			background: var(--bg-surface);
+			border: 1px solid var(--border-glass);
+			border-radius: var(--radius-md);
+			padding: 14px;
+			display: flex;
+			flex-direction: column;
+			gap: 8px;
+		}
+
+		.slices-summary-item {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			font-size: 0.8rem;
+			padding: 6px 10px;
+			background: var(--bg-input);
+			border-radius: 6px;
+			border: 1px solid var(--border-glass);
+		}
+
+		/* Callout Cards */
+		.feature-highlights-grid {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+			gap: 16px;
+			margin-bottom: 24px;
+		}
+
+		.highlight-card {
+			background: var(--bg-surface);
+			border: 1px solid var(--border-glass);
+			border-radius: var(--radius-md);
+			padding: 16px 18px;
+			display: flex;
+			flex-direction: column;
+			gap: 6px;
+		}
+
+		.highlight-card h4 {
+			font-size: 0.95rem;
+			font-weight: 700;
+			color: var(--accent-neon);
+			display: flex;
+			align-items: center;
+			gap: 8px;
+		}
+
+		.highlight-card p {
+			font-size: 0.84rem;
+			color: var(--text-secondary);
+			margin: 0;
+			line-height: 1.45;
+		}
+
+	</style>
+</head>
+<body>
+
+	<!-- ── Header Section ── -->
+	<header class="design-header">
+		<div class="design-title-row">
+			<div>
+				<h1 class="design-title">
+					<span>🎬</span> <span class="title-accent">Ultra-Clean Drawer & Time Windows</span>
+				</h1>
+				<p class="design-subtitle">
+					Modern obsidian & electric matcha color palette with effortless time window intervals, instant <strong style="color:var(--accent-neon);">[+]</strong> button interval creation, and clean <strong style="color:var(--accent-neon);">Full Video</strong> mode.
+				</p>
+			</div>
+			<div>
+				<a href="/workout/" class="btn btn-ghost btn-sm" style="display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border-glass);">
+					← Back to Workout Player
+				</a>
+			</div>
+		</div>
+
+		<!-- ── Navigation Tabs between Ideas ── -->
+		<div class="options-nav">
+			<button class="opt-nav-btn active" data-target="opt-modern-windows">
+				<span>⚡ Ultra-Clean Drawer + Time Windows [+]</span>
+				<span class="opt-badge">Requested Hero</span>
+			</button>
+			<button class="opt-nav-btn" data-target="opt-comparison">
+				<span>🔍 Design Specs & Component Breakdown</span>
+				<span class="opt-badge">Architecture</span>
+			</button>
+		</div>
+
+		<!-- ── Live Modal Width Switcher ── -->
+		<div class="size-comparison-bar">
+			<span style="color:var(--text-muted);font-weight:700;text-transform:uppercase;font-size:0.75rem;">Modal Width:</span>
+			<button class="size-btn" data-size="880">Current Compact (880px)</button>
+			<button class="size-btn active" data-size="1120">Wide Studio (1,120px) ★</button>
+			<button class="size-btn" data-size="1240">Ultra-Wide (1,240px)</button>
+			<span style="margin-left:auto;color:var(--text-muted);font-size:0.75rem;">
+				(Previewing in localhost · not yet committed)
+			</span>
+		</div>
+	</header>
+
+	<!-- ── Main Showcase Stage ── -->
+	<main style="max-width:1240px;margin:0 auto 80px;">
+
+		<!-- ═══════════════════════════════════════════════════════════════════
+		     TAB 1: Ultra-Clean Drawer with Multi-Interval Time Windows [+]
+		     ═══════════════════════════════════════════════════════════════════ -->
+		<div id="opt-modern-windows" class="tab-pane active">
+			<div class="feature-highlights-grid">
+				<div class="highlight-card">
+					<h4>✨ Modern Obsidian & Electric Matcha</h4>
+					<p>Deep rich surfaces with frosted glass borders (<code style="color:var(--accent-neon);">rgba(255,255,255,0.08)</code>), high-contrast labels, and vibrant neon status accents.</p>
+				</div>
+				<div class="highlight-card">
+					<h4>➕ Easy Time Windows with [+] Button</h4>
+					<p>Click <strong style="color:var(--accent-neon);">+ Add Interval</strong> to instantly spawn new time windows (e.g. Drill, Cue, Follow-Along) from the same video!</p>
+				</div>
+				<div class="highlight-card">
+					<h4>🎬 Full Video Clean Replacement</h4>
+					<p>Switching to <strong>Full Video</strong> seamlessly hides the timeline, sliders, and handles, replacing them with a minimal confirmation banner.</p>
+				</div>
+				<div class="highlight-card">
+					<h4>⏱️ Tactile Stepper Adjusters</h4>
+					<p>Fine-tune start and end times with <code style="color:#fff;">[-5s]</code> <code style="color:#fff;">[-1s]</code> <code style="color:var(--accent-neon);">[+1s]</code> <code style="color:var(--accent-neon);">[+5s]</code> and quick <code style="color:var(--accent-neon);">+15s</code> / <code style="color:var(--accent-neon);">+30s</code> window lengtheners.</p>
+				</div>
+			</div>
+
+			<!-- Interactive Simulated Exercise Editing Modal -->
+			<div class="modal-demo-wrapper size-1120">
+				<div class="modal-demo-header">
+					<h3>✏️ Edit Custom Exercise: <span style="color:var(--accent-neon);">Frog Stretch</span></h3>
+					<button class="btn btn-ghost btn-xs" style="font-size:1.1rem;padding:2px 8px;border:1px solid var(--border-glass);">✕</button>
+				</div>
+
+				<div class="modal-demo-body">
+					<div class="demo-split-layout">
+						<!-- Left Column: Form Fields + Modern Video Drawer -->
+						<div class="demo-form-fields">
+							<div class="field-group">
+								<label style="font-weight:700;font-size:0.85rem;color:var(--text-secondary);display:block;margin-bottom:6px;">Exercise Name</label>
+								<input type="text" class="input" value="Frog Stretch" style="font-weight:700;font-size:1.05rem;background:var(--bg-input);border-color:var(--border-glass);color:#fff;">
+							</div>
+
+							<div class="field-row" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+								<div class="field-group">
+									<label style="font-weight:700;font-size:0.85rem;color:var(--text-secondary);display:block;margin-bottom:6px;">Category</label>
+									<select class="input" style="background:var(--bg-input);border-color:var(--border-glass);color:#fff;">
+										<option>🧘 Stretch & Recovery</option>
+										<option>🔄 Mobility & Joints</option>
+										<option>💪 Strength / Force</option>
+									</select>
+								</div>
+								<div class="field-group">
+									<label style="font-weight:700;font-size:0.85rem;color:var(--text-secondary);display:block;margin-bottom:6px;">Discipline</label>
+									<select class="input" style="background:var(--bg-input);border-color:var(--border-glass);color:#fff;">
+										<option>🧘 Yoga</option>
+										<option>🏋️ General Fitness</option>
+										<option>🥊 Muay Thai</option>
+									</select>
+								</div>
+							</div>
+
+							<!-- ══════════════════════════════════════════════════════════════
+							     THE MODERN VIDEO DRAWER & TIME WINDOWS SECTION
+							     ══════════════════════════════════════════════════════════════ -->
+							<div class="modern-media-card" id="main-video-card">
+								<!-- Video URL Input Row -->
+								<div class="field-group" style="margin-bottom:0;">
+									<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+										<label style="font-size:0.82rem;font-weight:700;color:var(--text-secondary);margin:0;">Exercise Video Media</label>
+										<span style="font-size:0.75rem;color:var(--accent-neon);font-weight:600;">✓ YouTube video linked (3m 42s total)</span>
+									</div>
+									<div style="display:flex;gap:8px;">
+										<input type="text" class="input" id="demo-yt-url" value="https://www.youtube.com/watch?v=7d-4CkcXWVU" style="flex:1;background:var(--bg-input);border-color:var(--border-glass);color:#fff;">
+										<button type="button" class="btn btn-ghost btn-sm" style="border:1px solid var(--border-glass);">📷 Photo</button>
+									</div>
+								</div>
+
+								<!-- Media Header Bar: Thumbnail Preview & Mode Capsule Switch -->
+								<div class="media-header-bar">
+									<div class="media-preview-meta">
+										<div class="media-thumb-box">
+											<img src="https://img.youtube.com/vi/7d-4CkcXWVU/mqdefault.jpg" alt="Video Thumb">
+											<span class="media-thumb-badge">03:42</span>
+										</div>
+										<div class="media-meta-text">
+											<h4>Frog Stretch Form Breakdown & Hip Opener</h4>
+											<div class="media-meta-sub">
+												<span class="media-source-pill">YouTube</span>
+												<span>Total Length: 3m 42s</span>
+											</div>
+										</div>
+									</div>
+
+									<!-- Mode Capsule Switch: [🎬 Full Video] vs [✂️ Time Intervals] -->
+									<div class="mode-switch-capsule" id="hero-mode-switch">
+										<button type="button" class="mode-btn active" data-mode="intervals">
+											<span>✂️ Time Intervals</span>
+										</button>
+										<button type="button" class="mode-btn" data-mode="full">
+											<span>🎬 Full Video</span>
+										</button>
+									</div>
+								</div>
+
+								<!-- STATE 1: Full Video Clean Banner (shown when Full Video selected) -->
+								<div class="full-video-clean-banner hidden" id="hero-full-banner">
+									<div class="banner-left">
+										<div class="banner-icon-bubble">🎬</div>
+										<div class="banner-text">
+											<h5>Using Complete Video (00:00 → 03:42)</h5>
+											<p>No sliders, trim handles, or playback cuts. Plays the entire clip from start to finish.</p>
+										</div>
+									</div>
+									<button type="button" class="btn-add-slice-prompt" id="btn-switch-to-intervals">
+										<span>✂️ Add Specific Interval</span>
+									</button>
+								</div>
+
+								<!-- STATE 2: Modern Intervals Drawer with [+] Button (shown when Time Intervals selected) -->
+								<div class="intervals-drawer" id="hero-intervals-drawer">
+
+									<!-- Time Windows Deck with [+] Button -->
+									<div class="interval-windows-deck">
+										<span class="deck-label">Time Windows:</span>
+
+										<!-- Window Pills Container (Dynamically managed via JS) -->
+										<div id="windows-pills-container" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+											<!-- Window 1 -->
+											<div class="time-window-pill active" data-win-id="win-1">
+												<span class="window-tag">Interval 1:</span>
+												<span class="window-timestamps" id="pill-text-win-1">00:15 - 00:45</span>
+												<span class="window-dur-tag" id="pill-dur-win-1">30s</span>
+												<button type="button" class="btn-remove-window" title="Delete this interval" data-del-id="win-1">✕</button>
+											</div>
+
+											<!-- Window 2 -->
+											<div class="time-window-pill" data-win-id="win-2">
+												<span class="window-tag">Interval 2:</span>
+												<span class="window-timestamps" id="pill-text-win-2">01:10 - 01:55</span>
+												<span class="window-dur-tag" id="pill-dur-win-2">45s</span>
+												<button type="button" class="btn-remove-window" title="Delete this interval" data-del-id="win-2">✕</button>
+											</div>
+										</div>
+
+										<!-- THE [+] BUTTON TO ADD INTERVALS -->
+										<button type="button" class="btn-add-interval-pill" id="btn-add-new-interval" title="Add another interval time window from this video">
+											<span class="plus-icon">+</span>
+											<span>Add Interval</span>
+										</button>
+									</div>
+
+									<!-- Active Interval Editor Box (Reusing Existing Trimmer System) -->
+									<div class="active-interval-editor" id="active-editor-card">
+										<div class="editor-sub-header">
+											<div class="editor-title-wrap">
+												<span class="editor-title-badge">
+													<span>⚡</span> Slicing:
+												</span>
+												<input type="text" class="interval-name-input" id="active-win-name" value="Technique Cue Drill" title="Rename interval">
+											</div>
+
+											<div style="display:flex;align-items:center;gap:10px;">
+												<button type="button" class="btn btn-xs btn-ghost" id="btn-preview-loop" style="border:1px solid var(--border-glass);color:var(--cyan-neon);">
+													▶ Loop Preview (<span id="btn-preview-dur-text">30s</span>)
+												</button>
+											</div>
+										</div>
+
+										<!-- Interactive Trimmer Track (Reusing .trimmer-track-wrapper) -->
+										<div class="trimmer-track-wrapper modern-track" id="hero-track-wrap">
+											<div class="trimmer-track-bg modern-bg"></div>
+
+											<!-- Ghost overlay for other inactive intervals on the track -->
+											<div class="track-other-window" id="ghost-window-2" style="left:31.5%;width:20.2%;" title="Interval 2"></div>
+
+											<!-- Active Interval Highlight Window -->
+											<div class="trimmer-highlight modern-highlight" id="hero-highlight" style="left:6.7%;width:13.5%;"></div>
+
+											<!-- Start & End Handles -->
+											<div class="trimmer-handle modern-handle" id="hero-handle-start" style="left:6.7%;" title="Drag Start (In)"></div>
+											<div class="trimmer-handle modern-handle end-handle" id="hero-handle-end" style="left:20.2%;" title="Drag End (Out)"></div>
+										</div>
+
+										<!-- Modern Time Grid Controls Row with [+] and [-] Buttons -->
+										<div class="modern-time-grid">
+											<!-- Start Box -->
+											<div class="modern-time-box">
+												<div class="modern-time-box-header">
+													<span>Start (In)</span>
+													<span class="time-format-hint">MM:SS</span>
+												</div>
+												<div class="modern-stepper-wrap">
+													<button class="stepper-btn minus-step" data-field="start" data-delta="-1" title="Minus 1s (Shift: -5s)">−</button>
+													<input type="text" class="modern-time-input" id="hero-input-start" value="00:15" spellcheck="false">
+													<button class="stepper-btn plus-step" data-field="start" data-delta="1" title="Plus 1s (Shift: +5s)">+</button>
+												</div>
+											</div>
+
+											<!-- Center Floating Duration Capsule -->
+											<div class="modern-duration-capsule">
+												<span class="dur-capsule-label">Duration</span>
+												<span class="dur-capsule-val" id="hero-pill-dur">⏱️ 30s</span>
+											</div>
+
+											<!-- End Box -->
+											<div class="modern-time-box">
+												<div class="modern-time-box-header">
+													<span>End (Out)</span>
+													<span class="time-format-hint">MM:SS</span>
+												</div>
+												<div class="modern-stepper-wrap">
+													<button class="stepper-btn minus-step" data-field="end" data-delta="-1" title="Minus 1s (Shift: -5s)">−</button>
+													<input type="text" class="modern-time-input" id="hero-input-end" value="00:45" spellcheck="false">
+													<button class="stepper-btn plus-step" data-field="end" data-delta="1" title="Plus 1s (Shift: +5s)">+</button>
+												</div>
+											</div>
+										</div>
+									</div>
+
+								</div>
+							</div>
+
+							<!-- Description Field -->
+							<div class="field-group">
+								<label style="font-weight:700;font-size:0.85rem;color:var(--text-secondary);display:block;margin-bottom:6px;">Form Cues & Execution Notes</label>
+								<textarea class="input" rows="3" style="background:var(--bg-input);border-color:var(--border-glass);color:#fff;">Knees wide on padded mat, feet turned outward. Sink hips backward toward heels until deep adductor stretch is felt. Breathe into the pelvis and hold.</textarea>
+							</div>
+						</div>
+
+						<!-- Right Column: Muscle Anatomy Panel + Intervals Summary -->
+						<div class="modern-anatomy-panel">
+							<div class="anatomy-panel-header">
+								<span class="anatomy-header-title">🧬 Targeted Anatomy</span>
+								<span style="font-size:0.75rem;color:var(--accent-neon);font-weight:700;">Adductors, Hips</span>
+							</div>
+
+							<div class="demo-body-box-modern">
+								<div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+									<span style="font-size:0.7rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;">Anterior (Front)</span>
+									<svg viewBox="0 0 100 180" style="width:90px;height:160px;">
+										<ellipse cx="50" cy="18" rx="8" ry="11" fill="#1c2721" stroke="#22c55e" stroke-width="1.5"/>
+										<path d="M42 28 L58 28 L55 38 L45 38 Z" fill="#1c2721"/>
+										<path d="M35 38 Q50 36 65 38 L62 70 L38 70 Z" fill="#1c2721" stroke="#5b6961" stroke-width="1"/>
+										<!-- Adductors / Groin neon highlighted -->
+										<path d="M42 90 Q48 95 48 125 L43 125 Z" fill="#22c55e" filter="drop-shadow(0 0 4px #22c55e)"/>
+										<path d="M58 90 Q52 95 52 125 L57 125 Z" fill="#22c55e" filter="drop-shadow(0 0 4px #22c55e)"/>
+										<!-- Legs -->
+										<path d="M35 80 L44 130 L41 170 L33 170 L31 130 Z" fill="none" stroke="#5b6961" stroke-width="1"/>
+										<path d="M65 80 L56 130 L59 170 L67 170 L69 130 Z" fill="none" stroke="#5b6961" stroke-width="1"/>
+									</svg>
+								</div>
+								<div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+									<span style="font-size:0.7rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;">Posterior (Back)</span>
+									<svg viewBox="0 0 100 180" style="width:90px;height:160px;">
+										<ellipse cx="50" cy="18" rx="8" ry="11" fill="#1c2721" stroke="#5b6961" stroke-width="1"/>
+										<path d="M37 72 Q50 76 63 72 L61 95 Q50 100 39 95 Z" fill="#f59e0b" opacity="0.85"/>
+										<path d="M35 80 L44 130 L41 170 L33 170 L31 130 Z" fill="none" stroke="#5b6961" stroke-width="1"/>
+										<path d="M65 80 L56 130 L59 170 L67 170 L69 130 Z" fill="none" stroke="#5b6961" stroke-width="1"/>
+									</svg>
+								</div>
+							</div>
+
+							<!-- Media Summary Tray -->
+							<div class="slices-summary-tray">
+								<div style="display:flex;justify-content:space-between;align-items:center;">
+									<span style="font-size:0.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;">Configured Slices</span>
+									<span id="summary-count-badge" style="font-size:0.7rem;background:var(--accent-subtle-glow);color:var(--accent-neon);padding:1px 6px;border-radius:10px;font-weight:700;">2 Intervals</span>
+								</div>
+
+								<div id="summary-slices-list" style="display:flex;flex-direction:column;gap:6px;">
+									<div class="slices-summary-item">
+										<span style="color:#fff;font-weight:600;">1. Technique Cue Drill</span>
+										<span style="color:var(--accent-neon);font-family:monospace;font-weight:700;">00:15 - 00:45 (30s)</span>
+									</div>
+									<div class="slices-summary-item">
+										<span style="color:#fff;font-weight:600;">2. Hold & Breathe</span>
+										<span style="color:var(--cyan-neon);font-family:monospace;font-weight:700;">01:10 - 01:55 (45s)</span>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<div class="modal-demo-footer">
+					<button class="btn btn-ghost" style="border:1px solid var(--border-glass);">Cancel</button>
+					<button class="btn btn-primary" style="background:var(--accent-neon);color:#051a0c;font-weight:800;box-shadow:0 4px 16px var(--accent-neon-glow);border:none;">
+						✓ Save Exercise & Video Intervals
+					</button>
+				</div>
+			</div>
+		</div>
+
+		<!-- ═══════════════════════════════════════════════════════════════════
+		     TAB 2: Design Specs & Reusable Architecture
+		     ═══════════════════════════════════════════════════════════════════ -->
+		<div id="opt-comparison" class="tab-pane" style="display:none;">
+			<div class="highlight-card" style="margin-bottom:20px;">
+				<h4>📐 Architecture & Code Reuse Specs</h4>
+				<p>This implementation reuses existing CSS component classes and database structures without requiring breaking schema migrations.</p>
+			</div>
+
+			<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+				<div class="modern-media-card">
+					<h4 style="color:var(--accent-neon);margin-bottom:8px;">1. Component Reuse</h4>
+					<ul style="padding-left:20px;font-size:0.85rem;color:var(--text-secondary);display:flex;flex-direction:column;gap:8px;">
+						<li><strong style="color:#fff;">.video-trimmer</strong>: Base container from <code style="color:var(--cyan-neon);">styles.css</code> line 2244.</li>
+						<li><strong style="color:#fff;">.trimmer-track-wrapper & .trimmer-handle</strong>: Existing drag track system with enhanced pointer capture and glassmorphic styling.</li>
+						<li><strong style="color:#fff;">.modal-create-exercise</strong>: Upgraded from 880px to 1,120px for spacious 2-column layout.</li>
+						<li><strong style="color:#fff;">parseTime() & formatTime()</strong>: Reused directly from <code style="color:var(--cyan-neon);">js/utils.js</code>.</li>
+					</ul>
+				</div>
+
+				<div class="modern-media-card">
+					<h4 style="color:var(--cyan-neon);margin-bottom:8px;">2. DB & Data Compatibility</h4>
+					<ul style="padding-left:20px;font-size:0.85rem;color:var(--text-secondary);display:flex;flex-direction:column;gap:8px;">
+						<li>Each interval time window maps directly to an entry in the exercise's <code style="color:#fff;">media_assets</code> array (<code style="color:var(--accent-neon);">startSeconds</code>, <code style="color:var(--accent-neon);">endSeconds</code>, <code style="color:var(--accent-neon);">title</code>).</li>
+						<li>If <strong style="color:#fff;">Full Video</strong> is active, <code style="color:var(--accent-neon);">startSeconds: 0</code> and <code style="color:var(--accent-neon);">endSeconds: null</code> (entire video).</li>
+						<li>100% backward compatible with existing routines and workouts.</li>
+					</ul>
+				</div>
+			</div>
+		</div>
+
+	</main>
+
+	<!-- ── Interactive State Script ── -->
+	<script>
+		// Modal Sizing Switcher
+		const sizeBtns = document.querySelectorAll('.size-btn');
+		const modalWrapper = document.querySelector('.modal-demo-wrapper');
+
+		sizeBtns.forEach(btn => {
+			btn.addEventListener('click', () => {
+				sizeBtns.forEach(b => b.classList.remove('active'));
+				btn.classList.add('active');
+				const size = btn.getAttribute('data-size');
+				modalWrapper.classList.remove('size-880', 'size-1120', 'size-1240');
+				modalWrapper.classList.add(`size-${size}`);
+			});
+		});
+
+		// Tab Switcher
+		const navBtns = document.querySelectorAll('.opt-nav-btn');
+		const tabPanes = document.querySelectorAll('.tab-pane');
+
+		navBtns.forEach(btn => {
+			btn.addEventListener('click', () => {
+				navBtns.forEach(b => b.classList.remove('active'));
+				btn.classList.add('active');
+				const target = btn.dataset.target;
+				tabPanes.forEach(pane => {
+					pane.style.display = pane.id === target ? 'block' : 'none';
+				});
+			});
+		});
+
+		// ── Video Intervals State Engine ──────────────────────────────────────────
+		const TOTAL_VIDEO_SEC = 222; // 3m 42s
+
+		let currentMode = 'intervals'; // 'intervals' | 'full'
+		let intervals = [
+			{ id: 'win-1', name: 'Technique Cue Drill', start: 15, end: 45 },
+			{ id: 'win-2', name: 'Hold & Breathe', start: 70, end: 115 }
+		];
+		let activeIntervalId = 'win-1';
+
+		function formatMMSS(sec) {
+			sec = Math.max(0, Math.floor(sec || 0));
+			const m = Math.floor(sec / 60);
+			const s = sec % 60;
+			return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+		}
+
+		function parseMMSS(str) {
+			if (!str) return 0;
+			if (str.includes(':')) {
+				const p = str.split(':').map(x => parseInt(x, 10) || 0);
+				return p[0] * 60 + p[1];
+			}
+			return parseInt(str, 10) || 0;
+		}
+
+		function getActiveInterval() {
+			return intervals.find(i => i.id === activeIntervalId) || intervals[0];
+		}
+
+		function syncHeroUI() {
+			const banner = document.getElementById('hero-full-banner');
+			const drawer = document.getElementById('hero-intervals-drawer');
+			const modeBtns = document.querySelectorAll('#hero-mode-switch .mode-btn');
+
+			modeBtns.forEach(b => {
+				b.classList.toggle('active', b.dataset.mode === currentMode);
+			});
+
+			if (currentMode === 'full') {
+				banner.classList.remove('hidden');
+				drawer.classList.add('hidden');
+				document.getElementById('summary-count-badge').textContent = 'Full Video';
+				document.getElementById('summary-slices-list').innerHTML = `
+					<div class="slices-summary-item">
+						<span style="color:#fff;font-weight:600;">Full Video (Entire Duration)</span>
+						<span style="color:var(--accent-neon);font-family:monospace;font-weight:700;">00:00 - 03:42</span>
+					</div>
+				`;
+				return;
+			}
+
+			banner.classList.add('hidden');
+			drawer.classList.remove('hidden');
+
+			const active = getActiveInterval();
+			if (!active) return;
+
+			// Update Pill labels
+			intervals.forEach(inv => {
+				const textElem = document.getElementById(`pill-text-${inv.id}`);
+				const durElem = document.getElementById(`pill-dur-${inv.id}`);
+				if (textElem) textElem.textContent = `${formatMMSS(inv.start)} - ${formatMMSS(inv.end)}`;
+				if (durElem) durElem.textContent = `${inv.end - inv.start}s`;
+			});
+
+			// Highlight active pill
+			document.querySelectorAll('.time-window-pill').forEach(pill => {
+				pill.classList.toggle('active', pill.dataset.winId === activeIntervalId);
+			});
+
+			// Update Active Editor Box
+			document.getElementById('active-win-name').value = active.name;
+			document.getElementById('hero-input-start').value = formatMMSS(active.start);
+			document.getElementById('hero-input-end').value = formatMMSS(active.end);
+
+			const dur = active.end - active.start;
+			const durStr = dur >= 60 ? `${Math.floor(dur/60)}m ${dur%60}s` : `${dur}s`;
+			document.getElementById('hero-pill-dur').textContent = `⏱️ ${durStr}`;
+			document.getElementById('btn-preview-dur-text').textContent = durStr;
+
+			// Update Slider Track
+			const leftPct = (active.start / TOTAL_VIDEO_SEC) * 100;
+			const rightPct = (active.end / TOTAL_VIDEO_SEC) * 100;
+			const widthPct = Math.max(0, rightPct - leftPct);
+
+			const hl = document.getElementById('hero-highlight');
+			const hStart = document.getElementById('hero-handle-start');
+			const hEnd = document.getElementById('hero-handle-end');
+
+			if (hl) {
+				hl.style.left = `${leftPct}%`;
+				hl.style.width = `${widthPct}%`;
+			}
+			if (hStart) hStart.style.left = `${leftPct}%`;
+			if (hEnd) hEnd.style.left = `${rightPct}%`;
+
+			// Update ghost markers for inactive intervals
+			const otherInv = intervals.find(i => i.id !== activeIntervalId);
+			const ghost = document.getElementById('ghost-window-2');
+			if (ghost) {
+				if (otherInv) {
+					ghost.style.display = 'block';
+					ghost.style.left = `${(otherInv.start / TOTAL_VIDEO_SEC) * 100}%`;
+					ghost.style.width = `${((otherInv.end - otherInv.start) / TOTAL_VIDEO_SEC) * 100}%`;
+				} else {
+					ghost.style.display = 'none';
+				}
+			}
+
+			// Update Summary in Right Column
+			document.getElementById('summary-count-badge').textContent = `${intervals.length} Interval${intervals.length === 1 ? '' : 's'}`;
+			document.getElementById('summary-slices-list').innerHTML = intervals.map((inv, idx) => `
+				<div class="slices-summary-item" style="${inv.id === activeIntervalId ? 'border-color:var(--accent-neon);' : ''}">
+					<span style="color:#fff;font-weight:600;">${idx + 1}. ${inv.name}</span>
+					<span style="color:${inv.id === activeIntervalId ? 'var(--accent-neon)' : 'var(--cyan-neon)'};font-family:monospace;font-weight:700;">
+						${formatMMSS(inv.start)} - ${formatMMSS(inv.end)} (${inv.end - inv.start}s)
+					</span>
+				</div>
+			`).join('');
+		}
+
+		// Mode Toggles
+		document.querySelectorAll('#hero-mode-switch .mode-btn').forEach(btn => {
+			btn.addEventListener('click', () => {
+				currentMode = btn.dataset.mode;
+				syncHeroUI();
+			});
+		});
+
+		document.getElementById('btn-switch-to-intervals')?.addEventListener('click', () => {
+			currentMode = 'intervals';
+			syncHeroUI();
+		});
+
+		// Time Window Pill Selection
+		function bindPillEvents() {
+			document.querySelectorAll('.time-window-pill').forEach(pill => {
+				pill.onclick = (e) => {
+					if (e.target.closest('.btn-remove-window')) return;
+					activeIntervalId = pill.dataset.winId;
+					syncHeroUI();
+				};
+			});
+
+			// Remove Interval Button
+			document.querySelectorAll('.btn-remove-window').forEach(btn => {
+				btn.onclick = (e) => {
+					e.stopPropagation();
+					const id = btn.dataset.delId;
+					if (intervals.length <= 1) {
+						alert('You must keep at least one interval, or switch to Full Video mode.');
+						return;
+					}
+					intervals = intervals.filter(i => i.id !== id);
+					if (activeIntervalId === id) {
+						activeIntervalId = intervals[0].id;
+					}
+					renderWindowPills();
+					syncHeroUI();
+				};
+			});
+		}
+
+		// Render Window Pills in UI
+		function renderWindowPills() {
+			const container = document.getElementById('windows-pills-container');
+			container.innerHTML = intervals.map((inv, idx) => `
+				<div class="time-window-pill ${inv.id === activeIntervalId ? 'active' : ''}" data-win-id="${inv.id}">
+					<span class="window-tag">Interval ${idx + 1}:</span>
+					<span class="window-timestamps" id="pill-text-${inv.id}">${formatMMSS(inv.start)} - ${formatMMSS(inv.end)}</span>
+					<span class="window-dur-tag" id="pill-dur-${inv.id}">${inv.end - inv.start}s</span>
+					<button type="button" class="btn-remove-window" title="Delete this interval" data-del-id="${inv.id}">✕</button>
+				</div>
+			`).join('');
+			bindPillEvents();
+		}
+
+		// ── THE [+] ADD INTERVAL BUTTON LOGIC ──────────────────────────────────────
+		document.getElementById('btn-add-new-interval')?.addEventListener('click', () => {
+			const newId = `win-${Date.now()}`;
+			const last = intervals[intervals.length - 1];
+			// Suggest a new window after the previous one
+			let newStart = last ? Math.min(TOTAL_VIDEO_SEC - 30, last.end + 15) : 0;
+			let newEnd = Math.min(TOTAL_VIDEO_SEC, newStart + 45);
+
+			intervals.push({
+				id: newId,
+				name: `Variation Drill ${intervals.length + 1}`,
+				start: newStart,
+				end: newEnd
+			});
+			activeIntervalId = newId;
+			renderWindowPills();
+			syncHeroUI();
+		});
+
+		// Interval Name Input
+		document.getElementById('active-win-name')?.addEventListener('input', (e) => {
+			const active = getActiveInterval();
+			if (active) {
+				active.name = e.target.value.trim() || 'Interval';
+				syncHeroUI();
+			}
+		});
+
+		// Stepper Buttons (+ / -)
+		document.querySelectorAll('#active-editor-card .stepper-btn').forEach(btn => {
+			btn.addEventListener('click', (e) => {
+				const active = getActiveInterval();
+				if (!active) return;
+				const field = btn.dataset.field;
+				const mult = e.shiftKey ? 5 : 1;
+				const delta = parseInt(btn.dataset.delta, 10) * mult;
+
+				if (field === 'start') {
+					active.start = Math.max(0, Math.min(active.start + delta, active.end - 1));
+				} else {
+					active.end = Math.max(active.start + 1, Math.min(active.end + delta, TOTAL_VIDEO_SEC));
+				}
+				syncHeroUI();
+			});
+		});
+
+		// Quick Lengtheners (+15s, +30s, +60s)
+		document.querySelectorAll('.extender-btn').forEach(btn => {
+			btn.addEventListener('click', () => {
+				const active = getActiveInterval();
+				if (!active) return;
+				const add = parseInt(btn.dataset.add, 10);
+				active.end = Math.min(TOTAL_VIDEO_SEC, active.end + add);
+				syncHeroUI();
+			});
+		});
+
+		// Direct Input entry
+		document.getElementById('hero-input-start')?.addEventListener('change', (e) => {
+			const active = getActiveInterval();
+			if (!active) return;
+			const val = parseMMSS(e.target.value);
+			active.start = Math.max(0, Math.min(val, active.end - 1));
+			syncHeroUI();
+		});
+
+		document.getElementById('hero-input-end')?.addEventListener('change', (e) => {
+			const active = getActiveInterval();
+			if (!active) return;
+			const val = parseMMSS(e.target.value);
+			active.end = Math.max(active.start + 1, Math.min(val, TOTAL_VIDEO_SEC));
+			syncHeroUI();
+		});
+
+		// Draggable Range Handles
+		const trackWrap = document.getElementById('hero-track-wrap');
+		const hStart = document.getElementById('hero-handle-start');
+		const hEnd = document.getElementById('hero-handle-end');
+		const hl = document.getElementById('hero-highlight');
+
+		let dragging = null;
+		let dragStartX = 0;
+		let initStart = 0;
+		let initEnd = 0;
+
+		function getSecFromPointer(e) {
+			const rect = trackWrap.getBoundingClientRect();
+			const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+			return Math.round(frac * TOTAL_VIDEO_SEC);
+		}
+
+		hStart?.addEventListener('pointerdown', (e) => {
+			e.preventDefault();
+			hStart.setPointerCapture(e.pointerId);
+			dragging = 'start';
+		});
+
+		hEnd?.addEventListener('pointerdown', (e) => {
+			e.preventDefault();
+			hEnd.setPointerCapture(e.pointerId);
+			dragging = 'end';
+		});
+
+		hl?.addEventListener('pointerdown', (e) => {
+			e.preventDefault();
+			hl.setPointerCapture(e.pointerId);
+			dragging = 'range';
+			dragStartX = e.clientX;
+			const active = getActiveInterval();
+			initStart = active.start;
+			initEnd = active.end;
+		});
+
+		window.addEventListener('pointermove', (e) => {
+			if (!dragging) return;
+			const active = getActiveInterval();
+			if (!active) return;
+
+			if (dragging === 'start') {
+				const s = getSecFromPointer(e);
+				active.start = Math.max(0, Math.min(s, active.end - 1));
+				syncHeroUI();
+			} else if (dragging === 'end') {
+				const s = getSecFromPointer(e);
+				active.end = Math.max(active.start + 1, Math.min(s, TOTAL_VIDEO_SEC));
+				syncHeroUI();
+			} else if (dragging === 'range') {
+				const rect = trackWrap.getBoundingClientRect();
+				const deltaSec = Math.round(((e.clientX - dragStartX) / rect.width) * TOTAL_VIDEO_SEC);
+				const dur = initEnd - initStart;
+				let newStart = initStart + deltaSec;
+				if (newStart < 0) newStart = 0;
+				if (newStart + dur > TOTAL_VIDEO_SEC) newStart = TOTAL_VIDEO_SEC - dur;
+				active.start = newStart;
+				active.end = newStart + dur;
+				syncHeroUI();
+			}
+		});
+
+		window.addEventListener('pointerup', () => {
+			dragging = null;
+		});
+
+		// Initial bind & sync
+		bindPillEvents();
+		syncHeroUI();
+	</script>
+</body>
+</html>

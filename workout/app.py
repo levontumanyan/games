@@ -329,6 +329,22 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 			return FileResponse(preview_path)
 		raise HTTPException(status_code=404, detail="Preview page not found")
 
+	@app.api_route("/design_video_slice.html", methods=["GET", "HEAD"])
+	@app.api_route("/workout/design_video_slice.html", methods=["GET", "HEAD"])
+	async def design_video_slice():
+		preview_path = static_dir / "design_video_slice.html"
+		if preview_path.exists():
+			return FileResponse(preview_path)
+		raise HTTPException(status_code=404, detail="Design video slice preview page not found")
+
+	@app.api_route("/design_add_to_workout.html", methods=["GET", "HEAD"])
+	@app.api_route("/workout/design_add_to_workout.html", methods=["GET", "HEAD"])
+	async def design_add_to_workout():
+		preview_path = static_dir / "design_add_to_workout.html"
+		if preview_path.exists():
+			return FileResponse(preview_path)
+		raise HTTPException(status_code=404, detail="Design add to workout preview page not found")
+
 	@app.api_route("/", methods=["GET", "HEAD"])
 	@app.api_route("/workout", methods=["GET", "HEAD"])
 	@app.api_route("/workout/", methods=["GET", "HEAD"])

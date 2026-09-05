@@ -1657,7 +1657,7 @@ export function showAddExerciseModal(routine, onUpdate, insertIndex = -1) {
 					<button type="button" class="nav-filter-pill" data-disc="calisthenics">🤸 Calisthenics</button>
 					<button type="button" class="nav-filter-pill" data-disc="muay_thai">🥊 Muay Thai</button>
 					<button type="button" class="nav-filter-pill" data-disc="boxing">🥊 Boxing</button>
-					<button type="button" class="nav-filter-pill" data-disc="yoga">🧘 Yoga & Recovery</button>
+					<button type="button" class="nav-filter-pill" data-disc="yoga">🧘 Yoga</button>
 					<button type="button" class="nav-filter-pill" data-disc="general">🏋️ General</button>
 				</div>
 

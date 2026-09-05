@@ -220,7 +220,7 @@ export const DISCIPLINES = {
 	boxing: { label: 'Boxing', icon: '🥊', color: '#c77953' },
 	calisthenics: { label: 'Calisthenics', icon: '🤸', color: '#6aa3a9' },
 	general: { label: 'General Fitness', icon: '🏋️', color: '#5fa778' },
-	yoga: { label: 'Yoga & Recovery', icon: '🧘', color: '#78a88a' },
+	yoga: { label: 'Yoga', icon: '🧘', color: '#78a88a' },
 };
 
 export const MEDIA_KINDS = {

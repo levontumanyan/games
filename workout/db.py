@@ -1431,7 +1431,7 @@ class Database:
 				"label": "General Fitness",
 				"icon": "🏋️",
 			},
-			"yoga": {"minutes": 0, "reps": 0, "count": 0, "label": "Yoga & Mobility", "icon": "🧘"},
+			"yoga": {"minutes": 0, "reps": 0, "count": 0, "label": "Yoga", "icon": "🧘"},
 		}
 
 		exercise_frequency: dict[str, dict[str, Any]] = {}

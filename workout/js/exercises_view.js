@@ -27,7 +27,7 @@ import {
 } from './exercises.js';
 import { showConfirm, showAlert } from './modal.js';
 import { uploadImageFile } from './storage.js';
-import { escapeHtml, formatTime, parseYouTubeId, showToast } from './utils.js';
+import { escapeHtml, formatTime, parseTime, parseYouTubeId, showToast } from './utils.js';
 import { getFrontBodySvg, getBackBodySvg } from './body_map.js';
 
 /**
@@ -96,7 +96,7 @@ export function renderExercisesCatalog(container, options = {}) {
 		{ id: 'disc:muay_thai', label: 'Muay Thai' },
 		{ id: 'disc:boxing', label: 'Boxing' },
 		{ id: 'disc:calisthenics', label: 'Calisthenics' },
-		{ id: 'disc:yoga', label: 'Yoga & Recovery' },
+		{ id: 'disc:yoga', label: 'Yoga' },
 		{ id: 'cat:strength', label: 'Strength' },
 		{ id: 'cat:drill', label: 'Drills' },
 		{ id: 'cat:technique', label: 'Technique' },
@@ -210,6 +210,538 @@ export function highlightExerciseCard(exerciseIdOrName) {
 			break;
 		}
 	}
+}
+
+/**
+ * Modern Video Slicer Drawer Component.
+ * Supports Full Video clean mode, multi-interval time windows with [+] button,
+ * dual-handle range trimmer, fine-tuning nudge steppers, and quick expanders.
+ */
+function createModernVideoSlicerDrawer({
+	container,
+	urlInput = null,
+	initialUrl = '',
+	initialAssets = [],
+	initialStart = 0,
+	initialEnd = 60,
+	titleInput = null,
+}) {
+	let isFullVideo = false;
+	let intervals = [];
+	let activeIntervalId = 'win-1';
+
+	const videoAssets = (initialAssets || []).filter(a => a && (a.type === 'video' || a.videoId || (a.url && (a.url.includes('youtube') || a.url.includes('youtu.be')))));
+	if (videoAssets.length > 0) {
+		intervals = videoAssets.map((a, idx) => ({
+			id: a.id || `win-${idx + 1}`,
+			name: a.title || `Interval ${idx + 1}`,
+			start: Math.max(0, a.startSeconds || 0),
+			end: Math.max((a.startSeconds || 0) + 1, a.endSeconds || ((a.startSeconds || 0) + 60))
+		}));
+		if (videoAssets[0].startSeconds === 0 && (!videoAssets[0].endSeconds || videoAssets[0].endSeconds <= 0)) {
+			isFullVideo = true;
+		}
+	} else if (typeof initialStart === 'number' && typeof initialEnd === 'number' && initialEnd > initialStart) {
+		intervals = [{
+			id: 'win-1',
+			name: 'Demonstration Slice',
+			start: Math.max(0, initialStart),
+			end: Math.max(initialStart + 1, initialEnd)
+		}];
+	} else {
+		intervals = [{
+			id: 'win-1',
+			name: 'Demonstration Slice',
+			start: 0,
+			end: 60
+		}];
+	}
+	activeIntervalId = intervals[0]?.id || 'win-1';
+
+	function getTimelineMax() {
+		let maxEnd = 120;
+		intervals.forEach(i => {
+			if (i.end > maxEnd) maxEnd = i.end;
+		});
+		return Math.max(300, Math.ceil((maxEnd * 1.35) / 60) * 60);
+	}
+
+	function formatMMSS(sec) {
+		sec = Math.max(0, Math.floor(sec || 0));
+		const m = Math.floor(sec / 60);
+		const s = sec % 60;
+		return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+	}
+
+	function getActive() {
+		return intervals.find(i => i.id === activeIntervalId) || intervals[0];
+	}
+
+	// Wrapper card
+	const wrapper = document.createElement('div');
+	wrapper.className = 'modern-media-card modern-video-slicer-drawer hidden';
+
+	// Header Bar
+	const headerBar = document.createElement('div');
+	headerBar.className = 'media-header-bar';
+
+	const metaWrap = document.createElement('div');
+	metaWrap.className = 'media-preview-meta';
+
+	const thumbBox = document.createElement('div');
+	thumbBox.className = 'media-thumb-box';
+	const thumbImg = document.createElement('img');
+	thumbImg.alt = 'Video Preview';
+	thumbImg.onerror = () => { thumbImg.src = '/workout/media/placeholder.svg'; };
+	thumbBox.appendChild(thumbImg);
+
+	const metaText = document.createElement('div');
+	metaText.className = 'media-meta-text';
+	const metaTitle = document.createElement('h4');
+	metaTitle.textContent = 'YouTube Video Variation';
+	const metaSub = document.createElement('div');
+	metaSub.className = 'media-meta-sub';
+	metaSub.innerHTML = '<span class="media-source-pill">YouTube</span> <span class="video-timing-label">Interactive Slicing</span>';
+	metaText.append(metaTitle, metaSub);
+	metaWrap.append(thumbBox, metaText);
+
+	const modeCapsule = document.createElement('div');
+	modeCapsule.className = 'mode-switch-capsule';
+	const intervalsBtn = document.createElement('button');
+	intervalsBtn.type = 'button';
+	intervalsBtn.className = 'mode-btn active';
+	intervalsBtn.innerHTML = '<span>✂️ Time Intervals</span>';
+	const fullBtn = document.createElement('button');
+	fullBtn.type = 'button';
+	fullBtn.className = 'mode-btn';
+	fullBtn.innerHTML = '<span>🎬 Full Video</span>';
+	modeCapsule.append(intervalsBtn, fullBtn);
+	headerBar.append(metaWrap, modeCapsule);
+
+	// Full Video Clean Banner
+	const fullBanner = document.createElement('div');
+	fullBanner.className = 'full-video-clean-banner hidden';
+	fullBanner.innerHTML = `
+		<div class="banner-left">
+			<div class="banner-icon-bubble">🎬</div>
+			<div class="banner-text">
+				<h5>Using Complete Video (00:00 → End)</h5>
+				<p>No sliders, trim handles, or playback cuts. The player will stream the entire clip from start to finish.</p>
+			</div>
+		</div>
+		<button type="button" class="btn-add-slice-prompt">
+			<span>✂️ Add Specific Interval</span>
+		</button>
+	`;
+	const switchFromBannerBtn = fullBanner.querySelector('.btn-add-slice-prompt');
+
+	// Intervals Drawer
+	const intervalsDrawer = document.createElement('div');
+	intervalsDrawer.className = 'intervals-drawer';
+
+	// Windows Deck
+	const windowsDeck = document.createElement('div');
+	windowsDeck.className = 'interval-windows-deck';
+	const deckLabel = document.createElement('span');
+	deckLabel.className = 'deck-label';
+	deckLabel.textContent = 'Time Windows:';
+	const pillsContainer = document.createElement('div');
+	pillsContainer.style.display = 'flex';
+	pillsContainer.style.gap = '8px';
+	pillsContainer.style.flexWrap = 'wrap';
+	pillsContainer.style.alignItems = 'center';
+
+	const addIntervalBtn = document.createElement('button');
+	addIntervalBtn.type = 'button';
+	addIntervalBtn.className = 'btn-add-interval-pill';
+	addIntervalBtn.title = 'Add another interval time window from this video';
+	addIntervalBtn.innerHTML = '<span class="plus-icon">+</span><span>Add Interval</span>';
+	windowsDeck.append(deckLabel, pillsContainer, addIntervalBtn);
+
+	// Active Interval Editor
+	const activeEditor = document.createElement('div');
+	activeEditor.className = 'active-interval-editor';
+
+	// Trimmer Track
+	const trackWrap = document.createElement('div');
+	trackWrap.className = 'trimmer-track-wrapper modern-track';
+	const trackBg = document.createElement('div');
+	trackBg.className = 'trimmer-track-bg modern-bg';
+	const ghostOverlay = document.createElement('div');
+	ghostOverlay.className = 'track-other-window';
+	const highlight = document.createElement('div');
+	highlight.className = 'trimmer-highlight modern-highlight';
+	highlight.title = 'Drag interval window';
+	const handleStart = document.createElement('div');
+	handleStart.className = 'trimmer-handle modern-handle';
+	handleStart.title = 'Drag Start';
+	const handleEnd = document.createElement('div');
+	handleEnd.className = 'trimmer-handle modern-handle end-handle';
+	handleEnd.title = 'Drag End';
+	trackWrap.append(trackBg, ghostOverlay, highlight, handleStart, handleEnd);
+
+	// Time Controls Grid
+	const timeGrid = document.createElement('div');
+	timeGrid.className = 'modern-time-grid';
+
+	// Start Box
+	const startBox = document.createElement('div');
+	startBox.className = 'modern-time-box';
+	startBox.innerHTML = '<div class="modern-time-box-header"><span>Start (In)</span><span class="time-format-hint">MM:SS</span></div>';
+	const startStepper = document.createElement('div');
+	startStepper.className = 'modern-stepper-wrap';
+	const sMinus = document.createElement('button');
+	sMinus.type = 'button';
+	sMinus.className = 'stepper-btn minus-step';
+	sMinus.title = '-1s (Shift: -5s)';
+	sMinus.textContent = '−';
+	const startInput = document.createElement('input');
+	startInput.type = 'text';
+	startInput.className = 'modern-time-input';
+	startInput.value = '00:00';
+	startInput.spellcheck = false;
+	const sPlus = document.createElement('button');
+	sPlus.type = 'button';
+	sPlus.className = 'stepper-btn plus-step';
+	sPlus.title = '+1s (Shift: +5s)';
+	sPlus.textContent = '+';
+	startStepper.append(sMinus, startInput, sPlus);
+	startBox.appendChild(startStepper);
+
+	// Duration Capsule
+	const durCapsule = document.createElement('div');
+	durCapsule.className = 'modern-duration-capsule';
+	durCapsule.innerHTML = '<span class="dur-capsule-label">Duration</span><span class="dur-capsule-val">⏱️ 60s</span>';
+	const durValText = durCapsule.querySelector('.dur-capsule-val');
+
+	// End Box
+	const endBox = document.createElement('div');
+	endBox.className = 'modern-time-box';
+	endBox.innerHTML = '<div class="modern-time-box-header"><span>End (Out)</span><span class="time-format-hint">MM:SS</span></div>';
+	const endStepper = document.createElement('div');
+	endStepper.className = 'modern-stepper-wrap';
+	const eMinus = document.createElement('button');
+	eMinus.type = 'button';
+	eMinus.className = 'stepper-btn minus-step';
+	eMinus.title = '-1s (Shift: -5s)';
+	eMinus.textContent = '−';
+	const endInput = document.createElement('input');
+	endInput.type = 'text';
+	endInput.className = 'modern-time-input';
+	endInput.value = '01:00';
+	endInput.spellcheck = false;
+	const ePlus = document.createElement('button');
+	ePlus.type = 'button';
+	ePlus.className = 'stepper-btn plus-step';
+	ePlus.title = '+1s (Shift: +5s)';
+	ePlus.textContent = '+';
+	endStepper.append(eMinus, endInput, ePlus);
+	endBox.appendChild(endStepper);
+
+	timeGrid.append(startBox, durCapsule, endBox);
+
+	activeEditor.append(trackWrap, timeGrid);
+	intervalsDrawer.append(windowsDeck, activeEditor);
+	wrapper.append(headerBar, fullBanner, intervalsDrawer);
+	container.appendChild(wrapper);
+
+	function renderPills() {
+		pillsContainer.innerHTML = '';
+		intervals.forEach((inv, idx) => {
+			const pill = document.createElement('div');
+			pill.className = `time-window-pill ${inv.id === activeIntervalId ? 'active' : ''}`;
+			pill.dataset.winId = inv.id;
+
+			const dur = Math.max(1, inv.end - inv.start);
+			const durStr = dur >= 60 ? `${Math.floor(dur / 60)}m ${dur % 60}s` : `${dur}s`;
+
+			pill.innerHTML = `
+				<span class="window-tag">Interval ${idx + 1}:</span>
+				<span class="window-timestamps">${formatMMSS(inv.start)} - ${formatMMSS(inv.end)}</span>
+				<span class="window-dur-tag">${durStr}</span>
+				${intervals.length > 1 ? '<button type="button" class="btn-remove-window" title="Delete interval">✕</button>' : ''}
+			`;
+
+			pill.addEventListener('click', (e) => {
+				if (e.target.closest('.btn-remove-window')) return;
+				activeIntervalId = inv.id;
+				syncVisuals();
+			});
+
+			const removeBtn = pill.querySelector('.btn-remove-window');
+			if (removeBtn) {
+				removeBtn.addEventListener('click', (e) => {
+					e.stopPropagation();
+					if (intervals.length <= 1) return;
+					intervals = intervals.filter(i => i.id !== inv.id);
+					if (activeIntervalId === inv.id) {
+						activeIntervalId = intervals[0].id;
+					}
+					syncVisuals();
+				});
+			}
+
+			pillsContainer.appendChild(pill);
+		});
+	}
+
+	function syncVisuals() {
+		intervalsBtn.classList.toggle('active', !isFullVideo);
+		fullBtn.classList.toggle('active', isFullVideo);
+
+		if (isFullVideo) {
+			fullBanner.classList.remove('hidden');
+			intervalsDrawer.classList.add('hidden');
+			return;
+		}
+
+		fullBanner.classList.add('hidden');
+		intervalsDrawer.classList.remove('hidden');
+
+		const active = getActive();
+		if (!active) return;
+
+		const timelineMax = getTimelineMax();
+		const leftPct = (active.start / timelineMax) * 100;
+		const rightPct = (active.end / timelineMax) * 100;
+		const widthPct = Math.max(0, rightPct - leftPct);
+
+		highlight.style.left = `${leftPct}%`;
+		highlight.style.width = `${widthPct}%`;
+		handleStart.style.left = `${leftPct}%`;
+		handleEnd.style.left = `${rightPct}%`;
+
+		// Ghost overlay for other intervals
+		const other = intervals.find(i => i.id !== active.id);
+		if (other) {
+			ghostOverlay.style.display = 'block';
+			ghostOverlay.style.left = `${(other.start / timelineMax) * 100}%`;
+			ghostOverlay.style.width = `${((other.end - other.start) / timelineMax) * 100}%`;
+		} else {
+			ghostOverlay.style.display = 'none';
+		}
+
+		startInput.value = formatMMSS(active.start);
+		endInput.value = formatMMSS(active.end);
+
+		const dur = Math.max(1, active.end - active.start);
+		const durStr = dur >= 60 ? `${Math.floor(dur / 60)}m ${dur % 60}s` : `${dur}s`;
+		durValText.textContent = `⏱️ ${durStr}`;
+
+		renderPills();
+	}
+
+	// Pointer dragging for range handles
+	let isDragging = null;
+	let dragStartX = 0;
+	let dragStartSec = 0;
+	let dragEndSec = 0;
+
+	function getSecFromPointer(e) {
+		const rect = trackWrap.getBoundingClientRect();
+		const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+		return Math.round(frac * getTimelineMax());
+	}
+
+	handleStart.addEventListener('pointerdown', (e) => {
+		e.preventDefault();
+		handleStart.setPointerCapture(e.pointerId);
+		isDragging = 'start';
+	});
+
+	handleEnd.addEventListener('pointerdown', (e) => {
+		e.preventDefault();
+		handleEnd.setPointerCapture(e.pointerId);
+		isDragging = 'end';
+	});
+
+	highlight.addEventListener('pointerdown', (e) => {
+		e.preventDefault();
+		highlight.setPointerCapture(e.pointerId);
+		isDragging = 'range';
+		dragStartX = e.clientX;
+		const active = getActive();
+		dragStartSec = active.start;
+		dragEndSec = active.end;
+	});
+
+	window.addEventListener('pointermove', (e) => {
+		if (!isDragging) return;
+		const active = getActive();
+		if (!active) return;
+		const timelineMax = getTimelineMax();
+
+		if (isDragging === 'start') {
+			const s = getSecFromPointer(e);
+			active.start = Math.max(0, Math.min(s, active.end - 1));
+			syncVisuals();
+		} else if (isDragging === 'end') {
+			const end = getSecFromPointer(e);
+			active.end = Math.max(active.start + 1, Math.min(end, timelineMax));
+			syncVisuals();
+		} else if (isDragging === 'range') {
+			const rect = trackWrap.getBoundingClientRect();
+			const deltaSec = Math.round(((e.clientX - dragStartX) / rect.width) * timelineMax);
+			const dur = dragEndSec - dragStartSec;
+			let newStart = dragStartSec + deltaSec;
+			if (newStart < 0) newStart = 0;
+			if (newStart + dur > timelineMax) newStart = timelineMax - dur;
+			active.start = newStart;
+			active.end = newStart + dur;
+			syncVisuals();
+		}
+	});
+
+	window.addEventListener('pointerup', () => {
+		isDragging = null;
+	});
+
+	// Mode switches
+	intervalsBtn.addEventListener('click', () => {
+		isFullVideo = false;
+		syncVisuals();
+	});
+	fullBtn.addEventListener('click', () => {
+		isFullVideo = true;
+		syncVisuals();
+	});
+	if (switchFromBannerBtn) {
+		switchFromBannerBtn.addEventListener('click', () => {
+			isFullVideo = false;
+			syncVisuals();
+		});
+	}
+
+	// Stepper buttons with Shift support (±1s normal, ±5s on Shift)
+	sMinus.addEventListener('click', (e) => {
+		const a = getActive();
+		if (!a) return;
+		const step = e.shiftKey ? 5 : 1;
+		a.start = Math.max(0, a.start - step);
+		syncVisuals();
+	});
+	sPlus.addEventListener('click', (e) => {
+		const a = getActive();
+		if (!a) return;
+		const step = e.shiftKey ? 5 : 1;
+		a.start = Math.min(a.end - 1, a.start + step);
+		syncVisuals();
+	});
+	eMinus.addEventListener('click', (e) => {
+		const a = getActive();
+		if (!a) return;
+		const step = e.shiftKey ? 5 : 1;
+		a.end = Math.max(a.start + 1, a.end - step);
+		syncVisuals();
+	});
+	ePlus.addEventListener('click', (e) => {
+		const a = getActive();
+		if (!a) return;
+		const step = e.shiftKey ? 5 : 1;
+		a.end = Math.min(getTimelineMax(), a.end + step);
+		syncVisuals();
+	});
+
+	// Keyboard arrow adjustments
+	startInput.addEventListener('keydown', (e) => {
+		if (e.key === 'ArrowUp') {
+			e.preventDefault();
+			const step = e.shiftKey ? 5 : 1;
+			const a = getActive();
+			if (a) { a.start = Math.min(a.end - 1, a.start + step); syncVisuals(); }
+		} else if (e.key === 'ArrowDown') {
+			e.preventDefault();
+			const step = e.shiftKey ? 5 : 1;
+			const a = getActive();
+			if (a) { a.start = Math.max(0, a.start - step); syncVisuals(); }
+		}
+	});
+	endInput.addEventListener('keydown', (e) => {
+		if (e.key === 'ArrowUp') {
+			e.preventDefault();
+			const step = e.shiftKey ? 5 : 1;
+			const a = getActive();
+			if (a) { a.end = Math.min(getTimelineMax(), a.end + step); syncVisuals(); }
+		} else if (e.key === 'ArrowDown') {
+			e.preventDefault();
+			const step = e.shiftKey ? 5 : 1;
+			const a = getActive();
+			if (a) { a.end = Math.max(a.start + 1, a.end - step); syncVisuals(); }
+		}
+	});
+
+	// Direct input entry
+	startInput.addEventListener('change', (e) => {
+		const a = getActive();
+		if (!a) return;
+		const s = parseTime(e.target.value);
+		a.start = Math.max(0, Math.min(s, a.end - 1));
+		syncVisuals();
+	});
+	endInput.addEventListener('change', (e) => {
+		const a = getActive();
+		if (!a) return;
+		const end = parseTime(e.target.value);
+		a.end = Math.max(a.start + 1, Math.min(end, getTimelineMax()));
+		syncVisuals();
+	});
+
+	// [+] Add interval
+	addIntervalBtn.addEventListener('click', () => {
+		const newId = `win-${Date.now()}`;
+		const last = intervals[intervals.length - 1];
+		const maxT = getTimelineMax();
+		const newStart = last ? Math.min(maxT - 30, last.end + 10) : 0;
+		const newEnd = Math.min(maxT, newStart + 45);
+
+		intervals.push({
+			id: newId,
+			name: `Variation Clip ${intervals.length + 1}`,
+			start: newStart,
+			end: newEnd
+		});
+		activeIntervalId = newId;
+		syncVisuals();
+	});
+
+	function syncWithUrl(url) {
+		const clean = (url || '').trim();
+		const vid = parseYouTubeId(clean);
+		if (vid) {
+			wrapper.classList.remove('hidden');
+			thumbImg.src = `https://img.youtube.com/vi/${vid}/mqdefault.jpg`;
+			if (titleInput && titleInput.value && titleInput.value.trim()) {
+				metaTitle.textContent = titleInput.value.trim();
+			} else {
+				metaTitle.textContent = 'YouTube Video Variation';
+			}
+			syncVisuals();
+		} else {
+			wrapper.classList.add('hidden');
+		}
+	}
+
+	if (initialUrl) {
+		syncWithUrl(initialUrl);
+	}
+
+	return {
+		getState: () => {
+			const active = getActive();
+			return {
+				isFullVideo,
+				intervals: intervals.map(i => ({ ...i })),
+				activeStart: active ? active.start : 0,
+				activeEnd: active ? active.end : 60,
+				primaryStart: isFullVideo ? 0 : (intervals[0]?.start ?? 0),
+				primaryEnd: isFullVideo ? undefined : (intervals[0]?.end ?? undefined)
+			};
+		},
+		syncWithUrl,
+		destroy: () => {
+			wrapper.remove();
+		}
+	};
 }
 
 /**
@@ -488,16 +1020,8 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 								<input type="text" id="new-asset-url" class="input" placeholder="https://youtube.com/watch?v=... or https://youtu.be/...">
 							</div>
 
-							<div class="field-row" id="new-asset-time-row">
-								<div class="field-group">
-									<label>Start Time (sec)</label>
-									<input type="number" id="new-asset-start" class="input" min="0" value="0">
-								</div>
-								<div class="field-group">
-									<label>End Time (sec)</label>
-									<input type="number" id="new-asset-end" class="input" min="1" value="60">
-								</div>
-							</div>
+							<!-- Modern Slicer Drawer for Video Asset -->
+							<div id="new-asset-slicer-container" style="margin-top:10px;"></div>
 
 							<div class="add-asset-actions">
 								<button id="btn-save-new-asset" class="btn btn-sm btn-primary">Save Asset</button>
@@ -679,15 +1203,29 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 		const urlLabel = modal.querySelector('#new-asset-url-label');
 		const urlInput = modal.querySelector('#new-asset-url');
 		const titleInput = modal.querySelector('#new-asset-title');
-		const timeRow = modal.querySelector('#new-asset-time-row');
+		const slicerContainer = modal.querySelector('#new-asset-slicer-container');
+		const variationSlicer = createModernVideoSlicerDrawer({
+			container: slicerContainer,
+			urlInput,
+			initialUrl: urlInput.value.trim(),
+			initialStart: 0,
+			initialEnd: 60,
+			titleInput,
+		});
+
+		urlInput.addEventListener('input', () => {
+			if (kindSelect.value !== 'photo' && kindSelect.value !== 'animation') {
+				variationSlicer.syncWithUrl(urlInput.value.trim());
+			}
+		});
 
 		function updateAddFormFields() {
-			if (!kindSelect || !urlLabel || !urlInput || !titleInput || !timeRow) return;
+			if (!kindSelect || !urlLabel || !urlInput || !titleInput) return;
 			const kind = kindSelect.value;
 			const isImage = kind === 'photo' || kind === 'animation';
 
 			if (isImage) {
-				timeRow.classList.add('hidden');
+				if (slicerContainer) slicerContainer.classList.add('hidden');
 				if (uploadZone) uploadZone.classList.remove('hidden');
 				if (kind === 'photo') {
 					urlLabel.textContent = 'Or Enter Direct Image URL / Path';
@@ -699,8 +1237,8 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 					if (!titleInput.value) titleInput.placeholder = 'e.g., Form Animation Loop';
 				}
 			} else {
-				timeRow.classList.remove('hidden');
 				if (uploadZone) uploadZone.classList.add('hidden');
+				if (slicerContainer) slicerContainer.classList.remove('hidden');
 				urlLabel.textContent = 'YouTube Video URL';
 				urlInput.placeholder = 'https://youtube.com/watch?v=... or https://youtu.be/...';
 				if (kind === 'instruction') {
@@ -708,6 +1246,7 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 				} else {
 					if (!titleInput.value) titleInput.placeholder = 'e.g., Continuous Execution Follow-Along';
 				}
+				variationSlicer.syncWithUrl(urlInput.value.trim());
 			}
 		}
 
@@ -784,8 +1323,6 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 				const kind = kindSelect.value;
 				const title = titleInput.value.trim() || (kind === 'instruction' ? 'Instruction Tutorial' : (kind === 'photo' ? 'Form Photo' : 'Demonstration'));
 				const url = urlInput.value.trim();
-				const start = parseInt(modal.querySelector('#new-asset-start').value, 10) || 0;
-				const end = parseInt(modal.querySelector('#new-asset-end').value, 10) || 60;
 
 				if (!url) {
 					await showAlert({ title: 'Missing URL / Media', message: 'Please provide a YouTube URL or upload an image file.' });
@@ -796,6 +1333,39 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 				const isImgKind = kind === 'photo' || kind === 'animation';
 				const isYtUrl = Boolean(vid);
 				const finalType = isYtUrl ? 'video' : (isImgKind ? 'image' : (url.match(/\.(mp4|webm|mov)$/i) ? 'video' : 'image'));
+
+				const slicerState = variationSlicer.getState();
+
+				if (finalType === 'video' && !slicerState.isFullVideo && slicerState.intervals.length > 1) {
+					try {
+						for (let i = 0; i < slicerState.intervals.length; i++) {
+							const inv = slicerState.intervals[i];
+							const invAsset = {
+								id: `asset-${Date.now()}-${i + 1}`,
+								kind,
+								type: 'video',
+								title: inv.name || `${title} Part ${i + 1}`,
+								url,
+								videoId: vid || undefined,
+								startSeconds: inv.start,
+								endSeconds: inv.end,
+							};
+							await addMediaAssetToExercise(exercise.id, invAsset);
+						}
+						const updated = await getExerciseById(exercise.id);
+						Object.assign(exercise, updated);
+						renderModalContent();
+						onUpdated();
+						showToast(`Added ${slicerState.intervals.length} video variations to "${exercise.name}"!`);
+						return;
+					} catch (err) {
+						await showAlert({ title: 'Error', message: 'Could not add media asset: ' + err.message });
+						return;
+					}
+				}
+
+				const start = slicerState.isFullVideo ? 0 : slicerState.activeStart;
+				const end = slicerState.isFullVideo ? undefined : slicerState.activeEnd;
 
 				const newAsset = {
 					id: `asset-${Date.now()}`,
@@ -888,7 +1458,7 @@ export function showEditExerciseModal(exercise = null, options = {}) {
 								<option value="muay_thai" ${isEdit && exercise.discipline === 'muay_thai' ? 'selected' : ''}>🥊 Muay Thai</option>
 								<option value="boxing" ${isEdit && exercise.discipline === 'boxing' ? 'selected' : ''}>🥊 Boxing</option>
 								<option value="calisthenics" ${isEdit && exercise.discipline === 'calisthenics' ? 'selected' : ''}>🤸 Calisthenics</option>
-								<option value="yoga" ${isEdit && exercise.discipline === 'yoga' ? 'selected' : ''}>🧘 Yoga & Mobility</option>
+								<option value="yoga" ${isEdit && exercise.discipline === 'yoga' ? 'selected' : ''}>🧘 Yoga</option>
 							</select>
 						</div>
 					</div>
@@ -939,6 +1509,7 @@ export function showEditExerciseModal(exercise = null, options = {}) {
 							<img id="create-ex-preview-img" src="${escapeHtml(currentMediaUrl || '')}" onerror="this.parentElement.classList.add('hidden')">
 							<span class="preview-hint">Image / Screenshot Preview</span>
 						</div>
+						<div id="create-ex-video-slicer-container" style="margin-top:12px;"></div>
 					</div>
 				</div>
 
@@ -1033,12 +1604,27 @@ export function showEditExerciseModal(exercise = null, options = {}) {
 	};
 	document.addEventListener('paste', handleEditPaste);
 
+	const slicerContainer = modal.querySelector('#create-ex-video-slicer-container');
+	const nameInput = modal.querySelector('#create-ex-name');
+	const exerciseSlicer = createModernVideoSlicerDrawer({
+		container: slicerContainer,
+		urlInput: mediaInput,
+		initialUrl: currentMediaUrl,
+		initialAssets: isEdit && Array.isArray(exercise.media_assets) ? exercise.media_assets : [],
+		titleInput: nameInput,
+	});
+
+	mediaInput.addEventListener('input', () => {
+		exerciseSlicer.syncWithUrl(mediaInput.value.trim());
+	});
+
 	const clearMediaBtn = modal.querySelector('#btn-clear-ex-media');
 	if (clearMediaBtn) {
 		clearMediaBtn.addEventListener('click', () => {
 			mediaInput.value = '';
 			if (previewBox) previewBox.classList.add('hidden');
 			clearMediaBtn.style.display = 'none';
+			exerciseSlicer.syncWithUrl('');
 		});
 	}
 
@@ -1168,6 +1754,8 @@ export function showEditExerciseModal(exercise = null, options = {}) {
 			return;
 		}
 
+		const slicerState = exerciseSlicer.getState();
+
 		let media_assets = isEdit ? (Array.isArray(exercise.media_assets) ? [...exercise.media_assets] : []) : [];
 		if (!media_url) {
 			if (isEdit && currentMediaUrl && media_assets.length > 0) {
@@ -1178,26 +1766,60 @@ export function showEditExerciseModal(exercise = null, options = {}) {
 			} else {
 				media_assets = [];
 			}
-		} else if (media_url !== currentMediaUrl) {
+		} else {
 			const isYt = media_url.includes('youtube') || media_url.includes('youtu.be');
 			const vid = isYt ? parseYouTubeId(media_url) : null;
-			const newAsset = {
-				id: `asset-${Date.now()}`,
-				kind: isYt ? 'demonstration' : 'animation',
-				type: isYt ? 'video' : 'image',
-				title: `${name} ${isYt ? 'Video' : 'Visual'}`,
-				url: media_url,
-				videoId: vid || undefined,
-			};
-			if (isEdit && currentMediaUrl && media_assets.length > 0) {
-				const existingIdx = media_assets.findIndex(a => a.url === currentMediaUrl);
-				if (existingIdx >= 0) {
-					media_assets[existingIdx] = newAsset;
-				} else {
-					media_assets.unshift(newAsset);
+			if (isYt && vid) {
+				const primaryStart = slicerState.isFullVideo ? 0 : slicerState.primaryStart;
+				const primaryEnd = slicerState.isFullVideo ? undefined : slicerState.primaryEnd;
+				const primaryTitle = slicerState.intervals[0]?.name || `${name} Video`;
+
+				const primaryAsset = {
+					id: `asset-${Date.now()}-1`,
+					kind: 'demonstration',
+					type: 'video',
+					title: primaryTitle,
+					url: media_url,
+					videoId: vid || undefined,
+					startSeconds: primaryStart,
+					endSeconds: primaryEnd,
+				};
+
+				media_assets = [primaryAsset];
+
+				// If additional interval windows were added via [+] button, attach them as extra video variations!
+				if (!slicerState.isFullVideo && slicerState.intervals.length > 1) {
+					slicerState.intervals.slice(1).forEach((inv, idx) => {
+						media_assets.push({
+							id: `asset-${Date.now()}-${idx + 2}`,
+							kind: 'drill',
+							type: 'video',
+							title: inv.name || `${name} Variation ${idx + 2}`,
+							url: media_url,
+							videoId: vid || undefined,
+							startSeconds: inv.start,
+							endSeconds: inv.end,
+						});
+					});
 				}
-			} else {
-				media_assets = [newAsset];
+			} else if (media_url !== currentMediaUrl) {
+				const newAsset = {
+					id: `asset-${Date.now()}`,
+					kind: 'animation',
+					type: 'image',
+					title: `${name} Visual`,
+					url: media_url,
+				};
+				if (isEdit && currentMediaUrl && media_assets.length > 0) {
+					const existingIdx = media_assets.findIndex(a => a.url === currentMediaUrl);
+					if (existingIdx >= 0) {
+						media_assets[existingIdx] = newAsset;
+					} else {
+						media_assets.unshift(newAsset);
+					}
+				} else {
+					media_assets = [newAsset];
+				}
 			}
 		}
 
