@@ -7431,6 +7431,41 @@ textarea.input {
 	filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.5));
 }
 
+.hud-no-media-thumb {
+	position: relative;
+	width: 100%;
+	min-height: 120px;
+	max-height: 170px;
+	aspect-ratio: 16 / 9;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	border-radius: var(--radius-sm);
+	background: var(--bg-card-elevated, rgba(0, 0, 0, 0.25));
+	border: 1px dashed var(--border);
+	padding: 16px;
+	gap: 6px;
+	box-sizing: border-box;
+}
+
+.hud-no-media-icon {
+	font-size: 2.2rem;
+	line-height: 1;
+	opacity: 0.8;
+}
+
+.hud-no-media-title {
+	font-size: 0.82rem;
+	font-weight: 600;
+	color: var(--text-secondary);
+}
+
+.hud-no-media-sub {
+	font-size: 0.7rem;
+	color: var(--text-muted);
+}
+
 .hud-visual-caption {
 	font-size: 0.72rem;
 	font-weight: 600;

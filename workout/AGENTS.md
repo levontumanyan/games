@@ -26,6 +26,9 @@ When given a workout link (`https://levon.ajwest.ca/workout/#u=<user>&r=<id>` or
 
 # Development & UI Verification
 
+## UI Components & Design Tokens
+- Consult [UI_TOKENS.md](file:///Users/levontumanyan/repos/games/workout/UI_TOKENS.md) for canonical classes, buttons, search inputs, modal factories (`createCustomModal`), and exercise card renderers (`renderExerciseCardElement`). Never create one-off styling classes for common primitives.
+
 ## Playwright Visual Inspection
 - `uv run --with playwright python scripts/inspect_pages.py` — Capture desktop and mobile screenshots across all primary views (saved to `/tmp/workout_screenshots/`).
 

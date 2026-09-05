@@ -3,6 +3,7 @@
  */
 
 import { fetchServerExercises, saveCustomExerciseOnServer, deleteCustomExerciseOnServer } from './storage.js';
+import { escapeHtml, formatTime } from './utils.js';
 import {
 	MUSCLE_DEFINITIONS,
 	MUSCLE_GROUPS,
@@ -339,4 +340,91 @@ export async function deleteCustomExercise(exerciseId) {
 	await deleteCustomExerciseOnServer(exerciseId);
 	cachedExercises = cachedExercises.filter(e => e.id !== exerciseId);
 	return true;
+}
+
+/**
+ * Render a standardized exercise library card element.
+ * @param {Object} ex
+ * @param {Object} [options]
+ * @param {Function} [options.onPlay]
+ * @param {Function} [options.onAddToRoutine]
+ * @param {Function} [options.onClick]
+ * @param {Function} [options.onMouseEnter]
+ * @param {Function} [options.onMouseLeave]
+ * @returns {HTMLElement}
+ */
+export function renderExerciseCardElement(ex, options = {}) {
+	const assets = getExerciseMediaAssets([ex]);
+	const card = document.createElement('div');
+	card.className = 'exercise-library-card';
+	card.dataset.id = ex.id;
+
+	const instructionCount = assets.filter(a => a.kind === 'instruction').length;
+	const demoCount = assets.filter(a => a.kind === 'demonstration').length;
+	const animCount = assets.filter(a => a.kind === 'animation' || a.kind === 'photo').length;
+
+	const modeStr = (ex.default_mode || 'reps') === 'reps'
+		? `${ex.default_quantity || 20} Reps`
+		: formatTime(ex.default_quantity || 30);
+
+	card.innerHTML = `
+		<div class="ex-lib-header">
+			<div class="ex-lib-badges">
+				${getCategoryBadgeHtml(ex.category)}
+				${ex.discipline ? getDisciplineBadgeHtml(ex.discipline) : ''}
+			</div>
+			<span class="ex-lib-mode-tag">${modeStr}</span>
+		</div>
+
+		<div class="ex-lib-title-row">
+			<h3 class="ex-lib-title">${escapeHtml(ex.name)}</h3>
+		</div>
+
+		<p class="ex-lib-desc">${escapeHtml(ex.description || 'Movement and technique practice.')}</p>
+
+		<div class="ex-lib-media-pills">
+			${instructionCount > 0 ? `<span class="ex-media-mini-pill pill-inst">🎬 ${instructionCount} Tutorial${instructionCount > 1 ? 's' : ''}</span>` : ''}
+			${demoCount > 0 ? `<span class="ex-media-mini-pill pill-demo">⚡ ${demoCount} Drill${demoCount > 1 ? 's' : ''}</span>` : ''}
+			${animCount > 0 ? `<span class="ex-media-mini-pill pill-anim">✨ Visual Form</span>` : ''}
+			${assets.length === 0 ? `<span class="ex-media-mini-pill pill-none">No media</span>` : ''}
+		</div>
+
+		<div class="ex-lib-actions">
+			<button class="btn btn-sm btn-ghost btn-play-ex" title="Test in Preview Mode">
+				▶ Preview
+			</button>
+			<button class="btn btn-sm btn-primary btn-add-routine" title="Add to workout">
+				+ Add to Workout ▾
+			</button>
+		</div>
+	`;
+
+	const playBtn = card.querySelector('.btn-play-ex');
+	if (playBtn && options.onPlay) {
+		playBtn.addEventListener('click', (e) => {
+			e.stopPropagation();
+			const followAlong = getExerciseFollowAlongMedia(ex);
+			options.onPlay(ex, followAlong || null);
+		});
+	}
+
+	const addRoutineBtn = card.querySelector('.btn-add-routine');
+	if (addRoutineBtn && options.onAddToRoutine) {
+		addRoutineBtn.addEventListener('click', (e) => {
+			e.stopPropagation();
+			options.onAddToRoutine(ex, addRoutineBtn);
+		});
+	}
+
+	if (options.onClick) {
+		card.addEventListener('click', () => options.onClick(ex));
+	}
+	if (options.onMouseEnter) {
+		card.addEventListener('mouseenter', () => options.onMouseEnter(ex));
+	}
+	if (options.onMouseLeave) {
+		card.addEventListener('mouseleave', () => options.onMouseLeave(ex));
+	}
+
+	return card;
 }

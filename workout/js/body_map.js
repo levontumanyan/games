@@ -18,6 +18,7 @@ import {
 	inferMusclesForExercise,
 	filterExercises,
 	deleteCustomExercise,
+	renderExerciseCardElement,
 } from './exercises.js';
 import { escapeHtml, formatTime } from './utils.js';
 import { showConfirm } from './modal.js';
@@ -451,81 +452,25 @@ export function renderAnatomyExplorer(container, options = {}) {
 
 		gridContainer.innerHTML = '';
 		list.forEach(ex => {
-			const assets = getExerciseMediaAssets([ex]);
 			const muscles = inferMusclesForExercise(ex);
 
-			const card = document.createElement('div');
-			card.className = 'exercise-library-card';
-
-			const instructionCount = assets.filter(a => a.kind === 'instruction').length;
-			const demoCount = assets.filter(a => a.kind === 'demonstration').length;
-			const animCount = assets.filter(a => a.kind === 'animation' || a.kind === 'photo').length;
-
-			const modeStr = (ex.default_mode || 'reps') === 'reps'
-				? `${ex.default_quantity || 20} Reps`
-				: formatTime(ex.default_quantity || 30);
-
-			card.dataset.id = ex.id;
-			card.innerHTML = `
-				<div class="ex-lib-header">
-					<div class="ex-lib-badges">
-						${getCategoryBadgeHtml(ex.category)}
-						${ex.discipline ? getDisciplineBadgeHtml(ex.discipline) : ''}
-					</div>
-					<span class="ex-lib-mode-tag">${modeStr}</span>
-				</div>
-
-				<div class="ex-lib-title-row">
-					<h3 class="ex-lib-title">${escapeHtml(ex.name)}</h3>
-				</div>
-
-				<p class="ex-lib-desc">${escapeHtml(ex.description || 'Movement and technique practice.')}</p>
-
-				<div class="ex-lib-media-pills">
-					${instructionCount > 0 ? `<span class="ex-media-mini-pill pill-inst">🎬 ${instructionCount} Tutorial${instructionCount > 1 ? 's' : ''}</span>` : ''}
-					${demoCount > 0 ? `<span class="ex-media-mini-pill pill-demo">⚡ ${demoCount} Drill${demoCount > 1 ? 's' : ''}</span>` : ''}
-					${animCount > 0 ? `<span class="ex-media-mini-pill pill-anim">✨ Visual Form</span>` : ''}
-					${assets.length === 0 ? `<span class="ex-media-mini-pill pill-none">No media</span>` : ''}
-				</div>
-
-				<div class="ex-lib-actions">
-					<button class="btn btn-sm btn-ghost btn-play-ex" title="Test in Preview Mode">
-						▶ Preview
-					</button>
-					<button class="btn btn-sm btn-primary btn-add-routine" title="Add to workout">
-						+ Add to Workout ▾
-					</button>
-				</div>
-			`;
-
-			card.addEventListener('mouseenter', () => {
-				bodyMap.highlightMuscles(muscles.primary, muscles.secondary, true);
-			});
-			card.addEventListener('mouseleave', () => {
-				bodyMap.clearHighlights();
-			});
-
-			const playBtn = card.querySelector('.btn-play-ex');
-			playBtn.addEventListener('click', (e) => {
-				e.stopPropagation();
-				const followAlong = getExerciseFollowAlongMedia(ex);
-				onPlayExercise(ex, followAlong || null);
-			});
-
-			const addRoutineBtn = card.querySelector('.btn-add-routine');
-			addRoutineBtn.addEventListener('click', (e) => {
-				e.stopPropagation();
-				onAddToRoutine(ex, addRoutineBtn);
-			});
-
-			// Entire card is clickable to open top-layer detail & variations overlay
-			card.addEventListener('click', () => {
-				if (typeof onOpenExerciseDetails === 'function') {
-					onOpenExerciseDetails(ex, {
-						onPlayAsset: (asset) => onPlayExercise(ex, asset),
-						onAddToRoutine: (targetEx, btn) => onAddToRoutine(targetEx || ex, btn),
-						onUpdated: () => renderGrid()
-					});
+			const card = renderExerciseCardElement(ex, {
+				onPlay: (targetEx, media) => onPlayExercise(targetEx, media),
+				onAddToRoutine: (targetEx, btn) => onAddToRoutine(targetEx, btn),
+				onClick: (targetEx) => {
+					if (typeof onOpenExerciseDetails === 'function') {
+						onOpenExerciseDetails(targetEx, {
+							onPlayAsset: (asset) => onPlayExercise(targetEx, asset),
+							onAddToRoutine: (subTargetEx, btn) => onAddToRoutine(subTargetEx || targetEx, btn),
+							onUpdated: () => renderGrid()
+						});
+					}
+				},
+				onMouseEnter: () => {
+					bodyMap.highlightMuscles(muscles.primary, muscles.secondary, true);
+				},
+				onMouseLeave: () => {
+					bodyMap.clearHighlights();
 				}
 			});
 

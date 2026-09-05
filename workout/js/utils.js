@@ -87,6 +87,19 @@ export function parseYouTubePlaylistId(input) {
 }
 
 /**
+ * Return a canonical YouTube video thumbnail URL.
+ * @param {string} videoIdOrUrl - Video ID or YouTube URL
+ * @param {'default'|'mq'|'hq'|'maxres'} [quality='mq']
+ * @returns {string}
+ */
+export function getYouTubeThumbnailUrl(videoIdOrUrl, quality = 'mq') {
+	const vid = parseYouTubeId(videoIdOrUrl) || (videoIdOrUrl && /^[A-Za-z0-9_-]{11}$/.test(videoIdOrUrl) ? videoIdOrUrl : '');
+	if (!vid) return '';
+	const suffix = quality === 'default' ? 'default.jpg' : `${quality}default.jpg`;
+	return `https://img.youtube.com/vi/${vid}/${suffix}`;
+}
+
+/**
  * Parse a time input string in various formats:
  * - MM:SS (e.g. "1:30" -> 90)
  * - HH:MM:SS (e.g. "1:02:30" -> 3750)

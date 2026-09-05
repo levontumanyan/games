@@ -3,11 +3,11 @@
  */
 
 import { fetchServerCombos, saveCustomComboOnServer, deleteCustomComboOnServer } from './storage.js';
-import { getCategoryBadgeHtml, getDisciplineBadgeHtml, getMuscleBadgeHtml } from './taxonomy.js';
+import { getCategoryBadgeHtml, getDisciplineBadgeHtml, getMuscleBadgeHtml, CATEGORIES, DISCIPLINES } from './taxonomy.js';
 import { getExerciseById, getExercises, inferMusclesForExercise } from './exercises.js';
 import { showExerciseVariationsModal } from './exercises_view.js';
 import { escapeHtml, formatTime, parseYouTubeId } from './utils.js';
-import { showConfirm, showAlert } from './modal.js';
+import { showConfirm, showAlert, createCustomModal } from './modal.js';
 
 export const FLOW_TYPES = {
 	alternating: { label: 'Alternating Cadence', icon: '⮀', color: '#6aa3a9', bg: 'rgba(106, 163, 169, 0.14)' },
@@ -357,6 +357,15 @@ export function showComboDetailModal(combo, options = {}) {
 	const primaryList = Array.from(primarySet).map(m => getMuscleBadgeHtml(m, true));
 	const secondaryList = Array.from(secondarySet).filter(m => !primarySet.has(m)).map(m => getMuscleBadgeHtml(m, false));
 
+	const isVid = Boolean(vid);
+	const rawImg = !isVid && (combo.media_url && !combo.media_url.includes('youtube') && !combo.media_url.includes('youtu.be') ? combo.media_url : null);
+	const isPushupCombo = (combo.name || '').toLowerCase().includes('pushup') || (combo.name || '').toLowerCase().includes('push-up');
+	const imgUrl = (rawImg && (rawImg !== '/workout/media/pushups.svg' || isPushupCombo)) ? rawImg : null;
+
+	const catInfo = CATEGORIES[(combo.category || '').toLowerCase()];
+	const discInfo = DISCIPLINES[(combo.discipline || '').toLowerCase()];
+	const emptyIcon = discInfo?.icon || catInfo?.icon || '⚡';
+
 	modal.innerHTML = `
 		<div class="hud-left-panel">
 			<div class="hud-badges-row">
@@ -368,14 +377,20 @@ export function showComboDetailModal(combo, options = {}) {
 			<h2 class="hud-combo-title">${escapeHtml(combo.name)}</h2>
 
 			<div class="hud-visual-card">
-				${vid ? `
+				${isVid ? `
 					<div class="hud-video-thumb">
 						<img src="https://img.youtube.com/vi/${vid}/mqdefault.jpg" alt="${escapeHtml(combo.name)}">
 						<span class="modal-play-badge">▶</span>
 					</div>
-				` : `
+				` : imgUrl ? `
 					<div class="hud-img-thumb">
-						<img src="${combo.media_url || '/workout/media/pushups.svg'}" alt="${escapeHtml(combo.name)}" onerror="this.src='/workout/media/pushups.svg'">
+						<img src="${imgUrl}" alt="${escapeHtml(combo.name)}" onerror="this.src='/workout/media/placeholder.svg'">
+					</div>
+				` : `
+					<div class="hud-no-media-thumb">
+						<div class="hud-no-media-icon">${emptyIcon}</div>
+						<div class="hud-no-media-title">No Media Attached</div>
+						<div class="hud-no-media-sub">Continuous flow reference not attached</div>
 					</div>
 				`}
 				<div class="hud-visual-caption">Continuous Flow & Movement Form</div>
@@ -538,19 +553,9 @@ export function showCreateComboModal(options = {}) {
 	const onCreated = options.onCreated || (() => {});
 	const allExercises = getExercises();
 
-	const backdrop = document.createElement('div');
-	backdrop.className = 'modal-backdrop';
-
-	const modal = document.createElement('div');
-	modal.className = 'modal modal-window modal-create-combo';
-
-	modal.innerHTML = `
-		<div class="modal-header">
-			<h3 class="modal-title">➕ Create Custom Combo</h3>
-			<button class="modal-close-btn" title="Close">✕</button>
-		</div>
-
-		<div class="modal-body">
+	const { modal, close } = createCustomModal({
+		title: '➕ Create Custom Combo',
+		bodyHtml: `
 			<div class="field-group">
 				<label>Combo Name</label>
 				<input type="text" id="create-combo-name" class="input" placeholder="e.g., Star Jumps ⮀ Coordination Drills, Jab + Knee Flurry...">
@@ -627,20 +632,16 @@ export function showCreateComboModal(options = {}) {
 			</div>
 		</div>
 
-		<div class="modal-footer">
+		`,
+		footerHtml: `
 			<button class="btn btn-ghost modal-btn-cancel">Cancel</button>
 			<button id="btn-submit-create-combo" class="btn btn-primary">Create Combo</button>
-		</div>
-	`;
-
-	const close = () => backdrop.remove();
-
-	modal.querySelectorAll('.modal-close-btn, .modal-btn-cancel').forEach(b => {
-		b.addEventListener('click', close);
+		`
 	});
+	modal.classList.add('modal-create-combo');
 
-	backdrop.addEventListener('click', (e) => {
-		if (e.target === backdrop) close();
+	modal.querySelectorAll('.modal-btn-cancel').forEach(b => {
+		b.addEventListener('click', close);
 	});
 
 	const submitBtn = modal.querySelector('#btn-submit-create-combo');

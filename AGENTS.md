@@ -35,5 +35,7 @@ Git is configured to use native `.githooks` via `core.hooksPath = .githooks`. Th
 1. `uv run ruff check .` and `uv run ruff format --check .` (fail-fast format and lint check)
 2. `uv run pytest -q` for both `workout` and `spelling-bee`
 
+Do not run redundant manual format, lint, or test checks before committing if already verified; native pre-commit hooks automatically enforce them.
+
 ## Deployment
 Auto-deployed to `levon-box` via git post-receive hook to `/home/levon/games/`. Systemd services are reverse-proxied by Nginx (`/etc/nginx/levon-apps/*.conf`).

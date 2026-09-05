@@ -4,7 +4,7 @@
 
 import { generateId, parseYouTubeId, parseYouTubeInfo, parseTime, formatTime, formatFriendlyDuration, escapeHtml, showToast } from './utils.js';
 import { saveAudioFile, deleteAudioFile } from './musicdb.js';
-import { showPrompt, showAlert } from './modal.js';
+import { showPrompt, showAlert, createCustomModal } from './modal.js';
 import { getTimerIcon, getBreakIcon, getComboIcon, getExerciseIcon, getDuplicateIcon, getPlusIcon } from './icons.js';
 import {
 	getCategoryBadgeHtml, getDisciplineBadgeHtml, getMuscleBadgeHtml
@@ -1932,37 +1932,22 @@ export function showAddExerciseModal(routine, onUpdate, insertIndex = -1) {
 export function showAddComboModal(routine, onUpdate, insertIndex = -1) {
 	const combos = getCombos();
 
-	const backdrop = document.createElement('div');
-	backdrop.className = 'modal-backdrop';
-
-	const modal = document.createElement('div');
-	modal.className = 'modal modal-window modal-add-picker';
-
 	const isInserting = typeof insertIndex === 'number' && insertIndex >= 0;
 	const titleText = isInserting ? `🔗 Select Combo Flow (Insert at #${insertIndex + 1})` : '🔗 Select Combo Flow';
 
-	modal.innerHTML = `
-		<div class="modal-header">
-			<h3 class="modal-title">${titleText}</h3>
-			<button class="modal-close-btn" title="Close">✕</button>
-		</div>
-
-		<div class="modal-body">
+	const { modal, close } = createCustomModal({
+		title: titleText,
+		className: 'modal-add-picker-backdrop',
+		bodyHtml: `
 			<div class="search-box-wrapper" style="margin-bottom:12px;">
 				<span class="search-icon">🔍</span>
 				<input type="text" id="add-combo-search" class="input search-box-input combo-search-input" placeholder="Search combos (Star Jumps ⮀ Coordination, Lateral Taps, Jab Knee)..." autofocus autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
 			</div>
 
 			<div id="add-combo-list" class="add-picker-list"></div>
-		</div>
-	`;
-
-	const close = () => backdrop.remove();
-
-	modal.querySelector('.modal-close-btn').addEventListener('click', close);
-	backdrop.addEventListener('click', (e) => {
-		if (e.target === backdrop) close();
+		`
 	});
+	modal.classList.add('modal-add-picker');
 
 	const searchInput = modal.querySelector('#add-combo-search');
 	const listEl = modal.querySelector('#add-combo-list');

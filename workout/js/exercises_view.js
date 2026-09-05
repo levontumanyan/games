@@ -4,6 +4,8 @@
 
 import {
 	MUSCLE_DEFINITIONS,
+	CATEGORIES,
+	DISCIPLINES,
 	getCategoryBadgeHtml,
 	getDisciplineBadgeHtml,
 	getMuscleBadgeHtml,
@@ -20,6 +22,7 @@ import {
 	getExerciseMediaAssets,
 	getExerciseFollowAlongMedia,
 	inferMusclesForExercise,
+	renderExerciseCardElement,
 } from './exercises.js';
 import { showConfirm, showAlert } from './modal.js';
 import { uploadImageFile } from './storage.js';
@@ -154,74 +157,17 @@ export function renderExercisesCatalog(container, options = {}) {
 
 		gridContainer.innerHTML = '';
 		list.forEach(ex => {
-			const assets = getExerciseMediaAssets([ex]);
-
-			const card = document.createElement('div');
-			card.className = 'exercise-library-card';
-
-			const instructionCount = assets.filter(a => a.kind === 'instruction').length;
-			const demoCount = assets.filter(a => a.kind === 'demonstration').length;
-			const animCount = assets.filter(a => a.kind === 'animation' || a.kind === 'photo').length;
-
-			const modeStr = (ex.default_mode || 'reps') === 'reps'
-				? `${ex.default_quantity || 20} Reps`
-				: formatTime(ex.default_quantity || 30);
-
-			card.dataset.id = ex.id;
-			card.innerHTML = `
-				<div class="ex-lib-header">
-					<div class="ex-lib-badges">
-						${getCategoryBadgeHtml(ex.category)}
-						${ex.discipline ? getDisciplineBadgeHtml(ex.discipline) : ''}
-					</div>
-					<span class="ex-lib-mode-tag">${modeStr}</span>
-				</div>
-
-				<div class="ex-lib-title-row">
-					<h3 class="ex-lib-title">${escapeHtml(ex.name)}</h3>
-				</div>
-
-				<p class="ex-lib-desc">${escapeHtml(ex.description || 'Movement and technique practice.')}</p>
-
-				<div class="ex-lib-media-pills">
-					${instructionCount > 0 ? `<span class="ex-media-mini-pill pill-inst">🎬 ${instructionCount} Tutorial${instructionCount > 1 ? 's' : ''}</span>` : ''}
-					${demoCount > 0 ? `<span class="ex-media-mini-pill pill-demo">⚡ ${demoCount} Drill${demoCount > 1 ? 's' : ''}</span>` : ''}
-					${animCount > 0 ? `<span class="ex-media-mini-pill pill-anim">✨ Visual Form</span>` : ''}
-					${assets.length === 0 ? `<span class="ex-media-mini-pill pill-none">No media</span>` : ''}
-				</div>
-
-				<div class="ex-lib-actions">
-					<button class="btn btn-sm btn-ghost btn-play-ex" title="Test in Preview Mode">
-						▶ Preview
-					</button>
-					<button class="btn btn-sm btn-primary btn-add-routine" title="Add to workout">
-						+ Add to Workout ▾
-					</button>
-				</div>
-			`;
-
-			const playBtn = card.querySelector('.btn-play-ex');
-			playBtn.addEventListener('click', (e) => {
-				e.stopPropagation();
-				const followAlong = getExerciseFollowAlongMedia(ex);
-				onPlayExercise(ex, followAlong || null);
+			const card = renderExerciseCardElement(ex, {
+				onPlay: (targetEx, media) => onPlayExercise(targetEx, media),
+				onAddToRoutine: (targetEx, btn) => onAddToRoutine(targetEx, btn),
+				onClick: (targetEx) => {
+					showExerciseVariationsModal(targetEx, {
+						onPlayAsset: (asset) => onPlayExercise(targetEx, asset),
+						onAddToRoutine: (subTargetEx, btn) => onAddToRoutine(subTargetEx || targetEx, btn),
+						onUpdated: () => renderGrid()
+					});
+				}
 			});
-
-			const addRoutineBtn = card.querySelector('.btn-add-routine');
-			addRoutineBtn.addEventListener('click', (e) => {
-				e.stopPropagation();
-				onAddToRoutine(ex, addRoutineBtn);
-			});
-
-			// Entire card is clickable to open top-layer detail & variations overlay
-			card.addEventListener('click', () => {
-				showExerciseVariationsModal(ex, {
-					onPlayAsset: (asset) => onPlayExercise(ex, asset),
-					onAddToRoutine: (targetEx, btn) => onAddToRoutine(targetEx || ex, btn),
-					onUpdated: () => renderGrid()
-				});
-			});
-
 			gridContainer.appendChild(card);
 		});
 	}
@@ -356,7 +302,14 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 
 		const primaryAsset = assets[0];
 		const isVid = primaryAsset && (primaryAsset.type === 'video' || Boolean(primaryAsset.videoId));
-		const vid = primaryAsset?.videoId || (primaryAsset?.url ? parseYouTubeId(primaryAsset.url) : null);
+		const vid = isVid ? (primaryAsset?.videoId || (primaryAsset?.url ? parseYouTubeId(primaryAsset.url) : null)) : null;
+		const rawImg = !isVid && (primaryAsset?.url || (exercise.media_url && !exercise.media_url.includes('youtube') && !exercise.media_url.includes('youtu.be') ? exercise.media_url : null));
+		const isPushupExercise = (exercise.name || '').toLowerCase().includes('pushup') || (exercise.name || '').toLowerCase().includes('push-up') || (exercise.name || '').toLowerCase().includes('push up');
+		const imgUrl = (rawImg && (rawImg !== '/workout/media/pushups.svg' || isPushupExercise)) ? rawImg : null;
+
+		const catInfo = CATEGORIES[(exercise.category || '').toLowerCase()];
+		const discInfo = DISCIPLINES[(exercise.discipline || '').toLowerCase()];
+		const emptyIcon = discInfo?.icon || catInfo?.icon || '🎯';
 
 		const modeStr = (exercise.default_mode || 'reps') === 'reps'
 			? `🔢 ${exercise.default_quantity || 20} Target Reps`
@@ -378,9 +331,15 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 							<img src="https://img.youtube.com/vi/${vid}/mqdefault.jpg" alt="${escapeHtml(exercise.name)}">
 							<span class="modal-play-badge">▶</span>
 						</div>
-					` : `
+					` : imgUrl ? `
 						<div class="hud-img-thumb">
-							<img src="${exercise.media_url || '/workout/media/pushups.svg'}" alt="${escapeHtml(exercise.name)}" onerror="this.src='/workout/media/pushups.svg'">
+							<img src="${imgUrl}" alt="${escapeHtml(exercise.name)}" onerror="this.src='/workout/media/placeholder.svg'">
+						</div>
+					` : `
+						<div class="hud-no-media-thumb">
+							<div class="hud-no-media-icon">${emptyIcon}</div>
+							<div class="hud-no-media-title">No Media Attached</div>
+							<div class="hud-no-media-sub">Add a video, drill, or photo below</div>
 						</div>
 					`}
 					<div class="hud-visual-caption">Form Reference & Execution</div>
@@ -424,7 +383,7 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 							const vid = a.videoId || (a.url ? parseYouTubeId(a.url) : null);
 							const thumb = isVideo && vid
 								? `https://img.youtube.com/vi/${vid}/mqdefault.jpg`
-								: (a.url || '/workout/media/pushups.svg');
+								: (a.url || '/workout/media/placeholder.svg');
 
 							let actionBtnLabel = '▶ Play Video';
 							if (!isVideo) {
@@ -438,7 +397,7 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 							return `
 								<div class="modal-asset-row" data-idx="${idx}">
 									<div class="modal-asset-thumb">
-										<img src="${thumb}" alt="${escapeHtml(a.title || '')}" onerror="this.src='/workout/media/pushups.svg'">
+										<img src="${thumb}" alt="${escapeHtml(a.title || '')}" onerror="this.src='/workout/media/placeholder.svg'">
 										${isVideo ? '<span class="modal-play-badge">▶</span>' : '<span class="modal-play-badge" style="font-size:0.75rem;">📷</span>'}
 									</div>
 									<div class="modal-asset-info">
@@ -636,7 +595,7 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 					if (!titleInput.value) titleInput.placeholder = 'e.g., Stance & Setup Reference Photo';
 				} else {
 					urlLabel.textContent = 'Or Enter Looping GIF / Animation URL';
-					urlInput.placeholder = 'https://example.com/drill.gif or /workout/media/pushups.svg';
+					urlInput.placeholder = 'https://example.com/drill.gif or /workout/media/exercise.gif';
 					if (!titleInput.value) titleInput.placeholder = 'e.g., Form Animation Loop';
 				}
 			} else {
@@ -1111,18 +1070,35 @@ export function showEditExerciseModal(exercise = null, options = {}) {
 
 		let media_assets = isEdit ? (Array.isArray(exercise.media_assets) ? [...exercise.media_assets] : []) : [];
 		if (!media_url) {
-			media_assets = [];
+			if (isEdit && currentMediaUrl && media_assets.length > 0) {
+				media_assets = media_assets.filter(a => a.url !== currentMediaUrl);
+				if (media_assets.length > 0) {
+					media_url = media_assets[0].url || '';
+				}
+			} else {
+				media_assets = [];
+			}
 		} else if (media_url !== currentMediaUrl) {
 			const isYt = media_url.includes('youtube') || media_url.includes('youtu.be');
 			const vid = isYt ? parseYouTubeId(media_url) : null;
-			media_assets = [{
+			const newAsset = {
 				id: `asset-${Date.now()}`,
 				kind: isYt ? 'demonstration' : 'animation',
 				type: isYt ? 'video' : 'image',
 				title: `${name} ${isYt ? 'Video' : 'Visual'}`,
 				url: media_url,
 				videoId: vid || undefined,
-			}];
+			};
+			if (isEdit && currentMediaUrl && media_assets.length > 0) {
+				const existingIdx = media_assets.findIndex(a => a.url === currentMediaUrl);
+				if (existingIdx >= 0) {
+					media_assets[existingIdx] = newAsset;
+				} else {
+					media_assets.unshift(newAsset);
+				}
+			} else {
+				media_assets = [newAsset];
+			}
 		}
 
 		try {

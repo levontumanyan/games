@@ -2,7 +2,7 @@ import secrets
 from datetime import datetime
 from pathlib import Path
 
-from fastapi import FastAPI, File, HTTPException, Request, UploadFile
+from fastapi import APIRouter, FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -28,15 +28,15 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 		clean = user_id.strip().lower()
 		return clean if clean else "levon"
 
+	api_router = APIRouter()
+
 	# ── Users API ─────────────────────────────────────────────────────────────
 
-	@app.get("/api/users")
-	@app.get("/workout/api/users")
+	@api_router.get("/users")
 	async def list_users():
 		return JSONResponse(content=db.list_users())
 
-	@app.post("/api/users")
-	@app.post("/workout/api/users")
+	@api_router.post("/users")
 	async def create_user(request: Request):
 		try:
 			data = await request.json()
@@ -56,14 +56,12 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 
 	# ── Routines API ──────────────────────────────────────────────────────────
 
-	@app.get("/api/routines")
-	@app.get("/workout/api/routines")
+	@api_router.get("/routines")
 	async def get_routines(request: Request):
 		user_id = get_user_id(request)
 		return JSONResponse(content=db.get_routines(user_id))
 
-	@app.post("/api/routines")
-	@app.post("/workout/api/routines")
+	@api_router.post("/routines")
 	async def save_routines(request: Request):
 		user_id = get_user_id(request)
 		try:
@@ -76,8 +74,7 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 		db.save_routines(user_id, data)
 		return {"status": "ok", "count": len(data)}
 
-	@app.get("/api/routines/{routine_id}")
-	@app.get("/workout/api/routines/{routine_id}")
+	@api_router.get("/routines/{routine_id}")
 	async def get_single_routine(routine_id: str, request: Request):
 		user_id = (request.query_params.get("user_id") or get_user_id(request)).strip().lower()
 		routine = db.get_routine(user_id, routine_id)
@@ -85,10 +82,7 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 			raise HTTPException(status_code=404, detail="Routine not found")
 		return JSONResponse(content=routine)
 
-	@app.put("/api/routines/{routine_id}")
-	@app.put("/workout/api/routines/{routine_id}")
-	@app.post("/api/routines/{routine_id}")
-	@app.post("/workout/api/routines/{routine_id}")
+	@api_router.api_route("/routines/{routine_id}", methods=["PUT", "POST"])
 	async def upsert_single_routine(routine_id: str, request: Request):
 		user_id = get_user_id(request)
 		try:
@@ -102,8 +96,7 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 		saved = db.upsert_routine(user_id, data)
 		return JSONResponse(content={"status": "ok", "routine": saved})
 
-	@app.delete("/api/routines/{routine_id}")
-	@app.delete("/workout/api/routines/{routine_id}")
+	@api_router.delete("/routines/{routine_id}")
 	async def delete_single_routine(routine_id: str, request: Request):
 		user_id = get_user_id(request)
 		success = db.delete_routine(user_id, routine_id)
@@ -113,8 +106,7 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 
 	# ── Sessions API ──────────────────────────────────────────────────────────
 
-	@app.post("/api/sessions")
-	@app.post("/workout/api/sessions")
+	@api_router.post("/sessions")
 	async def save_session(request: Request):
 		user_id = get_user_id(request)
 		try:
@@ -130,15 +122,13 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 		except Exception as e:
 			raise HTTPException(status_code=400, detail=str(e))
 
-	@app.get("/api/sessions")
-	@app.get("/workout/api/sessions")
+	@api_router.get("/sessions")
 	async def get_sessions(request: Request):
 		user_id = get_user_id(request)
 		limit = int(request.query_params.get("limit", 50))
 		return JSONResponse(content=db.get_sessions(user_id, limit=limit))
 
-	@app.delete("/api/sessions/{session_id}")
-	@app.delete("/workout/api/sessions/{session_id}")
+	@api_router.delete("/sessions/{session_id}")
 	async def delete_session(session_id: str, request: Request):
 		user_id = get_user_id(request)
 		success = db.delete_session(user_id, session_id)
@@ -148,8 +138,7 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 
 	# ── Stats API ─────────────────────────────────────────────────────────────
 
-	@app.get("/api/stats")
-	@app.get("/workout/api/stats")
+	@api_router.get("/stats")
 	async def get_stats(request: Request):
 		user_id = get_user_id(request)
 		tz_offset = int(request.query_params.get("tz_offset", 0))
@@ -157,8 +146,7 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 
 	# ── Exercises API ─────────────────────────────────────────────────────────
 
-	@app.get("/api/exercises")
-	@app.get("/workout/api/exercises")
+	@api_router.get("/exercises")
 	async def list_exercises(request: Request):
 		user_id = get_user_id(request)
 		cat = request.query_params.get("category")
@@ -171,8 +159,7 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 			)
 		)
 
-	@app.post("/api/exercises")
-	@app.post("/workout/api/exercises")
+	@api_router.post("/exercises")
 	async def create_exercise(request: Request):
 		user_id = get_user_id(request)
 		try:
@@ -189,8 +176,7 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 		except Exception as e:
 			raise HTTPException(status_code=500, detail=str(e))
 
-	@app.delete("/api/exercises/{exercise_id}")
-	@app.delete("/workout/api/exercises/{exercise_id}")
+	@api_router.delete("/exercises/{exercise_id}")
 	async def delete_exercise(exercise_id: str, request: Request):
 		user_id = get_user_id(request)
 		success = db.delete_exercise(user_id, exercise_id)
@@ -200,8 +186,7 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 
 	# ── Combos API ────────────────────────────────────────────────────────────
 
-	@app.get("/api/combos")
-	@app.get("/workout/api/combos")
+	@api_router.get("/combos")
 	async def list_combos(request: Request):
 		user_id = get_user_id(request)
 		cat = request.query_params.get("category")
@@ -211,8 +196,7 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 			content=db.list_combos(user_id=user_id, category=cat, discipline=disc, search=search)
 		)
 
-	@app.post("/api/combos")
-	@app.post("/workout/api/combos")
+	@api_router.post("/combos")
 	async def create_combo(request: Request):
 		user_id = get_user_id(request)
 		try:
@@ -229,8 +213,7 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 		except Exception as e:
 			raise HTTPException(status_code=500, detail=str(e))
 
-	@app.delete("/api/combos/{combo_id}")
-	@app.delete("/workout/api/combos/{combo_id}")
+	@api_router.delete("/combos/{combo_id}")
 	async def delete_combo(combo_id: str, request: Request):
 		user_id = get_user_id(request)
 		success = db.delete_combo(combo_id, user_id)
@@ -240,8 +223,7 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 
 	# ── Uploads API ───────────────────────────────────────────────────────────
 
-	@app.post("/api/upload")
-	@app.post("/workout/api/upload")
+	@api_router.post("/upload")
 	async def upload_media_file(file: UploadFile = File(...)):
 		if not file.filename:
 			raise HTTPException(status_code=400, detail="No file uploaded")
@@ -288,6 +270,10 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 				"type": "image",
 			}
 		)
+
+	# Mount API router to both standard root /api and subpath /workout/api
+	app.include_router(api_router, prefix="/api")
+	app.include_router(api_router, prefix="/workout/api")
 
 	# ── Static & HTML ─────────────────────────────────────────────────────────
 

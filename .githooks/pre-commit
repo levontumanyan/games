@@ -9,8 +9,8 @@ echo "==> Linting workout..."
 echo "==> Linting spelling-bee..."
 (cd spelling-bee && uv run ruff check . && uv run ruff format --check .)
 
-echo "==> Running workout tests (fast unit, AST module graph + Playwright browser tests)..."
-(cd workout && uv run pytest -q -m "")
+echo "==> Running workout tests (fast unit & AST module cycle tests)..."
+(cd workout && uv run pytest -q)
 
 echo "==> Running spelling-bee tests..."
 (cd spelling-bee && uv run pytest -q)

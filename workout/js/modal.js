@@ -246,3 +246,78 @@ export function showShareModal({
 	});
 }
 
+/**
+ * Create and show a custom modal window with standardized backdrop, close button,
+ * click-outside dismissal, and Escape key handling.
+ * @param {Object} options
+ * @param {string} options.title
+ * @param {string} [options.bodyHtml]
+ * @param {HTMLElement} [options.bodyElement]
+ * @param {string} [options.footerHtml]
+ * @param {string} [options.maxWidth]
+ * @param {string} [options.className]
+ * @param {Function} [options.onClose]
+ * @returns {{ backdrop: HTMLElement, modal: HTMLElement, close: Function }}
+ */
+export function createCustomModal({
+	title = '',
+	bodyHtml = '',
+	bodyElement = null,
+	footerHtml = '',
+	maxWidth = null,
+	className = '',
+	onClose = null
+} = {}) {
+	const backdrop = document.createElement('div');
+	backdrop.className = `modal-backdrop custom-modal-backdrop ${className}`.trim();
+
+	const modal = document.createElement('div');
+	modal.className = 'modal-window custom-modal-window';
+	if (maxWidth) {
+		modal.style.maxWidth = maxWidth;
+	}
+
+	modal.innerHTML = `
+		<div class="modal-header">
+			<h3 class="modal-title">${title}</h3>
+			<button class="modal-close-btn" title="Close">✕</button>
+		</div>
+		<div class="modal-body custom-modal-body"></div>
+		${footerHtml ? `<div class="modal-footer">${footerHtml}</div>` : ''}
+	`;
+
+	const bodyContainer = modal.querySelector('.modal-body');
+	if (bodyElement) {
+		bodyContainer.appendChild(bodyElement);
+	} else if (bodyHtml) {
+		bodyContainer.innerHTML = bodyHtml;
+	}
+
+	backdrop.appendChild(modal);
+	document.body.appendChild(backdrop);
+
+	let isClosed = false;
+	const close = () => {
+		if (isClosed) return;
+		isClosed = true;
+		window.removeEventListener('keydown', handleKeyDown);
+		backdrop.remove();
+		if (onClose) onClose();
+	};
+
+	const handleKeyDown = (e) => {
+		if (e.key === 'Escape') {
+			e.stopPropagation();
+			close();
+		}
+	};
+
+	modal.querySelector('.modal-close-btn').addEventListener('click', close);
+	backdrop.addEventListener('click', (e) => {
+		if (e.target === backdrop) close();
+	});
+	window.addEventListener('keydown', handleKeyDown);
+
+	return { backdrop, modal, close };
+}
+

@@ -1509,7 +1509,7 @@ function openWorkoutTutorial(instructionAsset, exercise) {
 				</div>
 			` : `
 				<div class="workout-tutorial-img-wrapper">
-					<img src="${instructionAsset.url || '/workout/media/pushups.svg'}" alt="Tutorial Photo">
+					<img src="${instructionAsset.url || '/workout/media/placeholder.svg'}" alt="Tutorial Photo" onerror="this.src='/workout/media/placeholder.svg'">
 				</div>
 			`}
 
