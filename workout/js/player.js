@@ -84,7 +84,10 @@ function loadYouTubeApi() {
 			resolve();
 			return;
 		}
+		const existingCallback = window.onYouTubeIframeAPIReady;
 		window.onYouTubeIframeAPIReady = () => {
+			if (typeof existingCallback === 'function') existingCallback();
+			console.log('[Workout Player] YouTube IFrame API script ready.');
 			resolve();
 		};
 		const tag = document.createElement('script');
@@ -104,12 +107,16 @@ export async function initPlayer(domRefs, callbacks) {
 
 	await loadYouTubeApi();
 
+	console.log('[Workout Player] Initializing YT.Player on element #', dom.youtubeContainer?.id);
+
 	ytPlayer = new YT.Player(dom.youtubeContainer.id, {
 		height: '100%',
 		width: '100%',
 		playerVars: {
 			controls: 0,
 			disablekb: 1,
+			enablejsapi: 1,
+			origin: window.location.origin,
 			modestbranding: 1,
 			rel: 0,
 			fs: 0,
@@ -123,12 +130,14 @@ export async function initPlayer(domRefs, callbacks) {
 		events: {
 			onReady: () => {
 				ytReady = true;
+				console.log('[Workout Player] YouTube Player is ready for playback.');
 				disableCaptions();
 			},
 			onStateChange: onYTStateChange,
 			onError: onYTError,
 		}
 	});
+	window.__ytPlayer = ytPlayer;
 
 	// Fullscreen toggle buttons
 	if (dom.fullscreenTopBtn) {
@@ -429,10 +438,30 @@ function clearClipMonitor() {
 	}
 }
 
+const YT_STATE_NAMES = {
+	[-1]: 'UNSTARTED',
+	[0]: 'ENDED',
+	[1]: 'PLAYING',
+	[2]: 'PAUSED',
+	[3]: 'BUFFERING',
+	[5]: 'CUED'
+};
+
+const YT_ERROR_MESSAGES = {
+	2: 'Invalid parameter value (e.g. videoId not 11 chars or invalid timestamp syntax).',
+	5: 'HTML5 player error or content cannot be played in HTML5 player.',
+	100: 'Video not found (removed or marked private).',
+	101: 'Video owner does not allow embedded playback on other websites.',
+	150: 'Video owner does not allow embedded playback (copyright or domain restriction).'
+};
+
 /**
  * Handle YouTube player state changes.
  */
 function onYTStateChange(event) {
+	const stateName = YT_STATE_NAMES[event.data] || `UNKNOWN(${event.data})`;
+	console.log(`[Workout Player] YouTube State Change: ${stateName} (${event.data})`);
+
 	if (event.data === YT.PlayerState.PLAYING) {
 		disableCaptions();
 		clipHasStartedPlaying = true;
@@ -454,7 +483,7 @@ function onYTStateChange(event) {
 
 		// If the video never actually entered PLAYING state for this step, or loaded less than 1s ago, ignore it
 		if (!clipHasStartedPlaying || (Date.now() - clipLoadedAt < 1000)) {
-			console.warn('Ignoring spurious YouTube ENDED event for step:', currentStepIndex);
+			console.warn('[Workout Player] Ignoring spurious YouTube ENDED event for step:', currentStepIndex);
 			return;
 		}
 
@@ -467,7 +496,8 @@ function onYTStateChange(event) {
  * Handle YouTube player error events.
  */
 function onYTError(event) {
-	console.warn('YouTube Player error code:', event.data);
+	const desc = YT_ERROR_MESSAGES[event.data] || 'Unknown YouTube playback error';
+	console.error(`[Workout Player] YouTube Player error code ${event.data}: ${desc}`);
 }
 
 /**
@@ -733,8 +763,13 @@ function updateRepsStepperDisplay() {
  */
 function advanceStepOrSubStep() {
 	if (!currentRoutine) return;
+	clearClipMonitor();
+	clearTimer();
+	clearRepsTimer();
+
 	const currentStep = currentRoutine.steps[currentStepIndex];
-	const hasSubSteps = currentStep && !isBreakStep(currentStep) && Array.isArray(currentStep.exercises) && currentStep.exercises.length > 1;
+	const isClip = !isRepsStep(currentStep) && !isBreakStep(currentStep) && Boolean(isClipStep(currentStep) || resolveStepVideo(currentStep)?.videoId);
+	const hasSubSteps = currentStep && !isBreakStep(currentStep) && !isClip && Array.isArray(currentStep.exercises) && currentStep.exercises.length > 1;
 
 	if (hasSubSteps && currentSubStepIndex < currentStep.exercises.length - 1) {
 		currentSubStepIndex++;
@@ -764,6 +799,7 @@ function executeCurrentStep() {
 		return;
 	}
 
+	clearClipMonitor();
 	clearTimer();
 	clearRepsTimer();
 	const step = currentRoutine.steps[currentStepIndex];
@@ -826,6 +862,8 @@ function executeClipStep(step, videoAsset) {
 	const startSec = (videoAsset && typeof videoAsset.startSeconds === 'number') ? videoAsset.startSeconds : (step.startSeconds || 0);
 	const endSec = (videoAsset && typeof videoAsset.endSeconds === 'number') ? videoAsset.endSeconds : (step.endSeconds || undefined);
 
+	console.log(`[Workout Player] executeClipStep [${currentStepIndex}] ("${step.label || 'Step'}"): videoId="${vidId}", start=${startSec}s, end=${endSec !== undefined ? endSec + 's' : 'end'}, ytReady=${ytReady}, ytPlayer=${Boolean(ytPlayer)}`);
+
 	if (ytReady && ytPlayer) {
 		ytPlayer.loadVideoById({
 			videoId: vidId,
@@ -833,6 +871,8 @@ function executeClipStep(step, videoAsset) {
 			endSeconds: endSec,
 		});
 		disableCaptions();
+	} else {
+		console.warn(`[Workout Player] Cannot play clip: ytReady=${ytReady}, ytPlayer=${Boolean(ytPlayer)}`);
 	}
 
 	const isTutorial = Boolean(step.isTutorial || (step.label && step.label.includes('[Tutorial]')));
@@ -988,6 +1028,20 @@ function executeTimerStep(step) {
 		const priDef = priMuscle ? MUSCLE_DEFINITIONS[priMuscle] : null;
 		const muscleTagHtml = priDef ? ` <span class="player-hud-muscle-tag" style="color:${priDef.color}">${priDef.icon} ${priDef.label}</span>` : '';
 
+		const stageHeader = dom.timerStageHeader || (typeof document !== 'undefined' && document.getElementById('timer-stage-header'));
+		const stageBadge = dom.timerStageBadge || (typeof document !== 'undefined' && document.getElementById('timer-stage-badge'));
+		const stageTitle = dom.timerStageTitle || (typeof document !== 'undefined' && document.getElementById('timer-stage-title'));
+
+		if (stageHeader) {
+			stageHeader.classList.remove('hidden');
+			if (stageBadge) {
+				stageBadge.innerHTML = muscleTagHtml ? `🔢 REPETITIONS ${muscleTagHtml}` : '🔢 REPETITIONS';
+			}
+			if (stageTitle) {
+				stageTitle.textContent = hasSubSteps ? (activeSubEx.name || dispName) : dispName;
+			}
+		}
+
 		if (hasSubSteps) {
 			const flowIcon = step.flow_type === 'alternating' ? '⮀' : (step.flow_type === 'sequence' ? '➔' : '⚡');
 			const flowLabel = step.flow_type === 'alternating' ? 'Alternating' : (step.flow_type === 'sequence' ? 'Flow' : 'Superset');
@@ -1024,7 +1078,29 @@ function executeTimerStep(step) {
 		const muscleTagHtml = priDef ? ` <span class="player-hud-muscle-tag" style="color:${priDef.color}">${priDef.icon} ${priDef.label}</span>` : '';
 
 		timerRemaining = targetDuration;
-		dom.timerLabel.textContent = hasSubSteps ? (activeSubEx.name || dispName) : (dispName || (isBreak ? 'Rest' : 'Timer'));
+
+		const stageHeader = dom.timerStageHeader || (typeof document !== 'undefined' && document.getElementById('timer-stage-header'));
+		const stageBadge = dom.timerStageBadge || (typeof document !== 'undefined' && document.getElementById('timer-stage-badge'));
+		const stageTitle = dom.timerStageTitle || (typeof document !== 'undefined' && document.getElementById('timer-stage-title'));
+
+		if (isBreak) {
+			if (stageHeader) stageHeader.classList.add('hidden');
+			if (dom.timerLabel) dom.timerLabel.textContent = 'REST';
+		} else {
+			if (stageHeader) {
+				stageHeader.classList.remove('hidden');
+				if (stageBadge) {
+					stageBadge.innerHTML = muscleTagHtml ? `${getTimerIcon(12)} TIMED INTERVAL ${muscleTagHtml}` : `${getTimerIcon(12)} TIMED INTERVAL`;
+				}
+				if (stageTitle) {
+					stageTitle.textContent = hasSubSteps ? (activeSubEx.name || dispName) : dispName;
+				}
+			}
+			if (dom.timerLabel) {
+				dom.timerLabel.textContent = hasSubSteps ? `MOVE ${currentSubStepIndex + 1}/${totalSubSteps}` : 'WORK';
+			}
+		}
+
 		dom.timerDisplay.textContent = formatTime(timerRemaining);
 
 		if (hasSubSteps) {
@@ -1189,6 +1265,9 @@ function clearTimer() {
  */
 function advanceStep() {
 	if (!currentRoutine) return;
+	clearClipMonitor();
+	clearTimer();
+	clearRepsTimer();
 
 	currentStepIndex++;
 	currentSubStepIndex = 0;
@@ -1218,8 +1297,13 @@ function advanceStep() {
  */
 export function previousStep() {
 	if (!currentRoutine) return;
+	clearClipMonitor();
+	clearTimer();
+	clearRepsTimer();
+
 	const currentStep = currentRoutine.steps[currentStepIndex];
-	const hasSubSteps = currentStep && !isBreakStep(currentStep) && Array.isArray(currentStep.exercises) && currentStep.exercises.length > 1;
+	const isClip = !isRepsStep(currentStep) && !isBreakStep(currentStep) && Boolean(isClipStep(currentStep) || resolveStepVideo(currentStep)?.videoId);
+	const hasSubSteps = currentStep && !isBreakStep(currentStep) && !isClip && Array.isArray(currentStep.exercises) && currentStep.exercises.length > 1;
 
 	if (hasSubSteps && currentSubStepIndex > 0) {
 		currentSubStepIndex--;
@@ -1230,7 +1314,8 @@ export function previousStep() {
 	if (currentStepIndex <= 0) return;
 	currentStepIndex--;
 	const prevStep = currentRoutine.steps[currentStepIndex];
-	if (prevStep && !isBreakStep(prevStep) && Array.isArray(prevStep.exercises) && prevStep.exercises.length > 1) {
+	const prevIsClip = prevStep && !isRepsStep(prevStep) && !isBreakStep(prevStep) && Boolean(isClipStep(prevStep) || resolveStepVideo(prevStep)?.videoId);
+	if (prevStep && !isBreakStep(prevStep) && !prevIsClip && Array.isArray(prevStep.exercises) && prevStep.exercises.length > 1) {
 		currentSubStepIndex = prevStep.exercises.length - 1;
 	} else {
 		currentSubStepIndex = 0;
@@ -1376,6 +1461,7 @@ export function jumpToStep(index) {
 	updatePlayPauseBtn(false);
 	executeCurrentStep();
 }
+window.__jumpToStep = jumpToStep;
 
 /**
  * Show the player UI and hide other views.
@@ -1438,6 +1524,7 @@ function updateStepIndicator() {
 		if (i < currentStepIndex) indicator.classList.add('completed');
 		const isReps = isRepsStep(step);
 		const durLabel = isClipStep(step) ? 'Video' : (isReps ? `${step.targetReps || 20} reps` : formatTime(step.durationSeconds || 30));
+		const stepTitle = getStepDisplayName(step);
 		indicator.title = `${stepTitle} (${durLabel})`;
 		indicator.textContent = i + 1;
 		indicator.addEventListener('click', () => jumpToStep(i));
@@ -1447,7 +1534,8 @@ function updateStepIndicator() {
 	// Update step counter with sub-step move indicator if applicable
 	if (dom.stepCounter) {
 		const curStep = currentRoutine.steps[currentStepIndex];
-		const hasSubSteps = curStep && !isBreakStep(curStep) && Array.isArray(curStep.exercises) && curStep.exercises.length > 1;
+		const isClip = !isRepsStep(curStep) && !isBreakStep(curStep) && Boolean(isClipStep(curStep) || resolveStepVideo(curStep)?.videoId);
+		const hasSubSteps = curStep && !isBreakStep(curStep) && !isClip && Array.isArray(curStep.exercises) && curStep.exercises.length > 1;
 		const subSuffix = hasSubSteps ? ` · Move ${currentSubStepIndex + 1}/${curStep.exercises.length}` : '';
 		dom.stepCounter.textContent = `Step ${currentStepIndex + 1} / ${currentRoutine.steps.length}${subSuffix}`;
 	}
@@ -1455,7 +1543,8 @@ function updateStepIndicator() {
 	// Update next step preview
 	if (dom.nextStepPreview) {
 		const curStep = currentRoutine.steps[currentStepIndex];
-		const hasSubSteps = curStep && !isBreakStep(curStep) && Array.isArray(curStep.exercises) && curStep.exercises.length > 1;
+		const isClip = !isRepsStep(curStep) && !isBreakStep(curStep) && Boolean(isClipStep(curStep) || resolveStepVideo(curStep)?.videoId);
+		const hasSubSteps = curStep && !isBreakStep(curStep) && !isClip && Array.isArray(curStep.exercises) && curStep.exercises.length > 1;
 		if (hasSubSteps && currentSubStepIndex < curStep.exercises.length - 1) {
 			const rawNext = curStep.exercises[currentSubStepIndex + 1];
 			const resolvedNext = rawNext ? ((rawNext.id ? getExerciseById(rawNext.id) : null) || rawNext) : null;

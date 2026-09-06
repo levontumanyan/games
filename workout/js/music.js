@@ -100,7 +100,7 @@ export async function initMusic(containerEl, callbacks) {
 				}
 			},
 			onError: (err) => {
-				console.warn('YouTube music player error:', err);
+				console.warn('[Workout Music] Background track player error:', err.data || err);
 				handleTrackEnded();
 			}
 		}

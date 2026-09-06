@@ -116,6 +116,9 @@ async function init() {
 			exercisesView: dom.exercisesView,
 			statsView: dom.statsView,
 			timerOverlay: dom.timerOverlay,
+			timerStageHeader: dom.timerStageHeader,
+			timerStageBadge: dom.timerStageBadge,
+			timerStageTitle: dom.timerStageTitle,
 			timerMediaContainer: dom.timerMediaContainer,
 			timerMediaImg: dom.timerMediaImg,
 			timerDisplay: dom.timerDisplay,
@@ -242,6 +245,9 @@ function cacheDom() {
 	dom.youtubePlayer = document.getElementById('youtube-player');
 	dom.videoWrapper = document.getElementById('video-wrapper');
 	dom.timerOverlay = document.getElementById('timer-overlay');
+	dom.timerStageHeader = document.getElementById('timer-stage-header');
+	dom.timerStageBadge = document.getElementById('timer-stage-badge');
+	dom.timerStageTitle = document.getElementById('timer-stage-title');
 	dom.timerMediaContainer = document.getElementById('timer-media-container');
 	dom.timerMediaImg = document.getElementById('timer-media-img');
 	dom.timerDisplay = document.getElementById('timer-display');
