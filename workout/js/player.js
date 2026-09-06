@@ -62,6 +62,7 @@ const HUD_IDLE_DELAY = 3000;
 // Starting countdown state (5-second intro)
 let isCountingDown = false;
 let countdownInterval = null;
+let countdownTimeout = null;
 
 // Screen Wake Lock (prevent sleep / screensaver during workouts & fullscreen)
 let wakeLock = null;
@@ -473,6 +474,10 @@ export function clearCountdown() {
 		clearInterval(countdownInterval);
 		countdownInterval = null;
 	}
+	if (countdownTimeout) {
+		clearTimeout(countdownTimeout);
+		countdownTimeout = null;
+	}
 	isCountingDown = false;
 	const countdownStage = dom.countdownStage || document.getElementById('countdown-stage');
 	if (countdownStage) {
@@ -521,60 +526,64 @@ function startWorkoutCountdown(routine, onComplete) {
 	countdownStage.classList.remove('hidden');
 
 	if (routineTitleEl) {
-		const totalMoves = routine.steps.length;
+		const totalMoves = (routine.steps || []).length;
 		routineTitleEl.textContent = `${routine.title || 'Workout'} (${totalMoves} movement${totalMoves === 1 ? '' : 's'})`;
 	}
 
-	// First movement preview
-	const firstStep = (routine.steps && routine.steps[0]) ? routine.steps[0] : null;
-	if (firstStep) {
-		const firstStepName = getStepDisplayName(firstStep);
-		if (firstLabel) firstLabel.textContent = firstStepName;
+	// Safe preview rendering: wrapped in try-catch to guarantee countdown timer always runs
+	try {
+		const firstStep = (routine.steps && routine.steps[0]) ? routine.steps[0] : null;
+		if (firstStep) {
+			const firstStepName = getStepDisplayName(firstStep);
+			if (firstLabel) firstLabel.textContent = firstStepName;
 
-		const isReps = firstStep.stepMode === 'reps' || (!firstStep.stepMode && Boolean(firstStep.targetReps) && firstStep.targetReps > 0);
-		const firstVidAsset = !isReps ? resolveStepVideo(firstStep) : null;
-		const isVid = Boolean(firstVidAsset?.videoId || firstStep.videoId || firstStep.type === 'clip');
-		const dur = firstStep.durationSeconds || (firstVidAsset ? Math.max(1, (firstVidAsset.endSeconds || 60) - (firstVidAsset.startSeconds || 0)) : 30);
+			const isReps = firstStep.stepMode === 'reps' || (!firstStep.stepMode && Boolean(firstStep.targetReps) && firstStep.targetReps > 0);
+			const firstVidAsset = !isReps ? resolveStepVideo(firstStep) : null;
+			const isVid = Boolean(firstVidAsset?.videoId || firstStep.videoId || firstStep.type === 'clip');
+			const dur = firstStep.durationSeconds || (firstVidAsset ? Math.max(1, (firstVidAsset.endSeconds || 60) - (firstVidAsset.startSeconds || 0)) : 30);
 
-		let modeTag = '';
-		if (isVid) {
-			modeTag = `<span class="view-tag view-tag-clip" style="font-size:0.75rem;padding:2px 6px;">${getClipIcon(11)} Video Clip</span>`;
-		} else if (isReps) {
-			modeTag = `<span class="view-tag view-tag-reps" style="font-size:0.75rem;padding:2px 6px;">🔢 ${firstStep.targetReps || 20} reps</span>`;
-		} else {
-			modeTag = `<span class="view-tag view-tag-time" style="font-size:0.75rem;padding:2px 6px;">${getTimerIcon(11)} ${formatTime(dur)}</span>`;
-		}
+			let modeTag = '';
+			if (isVid) {
+				modeTag = `<span class="view-tag view-tag-clip" style="font-size:0.75rem;padding:2px 6px;">${getClipIcon(11)} Video Clip</span>`;
+			} else if (isReps) {
+				modeTag = `<span class="view-tag view-tag-reps" style="font-size:0.75rem;padding:2px 6px;">🔢 ${firstStep.targetReps || 20} reps</span>`;
+			} else {
+				modeTag = `<span class="view-tag view-tag-time" style="font-size:0.75rem;padding:2px 6px;">${getTimerIcon(11)} ${formatTime(dur)}</span>`;
+			}
 
-		// Target muscles
-		let musclePills = '';
-		if (Array.isArray(firstStep.exercises) && firstStep.exercises.length > 0) {
-			const ex = firstStep.exercises[0];
-			const fullEx = (ex && ex.id ? getExerciseById(ex.id) : null) || ex;
-			const muscles = inferMusclesForExercise(fullEx);
-			if (muscles.primary && muscles.primary.length > 0) {
-				const def = MUSCLE_DEFINITIONS[muscles.primary[0]];
-				if (def) {
-					musclePills = `<span style="font-size:0.75rem;padding:2px 6px;border-radius:4px;background:rgba(255,255,255,0.06);color:var(--text-secondary);">${def.icon} ${def.name}</span>`;
+			// Target muscles
+			let musclePills = '';
+			if (Array.isArray(firstStep.exercises) && firstStep.exercises.length > 0) {
+				const ex = firstStep.exercises[0];
+				const fullEx = (ex && ex.id ? getExerciseById(ex.id) : null) || ex;
+				const muscles = inferMusclesForExercise(fullEx);
+				if (muscles.primary && muscles.primary.length > 0) {
+					const def = MUSCLE_DEFINITIONS[muscles.primary[0]];
+					if (def) {
+						musclePills = `<span style="font-size:0.75rem;padding:2px 6px;border-radius:4px;background:rgba(255,255,255,0.06);color:var(--text-secondary);">${def.icon} ${def.name}</span>`;
+					}
+				}
+			}
+
+			if (firstMeta) {
+				firstMeta.innerHTML = `${modeTag} ${musclePills}`;
+			}
+
+			// Thumbnail
+			if (firstThumb) {
+				const vidId = firstVidAsset?.videoId || firstStep.videoId;
+				const mediaUrl = resolveStepVisual(firstStep);
+				if (vidId) {
+					firstThumb.innerHTML = `<img src="https://img.youtube.com/vi/${vidId}/mqdefault.jpg" alt="${escapeHtml(firstStepName)}" />`;
+				} else if (mediaUrl) {
+					firstThumb.innerHTML = `<img src="${mediaUrl}" alt="${escapeHtml(firstStepName)}" />`;
+				} else {
+					firstThumb.innerHTML = `<span style="font-size:1.4rem;">🥋</span>`;
 				}
 			}
 		}
-
-		if (firstMeta) {
-			firstMeta.innerHTML = `${modeTag} ${musclePills}`;
-		}
-
-		// Thumbnail
-		if (firstThumb) {
-			const vidId = firstVidAsset?.videoId || firstStep.videoId;
-			const mediaUrl = resolveStepVisual(firstStep);
-			if (vidId) {
-				firstThumb.innerHTML = `<img src="https://img.youtube.com/vi/${vidId}/mqdefault.jpg" alt="${escapeHtml(firstStepName)}" />`;
-			} else if (mediaUrl) {
-				firstThumb.innerHTML = `<img src="${mediaUrl}" alt="${escapeHtml(firstStepName)}" />`;
-			} else {
-				firstThumb.innerHTML = `<span style="font-size:1.4rem;">🥋</span>`;
-			}
-		}
+	} catch (err) {
+		console.warn('Error populating countdown first movement preview:', err);
 	}
 
 	if (skipBtn) {
@@ -587,6 +596,8 @@ function startWorkoutCountdown(routine, onComplete) {
 	let remaining = 5;
 	const totalSeconds = 5;
 	const circumference = 2 * Math.PI * 88; // ~552.92
+	const startTime = Date.now();
+	const endTime = startTime + (totalSeconds * 1000);
 
 	function updateCountdownDisplay() {
 		if (numberEl) {
@@ -598,7 +609,7 @@ function startWorkoutCountdown(routine, onComplete) {
 		}
 
 		if (ringFill) {
-			const fraction = remaining / totalSeconds;
+			const fraction = Math.max(0, remaining) / totalSeconds;
 			const offset = circumference * (1 - fraction);
 			ringFill.style.strokeDasharray = circumference;
 			ringFill.style.strokeDashoffset = offset;
@@ -614,18 +625,24 @@ function startWorkoutCountdown(routine, onComplete) {
 	updateCountdownDisplay();
 
 	countdownInterval = setInterval(() => {
-		remaining--;
-		updateCountdownDisplay();
+		const now = Date.now();
+		const currentRemaining = Math.max(0, Math.ceil((endTime - now) / 1000));
 
-		if (remaining <= 0) {
+		if (currentRemaining !== remaining) {
+			remaining = currentRemaining;
+			updateCountdownDisplay();
+		}
+
+		if (now >= endTime) {
 			clearInterval(countdownInterval);
 			countdownInterval = null;
-			setTimeout(() => {
+			countdownTimeout = setTimeout(() => {
+				countdownTimeout = null;
 				clearCountdown();
 				onComplete();
 			}, 400);
 		}
-	}, 1000);
+	}, 100);
 }
 
 /**
@@ -774,8 +791,8 @@ function executeClipStep(step, videoAsset) {
 	clipLoadedAt = Date.now();
 	isRepsMode = false;
 
-	dom.timerOverlay.classList.add('hidden');
-	dom.videoWrapper.classList.remove('hidden');
+	dom.timerOverlay?.classList.add('hidden');
+	dom.videoWrapper?.classList.remove('hidden');
 
 	const mediaContainer = dom.timerMediaContainer || document.getElementById('timer-media-container');
 	const mediaImg = dom.timerMediaImg || document.getElementById('timer-media-img');
@@ -814,14 +831,16 @@ function executeClipStep(step, videoAsset) {
 	}
 
 	const isTutorial = Boolean(step.isTutorial || (step.label && step.label.includes('[Tutorial]')));
-	dom.currentStepLabel.textContent = isTutorial ? 'Tutorial Breakdown' : getStepDisplayName(step);
-	if (isTutorial) {
-		dom.currentStepType.innerHTML = `🎬 Tutorial Breakdown · ` + (step.exercises && step.exercises.length > 0 ? step.exercises.map(e => (getExerciseById(e.id || e)?.name || e.name || 'Instruction')).join(', ') : 'Instruction');
-	} else if (step.exercises && step.exercises.length > 0) {
-		const joiner = step.flow_type === 'alternating' ? ' ⮀ ' : ' + ';
-		dom.currentStepType.innerHTML = `${getClipIcon(14)} ` + step.exercises.map(e => (getExerciseById(e.id || e)?.name || e.name || 'Exercise')).join(joiner);
-	} else {
-		dom.currentStepType.innerHTML = `${getClipIcon(14)} Follow-Along Video`;
+	if (dom.currentStepLabel) dom.currentStepLabel.textContent = isTutorial ? 'Tutorial Breakdown' : getStepDisplayName(step);
+	if (dom.currentStepType) {
+		if (isTutorial) {
+			dom.currentStepType.innerHTML = `🎬 Tutorial Breakdown · ` + (step.exercises && step.exercises.length > 0 ? step.exercises.map(e => (getExerciseById(e.id || e)?.name || e.name || 'Instruction')).join(', ') : 'Instruction');
+		} else if (step.exercises && step.exercises.length > 0) {
+			const joiner = step.flow_type === 'alternating' ? ' ⮀ ' : ' + ';
+			dom.currentStepType.innerHTML = `${getClipIcon(14)} ` + step.exercises.map(e => (getExerciseById(e.id || e)?.name || e.name || 'Exercise')).join(joiner);
+		} else {
+			dom.currentStepType.innerHTML = `${getClipIcon(14)} Follow-Along Video`;
+		}
 	}
 }
 
@@ -838,8 +857,8 @@ function executeTimerStep(step) {
 	if (ytReady && ytPlayer) {
 		try { ytPlayer.pauseVideo(); } catch {}
 	}
-	dom.videoWrapper.classList.add('hidden');
-	dom.timerOverlay.classList.remove('hidden');
+	dom.videoWrapper?.classList.add('hidden');
+	dom.timerOverlay?.classList.remove('hidden');
 
 	const isBreak = isBreakStep(step);
 	const hasSubSteps = !isBreak && Array.isArray(step.exercises) && step.exercises.length > 1;
@@ -1351,7 +1370,7 @@ export function jumpToStep(index) {
  * Show the player UI and hide other views.
  */
 function showPlayerUI() {
-	dom.playerView.classList.remove('hidden');
+	if (dom.playerView) dom.playerView.classList.remove('hidden');
 	if (dom.editorView) dom.editorView.classList.add('hidden');
 	if (dom.routineView) dom.routineView.classList.add('hidden');
 	if (dom.emptyView) dom.emptyView.classList.add('hidden');
@@ -1362,8 +1381,8 @@ function showPlayerUI() {
 		dom.playerRoutineTitle.textContent = currentRoutine?.title || 'Workout';
 	}
 
-	let previewBadge = dom.playerView.querySelector('#player-preview-badge');
-	if (!previewBadge) {
+	let previewBadge = dom.playerView?.querySelector('#player-preview-badge');
+	if (!previewBadge && dom.playerView) {
 		previewBadge = document.createElement('span');
 		previewBadge.id = 'player-preview-badge';
 		previewBadge.className = 'player-preview-badge';
@@ -1384,15 +1403,15 @@ function showPlayerUI() {
  * Hide the player UI.
  */
 function hidePlayerUI() {
-	dom.playerView.classList.add('hidden');
-	dom.timerOverlay.classList.add('hidden');
-	dom.videoWrapper.classList.add('hidden');
-	const mediaContainer = dom.timerMediaContainer || document.getElementById('timer-media-container');
-	const mediaImg = dom.timerMediaImg || document.getElementById('timer-media-img');
-	if (mediaContainer) mediaContainer.classList.add('hidden');
-	if (mediaImg) mediaImg.removeAttribute('src');
-	dom.timerOverlay?.querySelector('.timer-stage-content')?.classList.remove('has-media');
-	if (dom.upNextCard) dom.upNextCard.classList.add('hidden');
+	dom.playerView?.classList.add('hidden');
+	dom.timerOverlay?.classList.add('hidden');
+	dom.videoWrapper?.classList.add('hidden');
+	const mediaContainer = dom.timerMediaContainer || (typeof document !== 'undefined' && document.getElementById('timer-media-container'));
+	const mediaImg = dom.timerMediaImg || (typeof document !== 'undefined' && document.getElementById('timer-media-img'));
+	if (mediaContainer) mediaContainer.classList?.add('hidden');
+	if (mediaImg) mediaImg.removeAttribute?.('src');
+	dom.timerOverlay?.querySelector?.('.timer-stage-content')?.classList.remove('has-media');
+	if (dom.upNextCard) dom.upNextCard.classList?.add('hidden');
 }
 
 /**

@@ -665,3 +665,90 @@ def test_dynamic_exercise_media_resolution():
 		text=True,
 	)
 	assert res.returncode == 0, f"Node dynamic exercise media resolution test failed:\n{res.stderr}"
+
+
+def test_player_start_routine_countdown():
+	"""Verify startRoutine and countdown initialization run without ReferenceError or freeze."""
+	js_dir = (Path(__file__).parent.parent / "js").resolve().as_posix()
+
+	node_script = f"""
+	globalThis.localStorage = {{ getItem: () => null, setItem: () => {{}}, removeItem: () => {{}} }};
+	const makeEl = () => ({{
+		className: '',
+		style: {{}},
+		classList: {{ add: () => {{}}, remove: () => {{}}, toggle: () => {{}} }},
+		addEventListener: () => {{}},
+		removeEventListener: () => {{}},
+		appendChild: () => {{}},
+		removeChild: () => {{}},
+		setAttribute: () => {{}},
+		removeAttribute: () => {{}},
+		querySelector: () => null,
+		querySelectorAll: () => [],
+		offsetHeight: 50,
+		textContent: '',
+		innerHTML: ''
+	}});
+	globalThis.document = {{
+		getElementById: () => makeEl(),
+		querySelector: () => makeEl(),
+		querySelectorAll: () => [],
+		createElement: () => makeEl(),
+		addEventListener: () => {{}},
+		removeEventListener: () => {{}}
+	}};
+	globalThis.window = {{
+		addEventListener: () => {{}},
+		removeEventListener: () => {{}},
+		innerHeight: 800,
+		innerWidth: 1200,
+		__INITIAL_EXERCISES__: []
+	}};
+
+	const {{ startRoutine, clearCountdown, skipCountdown, stopPlayback }} = await import('{js_dir}/player.js');
+
+	// Create a test routine starting with a video clip (matching san-lorenzo-el-ciclon)
+	const testRoutine = {{
+		id: 'test-routine-video-first',
+		title: 'Test Routine Video First',
+		steps: [
+			{{
+				id: 'step-0',
+				type: 'clip',
+				videoId: 'ZWZWzRnLpVM',
+				startSeconds: 60,
+				endSeconds: 250,
+				label: 'Star Jumps & Coordination',
+				exercises: [
+					{{ id: 'ex-star-jumps', name: 'Star Jumps' }}
+				]
+			}},
+			{{
+				id: 'step-1',
+				type: 'timer',
+				durationSeconds: 30,
+				label: 'Rest',
+				isBreak: true
+			}}
+		]
+	}};
+
+	// Should successfully initialize countdown without throwing ReferenceError: videoAsset is not defined
+	startRoutine(testRoutine, 0, false);
+
+	// Test skipping countdown works without error
+	skipCountdown();
+
+	// Clean up
+	clearCountdown();
+	stopPlayback();
+	process.exit(0);
+	"""
+
+	res = subprocess.run(
+		["node", "--input-type=module", "-e", node_script],
+		capture_output=True,
+		text=True,
+		timeout=5,
+	)
+	assert res.returncode == 0, f"Node start routine countdown test failed:\n{res.stderr}"
