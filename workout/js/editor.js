@@ -487,7 +487,7 @@ function createStepElement(step, index, routine, onUpdate, onTestStep) {
 
 	const headerTitle = document.createElement('span');
 	headerTitle.className = 'step-header-title';
-	const derivedTitle = step.label || (step.exercises && step.exercises.length > 0 ? step.exercises.map(e => e.name).join(' + ') : (isBreak ? 'Rest' : 'Exercise'));
+	const derivedTitle = getStepDisplayName(step);
 	headerTitle.textContent = derivedTitle;
 
 	const editTitleBtn = document.createElement('button');
@@ -515,7 +515,7 @@ function createStepElement(step, index, routine, onUpdate, onTestStep) {
 			} else {
 				delete step.label;
 			}
-			headerTitle.textContent = step.label || (step.exercises && step.exercises.length > 0 ? step.exercises.map(ex => ex.name).join(' + ') : (isBreak ? 'Rest' : 'Exercise'));
+			headerTitle.textContent = getStepDisplayName(step);
 			if (input.parentNode) {
 				input.replaceWith(headerTitle);
 				editTitleBtn.style.display = '';
@@ -672,6 +672,32 @@ function createStepElement(step, index, routine, onUpdate, onTestStep) {
 
 	el.appendChild(moveBar);
 	return el;
+}
+
+/**
+ * Resolves the primary user-facing name for a routine step.
+ * Falls back to attached exercise names if step.label is missing or generic.
+ * @param {Object} step
+ * @returns {string}
+ */
+export function getStepDisplayName(step) {
+	if (!step) return 'Exercise';
+	const rawLabel = typeof step.label === 'string' ? step.label.trim() : '';
+	if (rawLabel && rawLabel !== 'Exercise' && rawLabel !== 'Video Clip' && rawLabel !== 'Timer') {
+		return rawLabel;
+	}
+	if (Array.isArray(step.exercises) && step.exercises.length > 0) {
+		const names = step.exercises
+			.map(e => (typeof e === 'object' ? (e.name || e.id) : e))
+			.filter(Boolean);
+		if (names.length > 0) {
+			return names.join(' + ');
+		}
+	}
+	if (rawLabel) return rawLabel;
+	if (isBreakStep(step)) return 'Rest';
+	if (step.type === 'clip') return 'Video Clip';
+	return 'Exercise';
 }
 
 /**

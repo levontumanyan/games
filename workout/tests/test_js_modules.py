@@ -262,7 +262,7 @@ def test_step_creation_from_exercise_and_combo():
 		]
 	}};
 
-	const {{ createStepFromExercise, createStepFromCombo }} = await import('{js_dir}/editor.js');
+	const {{ createStepFromExercise, createStepFromCombo, getStepDisplayName }} = await import('{js_dir}/editor.js');
 
 	// 1. Video-backed exercise (Check Repeats)
 	const checkRepeatsEx = {{
@@ -388,6 +388,17 @@ def test_step_creation_from_exercise_and_combo():
 	const resolvedVid = resolveStepVideoAsset(legacyTimerStep);
 	if (!resolvedVid || resolvedVid.videoId !== 'wPGC3uFIOBA' || resolvedVid.endSeconds !== 60) {{
 		throw new Error('resolveStepVideoAsset failed for legacy timer step: ' + JSON.stringify(resolvedVid));
+	}}
+
+	// 5. Test getStepDisplayName fallback logic
+	if (getStepDisplayName({{ exercises: [{{ name: 'Plank Shoulder Taps' }}] }}) !== 'Plank Shoulder Taps') {{
+		throw new Error('getStepDisplayName failed for step without label');
+	}}
+	if (getStepDisplayName({{ label: 'Exercise', exercises: [{{ name: 'Push-Ups' }}] }}) !== 'Push-Ups') {{
+		throw new Error('getStepDisplayName failed for generic Exercise label');
+	}}
+	if (getStepDisplayName({{ label: 'Custom Workout Round', exercises: [{{ name: 'Push-Ups' }}] }}) !== 'Custom Workout Round') {{
+		throw new Error('getStepDisplayName failed for explicit custom label');
 	}}
 	"""
 
