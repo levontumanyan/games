@@ -222,3 +222,79 @@ def test_single_routine_crud_and_slug_lookup(client: TestClient):
 		).status_code
 		== 404
 	)
+
+
+def test_dynamic_exercise_propagation_to_routines(client: TestClient, tmp_path: Path):
+	# 1. Create an exercise via POST /api/exercises
+	ex_res = client.post(
+		"/api/exercises",
+		json={
+			"id": "ex-test-dyn",
+			"name": "Dynamic Pushup V1",
+			"category": "strength",
+			"discipline": "calisthenics",
+			"default_mode": "reps",
+			"default_quantity": 12,
+		},
+		headers={"X-User-Id": "levon"},
+	)
+	assert ex_res.status_code == 200
+
+	# 2. Create a routine with a step referencing the exercise
+	routine_payload = {
+		"id": "routine-dynamic-test",
+		"title": "Dynamic Propagation Routine",
+		"steps": [
+			{
+				"id": "s-1",
+				"type": "timer",
+				"durationSeconds": 30,
+				"exercises": [{"id": "ex-test-dyn"}],
+			}
+		],
+	}
+	put_res = client.put(
+		"/api/routines/routine-dynamic-test",
+		json=routine_payload,
+		headers={"X-User-Id": "levon"},
+	)
+	assert put_res.status_code == 200
+
+	# 3. Verify the routine initially returns the hydrated exercise details
+	get_res = client.get("/api/routines/routine-dynamic-test", headers={"X-User-Id": "levon"})
+	assert get_res.status_code == 200
+	step_data = get_res.json()["steps"][0]
+	assert step_data["exercises"][0]["name"] == "Dynamic Pushup V1"
+	assert step_data["exercises"][0]["category"] == "strength"
+	assert step_data["exercises"][0]["discipline"] == "calisthenics"
+
+	# 4. Update the backing exercise without touching the routine
+	update_ex_res = client.post(
+		"/api/exercises",
+		json={
+			"id": "ex-test-dyn",
+			"name": "Dynamic Pushup V2 Renamed",
+			"category": "endurance",
+			"discipline": "general",
+			"default_mode": "time",
+			"default_quantity": 45,
+		},
+		headers={"X-User-Id": "levon"},
+	)
+	assert update_ex_res.status_code == 200
+
+	# 5. Fetch the routine again - updates must propagate dynamically without modifying routine JSON!
+	get_res_updated = client.get(
+		"/api/routines/routine-dynamic-test", headers={"X-User-Id": "levon"}
+	)
+	assert get_res_updated.status_code == 200
+	updated_step = get_res_updated.json()["steps"][0]
+	assert updated_step["exercises"][0]["name"] == "Dynamic Pushup V2 Renamed"
+	assert updated_step["exercises"][0]["category"] == "endurance"
+	assert updated_step["exercises"][0]["discipline"] == "general"
+
+	# Also verify list routines endpoint
+	list_res = client.get("/api/routines", headers={"X-User-Id": "levon"})
+	assert list_res.status_code == 200
+	matching_routine = next(r for r in list_res.json() if r["id"] == "routine-dynamic-test")
+	assert matching_routine["steps"][0]["exercises"][0]["name"] == "Dynamic Pushup V2 Renamed"

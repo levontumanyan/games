@@ -684,18 +684,33 @@ function createStepElement(step, index, routine, onUpdate, onTestStep) {
 export function getStepDisplayName(step) {
 	if (!step) return 'Exercise';
 	const rawLabel = typeof step.label === 'string' ? step.label.trim() : '';
-	if (rawLabel && rawLabel !== 'Exercise' && rawLabel !== 'Video Clip' && rawLabel !== 'Timer') {
+	if (step.customLabel && rawLabel) {
 		return rawLabel;
 	}
 	if (Array.isArray(step.exercises) && step.exercises.length > 0) {
+		const matchesAnyEx = step.exercises.some(e => {
+			const name = typeof e === 'object' ? (e.name || e.id) : e;
+			const id = typeof e === 'object' ? (e.id || '') : '';
+			return (name && rawLabel.toLowerCase() === name.toLowerCase()) || (id && rawLabel.toLowerCase() === id.toLowerCase());
+		});
+		if (rawLabel && !matchesAnyEx && rawLabel !== 'Exercise' && rawLabel !== 'Video Clip' && rawLabel !== 'Timer') {
+			return rawLabel;
+		}
+
 		const names = step.exercises
-			.map(e => (typeof e === 'object' ? (e.name || e.id) : e))
+			.map(e => {
+				const eid = typeof e === 'object' ? (e.id || e.name) : e;
+				const fullEx = getExerciseById(eid);
+				return fullEx?.name || (typeof e === 'object' ? (e.name || e.id) : e);
+			})
 			.filter(Boolean);
 		if (names.length > 0) {
 			return names.join(' + ');
 		}
 	}
-	if (rawLabel) return rawLabel;
+	if (rawLabel && rawLabel !== 'Exercise' && rawLabel !== 'Video Clip' && rawLabel !== 'Timer') {
+		return rawLabel;
+	}
 	if (isBreakStep(step)) return 'Rest';
 	if (step.type === 'clip') return 'Video Clip';
 	return 'Exercise';

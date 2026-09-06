@@ -571,7 +571,7 @@ def test_dynamic_exercise_media_resolution():
 	}};
 
 	const {{ resolveStepVideo, resolveStepVisual, setExercises, getExercises }} = await import('{js_dir}/exercises.js');
-	const {{ createStepFromExercise }} = await import('{js_dir}/editor.js');
+	const {{ createStepFromExercise, getStepDisplayName }} = await import('{js_dir}/editor.js');
 
 	const initialEx = getExercises()[0];
 	const step = createStepFromExercise(initialEx);
@@ -630,6 +630,19 @@ def test_dynamic_exercise_media_resolution():
 	const gifVisual = resolveStepVisual(step);
 	if (gifVisual !== '/workout/media/frog-stretch.gif') {{
 		throw new Error('Expected visual GIF /workout/media/frog-stretch.gif, got: ' + gifVisual);
+	}}
+
+	// 3b. Dynamically rename exercise -> getStepDisplayName should dynamically reflect new name
+	setExercises([
+		{{
+			...initialEx,
+			name: 'Frog Pose Super Stretch',
+			media_url: '/workout/media/frog-stretch.gif'
+		}}
+	]);
+	const updatedDisplayName = getStepDisplayName(step);
+	if (updatedDisplayName !== 'Frog Pose Super Stretch') {{
+		throw new Error('Expected dynamically updated step name, got: ' + updatedDisplayName);
 	}}
 
 	// 4. Custom step override takes precedence if flagged

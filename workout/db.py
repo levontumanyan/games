@@ -234,7 +234,9 @@ class Database:
 			combos_by_id[c_id] = info
 			combos_by_name[c_name] = info
 
-		ex_rows = conn.execute("SELECT id, name, category, discipline FROM exercises").fetchall()
+		ex_rows = conn.execute(
+			"SELECT id, name, category, discipline, default_mode, default_quantity FROM exercises"
+		).fetchall()
 		ex_map = {row["id"]: dict(row) for row in ex_rows}
 
 		hydrated = []
@@ -253,17 +255,57 @@ class Database:
 				for ex_id in combo["exercise_ids"]:
 					eid = ex_id if isinstance(ex_id, str) else ex_id.get("id")
 					if eid in ex_map:
-						hydrated_exs.append(
-							{
-								"id": eid,
-								"name": ex_map[eid]["name"],
-								"category": ex_map[eid]["category"],
-								"discipline": ex_map[eid]["discipline"],
-							}
-						)
+						ex_item = {
+							"id": eid,
+							"name": ex_map[eid]["name"],
+							"category": ex_map[eid]["category"],
+							"discipline": ex_map[eid]["discipline"],
+						}
+						if ex_map[eid].get("default_mode"):
+							ex_item["default_mode"] = ex_map[eid]["default_mode"]
+						if ex_map[eid].get("default_quantity"):
+							ex_item["default_quantity"] = ex_map[eid]["default_quantity"]
+						hydrated_exs.append(ex_item)
 					else:
 						hydrated_exs.append({"id": eid})
 				s["exercises"] = hydrated_exs
+			elif s.get("exercises"):
+				hydrated_exs = []
+				for ex_ref in s["exercises"]:
+					eid = ex_ref if isinstance(ex_ref, str) else ex_ref.get("id")
+					if eid in ex_map:
+						ex_item = {
+							"id": eid,
+							"name": ex_map[eid]["name"],
+							"category": ex_map[eid]["category"],
+							"discipline": ex_map[eid]["discipline"],
+						}
+						if ex_map[eid].get("default_mode"):
+							ex_item["default_mode"] = ex_map[eid]["default_mode"]
+						if ex_map[eid].get("default_quantity"):
+							ex_item["default_quantity"] = ex_map[eid]["default_quantity"]
+						hydrated_exs.append(ex_item)
+					elif isinstance(ex_ref, dict):
+						hydrated_exs.append(ex_ref)
+					else:
+						hydrated_exs.append({"id": eid})
+				s["exercises"] = hydrated_exs
+			elif s.get("exercise_id"):
+				eid = s["exercise_id"]
+				if eid in ex_map:
+					ex_item = {
+						"id": eid,
+						"name": ex_map[eid]["name"],
+						"category": ex_map[eid]["category"],
+						"discipline": ex_map[eid]["discipline"],
+					}
+					if ex_map[eid].get("default_mode"):
+						ex_item["default_mode"] = ex_map[eid]["default_mode"]
+					if ex_map[eid].get("default_quantity"):
+						ex_item["default_quantity"] = ex_map[eid]["default_quantity"]
+					s["exercises"] = [ex_item]
+				else:
+					s["exercises"] = [{"id": eid}]
 			hydrated.append(s)
 		return hydrated
 

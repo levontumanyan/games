@@ -477,38 +477,63 @@ export function resolveStepVideo(step) {
 
 	// 2. Dynamic exercise inheritance
 	if (Array.isArray(step.exercises) && step.exercises.length > 0) {
+		let foundAnyInLibrary = false;
 		for (const exRef of step.exercises) {
-			const fullEx = (exRef && exRef.id ? getExerciseById(exRef.id) : null) || exRef;
-			if (!fullEx) continue;
-
-			// Check follow-along demonstration or drill video
-			const followAlong = getExerciseFollowAlongMedia(fullEx);
-			if (followAlong && (followAlong.type === 'video' || followAlong.videoId)) {
-				const vid = followAlong.videoId || parseYouTubeId(followAlong.url);
-				if (vid) {
-					return {
-						videoId: vid,
-						startSeconds: followAlong.startSeconds || 0,
-						endSeconds: followAlong.endSeconds || ((followAlong.startSeconds || 0) + (step.durationSeconds || fullEx.default_quantity || 60))
-					};
+			const fullEx = exRef && exRef.id ? getExerciseById(exRef.id) : null;
+			if (fullEx) {
+				foundAnyInLibrary = true;
+				// Check follow-along demonstration or drill video
+				const followAlong = getExerciseFollowAlongMedia(fullEx);
+				if (followAlong && (followAlong.type === 'video' || followAlong.videoId)) {
+					const vid = followAlong.videoId || parseYouTubeId(followAlong.url);
+					if (vid) {
+						return {
+							videoId: vid,
+							startSeconds: followAlong.startSeconds || 0,
+							endSeconds: followAlong.endSeconds || ((followAlong.startSeconds || 0) + (step.durationSeconds || fullEx.default_quantity || 60))
+						};
+					}
 				}
-			}
 
-			// Check exercise media_url fallback (if YouTube)
-			if (fullEx.media_url) {
-				const vid = parseYouTubeId(fullEx.media_url);
-				if (vid) {
-					return {
-						videoId: vid,
-						startSeconds: 0,
-						endSeconds: step.durationSeconds || fullEx.default_quantity || 60
-					};
+				// Check exercise media_url fallback (if YouTube)
+				if (fullEx.media_url) {
+					const vid = parseYouTubeId(fullEx.media_url);
+					if (vid) {
+						return {
+							videoId: vid,
+							startSeconds: 0,
+							endSeconds: step.durationSeconds || fullEx.default_quantity || 60
+						};
+					}
+				}
+			} else if (exRef && typeof exRef === 'object') {
+				const followAlong = getExerciseFollowAlongMedia(exRef);
+				if (followAlong && (followAlong.type === 'video' || followAlong.videoId)) {
+					const vid = followAlong.videoId || parseYouTubeId(followAlong.url);
+					if (vid) {
+						return {
+							videoId: vid,
+							startSeconds: followAlong.startSeconds || 0,
+							endSeconds: followAlong.endSeconds || ((followAlong.startSeconds || 0) + (step.durationSeconds || exRef.default_quantity || 60))
+						};
+					}
+				}
+				if (exRef.media_url) {
+					const vid = parseYouTubeId(exRef.media_url);
+					if (vid) {
+						return {
+							videoId: vid,
+							startSeconds: 0,
+							endSeconds: step.durationSeconds || exRef.default_quantity || 60
+						};
+					}
 				}
 			}
 		}
-		// If step is linked to exercises and has no custom override,
-		// the exercise library is the authoritative source of truth.
-		return null;
+		// If backing exercise was found in library and has no video, exercise library is authoritative
+		if (foundAnyInLibrary) {
+			return null;
+		}
 	}
 
 	// 3. Fallback: Standalone or curated step video
@@ -534,17 +559,31 @@ export function resolveStepVisual(step) {
 
 	// 1. Dynamic exercise inheritance (unless customMedia is flagged)
 	if (!step.customMedia && Array.isArray(step.exercises) && step.exercises.length > 0) {
+		let foundAnyInLibrary = false;
 		for (const exRef of step.exercises) {
-			const fullEx = (exRef && exRef.id ? getExerciseById(exRef.id) : null) || exRef;
-			if (!fullEx) continue;
-
-			const visual = getExerciseFollowAlongMedia(fullEx);
-			if (visual && visual.type === 'image' && visual.url && !parseYouTubeId(visual.url)) {
-				return visual.url;
+			const fullEx = exRef && exRef.id ? getExerciseById(exRef.id) : null;
+			if (fullEx) {
+				foundAnyInLibrary = true;
+				const visual = getExerciseFollowAlongMedia(fullEx);
+				if (visual && visual.type === 'image' && visual.url && !parseYouTubeId(visual.url)) {
+					return visual.url;
+				}
+				if (fullEx.media_url && !parseYouTubeId(fullEx.media_url)) {
+					return fullEx.media_url;
+				}
+			} else if (exRef && typeof exRef === 'object') {
+				const visual = getExerciseFollowAlongMedia(exRef);
+				if (visual && visual.type === 'image' && visual.url && !parseYouTubeId(visual.url)) {
+					return visual.url;
+				}
+				if (exRef.media_url && !parseYouTubeId(exRef.media_url)) {
+					return exRef.media_url;
+				}
 			}
-			if (fullEx.media_url && !parseYouTubeId(fullEx.media_url)) {
-				return fullEx.media_url;
-			}
+		}
+		// If backing exercise was found in library and has no visual media, exercise library is authoritative
+		if (foundAnyInLibrary) {
+			return null;
 		}
 	}
 

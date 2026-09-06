@@ -366,7 +366,9 @@ function createViewStepCard(step, index, steps, actions) {
 	const videoAsset = !isReps ? resolveStepVideo(step) : null;
 	const mediaUrl = resolveStepVisual(step);
 
-	if (step.type === 'clip' || (videoAsset && videoAsset.videoId)) {
+	const hasVideo = !isReps && Boolean((videoAsset && videoAsset.videoId) || (step.customMedia && step.videoId) || (!step.exercises?.length && step.type === 'clip' && step.videoId));
+
+	if (hasVideo) {
 		const vid = videoAsset?.videoId || step.videoId;
 		if (vid) {
 			const img = document.createElement('img');
