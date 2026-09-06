@@ -4,6 +4,7 @@ verify all named imports/exports resolve, and guarantee ZERO circular dependenci
 """
 
 import re
+import subprocess
 from pathlib import Path
 
 
@@ -530,3 +531,137 @@ def test_routine_picker_module():
 		text=True,
 	)
 	assert res.returncode == 0, f"Node test for routine picker failed:\n{res.stderr}"
+
+
+def test_dynamic_exercise_media_resolution():
+	"""Verify that workout routine steps dynamically inherit updated exercise video and GIF media."""
+	js_dir = (Path(__file__).parent.parent / "js").resolve().as_posix()
+
+	node_script = f"""
+	globalThis.localStorage = {{ getItem: () => null, setItem: () => {{}}, removeItem: () => {{}} }};
+	globalThis.window = {{
+		__INITIAL_EXERCISES__: [
+			{{
+				id: 'ex-frog-stretch',
+				name: 'Frog Stretch',
+				category: 'stretch',
+				discipline: 'yoga',
+				default_mode: 'time',
+				default_quantity: 60,
+				media_url: 'https://www.youtube.com/watch?v=7d-4CkcXWVU',
+				media_assets: [
+					{{
+						id: 'asset-frog-v1',
+						kind: 'demonstration',
+						type: 'video',
+						title: 'Frog Pose V1',
+						videoId: '7d-4CkcXWVU',
+						startSeconds: 0,
+						endSeconds: 60
+					}}
+				]
+			}}
+		],
+		addEventListener: () => {{}},
+		removeEventListener: () => {{}}
+	}};
+	globalThis.document = {{
+		addEventListener: () => {{}},
+		removeEventListener: () => {{}}
+	}};
+
+	const {{ resolveStepVideo, resolveStepVisual, setExercises, getExercises }} = await import('{js_dir}/exercises.js');
+	const {{ createStepFromExercise }} = await import('{js_dir}/editor.js');
+
+	const initialEx = getExercises()[0];
+	const step = createStepFromExercise(initialEx);
+
+	// 1. Initial resolution should dynamically yield the exercise video
+	const initialVideo = resolveStepVideo(step);
+	if (!initialVideo || initialVideo.videoId !== '7d-4CkcXWVU') {{
+		throw new Error('Expected initial video 7d-4CkcXWVU, got: ' + JSON.stringify(initialVideo));
+	}}
+
+	// 2. Dynamically update the exercise to a new video
+	setExercises([
+		{{
+			...initialEx,
+			media_url: 'https://www.youtube.com/watch?v=dUuZLrUOmhU',
+			media_assets: [
+				{{
+					id: 'asset-frog-v2',
+					kind: 'demonstration',
+					type: 'video',
+					title: 'Frog Pose V2',
+					videoId: 'dUuZLrUOmhU',
+					startSeconds: 5,
+					endSeconds: 65
+				}}
+			]
+		}}
+	]);
+
+	// The existing step should dynamically resolve to the new video without editing the routine!
+	const updatedVideo = resolveStepVideo(step);
+	if (!updatedVideo || updatedVideo.videoId !== 'dUuZLrUOmhU' || updatedVideo.startSeconds !== 5) {{
+		throw new Error('Expected dynamically updated video dUuZLrUOmhU, got: ' + JSON.stringify(updatedVideo));
+	}}
+
+	// 3. Dynamically update the exercise to a GIF (removing video)
+	setExercises([
+		{{
+			...initialEx,
+			media_url: '/workout/media/frog-stretch.gif',
+			media_assets: [
+				{{
+					id: 'asset-frog-gif',
+					kind: 'animation',
+					type: 'image',
+					url: '/workout/media/frog-stretch.gif'
+				}}
+			]
+		}}
+	]);
+
+	const noVideo = resolveStepVideo(step);
+	if (noVideo !== null) {{
+		throw new Error('Expected no video after switching exercise to GIF, got: ' + JSON.stringify(noVideo));
+	}}
+	const gifVisual = resolveStepVisual(step);
+	if (gifVisual !== '/workout/media/frog-stretch.gif') {{
+		throw new Error('Expected visual GIF /workout/media/frog-stretch.gif, got: ' + gifVisual);
+	}}
+
+	// 4. Custom step override takes precedence if flagged
+	const customStep = {{
+		...step,
+		customMedia: true,
+		videoId: 'override_abc',
+		startSeconds: 10,
+		endSeconds: 70
+	}};
+	const overrideVideo = resolveStepVideo(customStep);
+	if (!overrideVideo || overrideVideo.videoId !== 'override_abc') {{
+		throw new Error('Expected customMedia override override_abc, got: ' + JSON.stringify(overrideVideo));
+	}}
+
+	// 5. Standalone step video with no exercise attached
+	const standaloneStep = {{
+		id: 'step-standalone',
+		type: 'clip',
+		videoId: 'standalone_xyz',
+		startSeconds: 0,
+		endSeconds: 30
+	}};
+	const standaloneVideo = resolveStepVideo(standaloneStep);
+	if (!standaloneVideo || standaloneVideo.videoId !== 'standalone_xyz') {{
+		throw new Error('Expected standalone video standalone_xyz, got: ' + JSON.stringify(standaloneVideo));
+	}}
+	"""
+
+	res = subprocess.run(
+		["node", "--input-type=module", "-e", node_script],
+		capture_output=True,
+		text=True,
+	)
+	assert res.returncode == 0, f"Node dynamic exercise media resolution test failed:\n{res.stderr}"

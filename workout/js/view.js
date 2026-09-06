@@ -2,7 +2,10 @@ import { formatTime, formatFriendlyDuration, escapeHtml, parseYouTubeId, getEffe
 import { isBreakStep, resolveStepMediaUrl } from './editor.js';
 import { getClipIcon, getTimerIcon, getBreakIcon, getStepsIcon, getShareIcon, getSaveIcon } from './icons.js';
 import { getCategoryBadgeHtml, getDisciplineBadgeHtml, getMuscleBadgeHtml, MUSCLE_DEFINITIONS } from './taxonomy.js';
-import { inferMusclesForExercise, getExerciseById, getExercises, getExerciseFollowAlongMedia } from './exercises.js';
+import {
+	inferMusclesForExercise, getExerciseById, getExercises, getExerciseFollowAlongMedia,
+	resolveStepVideo, resolveStepVisual
+} from './exercises.js';
 import { getFlowTypeBadgeHtml } from './combos.js';
 
 /**
@@ -359,28 +362,12 @@ function createViewStepCard(step, index, steps, actions) {
 	const mediaBox = document.createElement('div');
 	mediaBox.className = 'view-step-media';
 
-	const mediaUrl = resolveStepMediaUrl(step);
 	const isReps = step.stepMode === 'reps' || (!step.stepMode && Boolean(step.targetReps) && Number(step.targetReps) > 0);
+	const videoAsset = !isReps ? resolveStepVideo(step) : null;
+	const mediaUrl = resolveStepVisual(step);
 
-	const ytVideoId = step.videoId || (() => {
-		if (Array.isArray(step.exercises) && step.exercises.length > 0) {
-			for (const ex of step.exercises) {
-				const fullEx = (ex && ex.id ? getExerciseById(ex.id) : null) || ex;
-				if (!fullEx) continue;
-				const followAlong = getExerciseFollowAlongMedia(fullEx);
-				if (followAlong && (followAlong.type === 'video' || followAlong.videoId)) {
-					return followAlong.videoId || parseYouTubeId(followAlong.url);
-				}
-				if (fullEx.media_url && (fullEx.media_url.includes('youtube') || fullEx.media_url.includes('youtu.be'))) {
-					return parseYouTubeId(fullEx.media_url);
-				}
-			}
-		}
-		return null;
-	})();
-
-	if (step.type === 'clip' || ytVideoId) {
-		const vid = step.videoId || ytVideoId;
+	if (step.type === 'clip' || (videoAsset && videoAsset.videoId)) {
+		const vid = videoAsset?.videoId || step.videoId;
 		if (vid) {
 			const img = document.createElement('img');
 			img.src = `https://img.youtube.com/vi/${vid}/mqdefault.jpg`;

@@ -14,7 +14,10 @@ import {
 	startSession, updateSessionStep, pauseSession,
 	resumeSession, completeSession, stopSession
 } from './session.js';
-import { inferMusclesForExercise, getExerciseById, getExerciseInstructionMedia, getExerciseFollowAlongMedia } from './exercises.js';
+import {
+	inferMusclesForExercise, getExerciseById, getExerciseInstructionMedia, getExerciseFollowAlongMedia,
+	resolveStepVideo, resolveStepVisual
+} from './exercises.js';
 import { MUSCLE_DEFINITIONS } from './taxonomy.js';
 
 const PLAY_ICON = `<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><polygon points="7,4 19,12 7,20"/></svg>`;
@@ -390,15 +393,17 @@ function disableCaptions() {
  * Start active polling to monitor clip playback position against step.endSeconds.
  * @param {Object} step
  */
-function startClipMonitor(step) {
+function startClipMonitor(step, videoAsset) {
 	clearClipMonitor();
-	if (!step || (!step.videoId && step.type !== 'clip') || !step.endSeconds) return;
+	const endSec = (videoAsset && typeof videoAsset.endSeconds === 'number') ? videoAsset.endSeconds : step?.endSeconds;
+	const hasVid = Boolean((videoAsset && videoAsset.videoId) || (step && (step.videoId || step.type === 'clip')));
+	if (!step || !hasVid || !endSec) return;
 
 	clipCheckInterval = setInterval(() => {
 		if (!isPlaying || isPaused || !ytReady || !ytPlayer) return;
 		try {
 			const currentTime = ytPlayer.getCurrentTime();
-			if (typeof currentTime === 'number' && currentTime >= step.endSeconds - 0.25) {
+			if (typeof currentTime === 'number' && currentTime >= endSec - 0.25) {
 				clearClipMonitor();
 				try { ytPlayer.pauseVideo(); } catch {}
 				advanceStep();
@@ -428,15 +433,19 @@ function onYTStateChange(event) {
 		clipHasStartedPlaying = true;
 		if (isPlaying && !isPaused && currentRoutine) {
 			const currentStep = currentRoutine.steps[currentStepIndex];
-			if (currentStep && (currentStep.type === 'clip' || currentStep.videoId)) {
-				startClipMonitor(currentStep);
+			const isExplicitReps = currentStep && (currentStep.stepMode === 'reps' || (!currentStep.stepMode && Boolean(currentStep.targetReps) && Number(currentStep.targetReps) > 0));
+			const videoAsset = (!isExplicitReps && currentStep) ? resolveStepVideo(currentStep) : null;
+			if (currentStep && (currentStep.type === 'clip' || currentStep.videoId || videoAsset)) {
+				startClipMonitor(currentStep, videoAsset);
 			}
 		}
 	} else if (event.data === YT.PlayerState.ENDED) {
 		// Verify this is a legitimate ENDED event and not a spurious transition event
 		if (!isPlaying || isPaused || !currentRoutine) return;
 		const currentStep = currentRoutine.steps[currentStepIndex];
-		if (!currentStep || (currentStep.type !== 'clip' && !currentStep.videoId)) return;
+		const isExplicitReps = currentStep && (currentStep.stepMode === 'reps' || (!currentStep.stepMode && Boolean(currentStep.targetReps) && Number(currentStep.targetReps) > 0));
+		const videoAsset = (!isExplicitReps && currentStep) ? resolveStepVideo(currentStep) : null;
+		if (!currentStep || (currentStep.type !== 'clip' && !currentStep.videoId && !videoAsset)) return;
 
 		// If the video never actually entered PLAYING state for this step, or loaded less than 1s ago, ignore it
 		if (!clipHasStartedPlaying || (Date.now() - clipLoadedAt < 1000)) {
@@ -522,9 +531,10 @@ function startWorkoutCountdown(routine, onComplete) {
 		const firstStepName = getStepDisplayName(firstStep);
 		if (firstLabel) firstLabel.textContent = firstStepName;
 
-		const isVid = Boolean(firstStep.videoId || videoAsset?.videoId || firstStep.type === 'clip');
 		const isReps = firstStep.stepMode === 'reps' || (!firstStep.stepMode && Boolean(firstStep.targetReps) && firstStep.targetReps > 0);
-		const dur = firstStep.durationSeconds || videoAsset?.endSeconds || 30;
+		const firstVidAsset = !isReps ? resolveStepVideo(firstStep) : null;
+		const isVid = Boolean(firstVidAsset?.videoId || firstStep.videoId || firstStep.type === 'clip');
+		const dur = firstStep.durationSeconds || (firstVidAsset ? Math.max(1, (firstVidAsset.endSeconds || 60) - (firstVidAsset.startSeconds || 0)) : 30);
 
 		let modeTag = '';
 		if (isVid) {
@@ -555,8 +565,8 @@ function startWorkoutCountdown(routine, onComplete) {
 
 		// Thumbnail
 		if (firstThumb) {
-			const vidId = firstStep.videoId || videoAsset?.videoId;
-			const mediaUrl = resolveStepMediaUrl(firstStep);
+			const vidId = firstVidAsset?.videoId || firstStep.videoId;
+			const mediaUrl = resolveStepVisual(firstStep);
 			if (vidId) {
 				firstThumb.innerHTML = `<img src="https://img.youtube.com/vi/${vidId}/mqdefault.jpg" alt="${escapeHtml(firstStepName)}" />`;
 			} else if (mediaUrl) {
@@ -716,51 +726,12 @@ function advanceStepOrSubStep() {
 }
 
 /**
- * Resolve any video asset details for a step, either directly from the step
- * or by resolving attached exercise demonstration follow-along media.
+ * Resolve any video asset details for a step dynamically.
  * @param {Object} step
  * @returns {Object|null} { videoId, startSeconds, endSeconds }
  */
 export function resolveStepVideoAsset(step) {
-	if (!step || isBreakStep(step)) return null;
-
-	if (step.videoId) {
-		return {
-			videoId: step.videoId,
-			startSeconds: step.startSeconds || 0,
-			endSeconds: step.endSeconds || ((step.startSeconds || 0) + (step.durationSeconds || 60))
-		};
-	}
-
-	if (Array.isArray(step.exercises) && step.exercises.length > 0) {
-		for (const ex of step.exercises) {
-			const fullEx = (ex && ex.id ? getExerciseById(ex.id) : null) || ex;
-			if (!fullEx) continue;
-			const followAlong = getExerciseFollowAlongMedia(fullEx);
-			if (followAlong && (followAlong.type === 'video' || followAlong.videoId)) {
-				const vid = followAlong.videoId || parseYouTubeId(followAlong.url);
-				if (vid) {
-					return {
-						videoId: vid,
-						startSeconds: followAlong.startSeconds || 0,
-						endSeconds: followAlong.endSeconds || ((followAlong.startSeconds || 0) + (step.durationSeconds || fullEx.default_quantity || 60))
-					};
-				}
-			}
-			if (fullEx.media_url && (fullEx.media_url.includes('youtube') || fullEx.media_url.includes('youtu.be'))) {
-				const vid = parseYouTubeId(fullEx.media_url);
-				if (vid) {
-					return {
-						videoId: vid,
-						startSeconds: 0,
-						endSeconds: step.durationSeconds || fullEx.default_quantity || 60
-					};
-				}
-			}
-		}
-	}
-
-	return null;
+	return resolveStepVideo(step);
 }
 
 /**
@@ -781,16 +752,10 @@ function executeCurrentStep() {
 	}
 
 	const isExplicitReps = step.stepMode === 'reps' || (!step.stepMode && Boolean(step.targetReps) && Number(step.targetReps) > 0);
-	const videoAsset = !isExplicitReps ? resolveStepVideoAsset(step) : null;
+	const videoAsset = !isExplicitReps ? resolveStepVideo(step) : null;
 
 	if (!isExplicitReps && (step.type === 'clip' || (videoAsset && !isBreakStep(step)))) {
-		if (videoAsset) {
-			step.type = 'clip';
-			step.videoId = step.videoId || videoAsset.videoId;
-			if (typeof step.startSeconds !== 'number') step.startSeconds = videoAsset.startSeconds;
-			if (typeof step.endSeconds !== 'number') step.endSeconds = videoAsset.endSeconds;
-		}
-		executeClipStep(step);
+		executeClipStep(step, videoAsset);
 	} else {
 		executeTimerStep(step);
 	}
@@ -801,7 +766,7 @@ function executeCurrentStep() {
 /**
  * Execute a video clip step.
  */
-function executeClipStep(step) {
+function executeClipStep(step, videoAsset) {
 	clearTimer();
 	clearRepsTimer();
 	clearClipMonitor();
@@ -835,11 +800,15 @@ function executeClipStep(step) {
 		dom.musicControlsBar.classList.add('hidden');
 	}
 
+	const vidId = (videoAsset && videoAsset.videoId) || step.videoId;
+	const startSec = (videoAsset && typeof videoAsset.startSeconds === 'number') ? videoAsset.startSeconds : (step.startSeconds || 0);
+	const endSec = (videoAsset && typeof videoAsset.endSeconds === 'number') ? videoAsset.endSeconds : (step.endSeconds || undefined);
+
 	if (ytReady && ytPlayer) {
 		ytPlayer.loadVideoById({
-			videoId: step.videoId,
-			startSeconds: step.startSeconds || 0,
-			endSeconds: step.endSeconds || undefined,
+			videoId: vidId,
+			startSeconds: startSec,
+			endSeconds: endSec,
 		});
 		disableCaptions();
 	}
@@ -1066,10 +1035,11 @@ function executeTimerStep(step) {
 			if (dom.upNextLabel) {
 				dom.upNextLabel.textContent = nextName;
 			}
+			const nextVid = resolveStepVideo(next);
 			if (dom.upNextMeta) {
-				if (next.type === 'clip') {
-					const start = next.startSeconds || 0;
-					const end = next.endSeconds || (start + 60);
+				if (nextVid) {
+					const start = nextVid.startSeconds || 0;
+					const end = nextVid.endSeconds || (start + 60);
 					const dur = Math.max(0, end - start);
 					dom.upNextMeta.textContent = `🎬 ${formatFriendlyDuration(dur)} (${formatTime(start)} → ${formatTime(end)})`;
 				} else if (isBreakStep(next)) {
@@ -1081,10 +1051,10 @@ function executeTimerStep(step) {
 				}
 			}
 			if (dom.upNextMediaThumb) {
-				const nextMedia = resolveStepMediaUrl(next);
-				if (next.type === 'clip' && next.videoId) {
+				const nextMedia = resolveStepVisual(next);
+				if (nextVid && nextVid.videoId) {
 					dom.upNextMediaThumb.innerHTML = `
-						<img src="https://img.youtube.com/vi/${next.videoId}/hqdefault.jpg" onerror="this.src='https://img.youtube.com/vi/${next.videoId}/mqdefault.jpg'" alt="${escapeHtml(nextName)}">
+						<img src="https://img.youtube.com/vi/${nextVid.videoId}/hqdefault.jpg" onerror="this.src='https://img.youtube.com/vi/${nextVid.videoId}/mqdefault.jpg'" alt="${escapeHtml(nextName)}">
 						<div class="thumbnail-play-overlay">▶</div>
 					`;
 				} else if (nextMedia) {
@@ -1260,13 +1230,15 @@ export function togglePause() {
 		}
 		requestWakeLock();
 		const step = currentRoutine.steps[currentStepIndex];
-		const isClip = step.type === 'clip' || Boolean(step.videoId);
+		const isExplicitReps = step && (step.stepMode === 'reps' || (!step.stepMode && Boolean(step.targetReps) && Number(step.targetReps) > 0));
+		const videoAsset = (!isExplicitReps && step) ? resolveStepVideo(step) : null;
+		const isClip = !isExplicitReps && Boolean(step.type === 'clip' || step.videoId || videoAsset);
 
 		if (isClip) {
 			if (ytReady && ytPlayer) {
 				ytPlayer.playVideo();
 			}
-			startClipMonitor(step);
+			startClipMonitor(step, videoAsset);
 		} else if (step.type === 'timer' || isBreakStep(step)) {
 			if (isRepsMode) {
 				startRepsStopwatch();

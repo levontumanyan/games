@@ -402,5 +402,17 @@ export function initInputCleanlinessEnforcer() {
 		});
 	}
 }
-
-
+/**
+ * Check if a step represents a break / recovery rest period.
+ * @param {Object} step
+ * @returns {boolean}
+ */
+export function isBreakStep(step) {
+	if (!step) return false;
+	if (step.subtype === 'break' || step.isBreak) return true;
+	if (step.type === 'timer' && step.label) {
+		const l = step.label.trim().toLowerCase();
+		if (l === 'rest' || l === 'break' || l === 'quick break' || l.startsWith('rest') || l.startsWith('break') || l === 'recovery' || l === 'breathe' || l === 'pause') return true;
+	}
+	return false;
+}

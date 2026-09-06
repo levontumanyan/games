@@ -3,7 +3,7 @@
  */
 
 import { fetchServerExercises, saveCustomExerciseOnServer, deleteCustomExerciseOnServer } from './storage.js';
-import { escapeHtml, formatTime } from './utils.js';
+import { escapeHtml, formatTime, parseYouTubeId, isBreakStep } from './utils.js';
 import {
 	MUSCLE_DEFINITIONS,
 	MUSCLE_GROUPS,
@@ -452,4 +452,148 @@ export function renderExerciseCardElement(ex, options = {}) {
 	}
 
 	return card;
+}
+
+/**
+ * Resolves the active video asset for a step dynamically.
+ * Dynamic exercise inheritance:
+ * 1. Explicit user override for this specific step (customMedia: true && step.videoId).
+ * 2. Dynamic exercise inheritance from attached exercise reference.
+ * 3. Fallback: Standalone or curated step video (step.videoId).
+ * @param {Object} step
+ * @returns {{ videoId: string, startSeconds: number, endSeconds: number } | null}
+ */
+export function resolveStepVideo(step) {
+	if (!step || isBreakStep(step)) return null;
+
+	// 1. Explicit user override for this specific step
+	if (step.customMedia && step.videoId) {
+		return {
+			videoId: step.videoId,
+			startSeconds: step.startSeconds || 0,
+			endSeconds: step.endSeconds || ((step.startSeconds || 0) + (step.durationSeconds || 60))
+		};
+	}
+
+	// 2. Dynamic exercise inheritance
+	if (Array.isArray(step.exercises) && step.exercises.length > 0) {
+		for (const exRef of step.exercises) {
+			const fullEx = (exRef && exRef.id ? getExerciseById(exRef.id) : null) || exRef;
+			if (!fullEx) continue;
+
+			// Check follow-along demonstration or drill video
+			const followAlong = getExerciseFollowAlongMedia(fullEx);
+			if (followAlong && (followAlong.type === 'video' || followAlong.videoId)) {
+				const vid = followAlong.videoId || parseYouTubeId(followAlong.url);
+				if (vid) {
+					return {
+						videoId: vid,
+						startSeconds: followAlong.startSeconds || 0,
+						endSeconds: followAlong.endSeconds || ((followAlong.startSeconds || 0) + (step.durationSeconds || fullEx.default_quantity || 60))
+					};
+				}
+			}
+
+			// Check exercise media_url fallback (if YouTube)
+			if (fullEx.media_url) {
+				const vid = parseYouTubeId(fullEx.media_url);
+				if (vid) {
+					return {
+						videoId: vid,
+						startSeconds: 0,
+						endSeconds: step.durationSeconds || fullEx.default_quantity || 60
+					};
+				}
+			}
+		}
+		// If step is linked to exercises and has no custom override,
+		// the exercise library is the authoritative source of truth.
+		return null;
+	}
+
+	// 3. Fallback: Standalone or curated step video
+	if (step.videoId) {
+		return {
+			videoId: step.videoId,
+			startSeconds: step.startSeconds || 0,
+			endSeconds: step.endSeconds || ((step.startSeconds || 0) + (step.durationSeconds || 60))
+		};
+	}
+
+	return null;
+}
+
+/**
+ * Resolves the visual image, SVG, or GIF for a step dynamically.
+ * Prioritizes live exercise media over static copies.
+ * @param {Object} step
+ * @returns {string|null}
+ */
+export function resolveStepVisual(step) {
+	if (!step || isBreakStep(step)) return null;
+
+	// 1. Dynamic exercise inheritance (unless customMedia is flagged)
+	if (!step.customMedia && Array.isArray(step.exercises) && step.exercises.length > 0) {
+		for (const exRef of step.exercises) {
+			const fullEx = (exRef && exRef.id ? getExerciseById(exRef.id) : null) || exRef;
+			if (!fullEx) continue;
+
+			const visual = getExerciseFollowAlongMedia(fullEx);
+			if (visual && visual.type === 'image' && visual.url && !parseYouTubeId(visual.url)) {
+				return visual.url;
+			}
+			if (fullEx.media_url && !parseYouTubeId(fullEx.media_url)) {
+				return fullEx.media_url;
+			}
+		}
+	}
+
+	// 2. Direct step media (if not a YouTube URL)
+	const direct = step.gifUrl || step.mediaUrl || step.imageUrl;
+	if (direct && typeof direct === 'string' && direct.trim()) {
+		const trimmed = direct.trim();
+		if (!parseYouTubeId(trimmed)) {
+			return trimmed;
+		}
+	}
+
+	// 3. Fallback to name heuristics
+	if (step.type === 'timer' && step.label) {
+		const l = step.label.toLowerCase();
+		if (l.includes('diamond pushup') || l.includes('diamond push-up') || l.includes('diamond-pushup') || l.includes('diamond')) {
+			return '/workout/media/diamond-pushups.gif';
+		}
+		if (l.includes('pike pushup') || l.includes('pike push-up') || l.includes('pike-pushup') || l.includes('pike')) {
+			return '/workout/media/pike-pushups.svg';
+		}
+		if (l.includes('decline pushup') || l.includes('decline push-up') || l.includes('decline-pushup') || l.includes('decline')) {
+			return '/workout/media/decline-pushups.svg';
+		}
+		if (l.includes('mountain climber') || l.includes('climber')) {
+			return '/workout/media/mountain-climbers.svg';
+		}
+		if (l.includes('shoulder tap') || l.includes('shoulder-tap') || l.includes('shouldertap')) {
+			return '/workout/media/shoulder-taps.svg';
+		}
+		if (l.includes('pushup') || l.includes('push-up') || l.includes('push up')) {
+			return '/workout/media/pushups.svg';
+		}
+		if (l.includes('cobra')) {
+			return '/workout/media/cobra-stretch.jpg';
+		}
+		if (l.includes('tricep') || (l.includes('shoulder') && (l.includes('stretch') || l.includes('mobility')))) {
+			return '/workout/media/overhead-tricep-stretch.jpg';
+		}
+		if (l.includes('pigeon')) {
+			return '/workout/media/pigeon-pose.jpg';
+		}
+		if (l.includes('child')) {
+			return '/workout/media/childs-pose.jpg';
+		}
+		if (l.includes('hamstring') || l.includes('forward fold') || l.includes('forward bend')) {
+			return '/workout/media/seated-hamstring-fold.jpg';
+		}
+	}
+
+	return null;
 }

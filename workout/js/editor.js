@@ -2,7 +2,7 @@
  * Editor module - Routine & step editing, drag-and-drop reorder.
  */
 
-import { generateId, parseYouTubeId, parseYouTubeInfo, parseTime, formatTime, formatFriendlyDuration, escapeHtml, showToast } from './utils.js';
+import { generateId, parseYouTubeId, parseYouTubeInfo, parseTime, formatTime, formatFriendlyDuration, escapeHtml, showToast, isBreakStep } from './utils.js';
 import { saveAudioFile, deleteAudioFile } from './musicdb.js';
 import { showPrompt, showAlert, createCustomModal } from './modal.js';
 import { getTimerIcon, getBreakIcon, getComboIcon, getExerciseIcon, getDuplicateIcon, getPlusIcon } from './icons.js';
@@ -12,7 +12,8 @@ import {
 } from './taxonomy.js';
 import {
 	getExercises, getExerciseById, filterExercises, createCustomExercise,
-	inferMusclesForExercise, getExerciseMediaAssets, getExerciseFollowAlongMedia
+	inferMusclesForExercise, getExerciseMediaAssets, getExerciseFollowAlongMedia,
+	resolveStepVideo, resolveStepVisual
 } from './exercises.js';
 import { showExerciseVariationsModal } from './exercises_view.js';
 import { getCombos } from './combos.js';
@@ -700,85 +701,17 @@ export function getStepDisplayName(step) {
 	return 'Exercise';
 }
 
-/**
- * Check if a step is a break/rest interval.
- * @param {Object} step
- * @returns {boolean}
- */
-export function isBreakStep(step) {
-	if (!step) return false;
-	if (step.subtype === 'break' || step.isBreak) return true;
-	if (step.type === 'timer' && step.label) {
-		const l = step.label.trim().toLowerCase();
-		if (l === 'rest' || l === 'break' || l === 'quick break' || l.startsWith('rest') || l.startsWith('break') || l === 'recovery' || l === 'breathe' || l === 'pause') return true;
-	}
-	return false;
-}
+export { isBreakStep };
 
 /**
- * Auto-resolve the media/GIF URL for a step (either from explicit properties or by matching exercise name).
+ * Auto-resolve the media/GIF URL for a step (delegates to dynamic resolveStepVisual).
  * @param {Object} step
  * @returns {string|null}
  */
 export function resolveStepMediaUrl(step) {
-	if (!step) return null;
-	const direct = step.gifUrl || step.mediaUrl || step.imageUrl;
-	if (direct && typeof direct === 'string' && direct.trim()) {
-		const trimmed = direct.trim();
-		// If direct is a YouTube link, do not return as direct image URL
-		if (!trimmed.includes('youtube.com') && !trimmed.includes('youtu.be')) {
-			return trimmed;
-		}
-	}
-
-	// Check attached exercises for visual image/animation asset
-	if (Array.isArray(step.exercises) && step.exercises.length > 0) {
-		for (const ex of step.exercises) {
-			const visual = getExerciseFollowAlongMedia(ex.id || ex);
-			if (visual && visual.type === 'image' && visual.url && !visual.url.includes('youtube') && !visual.url.includes('youtu.be')) {
-				return visual.url;
-			}
-		}
-	}
-
-	if (step.type === 'timer' && step.label) {
-		const l = step.label.toLowerCase();
-		if (l.includes('diamond pushup') || l.includes('diamond push-up') || l.includes('diamond-pushup') || l.includes('diamond')) {
-			return '/workout/media/diamond-pushups.gif';
-		}
-		if (l.includes('pike pushup') || l.includes('pike push-up') || l.includes('pike-pushup') || l.includes('pike')) {
-			return '/workout/media/pike-pushups.svg';
-		}
-		if (l.includes('decline pushup') || l.includes('decline push-up') || l.includes('decline-pushup') || l.includes('decline')) {
-			return '/workout/media/decline-pushups.svg';
-		}
-		if (l.includes('mountain climber') || l.includes('climber')) {
-			return '/workout/media/mountain-climbers.svg';
-		}
-		if (l.includes('shoulder tap') || l.includes('shoulder-tap') || l.includes('shouldertap')) {
-			return '/workout/media/shoulder-taps.svg';
-		}
-		if (l.includes('pushup') || l.includes('push-up') || l.includes('push up')) {
-			return '/workout/media/pushups.svg';
-		}
-		if (l.includes('cobra')) {
-			return '/workout/media/cobra-stretch.jpg';
-		}
-		if (l.includes('tricep') || (l.includes('shoulder') && (l.includes('stretch') || l.includes('mobility')))) {
-			return '/workout/media/overhead-tricep-stretch.jpg';
-		}
-		if (l.includes('pigeon')) {
-			return '/workout/media/pigeon-pose.jpg';
-		}
-		if (l.includes('child')) {
-			return '/workout/media/childs-pose.jpg';
-		}
-		if (l.includes('hamstring') || l.includes('forward fold') || l.includes('forward bend')) {
-			return '/workout/media/seated-hamstring-fold.jpg';
-		}
-	}
-	return null;
+	return resolveStepVisual(step);
 }
+
 
 /**
  * Create compact input fields for a break/rest step.
@@ -1101,20 +1034,23 @@ function createTimerFields(step, onUpdate) {
 	frag.appendChild(createExercisePicker(step, onUpdate));
 
 	// 2. Compact Control Row: Mode + Presets + Stepper (or Fixed Video Badge)
-	const isVideoStep = step.stepMode !== 'reps' && Boolean(step.type === 'clip' || (step.videoId && step.endSeconds && step.endSeconds > (step.startSeconds || 0)));
+	const vidAsset = resolveStepVideo(step);
+	const isVideoStep = step.stepMode !== 'reps' && Boolean(step.type === 'clip' || (step.videoId && step.endSeconds && step.endSeconds > (step.startSeconds || 0)) || vidAsset);
 
 	const row = document.createElement('div');
 	row.className = 'timer-controls-row';
 
 	if (isVideoStep) {
-		const dur = Math.max(1, (step.endSeconds || 60) - (step.startSeconds || 0));
+		const startSec = vidAsset?.startSeconds ?? (step.startSeconds || 0);
+		const endSec = vidAsset?.endSeconds ?? (step.endSeconds || 60);
+		const dur = Math.max(1, endSec - startSec);
 		const videoPill = document.createElement('div');
 		videoPill.className = 'step-fixed-video-pill';
 		videoPill.innerHTML = `
 			<span class="fixed-video-icon">🎬</span>
 			<span class="fixed-video-title">Follow-Along Video Drill</span>
 			<span class="fixed-video-dur">${formatTime(dur)}</span>
-			<span class="fixed-video-timestamps">(${formatTime(step.startSeconds || 0)} → ${formatTime(step.endSeconds || dur)})</span>
+			<span class="fixed-video-timestamps">(${formatTime(startSec)} → ${formatTime(endSec)})</span>
 		`;
 		row.appendChild(videoPill);
 	} else {
