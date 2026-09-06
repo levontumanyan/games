@@ -416,3 +416,54 @@ export function isBreakStep(step) {
 	}
 	return false;
 }
+
+/**
+ * Check if a step represents a repetition-based exercise set.
+ * @param {Object} step
+ * @returns {boolean}
+ */
+export function isRepsStep(step) {
+	if (!step || isBreakStep(step)) return false;
+	return step.stepMode === 'reps' || (!step.stepMode && Boolean(step.targetReps) && Number(step.targetReps) > 0);
+}
+
+/**
+ * Check if a step represents a follow-along video clip.
+ * @param {Object} step
+ * @returns {boolean}
+ */
+export function isClipStep(step) {
+	if (!step || isBreakStep(step) || isRepsStep(step)) return false;
+	return step.type === 'clip' || Boolean(step.customMedia && step.videoId) || Boolean(!step.exercises?.length && step.videoId);
+}
+
+/**
+ * Check if a step represents a timed interval exercise.
+ * @param {Object} step
+ * @returns {boolean}
+ */
+export function isTimerStep(step) {
+	if (!step || isBreakStep(step) || isRepsStep(step) || isClipStep(step)) return false;
+	return true;
+}
+
+/**
+ * Calculate the playback duration in seconds for any step.
+ * @param {Object} step
+ * @param {Object} [videoAsset]
+ * @returns {number}
+ */
+export function getStepDuration(step, videoAsset) {
+	if (!step) return 0;
+	if (isClipStep(step)) {
+		const start = (videoAsset && typeof videoAsset.startSeconds === 'number')
+			? videoAsset.startSeconds
+			: (typeof step.startSeconds === 'number' ? step.startSeconds : 0);
+		const end = (videoAsset && typeof videoAsset.endSeconds === 'number')
+			? videoAsset.endSeconds
+			: (typeof step.endSeconds === 'number' ? step.endSeconds : (start + 60));
+		return Math.max(1, end - start);
+	}
+	return step.durationSeconds || 30;
+}
+

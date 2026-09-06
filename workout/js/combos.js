@@ -4,7 +4,7 @@
 
 import { fetchServerCombos, saveCustomComboOnServer, deleteCustomComboOnServer } from './storage.js';
 import { getCategoryBadgeHtml, getDisciplineBadgeHtml, getMuscleBadgeHtml, getDisciplineOptionsHtml, CATEGORIES, DISCIPLINES } from './taxonomy.js';
-import { getExerciseById, getExercises, inferMusclesForExercise } from './exercises.js';
+import { getExerciseById, getExercises, inferMusclesForExercise, registerComboResolver } from './exercises.js';
 import { showExerciseVariationsModal } from './exercises_view.js';
 import { escapeHtml, formatTime, parseYouTubeId } from './utils.js';
 import { showConfirm, showAlert, createCustomModal } from './modal.js';
@@ -45,6 +45,15 @@ export function getCombos() {
 }
 
 /**
+ * Set cached combos in memory.
+ * @param {Array} list
+ */
+export function setCombos(list) {
+	cachedCombos = Array.isArray(list) ? list : [];
+	isCombosLoaded = true;
+}
+
+/**
  * Find a combo by its ID.
  * @param {string} id
  * @returns {Object|null}
@@ -54,6 +63,8 @@ export function getComboById(id) {
 	const clean = String(id).trim().toLowerCase();
 	return getCombos().find(c => String(c.id).toLowerCase() === clean) || null;
 }
+
+registerComboResolver(getComboById);
 
 /**
  * Filter combos by search query, flow type, category, or discipline.

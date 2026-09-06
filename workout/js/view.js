@@ -1,5 +1,9 @@
-import { formatTime, formatFriendlyDuration, escapeHtml, parseYouTubeId, getEffectiveSubStepReps, getEffectiveSubStepDuration } from './utils.js';
-import { isBreakStep, resolveStepMediaUrl } from './editor.js';
+import {
+	formatTime, formatFriendlyDuration, escapeHtml, parseYouTubeId,
+	getEffectiveSubStepReps, getEffectiveSubStepDuration,
+	isBreakStep, isRepsStep, isClipStep, isTimerStep
+} from './utils.js';
+import { resolveStepMediaUrl } from './editor.js';
 import { getClipIcon, getTimerIcon, getBreakIcon, getStepsIcon, getShareIcon, getSaveIcon } from './icons.js';
 import { getCategoryBadgeHtml, getDisciplineBadgeHtml, getMuscleBadgeHtml, MUSCLE_DEFINITIONS } from './taxonomy.js';
 import {
@@ -362,13 +366,12 @@ function createViewStepCard(step, index, steps, actions) {
 	const mediaBox = document.createElement('div');
 	mediaBox.className = 'view-step-media';
 
-	const isReps = step.stepMode === 'reps' || (!step.stepMode && Boolean(step.targetReps) && Number(step.targetReps) > 0);
+	const isReps = isRepsStep(step);
 	const videoAsset = !isReps ? resolveStepVideo(step) : null;
 	const mediaUrl = resolveStepVisual(step);
+	const isClip = !isReps && !isBreakStep(step) && Boolean(isClipStep(step) || (videoAsset && videoAsset.videoId));
 
-	const hasVideo = !isReps && Boolean((videoAsset && videoAsset.videoId) || (step.customMedia && step.videoId) || (!step.exercises?.length && step.type === 'clip' && step.videoId));
-
-	if (hasVideo) {
+	if (isClip) {
 		const vid = videoAsset?.videoId || step.videoId;
 		if (vid) {
 			const img = document.createElement('img');
@@ -425,15 +428,15 @@ function createViewStepCard(step, index, steps, actions) {
 
 	const title = document.createElement('h4');
 	title.className = 'view-step-title';
-	title.textContent = step.label || (step.type === 'clip' ? 'Video Clip' : 'Exercise Interval');
+	title.textContent = step.label || (isClip ? 'Video Clip' : 'Exercise Interval');
 
 	const tagsRow = document.createElement('div');
 	tagsRow.className = 'view-step-tags';
 
-	if (step.type === 'clip') {
-		const start = step.startSeconds || 0;
-		const end = step.endSeconds || (start + 60);
-		const dur = Math.max(0, end - start);
+	if (isClip) {
+		const start = (videoAsset && typeof videoAsset.startSeconds === 'number') ? videoAsset.startSeconds : (step.startSeconds || 0);
+		const end = (videoAsset && typeof videoAsset.endSeconds === 'number') ? videoAsset.endSeconds : (step.endSeconds || (start + 60));
+		const dur = Math.max(1, end - start);
 
 		const typeTag = document.createElement('span');
 		typeTag.className = 'view-tag view-tag-clip';

@@ -620,7 +620,6 @@ function switchTab(tab) {
 		if (dom.exercisesView) {
 			dom.exercisesView.classList.remove('hidden');
 			renderExercisesCatalog(dom.exercisesView, {
-				onOpenAnatomy: () => switchTab('anatomy'),
 				onPlayExercise: (exercise, asset) => {
 					const chosenAsset = asset || getExerciseFollowAlongMedia(exercise);
 					const isVideo = chosenAsset && (chosenAsset.type === 'video' || Boolean(chosenAsset.videoId));

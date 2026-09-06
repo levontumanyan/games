@@ -2,7 +2,11 @@
  * Editor module - Routine & step editing, drag-and-drop reorder.
  */
 
-import { generateId, parseYouTubeId, parseYouTubeInfo, parseTime, formatTime, formatFriendlyDuration, escapeHtml, showToast, isBreakStep } from './utils.js';
+import {
+	generateId, parseYouTubeId, parseYouTubeInfo, parseTime, formatTime,
+	formatFriendlyDuration, escapeHtml, showToast,
+	isBreakStep, isRepsStep, isClipStep, isTimerStep, getStepDuration
+} from './utils.js';
 import { saveAudioFile, deleteAudioFile } from './musicdb.js';
 import { showPrompt, showAlert, createCustomModal } from './modal.js';
 import { getTimerIcon, getBreakIcon, getComboIcon, getExerciseIcon, getDuplicateIcon, getPlusIcon } from './icons.js';
@@ -543,9 +547,9 @@ function createStepElement(step, index, routine, onUpdate, onTestStep) {
 
 	const headerMeta = document.createElement('span');
 	headerMeta.className = 'step-header-meta';
-	if (step.stepMode === 'reps' || (!step.stepMode && Boolean(step.targetReps))) {
+	if (isRepsStep(step)) {
 		headerMeta.textContent = `${step.targetReps || 20} reps`;
-	} else if (step.type === 'clip') {
+	} else if (isClipStep(step)) {
 		const dur = Math.max(0, (step.endSeconds || 60) - (step.startSeconds || 0));
 		headerMeta.textContent = `${formatTime(dur)} (${formatTime(step.startSeconds || 0)}–${formatTime(step.endSeconds || 60)})`;
 	} else {
@@ -1050,7 +1054,7 @@ function createTimerFields(step, onUpdate) {
 
 	// 2. Compact Control Row: Mode + Presets + Stepper (or Fixed Video Badge)
 	const vidAsset = resolveStepVideo(step);
-	const isVideoStep = step.stepMode !== 'reps' && Boolean(step.type === 'clip' || (step.videoId && step.endSeconds && step.endSeconds > (step.startSeconds || 0)) || vidAsset);
+	const isVideoStep = isClipStep(step) && Boolean((vidAsset && vidAsset.videoId) || step.videoId);
 
 	const row = document.createElement('div');
 	row.className = 'timer-controls-row';

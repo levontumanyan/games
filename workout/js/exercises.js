@@ -3,7 +3,7 @@
  */
 
 import { fetchServerExercises, saveCustomExerciseOnServer, deleteCustomExerciseOnServer } from './storage.js';
-import { escapeHtml, formatTime, parseYouTubeId, isBreakStep } from './utils.js';
+import { escapeHtml, formatTime, parseYouTubeId, isBreakStep, isRepsStep, isClipStep, isTimerStep } from './utils.js';
 import {
 	MUSCLE_DEFINITIONS,
 	MUSCLE_GROUPS,
@@ -39,6 +39,19 @@ export {
 
 let cachedExercises = [];
 let isLoaded = false;
+let comboResolver = null;
+
+/**
+ * Register a combo lookup function to prevent circular imports with combos.js.
+ * @param {Function} fn
+ */
+export function registerComboResolver(fn) {
+	comboResolver = fn;
+}
+
+function resolveCombo(id) {
+	return comboResolver ? comboResolver(id) : null;
+}
 
 /**
  * Retrieve all media assets attached to a given list of exercise objects or IDs.
@@ -456,15 +469,17 @@ export function renderExerciseCardElement(ex, options = {}) {
 
 /**
  * Resolves the active video asset for a step dynamically.
- * Dynamic exercise inheritance:
+ * Dynamic inheritance hierarchy:
  * 1. Explicit user override for this specific step (customMedia: true && step.videoId).
- * 2. Dynamic exercise inheritance from attached exercise reference.
- * 3. Fallback: Standalone or curated step video (step.videoId).
+ * 2. Compound combo dynamic resolution: resolves combo demonstration video if step.combo_id exists.
+ * 3. Curated routine video clip: preserves explicit clip slice (type === 'clip' with videoId and start/end seconds).
+ * 4. Dynamic exercise inheritance: resolves demonstration/drill follow-along video from attached exercise reference.
+ * 5. Fallback: Standalone or curated step video (step.videoId).
  * @param {Object} step
  * @returns {{ videoId: string, startSeconds: number, endSeconds: number } | null}
  */
 export function resolveStepVideo(step) {
-	if (!step || isBreakStep(step)) return null;
+	if (!step || isBreakStep(step) || isRepsStep(step)) return null;
 
 	// 1. Explicit user override for this specific step
 	if (step.customMedia && step.videoId) {
@@ -475,68 +490,82 @@ export function resolveStepVideo(step) {
 		};
 	}
 
-	// 2. Dynamic exercise inheritance
+	// 2. Compound combo dynamic resolution (never fall through to individual sub-exercises)
+	if (step.combo_id) {
+		const combo = resolveCombo(step.combo_id);
+		if (combo) {
+			const comboAsset = Array.isArray(combo.media_assets)
+				? combo.media_assets.find(a => (a.kind === 'demonstration' || a.kind === 'drill' || !a.kind) && (a.type === 'video' || Boolean(a.videoId)))
+				: null;
+			if (comboAsset && (comboAsset.videoId || comboAsset.url)) {
+				const vid = comboAsset.videoId || parseYouTubeId(comboAsset.url);
+				if (vid) {
+					const start = typeof step.startSeconds === 'number' ? step.startSeconds : (comboAsset.startSeconds || 0);
+					const end = typeof step.endSeconds === 'number' ? step.endSeconds : (comboAsset.endSeconds || (start + (step.durationSeconds || combo.default_quantity || 190)));
+					return {
+						videoId: vid,
+						startSeconds: start,
+						endSeconds: end
+					};
+				}
+			}
+			if (combo.media_url) {
+				const vid = parseYouTubeId(combo.media_url);
+				if (vid) {
+					const start = typeof step.startSeconds === 'number' ? step.startSeconds : 0;
+					const end = typeof step.endSeconds === 'number' ? step.endSeconds : (start + (step.durationSeconds || combo.default_quantity || 190));
+					return {
+						videoId: vid,
+						startSeconds: start,
+						endSeconds: end
+					};
+				}
+			}
+		}
+		// If step itself has curated clip videoId and timestamps, preserve them!
+		if (step.videoId) {
+			return {
+				videoId: step.videoId,
+				startSeconds: step.startSeconds || 0,
+				endSeconds: step.endSeconds || ((step.startSeconds || 0) + (step.durationSeconds || 60))
+			};
+		}
+		return null;
+	}
+
+	// 3. Dynamic exercise inheritance (for single exercise steps)
 	if (Array.isArray(step.exercises) && step.exercises.length > 0) {
 		let foundAnyInLibrary = false;
 		for (const exRef of step.exercises) {
 			const fullEx = exRef && exRef.id ? getExerciseById(exRef.id) : null;
-			if (fullEx) {
-				foundAnyInLibrary = true;
-				// Check follow-along demonstration or drill video
-				const followAlong = getExerciseFollowAlongMedia(fullEx);
+			const target = fullEx || (typeof exRef === 'object' ? exRef : null);
+			if (target) {
+				if (fullEx) foundAnyInLibrary = true;
+				// Check follow-along demonstration or drill video (excludes instruction kind)
+				const followAlong = getExerciseFollowAlongMedia(target);
 				if (followAlong && (followAlong.type === 'video' || followAlong.videoId)) {
 					const vid = followAlong.videoId || parseYouTubeId(followAlong.url);
 					if (vid) {
+						const start = typeof followAlong.startSeconds === 'number' ? followAlong.startSeconds : (step.startSeconds || 0);
+						const end = typeof followAlong.endSeconds === 'number' ? followAlong.endSeconds : (start + (step.durationSeconds || target.default_quantity || 60));
 						return {
 							videoId: vid,
-							startSeconds: followAlong.startSeconds || 0,
-							endSeconds: followAlong.endSeconds || ((followAlong.startSeconds || 0) + (step.durationSeconds || fullEx.default_quantity || 60))
-						};
-					}
-				}
-
-				// Check exercise media_url fallback (if YouTube)
-				if (fullEx.media_url) {
-					const vid = parseYouTubeId(fullEx.media_url);
-					if (vid) {
-						return {
-							videoId: vid,
-							startSeconds: 0,
-							endSeconds: step.durationSeconds || fullEx.default_quantity || 60
-						};
-					}
-				}
-			} else if (exRef && typeof exRef === 'object') {
-				const followAlong = getExerciseFollowAlongMedia(exRef);
-				if (followAlong && (followAlong.type === 'video' || followAlong.videoId)) {
-					const vid = followAlong.videoId || parseYouTubeId(followAlong.url);
-					if (vid) {
-						return {
-							videoId: vid,
-							startSeconds: followAlong.startSeconds || 0,
-							endSeconds: followAlong.endSeconds || ((followAlong.startSeconds || 0) + (step.durationSeconds || exRef.default_quantity || 60))
-						};
-					}
-				}
-				if (exRef.media_url) {
-					const vid = parseYouTubeId(exRef.media_url);
-					if (vid) {
-						return {
-							videoId: vid,
-							startSeconds: 0,
-							endSeconds: step.durationSeconds || exRef.default_quantity || 60
+							startSeconds: start,
+							endSeconds: end
 						};
 					}
 				}
 			}
 		}
-		// If backing exercise was found in library and has no video, exercise library is authoritative
+		// If backing exercise was found in library and has no follow-along demo video:
+		// Do NOT fallback to raw media_url at 0s, and do NOT play instruction breakdown as follow-along!
+		// The exercise library is authoritative (e.g. if updated to GIF or no video, remove video).
 		if (foundAnyInLibrary) {
 			return null;
 		}
 	}
 
-	// 3. Fallback: Standalone or curated step video
+	// 4. Standalone or curated step video (when no backing exercise in library)
 	if (step.videoId) {
 		return {
 			videoId: step.videoId,
@@ -557,7 +586,17 @@ export function resolveStepVideo(step) {
 export function resolveStepVisual(step) {
 	if (!step || isBreakStep(step)) return null;
 
-	// 1. Dynamic exercise inheritance (unless customMedia is flagged)
+	// 1. Combo visual inheritance
+	if (!step.customMedia && step.combo_id) {
+		const combo = resolveCombo(step.combo_id);
+		if (combo) {
+			const visual = (combo.media_assets || []).find(a => (a.kind === 'animation' || a.kind === 'photo' || a.type === 'image') && a.url && !parseYouTubeId(a.url));
+			if (visual) return visual.url;
+			if (combo.media_url && !parseYouTubeId(combo.media_url)) return combo.media_url;
+		}
+	}
+
+	// 2. Dynamic exercise inheritance (unless customMedia is flagged)
 	if (!step.customMedia && Array.isArray(step.exercises) && step.exercises.length > 0) {
 		let foundAnyInLibrary = false;
 		for (const exRef of step.exercises) {

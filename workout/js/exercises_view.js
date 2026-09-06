@@ -40,7 +40,6 @@ import { getFrontBodySvg, getBackBodySvg } from './body_map.js';
 export function renderExercisesCatalog(container, options = {}) {
 	const onPlayExercise = options.onPlayExercise || (() => {});
 	const onAddToRoutine = options.onAddToRoutine || (() => {});
-	const onOpenAnatomy = options.onOpenAnatomy || (() => {});
 
 	container.innerHTML = `
 		<div class="exercises-catalog-container">
@@ -50,7 +49,6 @@ export function renderExercisesCatalog(container, options = {}) {
 					<p class="exercises-subtitle">Biomechanical movements, skill taxonomy, and looping form animations</p>
 				</div>
 				<div class="exercises-header-actions">
-					<button id="btn-open-anatomy-tab" class="btn btn-ghost btn-sm" title="Open Interactive Anatomy & Muscle Map">🧬 Anatomy Map</button>
 					<button id="btn-create-exercise" class="btn btn-primary btn-sm">+ New Exercise</button>
 				</div>
 			</div>
@@ -77,13 +75,6 @@ export function renderExercisesCatalog(container, options = {}) {
 	const filterChipsContainer = container.querySelector('#exercise-filter-chips');
 	const gridContainer = container.querySelector('#exercises-cards-grid');
 	const createBtn = container.querySelector('#btn-create-exercise');
-	const anatomyBtn = container.querySelector('#btn-open-anatomy-tab');
-
-	if (anatomyBtn) {
-		anatomyBtn.addEventListener('click', () => {
-			onOpenAnatomy();
-		});
-	}
 
 	createBtn.addEventListener('click', () => {
 		showCreateExerciseModal({

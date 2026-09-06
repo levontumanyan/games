@@ -765,3 +765,163 @@ def test_player_start_routine_countdown():
 		timeout=5,
 	)
 	assert res.returncode == 0, f"Node start routine countdown test failed:\n{res.stderr}"
+
+
+def test_combo_video_resolution_and_up_next_metadata():
+	"""Verify that combos dynamically resolve their demonstration asset without being hijacked by sub-exercises."""
+	js_dir = (Path(__file__).parent.parent / "js").resolve().as_posix()
+
+	node_script = f"""
+	globalThis.localStorage = {{ getItem: () => null, setItem: () => {{}}, removeItem: () => {{}} }};
+	globalThis.window = {{
+		addEventListener: () => {{}},
+		removeEventListener: () => {{}}
+	}};
+	globalThis.document = {{
+		addEventListener: () => {{}},
+		removeEventListener: () => {{}}
+	}};
+
+	const {{ setExercises, resolveStepVideo }} = await import('{js_dir}/exercises.js');
+	const {{ setCombos }} = await import('{js_dir}/combos.js');
+	const {{ isRepsStep, isClipStep, isTimerStep, isBreakStep, getStepDuration }} = await import('{js_dir}/utils.js');
+
+	// Set up exercises: ex-jab-cross (has instruction video 7sLw5dHdRG4, start 662)
+	setExercises([
+		{{
+			id: 'ex-jab-cross',
+			name: 'Jab-Cross Combo',
+			category: 'technique',
+			discipline: 'boxing',
+			default_mode: 'time',
+			default_quantity: 184,
+			media_url: 'https://www.youtube.com/watch?v=7sLw5dHdRG4',
+			media_assets: [
+				{{
+					id: 'asset-jab-cross-inst',
+					kind: 'instruction',
+					type: 'video',
+					title: 'Jab Cross Punching Mechanics',
+					videoId: '7sLw5dHdRG4',
+					startSeconds: 662,
+					endSeconds: 846
+				}}
+			]
+		}},
+		{{
+			id: 'ex-knee-strike',
+			name: 'Rear Knee Strike',
+			category: 'technique',
+			discipline: 'muay_thai',
+			default_mode: 'time',
+			default_quantity: 60,
+			media_url: 'https://www.youtube.com/watch?v=z37V3X6tPG4',
+			media_assets: [
+				{{
+					id: 'asset-knee-demo',
+					kind: 'demonstration',
+					type: 'video',
+					videoId: 'z37V3X6tPG4',
+					startSeconds: 694,
+					endSeconds: 938
+				}}
+			]
+		}}
+	]);
+
+	// Set up combo: combo-jab-knee (demonstration video z37V3X6tPG4 at 694s)
+	setCombos([
+		{{
+			id: 'combo-jab-knee',
+			name: 'Jab + Rear Knee',
+			category: 'technique',
+			discipline: 'muay_thai',
+			flow_type: 'sequence',
+			exercise_ids: ['ex-jab-cross', 'ex-knee-strike'],
+			default_mode: 'time',
+			default_quantity: 244,
+			media_url: 'https://www.youtube.com/watch?v=z37V3X6tPG4',
+			media_assets: [
+				{{
+					id: 'asset-combo-jab-knee',
+					kind: 'demonstration',
+					type: 'video',
+					videoId: 'z37V3X6tPG4',
+					startSeconds: 694,
+					endSeconds: 938
+				}}
+			]
+		}}
+	]);
+
+	// 1. Routine step referencing combo-jab-knee
+	const comboStep = {{
+		id: 'step-combo-1',
+		type: 'clip',
+		label: 'Jab + Rear Knee',
+		combo_id: 'combo-jab-knee',
+		videoId: 'z37V3X6tPG4',
+		startSeconds: 694,
+		endSeconds: 874,
+		exercises: [
+			{{ id: 'ex-jab-cross' }},
+			{{ id: 'ex-knee-strike' }}
+		]
+	}};
+
+	const resolvedComboVid = resolveStepVideo(comboStep);
+	if (!resolvedComboVid || resolvedComboVid.videoId !== 'z37V3X6tPG4' || resolvedComboVid.startSeconds !== 694) {{
+		throw new Error('Combo step video resolution failed: ' + JSON.stringify(resolvedComboVid));
+	}}
+
+	// 2. Reps step must resolve video to null
+	const repsStep = {{
+		id: 'step-reps-1',
+		type: 'timer',
+		stepMode: 'reps',
+		targetReps: 25,
+		durationSeconds: 30,
+		label: 'Explosive Plyometric Pushups',
+		exercises: [{{ id: 'ex-jab-cross' }}]
+	}};
+
+	if (!isRepsStep(repsStep)) {{
+		throw new Error('isRepsStep failed for reps step');
+	}}
+	if (resolveStepVideo(repsStep) !== null) {{
+		throw new Error('resolveStepVideo should return null for reps steps, got: ' + JSON.stringify(resolveStepVideo(repsStep)));
+	}}
+
+	// 3. Timed interval step with only instruction video must resolve video to null (not play at 0:00)
+	const timedStep = {{
+		id: 'step-timed-1',
+		type: 'timer',
+		stepMode: 'time',
+		durationSeconds: 60,
+		label: 'Jab-Cross Form Interval',
+		exercises: [{{ id: 'ex-jab-cross' }}]
+	}};
+
+	if (!isTimerStep(timedStep)) {{
+		throw new Error('isTimerStep failed for timed step');
+	}}
+	if (resolveStepVideo(timedStep) !== null) {{
+		throw new Error('resolveStepVideo should return null for timed steps with only instruction video, got: ' + JSON.stringify(resolveStepVideo(timedStep)));
+	}}
+
+	// 4. getStepDuration
+	if (getStepDuration(comboStep, resolvedComboVid) !== 180) {{
+		throw new Error('getStepDuration failed for clip step, expected 180, got: ' + getStepDuration(comboStep, resolvedComboVid));
+	}}
+	if (getStepDuration(timedStep) !== 60) {{
+		throw new Error('getStepDuration failed for timed step, expected 60, got: ' + getStepDuration(timedStep));
+	}}
+	"""
+
+	res = subprocess.run(
+		["node", "--input-type=module", "-e", node_script],
+		capture_output=True,
+		text=True,
+		timeout=5,
+	)
+	assert res.returncode == 0, f"Node combo video resolution test failed:\n{res.stderr}"
