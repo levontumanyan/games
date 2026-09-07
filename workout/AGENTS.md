@@ -2,31 +2,24 @@
 
 ## Share & Routine Link Resolution
 When given a workout link (`https://levon.ajwest.ca/workout/#u=<user>&r=<id>` or `#r=<id>`):
-- Fetch the routine JSON directly via `GET https://levon.ajwest.ca/workout/api/routines/<id>?user_id=<user>` (fallback user: `levon`).
+- Fetch the routine JSON via the routine endpoint using query param `?user_id=<user>` (fallback user: `levon`).
 
 ## YouTube Video Searching
-- Use the script [`scripts/search_youtube.py`](file:///Users/levontumanyan/repos/games/workout/scripts/search_youtube.py) to search verified YouTube videos and inspect remote exercises:
+- Use [`scripts/search_youtube.py`](file:///Users/levontumanyan/repos/games/workout/scripts/search_youtube.py) to search verified YouTube videos:
 	`uv run python scripts/search_youtube.py "<query>" [--max 5]`
-	`uv run python scripts/search_youtube.py --list-exercises [--category drill]`
 
 # API & Agent Workflows
 
-## Remote-First Execution
-- Always perform routine and combo creations/updates on the remote live instance (`https://levon.ajwest.ca/workout/api/...`) via HTTP requests (`X-User-Id: levon`). Do not directly edit local database files for live routines.
-- **Required Headers**: When sending HTTP requests to the live Cloudflare-tunneled host, always include a standard browser `User-Agent` (e.g. `Mozilla/5.0`) along with `X-User-Id: levon`. Default Python `urllib` without `User-Agent` is blocked with HTTP 403.
+## Remote-First Execution & Database Access
+- **Zero Local Database Access**: Do NOT query or modify local `data/workout.db`. The local database is an unmaintained development artifact. All reads and writes for routines, exercises, combos, and taxonomy MUST run against the live instance at `https://levon.ajwest.ca/workout/api/`.
+- **Headers & Cloudflare**:
+	- `User-Agent`: Standard CLI tools (`curl`, `httpx`) work out of the box. Cloudflare blocks Python's default `urllib` user agent (`Python-urllib/3.x`) with HTTP 403; set a browser User-Agent if writing custom Python scripts.
+	- `X-User-Id`: Optional. Defaults automatically to `levon` on all user-scoped endpoints. Specify `X-User-Id: <user>` or query param `?user_id=<user>` only when operating on behalf of a different user.
 
-## User Identity
-- Identify active user via `X-User-Id` header (fallback: `levon`). Base subpath is `/workout/api/` (or `/api/`).
-
-## Routine Endpoints
-- `GET /workout/api/routines/{id}` — Fetch routine by ID or title slug (supports `?user_id=...`).
-- `PUT /workout/api/routines/{id}` — Create or update a single routine without overwriting others.
-- `DELETE /workout/api/routines/{id}` — Delete a routine.
-
-## Combo & Exercise Endpoints
-- `POST /workout/api/combos` — Create or update a custom combo.
-- `POST /workout/api/exercises` — Create or update an exercise in the DB (never hardcode exercises in frontend JS).
-- `GET /workout/api/taxonomy` — Fetch canonical taxonomy (muscles, anatomical regions, categories, disciplines, aliases).
+## Dynamic Route & Schema Discovery
+- **Do not hardcode route paths or payloads**: Always discover live endpoints, parameters, and schemas dynamically.
+- **Live OpenAPI Spec**: Inspect `GET https://levon.ajwest.ca/workout/openapi.json` or interactive docs at `https://levon.ajwest.ca/workout/docs`.
+- **Codebase Schemas**: In this repository, inspect [`schemas.py`](file:///Users/levontumanyan/repos/games/workout/schemas.py) for typed Pydantic models (payload definitions, field constraints, defaults) and [`app.py`](file:///Users/levontumanyan/repos/games/workout/app.py) for endpoint declarations.
 
 # Development & UI Verification
 
