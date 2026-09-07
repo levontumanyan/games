@@ -172,6 +172,10 @@ async function init() {
 			onRoutineComplete: (session, completedRoutine) => {
 				showCompletionModal(session, completedRoutine);
 			},
+			onPreviewComplete: (completedRoutine) => {
+				const title = completedRoutine?.title ? completedRoutine.title.replace(/^(Preview|Tutorial):\s*/i, '') : '';
+				showToast(title ? `Finished previewing: ${title}` : 'Preview finished');
+			},
 		}
 	);
 
@@ -1261,6 +1265,9 @@ function closeCompletionModal() {
 }
 
 async function showCompletionModal(session, completedRoutine) {
+	if (!completedRoutine || completedRoutine.id === 'preview-routine' || completedRoutine.id === 'preview-combo-routine') {
+		return;
+	}
 	completedWorkoutRoutine = completedRoutine;
 	if (!dom.completionModalBackdrop) return;
 

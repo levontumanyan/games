@@ -1282,8 +1282,8 @@ function advanceStep() {
 				}
 			});
 		} else {
-			if (playerCallbacks.onRoutineComplete) {
-				playerCallbacks.onRoutineComplete(null, completedRoutine);
+			if (playerCallbacks.onPreviewComplete) {
+				playerCallbacks.onPreviewComplete(completedRoutine);
 			}
 		}
 		return;
