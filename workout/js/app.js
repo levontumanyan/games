@@ -201,6 +201,7 @@ function cacheDom() {
 	dom.playerView = document.getElementById('player-view');
 	dom.playerStage = document.querySelector('.player-stage');
 	dom.routineTitle = document.getElementById('routine-title');
+	dom.stepActions = document.querySelector('.step-actions');
 	dom.stepList = document.getElementById('step-list');
 	dom.addExerciseBtn = document.getElementById('add-exercise-btn');
 	dom.addComboBtn = document.getElementById('add-combo-btn');
@@ -217,6 +218,11 @@ function cacheDom() {
 	// Soft Accounts & Navigation
 	dom.userProfileBtn = document.getElementById('user-profile-btn');
 	dom.userProfileName = document.getElementById('user-profile-name');
+	dom.profileDropdownContainer = document.getElementById('profile-dropdown-container');
+	dom.profileDropdownMenu = document.getElementById('profile-dropdown-menu');
+	dom.dropdownProfileList = document.getElementById('dropdown-profile-list');
+	dom.dropdownNewProfileInput = document.getElementById('dropdown-new-profile-input');
+	dom.dropdownCreateProfileBtn = document.getElementById('dropdown-create-profile-btn');
 	dom.tabRoutinesBtn = document.getElementById('tab-routines-btn');
 	dom.tabCombosBtn = document.getElementById('tab-combos-btn');
 	dom.tabExercisesBtn = document.getElementById('tab-exercises-btn');
@@ -318,9 +324,17 @@ function cacheDom() {
 }
 
 function updateProfileButtonLabel() {
+	const displayName = getActiveDisplayName() || 'Levon';
+	const initial = displayName.trim().charAt(0).toUpperCase() || 'L';
 	if (dom.userProfileName) {
-		dom.userProfileName.textContent = getActiveDisplayName();
+		dom.userProfileName.textContent = initial;
 	}
+	const dropdownAvatar = document.getElementById('dropdown-user-avatar');
+	if (dropdownAvatar) dropdownAvatar.textContent = initial;
+	const dropdownName = document.getElementById('dropdown-user-name');
+	if (dropdownName) dropdownName.textContent = displayName;
+	const dropdownId = document.getElementById('dropdown-user-id');
+	if (dropdownId) dropdownId.textContent = `@${getActiveUserId()}`;
 }
 
 /**
@@ -753,10 +767,51 @@ function bindEvents() {
 		});
 	}
 
-	// Soft Profile modal
+	// Soft Profile Dropdown
 	if (dom.userProfileBtn) {
-		dom.userProfileBtn.addEventListener('click', openProfileModal);
+		dom.userProfileBtn.addEventListener('click', (e) => {
+			e.stopPropagation();
+			toggleProfileDropdown();
+		});
 	}
+	if (dom.dropdownCreateProfileBtn) {
+		dom.dropdownCreateProfileBtn.addEventListener('click', (e) => {
+			e.stopPropagation();
+			handleDropdownCreateProfile();
+		});
+	}
+	if (dom.dropdownNewProfileInput) {
+		dom.dropdownNewProfileInput.addEventListener('keydown', (e) => {
+			if (e.key === 'Enter') {
+				e.preventDefault();
+				handleDropdownCreateProfile();
+			}
+		});
+	}
+
+	// Close profile dropdown on outside click or Escape
+	document.addEventListener('click', (e) => {
+		if (dom.profileDropdownMenu && !dom.profileDropdownMenu.classList.contains('hidden')) {
+			if (!dom.profileDropdownContainer?.contains(e.target)) {
+				closeProfileDropdown();
+			}
+		}
+	});
+	window.addEventListener('keydown', (e) => {
+		if (e.key === 'Escape' && dom.profileDropdownMenu && !dom.profileDropdownMenu.classList.contains('hidden')) {
+			closeProfileDropdown();
+		}
+	});
+
+	// Close dropdown when clicking theme switcher button inside it
+	const dropdownThemeBtn = document.getElementById('theme-switcher-btn');
+	if (dropdownThemeBtn) {
+		dropdownThemeBtn.addEventListener('click', () => {
+			closeProfileDropdown();
+		});
+	}
+
+	// Legacy Soft Profile modal listeners
 	if (dom.profileModalCloseBtn) {
 		dom.profileModalCloseBtn.addEventListener('click', closeProfileModal);
 	}
@@ -837,6 +892,104 @@ function bindEvents() {
 			if (routine) {
 				startRoutine(routine, 0);
 			}
+		});
+	}
+}
+
+/**
+ * Toggle soft profile & theme dropdown menu.
+ */
+function toggleProfileDropdown() {
+	if (!dom.profileDropdownMenu) return;
+	const isHidden = dom.profileDropdownMenu.classList.contains('hidden');
+	if (isHidden) {
+		openProfileDropdown();
+	} else {
+		closeProfileDropdown();
+	}
+}
+
+/**
+ * Open soft profile & theme dropdown menu and load user accounts.
+ */
+async function openProfileDropdown() {
+	if (!dom.profileDropdownMenu) return;
+	updateProfileButtonLabel();
+	dom.profileDropdownMenu.classList.remove('hidden');
+	dom.userProfileBtn?.classList.add('active');
+	dom.userProfileBtn?.setAttribute('aria-expanded', 'true');
+
+	if (dom.dropdownProfileList) {
+		dom.dropdownProfileList.innerHTML = '<div class="spinner-small"></div> Loading profiles...';
+		try {
+			const users = await fetchUsers();
+			renderDropdownProfileList(users);
+		} catch (e) {
+			dom.dropdownProfileList.innerHTML = '<p class="text-muted text-xs">Could not load profiles.</p>';
+		}
+	}
+}
+
+/**
+ * Close soft profile & theme dropdown menu.
+ */
+function closeProfileDropdown() {
+	if (!dom.profileDropdownMenu) return;
+	dom.profileDropdownMenu.classList.add('hidden');
+	dom.userProfileBtn?.classList.remove('active');
+	dom.userProfileBtn?.setAttribute('aria-expanded', 'false');
+	if (dom.dropdownNewProfileInput) {
+		dom.dropdownNewProfileInput.value = '';
+	}
+}
+
+/**
+ * Render profile item list in topbar dropdown.
+ * @param {Array} users
+ */
+function renderDropdownProfileList(users) {
+	if (!dom.dropdownProfileList) return;
+	dom.dropdownProfileList.innerHTML = '';
+	const currentUserId = getActiveUserId();
+
+	users.forEach(user => {
+		const item = document.createElement('div');
+		const isActive = user.id === currentUserId;
+		item.className = `profile-dropdown-item ${isActive ? 'active' : ''}`;
+		const initial = (user.display_name || user.id || 'U').trim().charAt(0).toUpperCase();
+		item.innerHTML = `
+			<div class="profile-dropdown-item-left">
+				<span class="profile-dropdown-item-avatar">${initial}</span>
+				<span class="profile-dropdown-item-name">${escapeHtml(user.display_name || user.id)}</span>
+			</div>
+			${isActive ? '<span class="profile-dropdown-active-check">✓</span>' : ''}
+		`;
+		item.addEventListener('click', (e) => {
+			e.stopPropagation();
+			setActiveUser(user.id, user.display_name);
+			closeProfileDropdown();
+		});
+		dom.dropdownProfileList.appendChild(item);
+	});
+}
+
+/**
+ * Handle creating a new soft profile from the dropdown menu.
+ */
+async function handleDropdownCreateProfile() {
+	if (!dom.dropdownNewProfileInput) return;
+	const name = dom.dropdownNewProfileInput.value.trim();
+	if (!name) return;
+
+	try {
+		const created = await createUser(name, name);
+		setActiveUser(created.id, created.display_name);
+		dom.dropdownNewProfileInput.value = '';
+		closeProfileDropdown();
+	} catch (e) {
+		await showAlert({
+			title: 'Create Profile Failed',
+			message: e.message
 		});
 	}
 }

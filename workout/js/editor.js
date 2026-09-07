@@ -89,6 +89,12 @@ export function renderEditor(routine, container, actions) {
 	const onUpdate = typeof actions === 'function' ? actions : actions?.onUpdate;
 	const onTestStep = typeof actions === 'object' ? actions.onTestStep : null;
 
+	const stepActions = container.closest('.editor-container')?.querySelector('.step-actions')
+		|| document.querySelector('.step-actions');
+	if (stepActions) {
+		stepActions.classList.toggle('hidden', !routine || routine.steps.length === 0);
+	}
+
 	container.innerHTML = '';
 
 	if (!routine) {
@@ -109,17 +115,17 @@ export function renderEditor(routine, container, actions) {
 			<p>Choose an option below to start building your routine:</p>
 			<div class="editor-empty-actions">
 				<button type="button" class="btn btn-primary btn-sm btn-empty-add-ex">🥋 + Add Exercise</button>
-				<button type="button" class="btn btn-secondary btn-sm btn-empty-add-break">⏱️ + Add Rest</button>
 				<button type="button" class="btn btn-secondary btn-sm btn-empty-add-combo">🔗 + Add Combo</button>
+				<button type="button" class="btn btn-secondary btn-sm btn-empty-add-break">⏱️ + Add Rest</button>
 			</div>
 		`;
 		emptyCard.querySelector('.btn-empty-add-ex').addEventListener('click', () => showAddExerciseModal(routine, onUpdate, 0));
+		emptyCard.querySelector('.btn-empty-add-combo').addEventListener('click', () => showAddComboModal(routine, onUpdate, 0));
 		emptyCard.querySelector('.btn-empty-add-break').addEventListener('click', () => {
 			const s = insertBreakStep(routine, 0, 30);
 			onUpdate();
 			highlightStepElement(s.id);
 		});
-		emptyCard.querySelector('.btn-empty-add-combo').addEventListener('click', () => showAddComboModal(routine, onUpdate, 0));
 		container.appendChild(emptyCard);
 		return;
 	}
