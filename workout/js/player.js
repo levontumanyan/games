@@ -594,7 +594,7 @@ function startWorkoutCountdown(routine, onComplete) {
 				if (muscles.primary && muscles.primary.length > 0) {
 					const def = MUSCLE_DEFINITIONS[muscles.primary[0]];
 					if (def) {
-						musclePills = `<span style="font-size:0.75rem;padding:2px 6px;border-radius:4px;background:rgba(255,255,255,0.06);color:var(--text-secondary);">${def.icon} ${def.name}</span>`;
+						musclePills = `<span style="font-size:0.75rem;padding:2px 6px;border-radius:4px;background:rgba(255,255,255,0.06);color:var(--text-secondary);">${def.icon} ${def.label || def.name || ''}</span>`;
 					}
 				}
 			}
@@ -1085,7 +1085,10 @@ function executeTimerStep(step) {
 
 		if (isBreak) {
 			if (stageHeader) stageHeader.classList.add('hidden');
-			if (dom.timerLabel) dom.timerLabel.textContent = 'REST';
+			if (dom.timerLabel) {
+				dom.timerLabel.textContent = 'REST';
+				dom.timerLabel.classList.remove('hidden');
+			}
 		} else {
 			if (stageHeader) {
 				stageHeader.classList.remove('hidden');
@@ -1097,7 +1100,8 @@ function executeTimerStep(step) {
 				}
 			}
 			if (dom.timerLabel) {
-				dom.timerLabel.textContent = hasSubSteps ? `MOVE ${currentSubStepIndex + 1}/${totalSubSteps}` : 'WORK';
+				dom.timerLabel.textContent = '';
+				dom.timerLabel.classList.add('hidden');
 			}
 		}
 

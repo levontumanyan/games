@@ -2990,10 +2990,17 @@ textarea.input {
 	font-weight: 800;
 }
 
+.timer-stage-content.has-media .timer-center-text {
+	width: 92%;
+}
+
 .timer-stage-content.has-media #timer-label {
-	font-size: 1rem;
-	font-weight: 700;
-	margin-top: 2px;
+	font-size: 0.68rem;
+	font-weight: 800;
+	letter-spacing: 0.08em;
+	padding: 1px 7px;
+	margin-top: 1px;
+	max-width: 95%;
 }
 
 /* ── Reps Mode Stage (Interactive Stepper HUD - Option 4) ──────────────── */

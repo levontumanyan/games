@@ -925,3 +925,81 @@ def test_combo_video_resolution_and_up_next_metadata():
 		timeout=5,
 	)
 	assert res.returncode == 0, f"Node combo video resolution test failed:\n{res.stderr}"
+
+
+def test_get_effective_exercise_quantity():
+	"""Verify getEffectiveExerciseQuantity derives duration from video snippet when timed."""
+	js_dir = Path(__file__).parent.parent / "js"
+	node_script = f"""
+	globalThis.localStorage = {{ getItem: () => null, setItem: () => {{}}, removeItem: () => {{}} }};
+	globalThis.window = {{
+		addEventListener: () => {{}},
+		removeEventListener: () => {{}}
+	}};
+	globalThis.document = {{
+		addEventListener: () => {{}},
+		removeEventListener: () => {{}}
+	}};
+
+	const {{ getEffectiveExerciseQuantity }} = await import('{js_dir}/exercises.js');
+
+	// 1. Exercise with video snippet (243s) but default_quantity = 60
+	const elbowStrikes = {{
+		id: 'ex-elbow-strikes',
+		name: 'Lead & Rear Elbow Strikes',
+		default_mode: 'time',
+		default_quantity: 60,
+		media_assets: [
+			{{
+				id: 'asset-1',
+				kind: 'demonstration',
+				type: 'video',
+				startSeconds: 1000,
+				endSeconds: 1243
+			}}
+		]
+	}};
+	if (getEffectiveExerciseQuantity(elbowStrikes) !== 243) {{
+		throw new Error('Expected 243s for elbowStrikes snippet, got: ' + getEffectiveExerciseQuantity(elbowStrikes));
+	}}
+
+	// 2. Exercise in reps mode should keep reps quantity
+	const pushups = {{
+		id: 'ex-pushups',
+		name: 'Pushups',
+		default_mode: 'reps',
+		default_quantity: 25,
+		media_assets: [
+			{{
+				id: 'asset-2',
+				kind: 'demonstration',
+				type: 'video',
+				startSeconds: 10,
+				endSeconds: 40
+			}}
+		]
+	}};
+	if (getEffectiveExerciseQuantity(pushups) !== 25) {{
+		throw new Error('Expected 25 for reps mode, got: ' + getEffectiveExerciseQuantity(pushups));
+	}}
+
+	// 3. Timed exercise without snippet should use default_quantity
+	const plank = {{
+		id: 'ex-plank',
+		name: 'Plank',
+		default_mode: 'time',
+		default_quantity: 45,
+		media_assets: []
+	}};
+	if (getEffectiveExerciseQuantity(plank) !== 45) {{
+		throw new Error('Expected 45 for plank without snippet, got: ' + getEffectiveExerciseQuantity(plank));
+	}}
+	"""
+
+	res = subprocess.run(
+		["node", "--input-type=module", "-e", node_script],
+		capture_output=True,
+		text=True,
+		timeout=5,
+	)
+	assert res.returncode == 0, f"Node getEffectiveExerciseQuantity test failed:\n{res.stderr}"

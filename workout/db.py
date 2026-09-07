@@ -219,6 +219,37 @@ class Database:
 			except Exception:
 				pass
 
+			# Reconcile exercises with video asset snippet durations
+			try:
+				ex_rows = conn.execute(
+					"SELECT id, default_mode, default_quantity, media_assets_json FROM exercises WHERE default_mode = 'time'"
+				).fetchall()
+				for row in ex_rows:
+					try:
+						assets = json.loads(row["media_assets_json"] or "[]")
+					except Exception:
+						continue
+					for a in assets:
+						if not isinstance(a, dict):
+							continue
+						start = a.get("startSeconds")
+						end = a.get("endSeconds")
+						if (
+							isinstance(start, (int, float))
+							and isinstance(end, (int, float))
+							and end > start
+						):
+							snippet_dur = int(end - start)
+							cur_qty = row["default_quantity"]
+							if cur_qty in (20, 30, 45, 60) and snippet_dur != cur_qty:
+								conn.execute(
+									"UPDATE exercises SET default_quantity = ? WHERE id = ?",
+									(snippet_dur, row["id"]),
+								)
+								break
+			except Exception:
+				pass
+
 	# ── Users ────────────────────────────────────────────────────────────────
 
 	def list_users(self) -> list[dict[str, Any]]:
@@ -840,6 +871,22 @@ class Database:
 					"url": media_url,
 				}
 			]
+
+		if default_mode == "time" and (
+			"default_quantity" not in data or default_quantity in (20, 30, 60)
+		):
+			for a in media_assets:
+				if isinstance(a, dict):
+					start = a.get("startSeconds")
+					end = a.get("endSeconds")
+					if (
+						isinstance(start, (int, float))
+						and isinstance(end, (int, float))
+						and end > start
+					):
+						default_quantity = int(end - start)
+						break
+
 		media_assets_json = json.dumps(media_assets, ensure_ascii=False)
 		from taxonomy import normalize_muscles_list
 

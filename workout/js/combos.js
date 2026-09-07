@@ -4,7 +4,7 @@
 
 import { fetchServerCombos, saveCustomComboOnServer, deleteCustomComboOnServer } from './storage.js';
 import { getCategoryBadgeHtml, getDisciplineBadgeHtml, getMuscleBadgeHtml, getCategoryOptionsHtml, getDisciplineOptionsHtml, CATEGORIES, DISCIPLINES } from './taxonomy.js';
-import { getExerciseById, getExercises, inferMusclesForExercise, registerComboResolver } from './exercises.js';
+import { getExerciseById, getExercises, inferMusclesForExercise, registerComboResolver, getEffectiveExerciseQuantity } from './exercises.js';
 import { showExerciseVariationsModal } from './exercises_view.js';
 import { escapeHtml, formatTime, parseYouTubeId } from './utils.js';
 import { showConfirm, showAlert, createCustomModal } from './modal.js';
@@ -443,9 +443,10 @@ export function showComboDetailModal(combo, options = {}) {
 					${exList.length === 0 ? '<p class="empty-chip-hint">No constituent exercises linked.</p>' : ''}
 					${exList.map((ex, idx) => {
 						const muscles = inferMusclesForExercise(ex);
+						const effectiveQty = getEffectiveExerciseQuantity(ex);
 						const exModeStr = (ex.default_mode || 'reps') === 'reps'
-							? `${ex.default_quantity || 20} Reps`
-							: formatTime(ex.default_quantity || 30);
+							? `${effectiveQty} Reps`
+							: formatTime(effectiveQty);
 
 						return `
 							<div class="hud-step-card hud-step-card-clickable" data-idx="${idx}" title="Click to view ${escapeHtml(ex.name)} exercise guide & videos" style="cursor:pointer;">

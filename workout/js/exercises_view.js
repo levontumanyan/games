@@ -26,6 +26,7 @@ import {
 	inferMusclesForExercise,
 	renderExerciseCardElement,
 	updateExerciseDescription,
+	getEffectiveExerciseQuantity,
 } from './exercises.js';
 import { showConfirm, showAlert } from './modal.js';
 import { uploadImageFile } from './storage.js';
@@ -211,6 +212,7 @@ function createModernVideoSlicerDrawer({
 	initialStart = 0,
 	initialEnd = 60,
 	titleInput = null,
+	onIntervalChange = null,
 }) {
 	let isFullVideo = false;
 	let intervals = [];
@@ -484,6 +486,14 @@ function createModernVideoSlicerDrawer({
 		if (isFullVideo) {
 			fullBanner.classList.remove('hidden');
 			intervalsDrawer.classList.add('hidden');
+			if (typeof onIntervalChange === 'function') {
+				onIntervalChange({
+					isFullVideo: true,
+					active: null,
+					duration: 0,
+					intervals,
+				});
+			}
 			return;
 		}
 
@@ -521,6 +531,15 @@ function createModernVideoSlicerDrawer({
 		durValText.textContent = `⏱️ ${durStr}`;
 
 		renderPills();
+
+		if (typeof onIntervalChange === 'function') {
+			onIntervalChange({
+				isFullVideo: false,
+				active,
+				duration: dur,
+				intervals,
+			});
+		}
 	}
 
 	// Pointer dragging for range handles
@@ -843,9 +862,10 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 		const discInfo = DISCIPLINES[(exercise.discipline || '').toLowerCase()];
 		const emptyIcon = discInfo?.icon || catInfo?.icon || '🎯';
 
+		const effectiveQty = getEffectiveExerciseQuantity(exercise);
 		const modeStr = (exercise.default_mode || 'reps') === 'reps'
-			? `🔢 ${exercise.default_quantity || 20} Target Reps`
-			: `⏱️ ${formatTime(exercise.default_quantity || 30)}`;
+			? `🔢 ${effectiveQty} Target Reps`
+			: `⏱️ ${formatTime(effectiveQty)}`;
 
 		modal.innerHTML = `
 			<div class="hud-left-panel">
@@ -1457,7 +1477,7 @@ export function showEditExerciseModal(exercise = null, options = {}) {
 
 						<div class="field-group">
 							<label>Default Quantity (reps or sec)</label>
-							<input type="number" id="create-ex-quantity" class="input clean-input" min="1" value="${isEdit ? (exercise.default_quantity || 20) : 20}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+							<input type="number" id="create-ex-quantity" class="input clean-input" min="1" value="${isEdit ? getEffectiveExerciseQuantity(exercise) : 20}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
 						</div>
 					</div>
 
@@ -1595,7 +1615,33 @@ export function showEditExerciseModal(exercise = null, options = {}) {
 		initialUrl: currentMediaUrl,
 		initialAssets: isEdit && Array.isArray(exercise.media_assets) ? exercise.media_assets : [],
 		titleInput: nameInput,
+		onIntervalChange: ({ isFullVideo, duration }) => {
+			const modeSelect = modal.querySelector('#create-ex-mode');
+			const qtyInput = modal.querySelector('#create-ex-quantity');
+			if (modeSelect && qtyInput && modeSelect.value === 'time' && !isFullVideo && duration > 0) {
+				qtyInput.value = duration;
+			}
+		},
 	});
+
+	const modeSelect = modal.querySelector('#create-ex-mode');
+	const qtyInput = modal.querySelector('#create-ex-quantity');
+	if (modeSelect && qtyInput) {
+		modeSelect.addEventListener('change', () => {
+			if (modeSelect.value === 'time') {
+				const state = exerciseSlicer.getState();
+				if (!state.isFullVideo && typeof state.primaryEnd === 'number' && typeof state.primaryStart === 'number' && state.primaryEnd > state.primaryStart) {
+					qtyInput.value = state.primaryEnd - state.primaryStart;
+				} else if (qtyInput.value === '20') {
+					qtyInput.value = '30';
+				}
+			} else if (modeSelect.value === 'reps') {
+				if (qtyInput.value === '30' || qtyInput.value === '60') {
+					qtyInput.value = '20';
+				}
+			}
+		});
+	}
 
 	mediaInput.addEventListener('input', () => {
 		exerciseSlicer.syncWithUrl(mediaInput.value.trim());
@@ -1726,7 +1772,7 @@ export function showEditExerciseModal(exercise = null, options = {}) {
 		const category = modal.querySelector('#create-ex-category').value;
 		const discipline = modal.querySelector('#create-ex-discipline').value;
 		const default_mode = modal.querySelector('#create-ex-mode').value;
-		const default_quantity = parseInt(modal.querySelector('#create-ex-quantity').value, 10) || 20;
+		const rawQuantity = parseInt(modal.querySelector('#create-ex-quantity').value, 10);
 		const description = modal.querySelector('#create-ex-desc').value.trim();
 		const media_url = modal.querySelector('#create-ex-media').value.trim();
 		const primary_muscles = Array.from(selectedPrimary);
@@ -1738,6 +1784,16 @@ export function showEditExerciseModal(exercise = null, options = {}) {
 		}
 
 		const slicerState = exerciseSlicer.getState();
+		const sliceDuration = (!slicerState.isFullVideo && typeof slicerState.primaryEnd === 'number' && typeof slicerState.primaryStart === 'number' && slicerState.primaryEnd > slicerState.primaryStart)
+			? (slicerState.primaryEnd - slicerState.primaryStart)
+			: null;
+		let default_quantity = rawQuantity;
+		if (default_mode === 'time' && sliceDuration && (!default_quantity || default_quantity === 20 || default_quantity === 30 || default_quantity === 60)) {
+			default_quantity = sliceDuration;
+		}
+		if (!default_quantity) {
+			default_quantity = default_mode === 'reps' ? 20 : (sliceDuration || 30);
+		}
 
 		let media_assets = isEdit ? (Array.isArray(exercise.media_assets) ? [...exercise.media_assets] : []) : [];
 		if (!media_url) {

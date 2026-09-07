@@ -19,9 +19,10 @@ help:
 
 pull-db:
 	@echo "==> Pulling live database from levon-box..."
-	@mkdir -p workout/data
+	@mkdir -p workout/data/uploads
 	@rm -f workout/data/workout.db
 	@scp levon-box:/home/levon/games/workout/data/workout.db workout/data/workout.db 2>/dev/null && echo "==> Successfully synced live workout.db from levon-box!" || echo "==> Warning: Could not pull live db (offline/unreachable), using local db."
+	@rsync -az levon-box:/home/levon/games/workout/data/uploads/ workout/data/uploads/ 2>/dev/null && echo "==> Successfully synced uploaded media assets!" || true
 
 backup backup-workout: pull-db
 	@echo "==> Backing up workout.db to Google Drive..."

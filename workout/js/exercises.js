@@ -151,11 +151,21 @@ export async function addMediaAssetToExercise(exerciseId, asset) {
 		media_url = asset.url;
 	}
 
-	const updated = await createCustomExercise({
+	const updatedPayload = {
 		...ex,
 		media_url: media_url,
 		media_assets: existingAssets
-	});
+	};
+
+	// If timed mode and this asset has video slice timestamps, sync default_quantity
+	if (ex.default_mode === 'time' && asset && typeof asset.startSeconds === 'number' && typeof asset.endSeconds === 'number' && asset.endSeconds > asset.startSeconds) {
+		const snippetDur = asset.endSeconds - asset.startSeconds;
+		if (!ex.default_quantity || ex.default_quantity === 20 || ex.default_quantity === 30 || ex.default_quantity === 60 || existingAssets.length === 1) {
+			updatedPayload.default_quantity = snippetDur;
+		}
+	}
+
+	const updated = await createCustomExercise(updatedPayload);
 
 	return updated;
 }
@@ -386,12 +396,31 @@ export async function deleteCustomExercise(exerciseId) {
 }
 
 /**
- * Render a standardized exercise library card element.
+ * Calculate effective quantity (seconds or reps) for an exercise.
+ * If timed and a video asset has startSeconds & endSeconds, derives duration from the snippet.
  * @param {Object} ex
+ * @returns {number}
+ */
+export function getEffectiveExerciseQuantity(ex) {
+	if (!ex) return 30;
+	if (ex.default_mode === 'reps') {
+		return ex.default_quantity || 20;
+	}
+	const assets = getExerciseMediaAssets([ex]);
+	const vid = assets.find(a => (a.kind === 'demonstration' || a.type === 'video' || Boolean(a.videoId)) && typeof a.startSeconds === 'number' && typeof a.endSeconds === 'number' && a.endSeconds > a.startSeconds) || assets[0];
+	if (vid && typeof vid.startSeconds === 'number' && typeof vid.endSeconds === 'number' && vid.endSeconds > vid.startSeconds) {
+		return vid.endSeconds - vid.startSeconds;
+	}
+	return ex.default_quantity || 30;
+}
+
+/**
+ * Render a single Exercise Library card element with form preview and actions.
+ * @param {Object} ex - Exercise object
  * @param {Object} [options]
- * @param {Function} [options.onPlay]
+ * @param {Function} [options.onSelect]
+ * @param {Function} [options.onPreview]
  * @param {Function} [options.onAddToRoutine]
- * @param {Function} [options.onClick]
  * @param {Function} [options.onMouseEnter]
  * @param {Function} [options.onMouseLeave]
  * @returns {HTMLElement}
@@ -406,9 +435,10 @@ export function renderExerciseCardElement(ex, options = {}) {
 	const demoCount = assets.filter(a => a.kind === 'demonstration').length;
 	const animCount = assets.filter(a => a.kind === 'animation' || a.kind === 'photo').length;
 
+	const effectiveQty = getEffectiveExerciseQuantity(ex);
 	const modeStr = (ex.default_mode || 'reps') === 'reps'
-		? `${ex.default_quantity || 20} Reps`
-		: formatTime(ex.default_quantity || 30);
+		? `${effectiveQty} Reps`
+		: formatTime(effectiveQty);
 
 	card.innerHTML = `
 		<div class="ex-lib-header">
