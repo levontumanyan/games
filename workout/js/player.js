@@ -1555,7 +1555,7 @@ function updateStepIndicator() {
 		} else {
 			const next = currentRoutine.steps[currentStepIndex + 1];
 			if (next) {
-				dom.nextStepPreview.textContent = `Next: ${next.label}`;
+				dom.nextStepPreview.textContent = `Next: ${getStepDisplayName(next)}`;
 			} else {
 				dom.nextStepPreview.textContent = 'Last step';
 			}

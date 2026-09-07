@@ -179,6 +179,46 @@ class Database:
 					("levon", "Levon", datetime.now().isoformat()),
 				)
 
+			# Reconcile routine steps with canonical exercise names
+			try:
+				ex_rows = conn.execute("SELECT id, name FROM exercises").fetchall()
+				ex_map = {row["id"]: row["name"] for row in ex_rows}
+				routine_rows = conn.execute(
+					"SELECT id, user_id, steps_json FROM routines"
+				).fetchall()
+				for r_row in routine_rows:
+					try:
+						r_steps = json.loads(r_row["steps_json"])
+					except Exception:
+						continue
+					needs_update = False
+					for st in r_steps:
+						if st.get("customLabel"):
+							continue
+						st_exs = st.get("exercises", [])
+						for ex_item in st_exs:
+							if isinstance(ex_item, dict):
+								eid = ex_item.get("id")
+								ename = ex_item.get("name")
+								canonical_name = ex_map.get(eid)
+								if canonical_name and ename != canonical_name:
+									cur_lbl = (st.get("label") or "").strip()
+									if ename and cur_lbl.lower() == ename.lower():
+										st["label"] = canonical_name
+									ex_item["name"] = canonical_name
+									needs_update = True
+					if needs_update:
+						conn.execute(
+							"UPDATE routines SET steps_json = ? WHERE id = ? AND user_id = ?",
+							(
+								json.dumps(r_steps, ensure_ascii=False),
+								r_row["id"],
+								r_row["user_id"],
+							),
+						)
+			except Exception:
+				pass
+
 	# ── Users ────────────────────────────────────────────────────────────────
 
 	def list_users(self) -> list[dict[str, Any]]:
@@ -273,6 +313,7 @@ class Database:
 				hydrated_exs = []
 				for ex_ref in s["exercises"]:
 					eid = ex_ref if isinstance(ex_ref, str) else ex_ref.get("id")
+					stored_name = ex_ref.get("name") if isinstance(ex_ref, dict) else None
 					if eid in ex_map:
 						ex_item = {
 							"id": eid,
@@ -285,6 +326,12 @@ class Database:
 						if ex_map[eid].get("default_quantity"):
 							ex_item["default_quantity"] = ex_map[eid]["default_quantity"]
 						hydrated_exs.append(ex_item)
+						if not s.get("customLabel"):
+							cur_lbl = (s.get("label") or "").strip()
+							if stored_name and cur_lbl.lower() == stored_name.lower():
+								s["label"] = ex_map[eid]["name"]
+							elif cur_lbl in ("", "Exercise", "Video Clip", "Timer"):
+								s["label"] = ex_map[eid]["name"]
 					elif isinstance(ex_ref, dict):
 						hydrated_exs.append(ex_ref)
 					else:
@@ -304,6 +351,10 @@ class Database:
 					if ex_map[eid].get("default_quantity"):
 						ex_item["default_quantity"] = ex_map[eid]["default_quantity"]
 					s["exercises"] = [ex_item]
+					if not s.get("customLabel"):
+						cur_lbl = (s.get("label") or "").strip()
+						if cur_lbl in ("", "Exercise", "Video Clip", "Timer"):
+							s["label"] = ex_map[eid]["name"]
 				else:
 					s["exercises"] = [{"id": eid}]
 			hydrated.append(s)
@@ -800,6 +851,9 @@ class Database:
 		now = datetime.now().isoformat()
 
 		with self.get_connection() as conn:
+			old_row = conn.execute("SELECT name FROM exercises WHERE id = ?", (ex_id,)).fetchone()
+			old_name = old_row["name"] if old_row else None
+
 			conn.execute(
 				"""
 				INSERT INTO exercises (
@@ -833,6 +887,54 @@ class Database:
 					now,
 				),
 			)
+
+			# Cascade exercise update to any routines that reference this exercise
+			routine_rows = conn.execute("SELECT id, user_id, steps_json FROM routines").fetchall()
+			for r_row in routine_rows:
+				try:
+					r_steps = json.loads(r_row["steps_json"])
+				except Exception:
+					continue
+				needs_update = False
+				for st in r_steps:
+					st_exs = st.get("exercises", [])
+					matched = False
+					for ex_item in st_exs:
+						eid = ex_item if isinstance(ex_item, str) else ex_item.get("id")
+						if eid == ex_id:
+							matched = True
+							if isinstance(ex_item, dict):
+								ex_item["name"] = name
+								ex_item["category"] = category
+								ex_item["discipline"] = discipline
+								ex_item["default_mode"] = default_mode
+								ex_item["default_quantity"] = default_quantity
+					if st.get("exercise_id") == ex_id:
+						matched = True
+
+					if matched:
+						needs_update = True
+						if not st.get("customLabel"):
+							cur_lbl = (st.get("label") or "").strip()
+							if old_name and cur_lbl.lower() == old_name.lower():
+								st["label"] = name
+							elif cur_lbl in ("", "Exercise", "Video Clip", "Timer"):
+								st["label"] = name
+							elif old_name and old_name.lower() in cur_lbl.lower():
+								import re
+
+								pattern = re.compile(re.escape(old_name), re.IGNORECASE)
+								st["label"] = pattern.sub(name, cur_lbl)
+				if needs_update:
+					conn.execute(
+						"UPDATE routines SET steps_json = ?, updated_at = ? WHERE id = ? AND user_id = ?",
+						(
+							json.dumps(r_steps, ensure_ascii=False),
+							now,
+							r_row["id"],
+							r_row["user_id"],
+						),
+					)
 		return {
 			"id": ex_id,
 			"user_id": clean_user,

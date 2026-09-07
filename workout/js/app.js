@@ -11,7 +11,8 @@ import {
 import {
 	renderEditor, createClipStep, createTimerStep, createBreakStep, createRoutine,
 	createStepFromExercise, createStepFromCombo,
-	showAddExerciseModal, showAddComboModal, toggleAllStepCards, expandStep
+	showAddExerciseModal, showAddComboModal, toggleAllStepCards, expandStep,
+	getStepDisplayName
 } from './editor.js';
 import { renderRoutineOverview } from './view.js';
 import {
@@ -1495,7 +1496,7 @@ async function showCompletionModal(session, completedRoutine) {
 				<span class="completion-step-num">${idx + 1}</span>
 				<span class="completion-step-icon">${iconSvg}</span>
 				<div class="completion-step-info">
-					<span class="completion-step-name">${escapeHtml(step.label || 'Step')}</span>
+					<span class="completion-step-name">${escapeHtml(getStepDisplayName(step))}</span>
 					<span class="completion-step-meta">${escapeHtml(typeLabel)}</span>
 				</div>
 				<span class="completion-step-dur">${escapeHtml(durStr)}</span>

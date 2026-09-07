@@ -523,8 +523,10 @@ function createStepElement(step, index, routine, onUpdate, onTestStep) {
 			const val = input.value.trim();
 			if (val && val !== (step.exercises && step.exercises.length > 0 ? step.exercises.map(ex => ex.name).join(' + ') : (isBreak ? 'Rest' : 'Exercise'))) {
 				step.label = val;
+				step.customLabel = true;
 			} else {
 				delete step.label;
+				delete step.customLabel;
 			}
 			headerTitle.textContent = getStepDisplayName(step);
 			if (input.parentNode) {
@@ -698,15 +700,6 @@ export function getStepDisplayName(step) {
 		return rawLabel;
 	}
 	if (Array.isArray(step.exercises) && step.exercises.length > 0) {
-		const matchesAnyEx = step.exercises.some(e => {
-			const name = typeof e === 'object' ? (e.name || e.id) : e;
-			const id = typeof e === 'object' ? (e.id || '') : '';
-			return (name && rawLabel.toLowerCase() === name.toLowerCase()) || (id && rawLabel.toLowerCase() === id.toLowerCase());
-		});
-		if (rawLabel && !matchesAnyEx && rawLabel !== 'Exercise' && rawLabel !== 'Video Clip' && rawLabel !== 'Timer') {
-			return rawLabel;
-		}
-
 		const names = step.exercises
 			.map(e => {
 				const eid = typeof e === 'object' ? (e.id || e.name) : e;
@@ -714,8 +707,30 @@ export function getStepDisplayName(step) {
 				return fullEx?.name || (typeof e === 'object' ? (e.name || e.id) : e);
 			})
 			.filter(Boolean);
+
+		if (!step.customLabel) {
+			const matchesCurrent = names.length > 0 && (
+				rawLabel.toLowerCase() === names.join(' + ').toLowerCase() ||
+				rawLabel.toLowerCase() === names.join(' ⮀ ').toLowerCase()
+			);
+			const matchesSaved = step.exercises.some(e => {
+				const savedName = typeof e === 'object' ? e.name : null;
+				return savedName && rawLabel.toLowerCase() === savedName.toLowerCase();
+			});
+
+			if (matchesCurrent || matchesSaved || !rawLabel || rawLabel === 'Exercise' || rawLabel === 'Video Clip' || rawLabel === 'Timer') {
+				if (names.length > 0) {
+					return names.join(step.flow_type === 'alternating' ? ' ⮀ ' : ' + ');
+				}
+			}
+		}
+
+		if (rawLabel && rawLabel !== 'Exercise' && rawLabel !== 'Video Clip' && rawLabel !== 'Timer') {
+			return rawLabel;
+		}
+
 		if (names.length > 0) {
-			return names.join(' + ');
+			return names.join(step.flow_type === 'alternating' ? ' ⮀ ' : ' + ');
 		}
 	}
 	if (rawLabel && rawLabel !== 'Exercise' && rawLabel !== 'Video Clip' && rawLabel !== 'Timer') {
@@ -964,7 +979,7 @@ function createExercisePicker(step, onUpdate) {
 					category: created.category,
 					discipline: created.discipline
 				});
-				if (!step.label || step.label === 'Exercise' || step.label === 'Video Clip') {
+				if (!step.customLabel && (!step.label || step.label === 'Exercise' || step.label === 'Video Clip')) {
 					step.label = step.exercises.map(ex => ex.name).join(' + ');
 				}
 				input.value = '';
@@ -997,7 +1012,7 @@ function createExercisePicker(step, onUpdate) {
 							category: item.category,
 							discipline: item.discipline
 						});
-						if (!step.label || step.label === 'Exercise' || step.label === 'Video Clip') {
+						if (!step.customLabel && (!step.label || step.label === 'Exercise' || step.label === 'Video Clip')) {
 							step.label = step.exercises.map(ex => ex.name).join(' + ');
 						}
 						if (item.media_url && !step.gifUrl && !step.mediaUrl) {

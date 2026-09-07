@@ -795,3 +795,80 @@ def test_taxonomy_endpoint_and_muscle_normalization(client: TestClient):
 	assert "groin" not in created_ex["primary_muscles"]
 	assert "adductors" in created_ex["secondary_muscles"]
 	assert "adductor" not in created_ex["secondary_muscles"]
+
+
+def test_exercise_rename_cascades_to_routines(client: TestClient):
+	# 1. Create exercise
+	ex_res = client.post(
+		"/api/exercises",
+		json={
+			"name": "Original Squat Name",
+			"category": "strength",
+			"discipline": "calisthenics",
+		},
+		headers={"X-User-Id": "levon"},
+	)
+	assert ex_res.status_code == 200
+	ex = ex_res.json()
+	ex_id = ex["id"]
+
+	# 2. Create routine with 2 steps:
+	#    - Step 1: derived label (same as exercise name)
+	#    - Step 2: explicit custom label
+	routine_payload = [
+		{
+			"id": "r-cascade-test",
+			"title": "Cascade Test Routine",
+			"steps": [
+				{
+					"id": "step-auto",
+					"type": "timer",
+					"label": "Original Squat Name",
+					"durationSeconds": 45,
+					"exercises": [{"id": ex_id, "name": "Original Squat Name"}],
+				},
+				{
+					"id": "step-custom",
+					"type": "timer",
+					"label": "Custom Slow Squats",
+					"customLabel": True,
+					"durationSeconds": 30,
+					"exercises": [{"id": ex_id, "name": "Original Squat Name"}],
+				},
+			],
+		}
+	]
+	post_res = client.post("/api/routines", json=routine_payload, headers={"X-User-Id": "levon"})
+	assert post_res.status_code == 200
+
+	# 3. Rename exercise via POST /api/exercises
+	rename_res = client.post(
+		"/api/exercises",
+		json={
+			"id": ex_id,
+			"name": "Renamed Squat Movement",
+			"category": "strength",
+			"discipline": "calisthenics",
+		},
+		headers={"X-User-Id": "levon"},
+	)
+	assert rename_res.status_code == 200
+
+	# 4. Fetch routine and verify:
+	#    - step-auto label updated to "Renamed Squat Movement"
+	#    - step-auto exercises[0].name updated to "Renamed Squat Movement"
+	#    - step-custom label preserved as "Custom Slow Squats"
+	#    - step-custom exercises[0].name updated to "Renamed Squat Movement"
+	get_res = client.get("/api/routines", headers={"X-User-Id": "levon"})
+	assert get_res.status_code == 200
+	routines = get_res.json()
+	r = next(r for r in routines if r["id"] == "r-cascade-test")
+	assert len(r["steps"]) == 2
+
+	step_auto = r["steps"][0]
+	assert step_auto["label"] == "Renamed Squat Movement"
+	assert step_auto["exercises"][0]["name"] == "Renamed Squat Movement"
+
+	step_custom = r["steps"][1]
+	assert step_custom["label"] == "Custom Slow Squats"
+	assert step_custom["exercises"][0]["name"] == "Renamed Squat Movement"

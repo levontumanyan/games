@@ -3,7 +3,7 @@ import {
 	getEffectiveSubStepReps, getEffectiveSubStepDuration,
 	isBreakStep, isRepsStep, isClipStep, isTimerStep
 } from './utils.js';
-import { resolveStepMediaUrl } from './editor.js';
+import { resolveStepMediaUrl, getStepDisplayName } from './editor.js';
 import { getClipIcon, getTimerIcon, getBreakIcon, getStepsIcon, getShareIcon, getSaveIcon } from './icons.js';
 import { getCategoryBadgeHtml, getDisciplineBadgeHtml, getMuscleBadgeHtml, MUSCLE_DEFINITIONS } from './taxonomy.js';
 import {
@@ -376,7 +376,7 @@ function createViewStepCard(step, index, steps, actions) {
 		if (vid) {
 			const img = document.createElement('img');
 			img.src = `https://img.youtube.com/vi/${vid}/mqdefault.jpg`;
-			img.alt = step.label || 'Video Clip';
+			img.alt = getStepDisplayName(step);
 			img.loading = 'lazy';
 			img.onerror = () => {
 				img.style.display = 'none';
@@ -394,7 +394,7 @@ function createViewStepCard(step, index, steps, actions) {
 	} else if (mediaUrl) {
 		const img = document.createElement('img');
 		img.src = mediaUrl;
-		img.alt = step.label || 'Animation';
+		img.alt = getStepDisplayName(step);
 		img.loading = 'lazy';
 		img.className = 'view-media-thumb';
 		img.onerror = () => {
@@ -428,7 +428,7 @@ function createViewStepCard(step, index, steps, actions) {
 
 	const title = document.createElement('h4');
 	title.className = 'view-step-title';
-	title.textContent = step.label || (isClip ? 'Video Clip' : 'Exercise Interval');
+	title.textContent = getStepDisplayName(step);
 
 	const tagsRow = document.createElement('div');
 	tagsRow.className = 'view-step-tags';
@@ -496,7 +496,7 @@ function createViewStepCard(step, index, steps, actions) {
 
 	// Attached exercise tags & muscle badges
 	const linkedEx = resolveExerciseForStep(step);
-	const stepMuscles = inferMusclesForExercise(linkedEx || { name: step.label, description: step.description });
+	const stepMuscles = inferMusclesForExercise(linkedEx || { name: getStepDisplayName(step), description: step.description });
 	const isCompound = Boolean(step.exercises && step.exercises.length >= 2);
 
 	if (step.flow_type || isCompound) {
