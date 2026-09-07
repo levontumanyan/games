@@ -871,7 +871,7 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 						<div class="hud-no-media-thumb">
 							<div class="hud-no-media-icon">${emptyIcon}</div>
 							<div class="hud-no-media-title">No Media Attached</div>
-							<div class="hud-no-media-sub">Add a video, drill, or photo below</div>
+							<div class="hud-no-media-sub">Add a video demonstration, tutorial, or photo below</div>
 						</div>
 					`}
 					<div class="hud-visual-caption">Form Reference & Execution</div>
@@ -925,10 +925,10 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 				</div>
 
 				<div class="hud-constituents-deck">
-					<div class="hud-section-label">🎬 Tutorials, Drill Variations & Photo References (${assets.length})</div>
+					<div class="hud-section-label">🎬 Tutorials, Follow-Along Variations & Photo References (${assets.length})</div>
 					
 					<div class="modal-assets-list">
-						${assets.length === 0 ? '<p class="empty-chip-hint">No extra media attached yet. Add a YouTube tutorial link, drill video, or photo below!</p>' : ''}
+						${assets.length === 0 ? '<p class="empty-chip-hint">No extra media attached yet. Add a YouTube tutorial link, follow-along video, or photo below!</p>' : ''}
 						${assets.map((a, idx) => {
 							const isVideo = a.type === 'video' || Boolean(a.videoId);
 							const vid = a.videoId || (a.url ? parseYouTubeId(a.url) : null);
@@ -1775,7 +1775,7 @@ export function showEditExerciseModal(exercise = null, options = {}) {
 					slicerState.intervals.slice(1).forEach((inv, idx) => {
 						media_assets.push({
 							id: `asset-${Date.now()}-${idx + 2}`,
-							kind: 'drill',
+							kind: 'demonstration',
 							type: 'video',
 							title: inv.name || `${name} Variation ${idx + 2}`,
 							url: media_url,

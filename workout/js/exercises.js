@@ -70,8 +70,10 @@ export function getExerciseMediaAssets(exercisesOrIds = []) {
 		list.forEach(asset => {
 			if (!asset || seenIds.has(asset.id)) return;
 			seenIds.add(asset.id);
+			const kind = asset.kind === 'drill' ? 'demonstration' : (asset.kind || 'demonstration');
 			assets.push({
 				...asset,
+				kind,
 				exerciseName: ex.name,
 				exerciseCategory: ex.category,
 				exerciseDiscipline: ex.discipline,
@@ -108,7 +110,7 @@ export function getExerciseMediaAssets(exercisesOrIds = []) {
 export function getExerciseFollowAlongMedia(exerciseOrId) {
 	if (!exerciseOrId) return null;
 	const assets = getExerciseMediaAssets([exerciseOrId]);
-	// 1. Prefer explicit demonstration follow-along video
+	// 1. Prefer explicit demonstration / follow-along video
 	const demo = assets.find(a => (a.kind === 'demonstration' || a.kind === 'drill') && (a.type === 'video' || Boolean(a.videoId)));
 	if (demo) return demo;
 	// 2. Prefer looping visual animation or photo
@@ -476,7 +478,7 @@ export function renderExerciseCardElement(ex, options = {}) {
  * 1. Explicit user override for this specific step (customMedia: true && step.videoId).
  * 2. Compound combo dynamic resolution: resolves combo demonstration video if step.combo_id exists.
  * 3. Curated routine video clip: preserves explicit clip slice (type === 'clip' with videoId and start/end seconds).
- * 4. Dynamic exercise inheritance: resolves demonstration/drill follow-along video from attached exercise reference.
+ * 4. Dynamic exercise inheritance: resolves demonstration follow-along video from attached exercise reference.
  * 5. Fallback: Standalone or curated step video (step.videoId).
  * @param {Object} step
  * @returns {{ videoId: string, startSeconds: number, endSeconds: number } | null}
@@ -544,7 +546,7 @@ export function resolveStepVideo(step) {
 			const target = fullEx || (typeof exRef === 'object' ? exRef : null);
 			if (target) {
 				if (fullEx) foundAnyInLibrary = true;
-				// Check follow-along demonstration or drill video (excludes instruction kind)
+				// Check follow-along demonstration video (excludes instruction kind)
 				const followAlong = getExerciseFollowAlongMedia(target);
 				if (followAlong && (followAlong.type === 'video' || followAlong.videoId)) {
 					const vid = followAlong.videoId || parseYouTubeId(followAlong.url);

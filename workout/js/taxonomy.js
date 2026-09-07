@@ -241,7 +241,7 @@ export const DISCIPLINES = {
 
 export const MEDIA_KINDS = {
 	instruction: { label: 'Instruction & Tutorial', icon: '🎬', color: '#6aa3a9', bg: 'rgba(106, 163, 169, 0.14)' },
-	demonstration: { label: 'Exercise Execution', icon: '⚡', color: '#cbb07a', bg: 'rgba(203, 176, 122, 0.14)' },
+	demonstration: { label: 'Follow-Along Demo', icon: '⚡', color: '#cbb07a', bg: 'rgba(203, 176, 122, 0.14)' },
 	animation: { label: 'Looping GIF / SVG', icon: '✨', color: '#8195a2', bg: 'rgba(129, 149, 162, 0.14)' },
 	photo: { label: 'Form Photo & Cue', icon: '📷', color: '#78a88a', bg: 'rgba(120, 168, 138, 0.14)' },
 };
@@ -252,7 +252,8 @@ export const MEDIA_KINDS = {
  * @returns {Object}
  */
 export function getMediaKindInfo(kind) {
-	const k = (kind || 'demonstration').toLowerCase();
+	let k = (kind || 'demonstration').toLowerCase();
+	if (k === 'drill') k = 'demonstration';
 	return MEDIA_KINDS[k] || { label: 'Media', icon: '🎬', color: '#9ea2bd', bg: 'rgba(255,255,255,0.1)' };
 }
 
