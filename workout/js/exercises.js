@@ -277,34 +277,37 @@ export function inferMusclesForExercise(ex) {
 	const desc = (ex.description || '').toLowerCase();
 	const combined = `${name} ${desc}`;
 
-	if (combined.includes('pelvic') || combined.includes('kegel') || combined.includes('perineal') || combined.includes('diaphragm')) {
+	if (/\b(pelvic|kegel|perineal|diaphragm)\b/.test(combined)) {
 		return { primary: ['pelvic_floor', 'abs'], secondary: ['glutes', 'lower_back', 'adductors'] };
 	}
-	if (combined.includes('bridge')) {
+	if (/\b(bridge)\b/.test(combined)) {
 		return { primary: ['glutes', 'pelvic_floor'], secondary: ['hamstrings', 'abs', 'adductors'] };
 	}
-	if (combined.includes('pushup') || combined.includes('push-up') || combined.includes('press')) {
+	if (/\b(overhead\s*press|shoulder\s*press|military\s*press)\b/.test(combined)) {
+		return { primary: ['shoulders', 'triceps'], secondary: ['chest', 'abs', 'forearms'] };
+	}
+	if (/\b(push[- ]?up|pushups?|bench\s*press|chest\s*press|floor\s*press|push)\b/.test(combined)) {
 		return { primary: ['chest', 'triceps'], secondary: ['shoulders', 'abs', 'forearms'] };
 	}
-	if (combined.includes('jump') || combined.includes('squat') || combined.includes('lunge')) {
+	if (/\b(squat|squats|lunge|lunges|jump|jumping)\b/.test(combined)) {
 		return { primary: ['quads', 'calves', 'adductors'], secondary: ['glutes', 'abs', 'pelvic_floor'] };
 	}
-	if (combined.includes('knee') || combined.includes('kick')) {
+	if (/\b(high\s*knee|knee\s*strike|knee\s*drive|kick|kicking|kicks)\b/.test(combined)) {
 		return { primary: ['hip_flexors', 'abs', 'quads'], secondary: ['glutes', 'calves', 'adductors', 'pelvic_floor'] };
 	}
-	if (combined.includes('jab') || combined.includes('cross') || combined.includes('punch') || combined.includes('elbow')) {
+	if (/\b(jab|cross|punch|punching|hook|uppercut|elbow)\b/.test(combined)) {
 		return { primary: ['shoulders', 'obliques'], secondary: ['triceps', 'forearms', 'calves'] };
 	}
-	if (combined.includes('plank') || combined.includes('climber') || combined.includes('tap') || combined.includes('bird-dog')) {
+	if (/\b(plank|climber|mountain\s*climber|shoulder\s*tap|bird[- ]?dog)\b/.test(combined)) {
 		return { primary: ['abs', 'obliques', 'shoulders'], secondary: ['chest', 'triceps', 'forearms', 'pelvic_floor'] };
 	}
-	if (combined.includes('cobra') || combined.includes('child') || combined.includes('pose') || combined.includes('stretch')) {
+	if (/\b(cobra|child|pose|stretch|stretching)\b/.test(combined)) {
 		return { primary: ['abs', 'hip_flexors', 'lower_back'], secondary: ['adductors', 'shoulders', 'lats', 'pelvic_floor'] };
 	}
-	if (combined.includes('pigeon')) {
+	if (/\b(pigeon)\b/.test(combined)) {
 		return { primary: ['glutes', 'adductors', 'hip_flexors'], secondary: ['hamstrings', 'lower_back', 'pelvic_floor'] };
 	}
-	if (combined.includes('fold') || combined.includes('hamstring')) {
+	if (/\b(fold|hamstring|hamstrings)\b/.test(combined)) {
 		return { primary: ['hamstrings', 'lower_back'], secondary: ['calves', 'adductors'] };
 	}
 	return { primary: ['abs'], secondary: ['shoulders', 'pelvic_floor'] };

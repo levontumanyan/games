@@ -20,7 +20,7 @@ import {
 	resolveStepVideo, resolveStepVisual
 } from './exercises.js';
 import { showExerciseVariationsModal } from './exercises_view.js';
-import { getCombos } from './combos.js';
+import { getCombos, filterCombos } from './combos.js';
 
 // Track expanded step IDs across renders
 const expandedStepIds = new Set();
@@ -454,7 +454,7 @@ export function createInsertDivider(routine, insertIndex, onUpdate) {
 function createStepElement(step, index, routine, onUpdate, onTestStep) {
 	if (!step.id) step.id = generateId();
 	const isBreak = isBreakStep(step);
-	const isCombo = Boolean((step.exercises && step.exercises.length >= 2) || step.flow_type);
+	const isCombo = Boolean(step.combo_id || step.flow_type || (step.exercises && step.exercises.length >= 2));
 	const isExpanded = expandedStepIds.has(step.id) || (expandedStepIds.size === 0 && index === 0);
 
 	const el = document.createElement('div');
@@ -1562,7 +1562,24 @@ export function createStepFromExercise(ex) {
  */
 export function createStepFromCombo(combo) {
 	if (!combo) return createTimerStep();
-	const exList = (combo.exercise_ids || []).map(id => (typeof id === 'object' ? id : { id }));
+	const exList = (combo.exercise_ids || []).map(id => {
+		if (typeof id === 'object' && id !== null) {
+			const resolved = id.id ? getExerciseById(id.id) : null;
+			return {
+				id: id.id || '',
+				name: id.name || resolved?.name || id.id || 'Exercise',
+				category: id.category || resolved?.category || '',
+				discipline: id.discipline || resolved?.discipline || ''
+			};
+		}
+		const resolved = getExerciseById(id);
+		return {
+			id,
+			name: resolved?.name || id || 'Exercise',
+			category: resolved?.category || '',
+			discipline: resolved?.discipline || ''
+		};
+	});
 	const isReps = combo.default_mode === 'reps';
 	const asset = (combo.media_assets || [])[0];
 	const isVideo = asset && (asset.type === 'video' || Boolean(asset.videoId));
@@ -1608,12 +1625,6 @@ export function createRoutine(title) {
 		steps: [],
 	};
 }
-
-/**
- * Open a quick selection modal to add an exercise into the active routine.
- * @param {Object} routine
- * @param {Function} onUpdate
-
 
 /**
  * Open the Anatomical Muscle Navigator modal to browse, inspect, and add exercises to the active routine.
@@ -1949,11 +1960,7 @@ export function showAddComboModal(routine, onUpdate, insertIndex = -1) {
 	const listEl = modal.querySelector('#add-combo-list');
 
 	function renderList(query = '') {
-		const q = (query || '').toLowerCase().trim();
-		const filtered = combos.filter(c => {
-			if (!q) return true;
-			return (c.name || '').toLowerCase().includes(q) || (c.description || '').toLowerCase().includes(q);
-		});
+		const filtered = filterCombos(query);
 		listEl.innerHTML = '';
 
 		if (filtered.length === 0) {
@@ -2005,8 +2012,6 @@ export function showAddComboModal(routine, onUpdate, insertIndex = -1) {
 	});
 
 	renderList();
-	backdrop.appendChild(modal);
-	document.body.appendChild(backdrop);
 }
 
 

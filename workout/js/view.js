@@ -352,7 +352,7 @@ function createViewStepCard(step, index, steps, actions) {
 		return card;
 	}
 
-	const isCombo = Boolean((step.exercises && step.exercises.length >= 2) || step.flow_type);
+	const isCombo = Boolean(step.combo_id || step.flow_type || (step.exercises && step.exercises.length >= 2));
 	const card = document.createElement('div');
 	card.className = `view-step-card view-step-${step.type}` + (isCombo ? ' view-step-combo-card' : '');
 	card.title = `Click to test this step in Preview Mode (Stats Disabled)`;

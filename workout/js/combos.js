@@ -3,7 +3,7 @@
  */
 
 import { fetchServerCombos, saveCustomComboOnServer, deleteCustomComboOnServer } from './storage.js';
-import { getCategoryBadgeHtml, getDisciplineBadgeHtml, getMuscleBadgeHtml, getDisciplineOptionsHtml, CATEGORIES, DISCIPLINES } from './taxonomy.js';
+import { getCategoryBadgeHtml, getDisciplineBadgeHtml, getMuscleBadgeHtml, getCategoryOptionsHtml, getDisciplineOptionsHtml, CATEGORIES, DISCIPLINES } from './taxonomy.js';
 import { getExerciseById, getExercises, inferMusclesForExercise, registerComboResolver } from './exercises.js';
 import { showExerciseVariationsModal } from './exercises_view.js';
 import { escapeHtml, formatTime, parseYouTubeId } from './utils.js';
@@ -312,7 +312,8 @@ export function renderCombosCatalog(container, options = {}) {
 					onPlayCombo,
 					onBreakDownCombo,
 					onAddToRoutine,
-					onPlayExercise: options.onPlayExercise
+					onPlayExercise: options.onPlayExercise,
+					onAddToRoutineExercise: options.onAddToRoutineExercise
 				});
 			});
 
@@ -339,6 +340,7 @@ export function showComboDetailModal(combo, options = {}) {
 	const onBreakDownCombo = options.onBreakDownCombo || (() => {});
 	const onAddToRoutine = options.onAddToRoutine || (() => {});
 	const onPlayExercise = options.onPlayExercise || (() => {});
+	const onAddToRoutineExercise = options.onAddToRoutineExercise || null;
 
 	const backdrop = document.createElement('div');
 	backdrop.className = 'modal-backdrop modal-combo-backdrop';
@@ -504,7 +506,14 @@ export function showComboDetailModal(combo, options = {}) {
 				const fullEx = getExerciseById(ex.id) || ex;
 				showExerciseVariationsModal(fullEx, {
 					onPlayAsset: (asset) => onPlayExercise(fullEx, asset),
-					onAddToRoutine: () => onAddToRoutine(combo),
+					onAddToRoutine: (targetEx, btn) => {
+						const chosenEx = targetEx || fullEx;
+						if (onAddToRoutineExercise) {
+							onAddToRoutineExercise(chosenEx, btn);
+						} else {
+							onAddToRoutine(chosenEx, btn, 'exercise');
+						}
+					},
 				});
 			}
 		});
@@ -581,6 +590,13 @@ export function showCreateComboModal(options = {}) {
 				</div>
 
 				<div class="field-group">
+					<label>Category</label>
+					<select id="create-combo-category" class="input">
+						${getCategoryOptionsHtml('drill')}
+					</select>
+				</div>
+
+				<div class="field-group">
 					<label>Discipline</label>
 					<select id="create-combo-discipline" class="input">
 						${getDisciplineOptionsHtml('general')}
@@ -649,10 +665,23 @@ export function showCreateComboModal(options = {}) {
 		b.addEventListener('click', close);
 	});
 
+	const flowSelect = modal.querySelector('#create-combo-flow');
+	const categorySelect = modal.querySelector('#create-combo-category');
+	if (flowSelect && categorySelect) {
+		flowSelect.addEventListener('change', () => {
+			if (flowSelect.value === 'superset' && categorySelect.value === 'drill') {
+				categorySelect.value = 'strength';
+			} else if (flowSelect.value !== 'superset' && categorySelect.value === 'strength') {
+				categorySelect.value = 'drill';
+			}
+		});
+	}
+
 	const submitBtn = modal.querySelector('#btn-submit-create-combo');
 	submitBtn.addEventListener('click', async () => {
 		const name = modal.querySelector('#create-combo-name').value.trim();
 		const flow_type = modal.querySelector('#create-combo-flow').value;
+		const category = (categorySelect ? categorySelect.value : '') || (flow_type === 'superset' ? 'strength' : 'drill');
 		const discipline = modal.querySelector('#create-combo-discipline').value;
 		const default_mode = modal.querySelector('#create-combo-mode').value;
 		const default_quantity = parseInt(modal.querySelector('#create-combo-quantity').value, 10) || 190;
@@ -689,7 +718,7 @@ export function showCreateComboModal(options = {}) {
 		try {
 			const created = await createCustomCombo({
 				name,
-				category: flow_type === 'superset' ? 'strength' : 'drill',
+				category,
 				discipline,
 				flow_type,
 				exercise_ids: selectedExIds,

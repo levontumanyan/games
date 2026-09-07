@@ -24,7 +24,7 @@ import {
 	initMusic, setVolume as setMusicVolume, nextTrack, prevTrack,
 	muteMusic, unmuteMusic, isMuted as isMusicMuted, unlockAudio
 } from './music.js';
-import { formatTime, formatFriendlyDuration, copyToClipboard, showToast, parseYouTubeId, initInputCleanlinessEnforcer } from './utils.js';
+import { formatTime, formatFriendlyDuration, copyToClipboard, showToast, parseYouTubeId, initInputCleanlinessEnforcer, escapeHtml } from './utils.js';
 import { getClipIcon, getTimerIcon, getBreakIcon } from './icons.js';
 import { showPrompt, showConfirm, showAlert } from './modal.js';
 import {
@@ -420,6 +420,98 @@ function handleAddToRoutineWithPicker(item, triggerBtn, type = 'exercise') {
 	});
 }
 
+/**
+ * Build a preview step for an exercise or combo definition.
+ * @param {Object} item - Exercise or Combo definition
+ * @param {Object} [asset] - Media asset to preview
+ * @param {Object} [options]
+ * @param {boolean} [options.isCombo=false]
+ * @returns {Object} Preview step object
+ */
+export function buildPreviewStep(item, asset = null, { isCombo = false } = {}) {
+	const chosenAsset = asset || (isCombo ? (item?.media_assets || [])[0] : getExerciseFollowAlongMedia(item));
+	const isVideo = chosenAsset && (chosenAsset.type === 'video' || Boolean(chosenAsset.videoId));
+	const isTutorial = Boolean(chosenAsset && chosenAsset.kind === 'instruction');
+	const isExReps = (item?.default_mode || (isCombo ? 'time' : 'reps')) === 'reps';
+	const exList = isCombo
+		? ((item?.exercise_ids || []).map(id => (typeof id === 'object' ? id : getExerciseById(id))).filter(Boolean))
+		: (item ? [item] : []);
+
+	let label;
+	if (isCombo) {
+		label = item?.name || 'Combo Flow';
+	} else if (isTutorial) {
+		label = `${item?.name || 'Exercise'}: [Tutorial] ${chosenAsset?.title || 'Instruction'}`;
+	} else if (chosenAsset?.title) {
+		label = `${item?.name || 'Exercise'}: ${chosenAsset.title}`;
+	} else {
+		label = item?.name || 'Exercise';
+	}
+
+	const fallbackQty = isCombo ? 190 : (isExReps ? 20 : 30);
+	const targetQty = item?.default_quantity || fallbackQty;
+
+	const vidId = chosenAsset
+		? (chosenAsset.videoId || parseYouTubeId(chosenAsset.url || item?.media_url))
+		: parseYouTubeId(item?.media_url);
+
+	if (isVideo) {
+		const start = chosenAsset?.startSeconds || 0;
+		const dur = isCombo ? targetQty : (chosenAsset?.endSeconds ? chosenAsset.endSeconds - start : (item?.default_quantity || 60));
+		const end = chosenAsset?.endSeconds || (start + dur);
+		const step = {
+			id: isCombo ? 'preview-combo-step' : 'preview-step',
+			type: 'clip',
+			isTutorial,
+			videoId: vidId,
+			startSeconds: start,
+			endSeconds: end,
+			label,
+			exercises: exList
+		};
+		if (isCombo) {
+			step.flow_type = item?.flow_type || 'alternating';
+		}
+		return step;
+	}
+
+	const rawGif = (chosenAsset && chosenAsset.type === 'image' ? chosenAsset.url : '') ||
+		(chosenAsset?.url || (item?.media_url && !item?.media_url?.includes('youtube') && !item?.media_url?.includes('youtu.be') ? item.media_url : ''));
+
+	const step = {
+		id: isCombo ? 'preview-combo-step' : 'preview-step',
+		type: 'timer',
+		stepMode: isExReps ? 'reps' : 'time',
+		targetReps: isExReps ? targetQty : 0,
+		durationSeconds: !isExReps ? targetQty : 30,
+		label,
+		gifUrl: rawGif || '',
+		exercises: exList
+	};
+	if (isCombo) {
+		step.flow_type = item?.flow_type || 'alternating';
+	}
+	return step;
+}
+
+/**
+ * Start preview playback for an exercise or combo.
+ * @param {Object} item
+ * @param {Object} [asset]
+ * @param {Object} [options]
+ */
+function playPreview(item, asset = null, { isCombo = false } = {}) {
+	const step = buildPreviewStep(item, asset, { isCombo });
+	const isTutorial = Boolean(step.isTutorial);
+	const previewRoutine = {
+		id: isCombo ? 'preview-combo-routine' : 'preview-routine',
+		title: isTutorial ? `Tutorial: ${item?.name}` : `Preview: ${item?.name}`,
+		steps: [step]
+	};
+	unlockAudio();
+	startRoutine(previewRoutine, 0, true);
+}
+
 function switchTab(tab) {
 	currentTab = tab;
 
@@ -464,35 +556,7 @@ function switchTab(tab) {
 			dom.anatomyView.classList.remove('hidden');
 			renderAnatomyExplorer(dom.anatomyView, {
 				onPlayExercise: (exercise, asset) => {
-					const chosenAsset = asset || getExerciseFollowAlongMedia(exercise);
-					const isVideo = chosenAsset && (chosenAsset.type === 'video' || Boolean(chosenAsset.videoId));
-					const isTutorial = chosenAsset && chosenAsset.kind === 'instruction';
-					const isExReps = (exercise.default_mode || 'reps') === 'reps';
-					const step = isVideo ? {
-						id: 'preview-step',
-						type: 'clip',
-						isTutorial: isTutorial,
-						videoId: chosenAsset.videoId || parseYouTubeId(chosenAsset.url),
-						startSeconds: chosenAsset.startSeconds || 0,
-						endSeconds: chosenAsset.endSeconds || ((chosenAsset.startSeconds || 0) + 60),
-						label: isTutorial ? `${exercise.name}: [Tutorial] ${chosenAsset.title || 'Instruction'}` : `${exercise.name}: ${chosenAsset.title || 'Follow-Along'}`
-					} : {
-						id: 'preview-step',
-						type: 'timer',
-						stepMode: isExReps ? 'reps' : 'time',
-						targetReps: isExReps ? (exercise.default_quantity || 20) : 0,
-						durationSeconds: !isExReps ? (exercise.default_quantity || 30) : 30,
-						label: exercise.name,
-						gifUrl: (chosenAsset && chosenAsset.type === 'image' ? chosenAsset.url : '') || (exercise.media_url && !exercise.media_url.includes('youtube') && !exercise.media_url.includes('youtu.be') ? exercise.media_url : ''),
-						exercises: [exercise]
-					};
-					const previewRoutine = {
-						id: 'preview-routine',
-						title: isTutorial ? `Tutorial: ${exercise.name}` : `Preview: ${exercise.name}`,
-						steps: [step]
-					};
-					unlockAudio();
-					startRoutine(previewRoutine, 0, true);
+					playPreview(exercise, asset);
 				},
 				onAddToRoutine: (exercise, triggerBtn) => handleAddToRoutineWithPicker(exercise, triggerBtn, 'exercise'),
 				onOpenExerciseDetails: (exercise, customOpts = {}) => {
@@ -509,45 +573,11 @@ function switchTab(tab) {
 			renderStatsDashboard(dom.statsView);
 		}
 	} else if (tab === 'combos') {
-		if (dom.routineView) dom.routineView.classList.add('hidden');
-		if (dom.editorView) dom.editorView.classList.add('hidden');
-		if (dom.emptyView) dom.emptyView.classList.add('hidden');
-		if (dom.statsView) dom.statsView.classList.add('hidden');
-		if (dom.exercisesView) dom.exercisesView.classList.add('hidden');
 		if (dom.combosView) {
 			dom.combosView.classList.remove('hidden');
 			renderCombosCatalog(dom.combosView, {
 				onPlayCombo: (combo) => {
-					const exList = (combo.exercise_ids || []).map(id => getExerciseById(id)).filter(Boolean);
-					const asset = (combo.media_assets || [])[0];
-					const isVideo = asset && (asset.type === 'video' || Boolean(asset.videoId));
-					const step = isVideo ? {
-						id: 'preview-combo-step',
-						type: 'clip',
-						videoId: asset.videoId || parseYouTubeId(asset.url || combo.media_url),
-						startSeconds: asset.startSeconds || 0,
-						endSeconds: asset.endSeconds || ((asset.startSeconds || 0) + (combo.default_quantity || 190)),
-						label: combo.name,
-						flow_type: combo.flow_type || 'alternating',
-						exercises: exList
-					} : {
-						id: 'preview-combo-step',
-						type: 'timer',
-						stepMode: combo.default_mode || 'time',
-						targetReps: combo.default_quantity || 20,
-						durationSeconds: combo.default_quantity || 190,
-						label: combo.name,
-						flow_type: combo.flow_type || 'alternating',
-						gifUrl: asset?.url || combo.media_url || '',
-						exercises: exList
-					};
-					const previewRoutine = {
-						id: 'preview-combo-routine',
-						title: `Preview: ${combo.name}`,
-						steps: [step]
-					};
-					unlockAudio();
-					startRoutine(previewRoutine, 0, true);
+					playPreview(combo, null, { isCombo: true });
 				},
 				onBreakDownCombo: (combo) => {
 					const exList = (combo.exercise_ids || []).map(id => getExerciseById(id)).filter(Boolean);
@@ -586,76 +616,18 @@ function switchTab(tab) {
 					startRoutine(previewRoutine, 0, true);
 				},
 				onAddToRoutine: (combo, triggerBtn) => handleAddToRoutineWithPicker(combo, triggerBtn, 'combo'),
+				onAddToRoutineExercise: (exercise, triggerBtn) => handleAddToRoutineWithPicker(exercise, triggerBtn, 'exercise'),
 				onPlayExercise: (exercise, asset) => {
-					const isVideo = asset && (asset.type === 'video' || Boolean(asset.videoId));
-					const isExReps = (exercise.default_mode || 'time') === 'reps';
-					const step = isVideo ? {
-						id: 'preview-step',
-						type: 'clip',
-						videoId: asset.videoId || parseYouTubeId(asset.url || exercise.media_url),
-						startSeconds: asset.startSeconds || 0,
-						endSeconds: asset.endSeconds || ((asset.startSeconds || 0) + (exercise.default_quantity || 60)),
-						label: asset.title || exercise.name,
-						exercises: [exercise]
-					} : {
-						id: 'preview-step',
-						type: 'timer',
-						stepMode: isExReps ? 'reps' : 'time',
-						targetReps: isExReps ? (exercise.default_quantity || 20) : 0,
-						durationSeconds: !isExReps ? (exercise.default_quantity || 30) : 30,
-						label: exercise.name,
-						gifUrl: asset?.url || exercise.media_url || '',
-						exercises: [exercise]
-					};
-					const previewRoutine = {
-						id: 'preview-routine',
-						title: `Preview: ${exercise.name}`,
-						steps: [step]
-					};
-					unlockAudio();
-					startRoutine(previewRoutine, 0, true);
+					playPreview(exercise, asset);
 				}
 			});
 		}
 	} else if (tab === 'exercises') {
-		if (dom.routineView) dom.routineView.classList.add('hidden');
-		if (dom.editorView) dom.editorView.classList.add('hidden');
-		if (dom.emptyView) dom.emptyView.classList.add('hidden');
-		if (dom.combosView) dom.combosView.classList.add('hidden');
-		if (dom.statsView) dom.statsView.classList.add('hidden');
 		if (dom.exercisesView) {
 			dom.exercisesView.classList.remove('hidden');
 			renderExercisesCatalog(dom.exercisesView, {
 				onPlayExercise: (exercise, asset) => {
-					const chosenAsset = asset || getExerciseFollowAlongMedia(exercise);
-					const isVideo = chosenAsset && (chosenAsset.type === 'video' || Boolean(chosenAsset.videoId));
-					const isTutorial = chosenAsset && chosenAsset.kind === 'instruction';
-					const isExReps = (exercise.default_mode || 'reps') === 'reps';
-					const step = isVideo ? {
-						id: 'preview-step',
-						type: 'clip',
-						isTutorial: isTutorial,
-						videoId: chosenAsset.videoId || parseYouTubeId(chosenAsset.url),
-						startSeconds: chosenAsset.startSeconds || 0,
-						endSeconds: chosenAsset.endSeconds || ((chosenAsset.startSeconds || 0) + 60),
-						label: isTutorial ? `${exercise.name}: [Tutorial] ${chosenAsset.title || 'Instruction'}` : `${exercise.name}: ${chosenAsset.title || 'Follow-Along'}`
-					} : {
-						id: 'preview-step',
-						type: 'timer',
-						stepMode: isExReps ? 'reps' : 'time',
-						targetReps: isExReps ? (exercise.default_quantity || 20) : 0,
-						durationSeconds: !isExReps ? (exercise.default_quantity || 30) : 30,
-						label: exercise.name,
-						gifUrl: (chosenAsset && chosenAsset.type === 'image' ? chosenAsset.url : '') || (exercise.media_url && !exercise.media_url.includes('youtube') && !exercise.media_url.includes('youtu.be') ? exercise.media_url : ''),
-						exercises: [exercise]
-					};
-					const previewRoutine = {
-						id: 'preview-routine',
-						title: isTutorial ? `Tutorial: ${exercise.name}` : `Preview: ${exercise.name}`,
-						steps: [step]
-					};
-					unlockAudio();
-					startRoutine(previewRoutine, 0, true);
+					playPreview(exercise, asset);
 				},
 				onAddToRoutine: (exercise, triggerBtn) => handleAddToRoutineWithPicker(exercise, triggerBtn, 'exercise')
 			});
@@ -1062,32 +1034,7 @@ function goToExercise(exerciseOrId) {
 
 	showExerciseVariationsModal(fullEx, {
 		onPlayAsset: (asset) => {
-			const isVideo = asset && (asset.type === 'video' || Boolean(asset.videoId));
-			const isExReps = (fullEx.default_mode || 'reps') === 'reps';
-			const step = isVideo ? {
-				id: 'preview-step',
-				type: 'clip',
-				videoId: asset.videoId || parseYouTubeId(asset.url),
-				startSeconds: asset.startSeconds || 0,
-				endSeconds: asset.endSeconds || ((asset.startSeconds || 0) + 60),
-				label: `${fullEx.name}: ${asset.title || 'Instruction'}`
-			} : {
-				id: 'preview-step',
-				type: 'timer',
-				stepMode: isExReps ? 'reps' : 'time',
-				targetReps: isExReps ? (fullEx.default_quantity || 20) : 0,
-				durationSeconds: !isExReps ? (fullEx.default_quantity || 30) : 30,
-				label: fullEx.name,
-				gifUrl: asset?.url || fullEx.media_url || '',
-				exercises: [fullEx]
-			};
-			const previewRoutine = {
-				id: 'preview-routine',
-				title: `Preview: ${fullEx.name}`,
-				steps: [step]
-			};
-			unlockAudio();
-			startRoutine(previewRoutine, 0, true);
+			playPreview(fullEx, asset);
 		},
 		onAddToRoutine: () => {
 			let routine = getSelectedRoutine();
@@ -1298,12 +1245,6 @@ function handleAddBreak() {
 	expandStep(newStep.id);
 	persist(true);
 	renderSelectedRoutine();
-}
-
-function escapeHtml(str) {
-	const div = document.createElement('div');
-	div.textContent = str;
-	return div.innerHTML;
 }
 
 // ── Workout Completion Modal ──────────────────────────────────────────────
