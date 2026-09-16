@@ -45,6 +45,7 @@ let selectedRoutineId = null;
 let currentMode = 'view'; // 'view' | 'edit'
 let currentTab = 'routines'; // 'routines' | 'combos' | 'exercises' | 'stats'
 let syncTimeout = null;
+let localStorageTimeout = null;
 let sharedRoutine = null;
 let isViewingShared = false;
 
@@ -89,17 +90,22 @@ async function init() {
 	// Fetch server state as source of truth
 	await syncWithServerOnStartup();
 
+	let needsRerender = false;
 	if (urlTarget && urlTarget.isOwner) {
 		const found = routines.find(r => r.id === urlTarget.routineId || r.title.toLowerCase().replace(/ /g, '-') === urlTarget.routineId.toLowerCase());
-		if (found) {
+		if (found && selectedRoutineId !== found.id) {
 			selectedRoutineId = found.id;
 			history.replaceState(null, '', window.location.pathname);
+			needsRerender = true;
 		}
-	} else if (sharedRoutine) {
+	} else if (sharedRoutine && !isViewingShared) {
 		isViewingShared = true;
+		needsRerender = true;
 	}
-	renderRoutineList();
-	renderSelectedRoutine();
+	if (needsRerender) {
+		renderRoutineList();
+		renderSelectedRoutine();
+	}
 
 	// Initialize audio on first interaction
 	document.addEventListener('click', () => initAudio(), { once: true });
@@ -1085,17 +1091,39 @@ function getSelectedRoutine() {
  * @param {boolean} [immediateServerSync=false]
  */
 function persist(immediateServerSync = false) {
-	saveRoutines(routines);
-	if (syncTimeout) {
-		clearTimeout(syncTimeout);
-	}
 	if (immediateServerSync) {
+		if (localStorageTimeout) {
+			clearTimeout(localStorageTimeout);
+			localStorageTimeout = null;
+		}
+		saveRoutines(routines);
+		if (syncTimeout) {
+			clearTimeout(syncTimeout);
+		}
 		syncToServer();
 	} else {
+		if (localStorageTimeout) {
+			clearTimeout(localStorageTimeout);
+		}
+		localStorageTimeout = setTimeout(() => {
+			saveRoutines(routines);
+			localStorageTimeout = null;
+		}, 60);
+
 		setSyncStatus('syncing', 'Saving...');
+		if (syncTimeout) {
+			clearTimeout(syncTimeout);
+		}
 		syncTimeout = setTimeout(syncToServer, 400);
 	}
 }
+
+window.addEventListener('beforeunload', () => {
+	if (localStorageTimeout) {
+		clearTimeout(localStorageTimeout);
+		saveRoutines(routines);
+	}
+});
 
 /**
  * Render the sidebar routine list.

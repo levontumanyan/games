@@ -38,8 +38,18 @@ export {
 };
 
 let cachedExercises = [];
+let exerciseIdMap = new Map();
 let isLoaded = false;
 let comboResolver = null;
+
+function rebuildExerciseMap() {
+	exerciseIdMap = new Map();
+	for (const ex of cachedExercises) {
+		if (ex && ex.id) {
+			exerciseIdMap.set(String(ex.id).trim().toLowerCase(), ex);
+		}
+	}
+}
 
 /**
  * Register a combo lookup function to prevent circular imports with combos.js.
@@ -63,7 +73,9 @@ export function getExerciseMediaAssets(exercisesOrIds = []) {
 	const seenIds = new Set();
 
 	(exercisesOrIds || []).forEach(item => {
-		const ex = typeof item === 'string' ? getExerciseById(item) : (getExerciseById(item.id) || item);
+		const ex = typeof item === 'string'
+			? getExerciseById(item)
+			: ((item && (item.media_assets !== undefined || item.media_url !== undefined)) ? item : (getExerciseById(item?.id) || item));
 		if (!ex) return;
 
 		const list = Array.isArray(ex.media_assets) ? ex.media_assets : [];
@@ -242,11 +254,13 @@ export async function loadExercises() {
 		const list = await fetchServerExercises();
 		cachedExercises = list || [];
 		isLoaded = true;
+		rebuildExerciseMap();
 		return cachedExercises;
 	} catch (err) {
 		console.warn('Failed to fetch exercises from server:', err);
 		cachedExercises = [];
 		isLoaded = false;
+		rebuildExerciseMap();
 		return cachedExercises;
 	}
 }
@@ -258,6 +272,7 @@ export async function loadExercises() {
 export function getExercises() {
 	if (cachedExercises.length === 0 && typeof window !== 'undefined' && Array.isArray(window.__INITIAL_EXERCISES__)) {
 		cachedExercises = window.__INITIAL_EXERCISES__;
+		rebuildExerciseMap();
 	}
 	return cachedExercises;
 }
@@ -269,6 +284,7 @@ export function getExercises() {
 export function setExercises(list = []) {
 	cachedExercises = list || [];
 	isLoaded = true;
+	rebuildExerciseMap();
 }
 
 /**
@@ -370,7 +386,10 @@ export function filterExercises(query = '', category = '', discipline = '', musc
 export function getExerciseById(id) {
 	if (!id) return null;
 	const clean = String(id).trim().toLowerCase();
-	return getExercises().find(e => String(e.id).toLowerCase() === clean) || null;
+	if (exerciseIdMap.size === 0) {
+		getExercises();
+	}
+	return exerciseIdMap.get(clean) || null;
 }
 
 /**
@@ -381,6 +400,7 @@ export function getExerciseById(id) {
 export async function createCustomExercise(exerciseData) {
 	const saved = await saveCustomExerciseOnServer(exerciseData);
 	cachedExercises = [saved, ...cachedExercises.filter(e => e.id !== saved.id)];
+	rebuildExerciseMap();
 	return saved;
 }
 
@@ -392,6 +412,7 @@ export async function createCustomExercise(exerciseData) {
 export async function deleteCustomExercise(exerciseId) {
 	await deleteCustomExerciseOnServer(exerciseId);
 	cachedExercises = cachedExercises.filter(e => e.id !== exerciseId);
+	rebuildExerciseMap();
 	return true;
 }
 

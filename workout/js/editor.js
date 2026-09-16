@@ -389,11 +389,22 @@ export function createInsertDivider(routine, insertIndex, onUpdate) {
 	const addBtn = document.createElement('button');
 	addBtn.type = 'button';
 	addBtn.className = 'btn-insert-divider';
-	addBtn.title = `Insert step here (position #${insertIndex + 1})`;
 	addBtn.innerHTML = `${getPlusIcon(12)} <span>Insert Step Here</span>`;
 
 	const menu = document.createElement('div');
 	menu.className = 'step-insert-menu hidden';
+
+	const closeMenu = () => {
+		menu.classList.add('hidden');
+		addBtn.classList.remove('hidden');
+		document.removeEventListener('click', onDocClick);
+	};
+
+	const onDocClick = (e) => {
+		if (!divider.contains(e.target)) {
+			closeMenu();
+		}
+	};
 
 	const exBtn = document.createElement('button');
 	exBtn.type = 'button';
@@ -401,6 +412,7 @@ export function createInsertDivider(routine, insertIndex, onUpdate) {
 	exBtn.innerHTML = `🥋 + Exercise`;
 	exBtn.addEventListener('click', (e) => {
 		e.stopPropagation();
+		closeMenu();
 		showAddExerciseModal(routine, onUpdate, insertIndex);
 	});
 
@@ -410,6 +422,7 @@ export function createInsertDivider(routine, insertIndex, onUpdate) {
 	breakBtn.innerHTML = `⏱️ + Rest`;
 	breakBtn.addEventListener('click', (e) => {
 		e.stopPropagation();
+		closeMenu();
 		const step = insertBreakStep(routine, insertIndex, 30);
 		onUpdate();
 		showToast(`Inserted Rest break at #${insertIndex + 1}`);
@@ -422,6 +435,7 @@ export function createInsertDivider(routine, insertIndex, onUpdate) {
 	comboBtn.innerHTML = `🔗 + Combo`;
 	comboBtn.addEventListener('click', (e) => {
 		e.stopPropagation();
+		closeMenu();
 		showAddComboModal(routine, onUpdate, insertIndex);
 	});
 
@@ -432,8 +446,7 @@ export function createInsertDivider(routine, insertIndex, onUpdate) {
 	closeBtn.textContent = '✕';
 	closeBtn.addEventListener('click', (e) => {
 		e.stopPropagation();
-		menu.classList.add('hidden');
-		addBtn.classList.remove('hidden');
+		closeMenu();
 	});
 
 	menu.append(exBtn, breakBtn, comboBtn, closeBtn);
@@ -448,6 +461,9 @@ export function createInsertDivider(routine, insertIndex, onUpdate) {
 		});
 		addBtn.classList.add('hidden');
 		menu.classList.remove('hidden');
+		setTimeout(() => {
+			document.addEventListener('click', onDocClick);
+		}, 0);
 	});
 
 	divider.append(line, addBtn, menu);
@@ -1043,11 +1059,16 @@ function createExercisePicker(step, onUpdate) {
 		updateDropdown();
 	});
 
+	let pickerDebounceTimer = null;
 	input.addEventListener('input', () => {
-		updateDropdown();
+		clearTimeout(pickerDebounceTimer);
+		pickerDebounceTimer = setTimeout(() => {
+			updateDropdown();
+		}, 80);
 	});
 
 	input.addEventListener('blur', () => {
+		clearTimeout(pickerDebounceTimer);
 		setTimeout(() => {
 			dropdown.classList.add('hidden');
 		}, 250);
@@ -1734,50 +1755,61 @@ export function showAddExerciseModal(routine, onUpdate, insertIndex = -1) {
 	let activeDiscipline = 'all';
 	let activeMedia = 'all';
 	let searchQuery = '';
+	let searchDebounceTimer = null;
 
-	function matchesRegion(ex, regionId) {
+	// Pre-index exercise attributes to make filtering and rendering instantaneous
+	const indexedExercises = allExercises.map(ex => {
+		const fullEx = ex;
+		const muscles = inferMusclesForExercise(fullEx);
+		const allTargetMuscles = [...(muscles.primary || []), ...(muscles.secondary || [])];
+		const primaryPills = (muscles.primary || []).slice(0, 3).map(m => getMuscleBadgeHtml(m, true)).join('');
+		const assets = getExerciseMediaAssets([fullEx]);
+		const followAlong = getExerciseFollowAlongMedia(fullEx) || assets[0];
+		const isVid = Boolean(followAlong && (followAlong.type === 'video' || Boolean(followAlong.videoId)));
+		const vid = followAlong?.videoId || (fullEx.media_url ? parseYouTubeId(fullEx.media_url) : null);
+		const hasVid = Boolean(vid || (fullEx.media_url && (fullEx.media_url.includes('youtube') || fullEx.media_url.includes('youtu.be'))));
+		const hasGifOrImg = Boolean((fullEx.media_url && !hasVid) || assets.some(a => a.kind === 'animation' || a.kind === 'photo'));
+		const hasTutorial = Boolean(assets.some(a => a.kind === 'instruction'));
+		const searchBlob = `${(fullEx.name || '').toLowerCase()} ${(fullEx.category || '').toLowerCase()} ${(fullEx.discipline || '').toLowerCase()} ${allTargetMuscles.map(m => m.toLowerCase()).join(' ')}`;
+
+		return {
+			fullEx,
+			muscles,
+			allTargetMuscles,
+			primaryPills,
+			assets,
+			followAlong,
+			isVid,
+			vid,
+			hasVid,
+			hasGifOrImg,
+			hasTutorial,
+			searchBlob
+		};
+	});
+
+	function matchesRegion(item, regionId) {
 		if (regionId === 'all') return true;
 		const region = ANATOMICAL_REGIONS.find(r => r.id === regionId);
 		if (!region) return true;
 
-		if (region.categories && region.categories.includes(ex.category)) return true;
-		if (region.disciplines && region.disciplines.includes(ex.discipline)) return true;
+		if (region.categories && region.categories.includes(item.fullEx.category)) return true;
+		if (region.disciplines && region.disciplines.includes(item.fullEx.discipline)) return true;
 
-		const muscles = inferMusclesForExercise(ex);
-		const allTargetMuscles = [...(muscles.primary || []), ...(muscles.secondary || [])];
-		if (region.muscles && region.muscles.some(m => allTargetMuscles.includes(m))) {
+		if (region.muscles && region.muscles.some(m => item.allTargetMuscles.includes(m))) {
 			return true;
 		}
 		return false;
 	}
 
-	function getFilteredExercises(forRegion = activeRegion) {
+	function getBaseFiltered() {
 		const q = searchQuery.toLowerCase().trim();
-
-		return allExercises.filter(ex => {
-			if (activeDiscipline !== 'all' && ex.discipline !== activeDiscipline) return false;
-
-			const assets = getExerciseMediaAssets([ex]);
-			const hasVid = ex.media_url?.includes('youtube') || ex.media_url?.includes('youtu.be') || assets.some(a => a.type === 'video' || Boolean(a.videoId));
-			const hasGifOrImg = Boolean(ex.media_url && !hasVid) || assets.some(a => a.kind === 'animation' || a.kind === 'photo');
-			const hasTutorial = assets.some(a => a.kind === 'instruction');
-
-			if (activeMedia === 'video' && !hasVid) return false;
-			if (activeMedia === 'gif' && !hasGifOrImg) return false;
-			if (activeMedia === 'tutorial' && !hasTutorial) return false;
-
-			if (!matchesRegion(ex, forRegion)) return false;
-
-			if (q) {
-				const muscles = inferMusclesForExercise(ex);
-				const allTargetMuscles = [...(muscles.primary || []), ...(muscles.secondary || [])];
-				const matchName = (ex.name || '').toLowerCase().includes(q);
-				const matchCategory = (ex.category || '').toLowerCase().includes(q);
-				const matchDisc = (ex.discipline || '').toLowerCase().includes(q);
-				const matchMuscles = allTargetMuscles.some(m => m.toLowerCase().includes(q));
-				if (!matchName && !matchCategory && !matchDisc && !matchMuscles) return false;
-			}
-
+		return indexedExercises.filter(item => {
+			if (activeDiscipline !== 'all' && item.fullEx.discipline !== activeDiscipline) return false;
+			if (activeMedia === 'video' && !item.hasVid) return false;
+			if (activeMedia === 'gif' && !item.hasGifOrImg) return false;
+			if (activeMedia === 'tutorial' && !item.hasTutorial) return false;
+			if (q && !item.searchBlob.includes(q)) return false;
 			return true;
 		});
 	}
@@ -1792,6 +1824,7 @@ export function showAddExerciseModal(routine, onUpdate, insertIndex = -1) {
 		}
 
 		expandStep(newStep.id);
+		clearTimeout(searchDebounceTimer);
 		close();
 		onUpdate();
 		const pos = (typeof insertIndex === 'number' && insertIndex >= 0) ? insertIndex + 1 : routine.steps.length;
@@ -1801,8 +1834,9 @@ export function showAddExerciseModal(routine, onUpdate, insertIndex = -1) {
 
 	function renderSidebar() {
 		sidebarEl.innerHTML = '';
+		const base = getBaseFiltered();
 		ANATOMICAL_REGIONS.forEach(reg => {
-			const count = getFilteredExercises(reg.id).length;
+			const count = reg.id === 'all' ? base.length : base.filter(item => matchesRegion(item, reg.id)).length;
 			const btn = document.createElement('button');
 			btn.type = 'button';
 			btn.className = `nav-region-btn ${activeRegion === reg.id ? 'active' : ''}`;
@@ -1820,7 +1854,8 @@ export function showAddExerciseModal(routine, onUpdate, insertIndex = -1) {
 	}
 
 	function renderList() {
-		const filtered = getFilteredExercises(activeRegion);
+		const base = getBaseFiltered();
+		const filtered = activeRegion === 'all' ? base : base.filter(item => matchesRegion(item, activeRegion));
 		countBadge.textContent = `${filtered.length} movement${filtered.length === 1 ? '' : 's'}`;
 		listEl.innerHTML = '';
 
@@ -1829,18 +1864,9 @@ export function showAddExerciseModal(routine, onUpdate, insertIndex = -1) {
 			return;
 		}
 
-		filtered.forEach(ex => {
+		filtered.forEach(({ fullEx, primaryPills, followAlong, isVid, vid }) => {
 			const card = document.createElement('div');
 			card.className = 'nav-exercise-card';
-
-			const fullEx = (ex.id ? getExerciseById(ex.id) : null) || ex;
-			const muscles = inferMusclesForExercise(fullEx);
-			const primaryPills = (muscles.primary || []).slice(0, 3).map(m => getMuscleBadgeHtml(m, true)).join('');
-
-			const assets = getExerciseMediaAssets([fullEx]);
-			const followAlong = getExerciseFollowAlongMedia(fullEx) || assets[0];
-			const isVid = followAlong && (followAlong.type === 'video' || Boolean(followAlong.videoId));
-			const vid = followAlong?.videoId || (fullEx.media_url ? parseYouTubeId(fullEx.media_url) : null);
 
 			let thumbHtml = '';
 			if (isVid && vid) {
@@ -1890,16 +1916,19 @@ export function showAddExerciseModal(routine, onUpdate, insertIndex = -1) {
 				</div>
 			`;
 
-			// Clicking card main or view button opens the full Exercise Overlay
+			let overlayHandle = null;
 			const openOverlay = (e) => {
 				if (e) e.stopPropagation();
-				showExerciseVariationsModal(fullEx, {
+				overlayHandle = showExerciseVariationsModal(fullEx, {
 					onUpdated: () => {
 						renderSidebar();
 						renderList();
 						onUpdate();
 					},
 					onAddToRoutine: () => {
+						if (overlayHandle && typeof overlayHandle.close === 'function') {
+							overlayHandle.close();
+						}
 						commitAddExercise(fullEx);
 					}
 				});
@@ -1908,7 +1937,6 @@ export function showAddExerciseModal(routine, onUpdate, insertIndex = -1) {
 			card.querySelector('.nav-card-main').addEventListener('click', openOverlay);
 			card.querySelector('.btn-nav-view').addEventListener('click', openOverlay);
 
-			// Clicking "+ Add" directly commits the exercise into the routine
 			card.querySelector('.btn-nav-add').addEventListener('click', (e) => {
 				e.stopPropagation();
 				commitAddExercise(fullEx);
@@ -1920,8 +1948,11 @@ export function showAddExerciseModal(routine, onUpdate, insertIndex = -1) {
 
 	searchInput.addEventListener('input', (e) => {
 		searchQuery = e.target.value;
-		renderSidebar();
-		renderList();
+		clearTimeout(searchDebounceTimer);
+		searchDebounceTimer = setTimeout(() => {
+			renderSidebar();
+			renderList();
+		}, 120);
 	});
 
 	modal.querySelectorAll('#nav-discipline-pills .nav-filter-pill').forEach(pill => {
@@ -2028,8 +2059,12 @@ export function showAddComboModal(routine, onUpdate, insertIndex = -1) {
 		});
 	}
 
+	let comboSearchTimer = null;
 	searchInput.addEventListener('input', (e) => {
-		renderList(e.target.value);
+		clearTimeout(comboSearchTimer);
+		comboSearchTimer = setTimeout(() => {
+			renderList(e.target.value);
+		}, 100);
 	});
 
 	renderList();

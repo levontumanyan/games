@@ -160,13 +160,18 @@ export function renderExercisesCatalog(container, options = {}) {
 		});
 	}
 
+	let searchDebounceTimer = null;
 	searchInput.addEventListener('input', (e) => {
 		currentSearch = e.target.value;
-		renderGrid();
+		clearTimeout(searchDebounceTimer);
+		searchDebounceTimer = setTimeout(() => {
+			renderGrid();
+		}, 100);
 	});
 
 	searchInput.addEventListener('keydown', (e) => {
 		if (e.key === 'Escape' && searchInput.value) {
+			clearTimeout(searchDebounceTimer);
 			searchInput.value = '';
 			currentSearch = '';
 			renderGrid();
@@ -1184,6 +1189,7 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 		if (addExBtn) {
 			addExBtn.addEventListener('click', (e) => {
 				e.stopPropagation();
+				close();
 				onAddToRoutine(exercise, addExBtn);
 			});
 		}
@@ -1410,6 +1416,7 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 
 	renderModalContent();
 	document.body.appendChild(backdrop);
+	return { modal, close, backdrop };
 }
 
 /**

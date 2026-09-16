@@ -16,7 +16,17 @@ export const FLOW_TYPES = {
 };
 
 let cachedCombos = [];
+let comboIdMap = new Map();
 let isCombosLoaded = false;
+
+function rebuildComboMap() {
+	comboIdMap = new Map();
+	for (const c of cachedCombos) {
+		if (c && c.id) {
+			comboIdMap.set(String(c.id).trim().toLowerCase(), c);
+		}
+	}
+}
 
 /**
  * Load combos from server into memory cache.
@@ -27,11 +37,13 @@ export async function loadCombos() {
 		const list = await fetchServerCombos();
 		cachedCombos = list || [];
 		isCombosLoaded = true;
+		rebuildComboMap();
 		return cachedCombos;
 	} catch (err) {
 		console.warn('Failed to fetch combos from server:', err);
 		cachedCombos = [];
 		isCombosLoaded = false;
+		rebuildComboMap();
 		return cachedCombos;
 	}
 }
@@ -51,6 +63,7 @@ export function getCombos() {
 export function setCombos(list) {
 	cachedCombos = Array.isArray(list) ? list : [];
 	isCombosLoaded = true;
+	rebuildComboMap();
 }
 
 /**
@@ -61,7 +74,7 @@ export function setCombos(list) {
 export function getComboById(id) {
 	if (!id) return null;
 	const clean = String(id).trim().toLowerCase();
-	return getCombos().find(c => String(c.id).toLowerCase() === clean) || null;
+	return comboIdMap.get(clean) || null;
 }
 
 registerComboResolver(getComboById);
@@ -104,6 +117,7 @@ export function filterCombos(query = '', flowType = '', category = '', disciplin
 export async function createCustomCombo(comboData) {
 	const saved = await saveCustomComboOnServer(comboData);
 	cachedCombos = [saved, ...cachedCombos.filter(c => c.id !== saved.id)];
+	rebuildComboMap();
 	return saved;
 }
 
@@ -115,6 +129,7 @@ export async function createCustomCombo(comboData) {
 export async function deleteCustomCombo(comboId) {
 	await deleteCustomComboOnServer(comboId);
 	cachedCombos = cachedCombos.filter(c => c.id !== comboId);
+	rebuildComboMap();
 	return true;
 }
 
