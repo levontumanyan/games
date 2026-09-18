@@ -119,39 +119,46 @@ export function renderRoutineOverview(routine, container, actions = {}) {
 	actionsGroup.className = 'view-actions-group';
 
 	const shareBtn = document.createElement('button');
-	shareBtn.className = 'btn btn-ghost btn-share-action';
-	shareBtn.innerHTML = `${getShareIcon(15)} Share`;
-	shareBtn.title = 'Copy Shareable Link';
+	shareBtn.className = 'btn btn-ghost btn-icon-only btn-share-action';
+	shareBtn.innerHTML = getShareIcon(17);
+	shareBtn.title = 'Share Workout (Copy Link)';
+	shareBtn.setAttribute('aria-label', 'Share Workout');
 	shareBtn.addEventListener('click', async () => {
 		if (actions.onShare) {
 			const success = await actions.onShare();
 			if (success !== false) {
 				const originalHtml = shareBtn.innerHTML;
-				shareBtn.innerHTML = `✓ Copied!`;
+				shareBtn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
 				shareBtn.classList.add('btn-share-success');
 				setTimeout(() => {
 					shareBtn.innerHTML = originalHtml;
 					shareBtn.classList.remove('btn-share-success');
-				}, 2500);
+				}, 2000);
 			}
 		}
 	});
 
 	const editBtn = document.createElement('button');
-	editBtn.className = 'btn btn-ghost';
-	editBtn.innerHTML = '✏️ Edit';
+	editBtn.className = 'btn btn-ghost btn-icon-only';
+	editBtn.innerHTML = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
+	editBtn.title = 'Edit Workout';
+	editBtn.setAttribute('aria-label', 'Edit Workout');
 	editBtn.addEventListener('click', () => actions.onEdit?.());
 
 	const playBtn = document.createElement('button');
-	playBtn.className = 'btn btn-primary btn-hero-play';
-	playBtn.innerHTML = '▶ Start Workout';
+	playBtn.className = 'btn btn-primary btn-hero-play btn-icon-only';
+	playBtn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"/></svg>`;
+	playBtn.title = 'Start Workout';
+	playBtn.setAttribute('aria-label', 'Start Workout');
 	playBtn.disabled = steps.length === 0;
 	playBtn.addEventListener('click', () => actions.onPlay?.(0, false));
 
 	if (actions.isShared) {
 		const headerSaveBtn = document.createElement('button');
-		headerSaveBtn.className = 'btn btn-primary';
-		headerSaveBtn.innerHTML = `${getSaveIcon(14)} Save to My Workouts`;
+		headerSaveBtn.className = 'btn btn-primary btn-icon-only';
+		headerSaveBtn.innerHTML = getSaveIcon(17);
+		headerSaveBtn.title = 'Save to My Workouts';
+		headerSaveBtn.setAttribute('aria-label', 'Save to My Workouts');
 		headerSaveBtn.addEventListener('click', () => actions.onSaveToLibrary?.());
 
 		actionsGroup.append(shareBtn, headerSaveBtn, playBtn);
@@ -300,8 +307,10 @@ export function renderRoutineOverview(routine, container, actions = {}) {
 		bottomBar.className = 'view-bottom-cta';
 
 		const bottomPlayBtn = document.createElement('button');
-		bottomPlayBtn.className = 'btn btn-primary btn-hero-play';
-		bottomPlayBtn.innerHTML = '▶ Start Workout';
+		bottomPlayBtn.className = 'btn btn-primary btn-hero-play btn-icon-only';
+		bottomPlayBtn.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"/></svg>`;
+		bottomPlayBtn.title = 'Start Workout';
+		bottomPlayBtn.setAttribute('aria-label', 'Start Workout');
 		bottomPlayBtn.addEventListener('click', () => actions.onPlay?.(0, false));
 
 		bottomBar.appendChild(bottomPlayBtn);

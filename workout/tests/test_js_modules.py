@@ -1003,3 +1003,106 @@ def test_get_effective_exercise_quantity():
 		timeout=5,
 	)
 	assert res.returncode == 0, f"Node getEffectiveExerciseQuantity test failed:\n{res.stderr}"
+
+
+def test_editor_insert_divider_and_wheel_protections():
+	"""Verify editor insert dividers flag the last step and contain drop slot indicators."""
+	js_dir = Path(__file__).parent.parent / "js"
+	node_script = f"""
+	function makeEl(tag = 'div') {{
+		const listeners = {{}};
+		const classes = new Set();
+		const children = [];
+		return {{
+			tagName: tag.toUpperCase(),
+			className: '',
+			dataset: {{}},
+			style: {{}},
+			children,
+			classList: {{
+				add: (...cls) => cls.forEach(c => classes.add(c)),
+				remove: (...cls) => cls.forEach(c => classes.delete(c)),
+				contains: (c) => classes.has(c),
+				toggle: (c, force) => {{
+					if (force === undefined) {{
+						if (classes.has(c)) classes.delete(c); else classes.add(c);
+					}} else if (force) {{
+						classes.add(c);
+					}} else {{
+						classes.delete(c);
+					}}
+					return classes.has(c);
+				}}
+			}},
+			appendChild: (ch) => {{ children.push(ch); return ch; }},
+			append: (...chs) => chs.forEach(ch => children.push(ch)),
+			addEventListener: (evt, cb) => {{
+				if (!listeners[evt]) listeners[evt] = [];
+				listeners[evt].push(cb);
+			}},
+			removeEventListener: (evt, cb) => {{
+				if (listeners[evt]) listeners[evt] = listeners[evt].filter(f => f !== cb);
+			}},
+			dispatchEvent: (evt) => {{
+				if (listeners[evt.type]) listeners[evt.type].forEach(cb => cb(evt));
+			}},
+			querySelector: (sel) => {{
+				if (sel === '.step-drop-indicator') return children.find(c => c.className === 'step-drop-indicator') || null;
+				if (sel === '.btn-insert-divider') return children.find(c => c.className === 'btn-insert-divider') || null;
+				return null;
+			}},
+			querySelectorAll: () => []
+		}};
+	}}
+
+	globalThis.document = {{
+		createElement: (tag) => makeEl(tag),
+		addEventListener: () => {{}},
+		removeEventListener: () => {{}},
+		querySelectorAll: () => []
+	}};
+	globalThis.window = {{
+		addEventListener: () => {{}},
+		removeEventListener: () => {{}}
+	}};
+	globalThis.localStorage = {{ getItem: () => null, setItem: () => {{}}, removeItem: () => {{}} }};
+
+	const {{ createInsertDivider }} = await import('{js_dir}/editor.js');
+
+	const routine = {{
+		id: 'test-routine',
+		title: 'Test Workout',
+		steps: [
+			{{ id: 's1', type: 'clip', videoId: 'abc', startSeconds: 0, endSeconds: 60 }},
+			{{ id: 's2', type: 'timer', durationSeconds: 30, label: 'Rest', subtype: 'break' }}
+		]
+	}};
+
+	// 1. Divider 0 should not be marked as last
+	const div0 = createInsertDivider(routine, 0, () => {{}});
+	if (div0.classList.contains('step-insert-divider-last')) {{
+		throw new Error('Divider 0 should not be marked as step-insert-divider-last');
+	}}
+
+	// 2. Divider at index = routine.steps.length MUST be marked as step-insert-divider-last
+	const divLast = createInsertDivider(routine, routine.steps.length, () => {{}});
+	if (!divLast.classList.contains('step-insert-divider-last')) {{
+		throw new Error('Last divider should have step-insert-divider-last class');
+	}}
+
+	// 3. Drop indicator must be present in divider
+	const dropIndicator = divLast.querySelector('.step-drop-indicator');
+	if (!dropIndicator) {{
+		throw new Error('Divider must contain .step-drop-indicator');
+	}}
+	"""
+
+	res = subprocess.run(
+		["node", "--input-type=module", "-e", node_script],
+		capture_output=True,
+		text=True,
+		timeout=5,
+	)
+	assert res.returncode == 0, (
+		f"Node test_editor_insert_divider_and_wheel_protections failed:\n{res.stderr}"
+	)

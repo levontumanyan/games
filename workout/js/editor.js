@@ -383,13 +383,24 @@ export function createInsertDivider(routine, insertIndex, onUpdate) {
 	divider.className = 'step-insert-divider';
 	divider.dataset.insertIndex = insertIndex;
 
+	const isLast = insertIndex === routine.steps.length;
+	if (isLast) {
+		divider.classList.add('step-insert-divider-last');
+	}
+
 	const line = document.createElement('div');
 	line.className = 'step-insert-line';
 
 	const addBtn = document.createElement('button');
 	addBtn.type = 'button';
 	addBtn.className = 'btn-insert-divider';
-	addBtn.innerHTML = `${getPlusIcon(12)} <span>Insert Step Here</span>`;
+	addBtn.innerHTML = isLast
+		? `${getPlusIcon(13)} <span>+ Insert Step Here</span>`
+		: `${getPlusIcon(12)} <span>Insert Step Here</span>`;
+
+	const dropIndicator = document.createElement('div');
+	dropIndicator.className = 'step-drop-indicator';
+	dropIndicator.innerHTML = `<span>⬇ Move Step Here</span>`;
 
 	const menu = document.createElement('div');
 	menu.className = 'step-insert-menu hidden';
@@ -466,7 +477,7 @@ export function createInsertDivider(routine, insertIndex, onUpdate) {
 		}, 0);
 	});
 
-	divider.append(line, addBtn, menu);
+	divider.append(line, addBtn, dropIndicator, menu);
 	return divider;
 }
 
@@ -643,6 +654,7 @@ function createStepElement(step, index, routine, onUpdate, onTestStep) {
 
 	// Toggle collapse on header click
 	header.addEventListener('click', (e) => {
+		if (container._isDraggingStep) return;
 		if (e.target.closest('button') || e.target.closest('input') || e.target.closest('.drag-handle')) {
 			return;
 		}
@@ -811,7 +823,7 @@ function createBreakFields(step, onUpdate) {
 	customInput.autocorrect = 'off';
 	customInput.autocapitalize = 'off';
 	customInput.spellcheck = false;
-	customInput.title = 'Rest duration (scroll wheel, up/down arrows, or type MM:SS)';
+	customInput.title = 'Rest duration (up/down arrows or type MM:SS)';
 
 	const incBtn = document.createElement('button');
 	incBtn.type = 'button';
@@ -854,13 +866,6 @@ function createBreakFields(step, onUpdate) {
 		const cur = parseTime(customInput.value) || step.durationSeconds || 30;
 		setDuration(cur + delta);
 	});
-
-	customInput.addEventListener('wheel', (e) => {
-		e.preventDefault();
-		const delta = e.shiftKey ? 15 : 5;
-		const cur = parseTime(customInput.value) || step.durationSeconds || 30;
-		setDuration(e.deltaY < 0 ? cur + delta : cur - delta);
-	}, { passive: false });
 
 	customInput.addEventListener('keydown', (e) => {
 		if (e.key === 'ArrowUp') {
@@ -1167,6 +1172,9 @@ function createTimerFields(step, onUpdate) {
 			repsInp.autocorrect = 'off';
 			repsInp.autocapitalize = 'off';
 			repsInp.spellcheck = false;
+			repsInp.addEventListener('wheel', () => {
+				if (document.activeElement === repsInp) repsInp.blur();
+			}, { passive: true });
 
 			const incBtn = document.createElement('button');
 			incBtn.type = 'button';
@@ -1365,13 +1373,6 @@ function createTimeField(labelText, valueSeconds, onChange, placeholder = '0:00'
 		setVal(cur + delta);
 	});
 
-	input.addEventListener('wheel', (e) => {
-		e.preventDefault();
-		const delta = e.shiftKey ? 15 : stepSeconds;
-		const cur = parseTime(input.value) || valueSeconds || 30;
-		setVal(e.deltaY < 0 ? cur + delta : cur - delta);
-	}, { passive: false });
-
 	const commit = () => {
 		const parsed = parseTime(input.value);
 		input.value = (parsed === 0 && emptyWhenZero) ? '' : formatTime(parsed);
@@ -1447,64 +1448,155 @@ function createField(labelText, value, onChange, placeholder = '') {
  * Initialize drag-and-drop reordering for steps.
  */
 function initDragAndDrop(container, routine, onUpdate) {
+	container._dndRoutine = routine;
+	container._dndOnUpdate = onUpdate;
+
+	if (container._dndInitialized) {
+		return;
+	}
+	container._dndInitialized = true;
+
 	let dragIndex = null;
+	let activeDropSlot = null;
+	let isDraggingActive = false;
+
+	const clearDropTargets = () => {
+		container.querySelectorAll('.step-insert-divider.drop-target-active').forEach(div => {
+			div.classList.remove('drop-target-active');
+		});
+		activeDropSlot = null;
+	};
 
 	container.addEventListener('dragstart', (e) => {
 		const card = e.target.closest('.step-card');
-		if (!card) return;
+		if (!card || !container.contains(card)) return;
+
+		// Prevent drag start when interacting with form inputs, buttons, sliders, or insert dividers
+		if (e.target.closest('button, input, select, textarea, a, .break-stepper-btn, .timer-preset-pill, .break-preset-btn, .step-insert-divider')) {
+			e.preventDefault();
+			return;
+		}
+
 		dragIndex = parseInt(card.dataset.index, 10);
-		card.classList.add('dragging');
+		if (isNaN(dragIndex)) return;
+
+		isDraggingActive = true;
+		container._isDraggingStep = true;
 		e.dataTransfer.effectAllowed = 'move';
+		try {
+			e.dataTransfer.setData('text/plain', String(dragIndex));
+		} catch (_) {
+			// Safari/fallback
+		}
+
+		// Defer class application so browser drag image snapshot captures the full card
+		setTimeout(() => {
+			if (isDraggingActive) {
+				card.classList.add('dragging');
+				container.classList.add('is-dragging-step');
+			}
+		}, 0);
 	});
 
-	container.addEventListener('dragend', (e) => {
-		const card = e.target.closest('.step-card');
-		if (card) card.classList.remove('dragging');
+	container.addEventListener('dragend', () => {
+		isDraggingActive = false;
+		setTimeout(() => {
+			container._isDraggingStep = false;
+		}, 60);
+
+		container.querySelectorAll('.step-card.dragging').forEach(c => c.classList.remove('dragging'));
+		container.classList.remove('is-dragging-step');
+		clearDropTargets();
 		dragIndex = null;
 	});
 
 	container.addEventListener('dragover', (e) => {
 		e.preventDefault();
+		if (dragIndex === null) return;
 		e.dataTransfer.dropEffect = 'move';
 
-		const afterElement = getDragAfterElement(container, e.clientY);
-		const dragging = container.querySelector('.dragging');
-		if (!dragging) return;
+		// Auto-scroll when near top or bottom edges of viewport / editor container
+		const scrollContainer = container.closest('#editor-view') || container;
+		const scrollRect = scrollContainer.getBoundingClientRect();
+		const edgeZone = 60;
+		if (e.clientY < scrollRect.top + edgeZone) {
+			scrollContainer.scrollTop -= 12;
+		} else if (e.clientY > scrollRect.bottom - edgeZone) {
+			scrollContainer.scrollTop += 12;
+		}
 
-		if (afterElement === null) {
-			container.appendChild(dragging);
-		} else {
-			container.insertBefore(dragging, afterElement);
+		const cards = [...container.querySelectorAll('.step-card')];
+		if (cards.length === 0) return;
+
+		// Determine target insertion slot (0 to cards.length) based on card midpoints
+		let targetSlot = cards.length;
+		for (let i = 0; i < cards.length; i++) {
+			const rect = cards[i].getBoundingClientRect();
+			const midY = rect.top + rect.height / 2;
+			if (e.clientY < midY) {
+				targetSlot = i;
+				break;
+			}
+		}
+
+		// If targetSlot is the dragged item's current position (before or after itself), it's a no-op
+		if (targetSlot === dragIndex || targetSlot === dragIndex + 1) {
+			clearDropTargets();
+			return;
+		}
+
+		if (activeDropSlot !== targetSlot) {
+			clearDropTargets();
+			const divider = container.querySelector(`.step-insert-divider[data-insert-index="${targetSlot}"]`);
+			if (divider) {
+				divider.classList.add('drop-target-active');
+				activeDropSlot = targetSlot;
+			}
+		}
+	});
+
+	container.addEventListener('dragleave', (e) => {
+		if (!container.contains(e.relatedTarget)) {
+			clearDropTargets();
 		}
 	});
 
 	container.addEventListener('drop', (e) => {
 		e.preventDefault();
-		if (dragIndex === null) return;
+		const currentDragIndex = dragIndex;
+		const targetSlot = activeDropSlot;
 
-		const cards = [...container.querySelectorAll('.step-card')];
-		const newOrder = cards.map(c => parseInt(c.dataset.index, 10));
-		const reordered = newOrder.map(i => routine.steps[i]);
-		routine.steps = reordered;
-		onUpdate();
-	});
-}
+		isDraggingActive = false;
+		setTimeout(() => {
+			container._isDraggingStep = false;
+		}, 60);
 
-/**
- * Get the element after which a dragged item should be placed.
- */
-function getDragAfterElement(container, y) {
-	const elements = [...container.querySelectorAll('.step-card:not(.dragging)')];
+		clearDropTargets();
+		container.classList.remove('is-dragging-step');
+		container.querySelectorAll('.step-card.dragging').forEach(c => c.classList.remove('dragging'));
+		dragIndex = null;
 
-	return elements.reduce((closest, child) => {
-		const box = child.getBoundingClientRect();
-		const offset = y - box.top - box.height / 2;
+		if (currentDragIndex === null || targetSlot === null) return;
+		if (targetSlot === currentDragIndex || targetSlot === currentDragIndex + 1) return;
 
-		if (offset < 0 && offset > closest.offset) {
-			return { offset, element: child };
+		const currentRoutine = container._dndRoutine;
+		const currentOnUpdate = container._dndOnUpdate;
+		if (!currentRoutine || !Array.isArray(currentRoutine.steps)) return;
+
+		const [movedItem] = currentRoutine.steps.splice(currentDragIndex, 1);
+		if (!movedItem) return;
+
+		const destinationIndex = targetSlot > currentDragIndex ? targetSlot - 1 : targetSlot;
+		currentRoutine.steps.splice(destinationIndex, 0, movedItem);
+
+		if (typeof currentOnUpdate === 'function') {
+			currentOnUpdate();
 		}
-		return closest;
-	}, { offset: Number.NEGATIVE_INFINITY }).element || null;
+
+		if (movedItem.id) {
+			requestAnimationFrame(() => highlightStepElement(movedItem.id));
+		}
+	});
 }
 
 /**

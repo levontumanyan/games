@@ -359,6 +359,16 @@ export function applyCleanInputAttributes(el) {
 	el.setAttribute('autocorrect', 'off');
 	el.setAttribute('autocapitalize', 'off');
 	el.setAttribute('spellcheck', 'false');
+
+	// Prevent trackpad / mouse-wheel from changing number input values
+	if (tag === 'input' && (el.getAttribute('type') || '').toLowerCase() === 'number' && !el._wheelEnforced) {
+		el._wheelEnforced = true;
+		el.addEventListener('wheel', () => {
+			if (document.activeElement === el) {
+				el.blur();
+			}
+		}, { passive: true });
+	}
 }
 
 /**
@@ -372,6 +382,16 @@ export function initInputCleanlinessEnforcer() {
 
 	// Enforce on all existing matching elements
 	document.querySelectorAll(selector).forEach(applyCleanInputAttributes);
+
+	// Globally prevent accidental trackpad / mouse-wheel changes on all number and timer inputs
+	window.addEventListener('wheel', (e) => {
+		if (document.activeElement && document.activeElement.tagName === 'INPUT') {
+			const type = (document.activeElement.getAttribute('type') || '').toLowerCase();
+			if (type === 'number' || document.activeElement.classList.contains('break-custom-input') || document.activeElement.classList.contains('clean-input')) {
+				document.activeElement.blur();
+			}
+		}
+	}, { passive: true });
 
 	// Enforce on focusin so dynamically added/rendered inputs are guaranteed clean before first keystroke
 	document.addEventListener('focusin', (e) => {

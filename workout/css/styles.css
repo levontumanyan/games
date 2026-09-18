@@ -1238,6 +1238,20 @@ html, body {
 	gap: 8px;
 }
 
+.view-actions-group .btn-icon-only {
+	width: 38px;
+	height: 38px;
+	min-width: 38px;
+	max-width: 38px;
+	padding: 0;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: var(--radius-sm);
+	box-sizing: border-box;
+	flex-shrink: 0;
+}
+
 .btn-hero-play {
 	font-size: 0.9rem;
 	font-weight: 700;
@@ -1245,6 +1259,35 @@ html, body {
 	border-radius: var(--radius);
 	box-shadow: 0 4px 16px var(--accent-glow);
 	transition: all var(--transition);
+}
+
+.btn-hero-play.btn-icon-only {
+	width: 38px;
+	height: 38px;
+	padding: 0;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: var(--radius-sm);
+}
+
+.btn-hero-play.btn-icon-only svg {
+	width: 18px;
+	height: 18px;
+	margin-left: 2px;
+}
+
+.view-bottom-cta .btn-hero-play.btn-icon-only {
+	width: 52px;
+	height: 52px;
+	border-radius: 50%;
+	box-shadow: 0 4px 20px var(--accent-glow);
+}
+
+.view-bottom-cta .btn-hero-play.btn-icon-only svg {
+	width: 22px;
+	height: 22px;
+	margin-left: 3px;
 }
 
 .btn-hero-play:hover {
@@ -1596,6 +1639,51 @@ html, body {
 	box-shadow: 0 2px 0 0 var(--accent);
 }
 
+.btn-icon-only {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 38px;
+	height: 38px;
+	padding: 0;
+	border-radius: var(--radius-sm);
+	flex-shrink: 0;
+	cursor: pointer;
+	transition: all var(--transition-fast);
+}
+
+.btn-icon-only svg {
+	width: 18px;
+	height: 18px;
+	flex-shrink: 0;
+}
+
+.editor-header .btn-icon-only {
+	box-shadow: var(--shadow-sm);
+}
+
+#cancel-editing-btn {
+	color: var(--text-secondary);
+	border: 1px solid var(--border);
+}
+
+#cancel-editing-btn:hover {
+	color: var(--text-primary);
+	border-color: var(--border-hover);
+	background: var(--bg-hover);
+}
+
+#delete-routine-btn.btn-icon-only {
+	color: var(--danger);
+	border: 1px solid transparent;
+}
+
+#delete-routine-btn.btn-icon-only:hover {
+	background: var(--danger-subtle);
+	border-color: rgba(239, 68, 68, 0.3);
+	color: #ef4444;
+}
+
 .step-actions {
 	display: flex;
 	align-items: center;
@@ -1673,6 +1761,7 @@ html, body {
 	display: flex;
 	flex-direction: column;
 	gap: 10px;
+	padding-bottom: 96px;
 }
 
 .step-card {
@@ -1691,9 +1780,11 @@ html, body {
 }
 
 .step-card.dragging {
-	opacity: 0.45;
-	box-shadow: 0 12px 36px var(--accent-glow);
-	border-color: var(--accent);
+	opacity: 0.35 !important;
+	box-shadow: none !important;
+	border: 2px dashed var(--accent) !important;
+	transform: scale(0.99);
+	pointer-events: none;
 }
 
 .step-clip {
@@ -1940,6 +2031,7 @@ html, body {
 	height: 26px;
 	margin: 0;
 	z-index: 10;
+	transition: height 0.16s cubic-bezier(0.16, 1, 0.3, 1), margin 0.16s ease;
 }
 
 .step-insert-divider::before {
@@ -1960,7 +2052,7 @@ html, body {
 	height: 1px;
 	background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.08) 20%, rgba(255, 255, 255, 0.08) 80%, transparent 100%);
 	pointer-events: none;
-	transition: background 0.2s ease, box-shadow 0.2s ease;
+	transition: background 0.2s ease, box-shadow 0.2s ease, height 0.16s ease, opacity 0.16s ease;
 }
 
 .step-insert-divider:hover .step-insert-line,
@@ -2001,6 +2093,115 @@ html, body {
 
 .btn-insert-divider span {
 	white-space: nowrap;
+}
+
+/* ── Last Insert Step Divider (Elevated & Prominent) ── */
+.step-insert-divider-last {
+	height: 48px;
+	margin: 18px 0 28px 0;
+}
+
+.step-insert-divider-last .step-insert-line {
+	height: 1px;
+	background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.15) 20%, rgba(255, 255, 255, 0.15) 80%, transparent 100%);
+}
+
+.step-insert-divider-last .btn-insert-divider {
+	opacity: 0.9;
+	transform: scale(1);
+	padding: 8px 22px;
+	font-size: 0.82rem;
+	font-weight: 700;
+	color: var(--text-primary);
+	background: var(--bg-card-elevated);
+	border: 1px dashed rgba(99, 102, 241, 0.5);
+	border-radius: 24px;
+	box-shadow: var(--shadow-sm);
+}
+
+.step-insert-divider-last:hover .btn-insert-divider,
+.step-insert-divider-last:focus-within .btn-insert-divider,
+.step-insert-divider-last .btn-insert-divider:focus {
+	opacity: 1;
+	color: #ffffff;
+	background: var(--accent);
+	border: 1px solid var(--accent);
+	box-shadow: 0 0 20px var(--accent-glow), var(--shadow);
+	transform: translateY(-2px);
+}
+
+.step-insert-divider-last .step-insert-menu {
+	padding: 6px 14px;
+	gap: 8px;
+	border-radius: 28px;
+}
+
+.step-insert-divider-last .btn-insert-pill {
+	padding: 6px 14px;
+	font-size: 0.82rem;
+}
+
+/* ── Drag & Drop Slot Target Active State ── */
+.step-insert-divider.drop-target-active {
+	height: 44px;
+}
+
+.step-insert-divider.drop-target-active .step-insert-line {
+	height: 3px;
+	background: var(--accent);
+	box-shadow: 0 0 16px var(--accent-glow), 0 0 4px var(--accent);
+	opacity: 1;
+}
+
+.step-drop-indicator {
+	display: none;
+	position: relative;
+	z-index: 4;
+	align-items: center;
+	gap: 6px;
+	padding: 5px 16px;
+	font-size: 0.78rem;
+	font-weight: 800;
+	color: #ffffff;
+	background: var(--accent);
+	border: 1px solid rgba(255, 255, 255, 0.25);
+	border-radius: 20px;
+	box-shadow: 0 0 20px var(--accent-glow), var(--shadow);
+	pointer-events: none;
+	animation: stepDropPulse 0.9s ease-in-out infinite alternate;
+}
+
+.step-insert-divider.drop-target-active .step-drop-indicator {
+	display: flex;
+}
+
+.step-insert-divider.drop-target-active .btn-insert-divider,
+.step-insert-divider.drop-target-active .step-insert-menu {
+	display: none !important;
+}
+
+.is-dragging-step .step-insert-divider:not(.drop-target-active) .btn-insert-divider {
+	opacity: 0 !important;
+	pointer-events: none;
+}
+
+.is-dragging-step .step-insert-divider:not(.drop-target-active) .step-insert-line {
+	opacity: 0.2;
+}
+
+.is-dragging-step .step-card {
+	transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+@keyframes stepDropPulse {
+	0% {
+		transform: scale(0.97);
+		box-shadow: 0 0 12px var(--accent-glow);
+	}
+	100% {
+		transform: scale(1.03);
+		box-shadow: 0 0 22px var(--accent-glow);
+	}
 }
 
 .step-insert-menu {
@@ -4972,11 +5173,18 @@ textarea.input {
 }
 
 .btn-share-action {
-	min-width: 96px;
 	justify-content: center;
 	text-align: center;
 	white-space: nowrap;
 	box-sizing: border-box;
+}
+
+.btn-share-action.btn-icon-only {
+	min-width: 38px;
+	max-width: 38px;
+	width: 38px;
+	height: 38px;
+	padding: 0;
 }
 
 .btn-share-success {

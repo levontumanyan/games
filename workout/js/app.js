@@ -52,6 +52,8 @@ let syncTimeout = null;
 let localStorageTimeout = null;
 let sharedRoutine = null;
 let isViewingShared = false;
+let editingRoutineSnapshot = null;
+let isNewRoutineEditing = false;
 
 // DOM references
 const dom = {};
@@ -218,6 +220,7 @@ function cacheDom() {
 	dom.addComboBtn = document.getElementById('add-combo-btn');
 	dom.addBreakBtn = document.getElementById('add-break-btn');
 	dom.doneEditingBtn = document.getElementById('done-editing-btn');
+	dom.cancelEditingBtn = document.getElementById('cancel-editing-btn');
 	dom.deleteRoutineBtn = document.getElementById('delete-routine-btn');
 
 	// Sidebar & Layout
@@ -730,9 +733,16 @@ function bindEvents() {
 	}
 	if (dom.addBreakBtn) dom.addBreakBtn.addEventListener('click', handleAddBreak);
 	dom.doneEditingBtn.addEventListener('click', () => {
+		editingRoutineSnapshot = null;
+		isNewRoutineEditing = false;
 		currentMode = 'view';
+		persist(true);
+		renderRoutineList();
 		renderSelectedRoutine();
 	});
+	if (dom.cancelEditingBtn) {
+		dom.cancelEditingBtn.addEventListener('click', handleCancelEditing);
+	}
 	dom.deleteRoutineBtn.addEventListener('click', handleDeleteRoutine);
 	dom.playPauseBtn.addEventListener('click', togglePause);
 	dom.skipBtn.addEventListener('click', skipStep);
@@ -808,8 +818,14 @@ function bindEvents() {
 		}
 	});
 	window.addEventListener('keydown', (e) => {
-		if (e.key === 'Escape' && dom.profileDropdownMenu && !dom.profileDropdownMenu.classList.contains('hidden')) {
-			closeProfileDropdown();
+		if (e.key === 'Escape') {
+			if (dom.profileDropdownMenu && !dom.profileDropdownMenu.classList.contains('hidden')) {
+				closeProfileDropdown();
+				return;
+			}
+			if (currentMode === 'edit' && !document.querySelector('.modal-backdrop:not(.hidden)')) {
+				handleCancelEditing();
+			}
 		}
 	});
 
@@ -1184,6 +1200,9 @@ function renderRoutineList() {
 		li.appendChild(info);
 
 		li.addEventListener('click', () => {
+			if (currentMode === 'edit' && editingRoutineSnapshot) {
+				handleCancelEditing();
+			}
 			if (isViewingShared) {
 				isViewingShared = false;
 				sharedRoutine = null;
@@ -1307,6 +1326,10 @@ function renderSelectedRoutine() {
 		dom.editorView.classList.remove('hidden');
 		dom.playerView.classList.add('hidden');
 
+		if (!editingRoutineSnapshot && routine) {
+			editingRoutineSnapshot = JSON.parse(JSON.stringify(routine));
+		}
+
 		dom.routineTitle.value = routine.title;
 
 		const onStepUpdate = () => {
@@ -1331,6 +1354,30 @@ function renderSelectedRoutine() {
 }
 
 // ── Event Handlers ──────────────────────────────────────────────────────────
+
+function handleCancelEditing() {
+	if (isNewRoutineEditing && editingRoutineSnapshot) {
+		// If cancelling a newly created routine, remove it
+		const cur = getSelectedRoutine();
+		if (cur) {
+			routines = routines.filter(r => r.id !== cur.id);
+			selectedRoutineId = routines.length > 0 ? routines[0].id : null;
+		}
+	} else if (editingRoutineSnapshot) {
+		// Revert routine back to snapshot before edits
+		const idx = routines.findIndex(r => r.id === editingRoutineSnapshot.id);
+		if (idx !== -1) {
+			routines[idx] = JSON.parse(JSON.stringify(editingRoutineSnapshot));
+		}
+	}
+	editingRoutineSnapshot = null;
+	isNewRoutineEditing = false;
+	currentMode = 'view';
+	persist(true);
+	renderRoutineList();
+	renderSelectedRoutine();
+	showToast('Changes discarded');
+}
 
 function handleSaveSharedToLibrary(notify = true) {
 	if (!sharedRoutine) return;
@@ -1376,6 +1423,8 @@ async function handleAddWorkout() {
 	if (currentTab !== 'routines') {
 		switchTab('routines');
 	}
+	isNewRoutineEditing = true;
+	editingRoutineSnapshot = JSON.parse(JSON.stringify(routine));
 	currentMode = 'edit';
 	persist(true);
 	renderRoutineList();
