@@ -19,11 +19,13 @@ let audioElement = null;
 
 let playlist = [];
 let currentTrackIndex = -1;
-let musicVolume = 0.5;
+let musicVolume = 1.0;
 let isMusicPlaying = false;
 let isMusicMuted = false;
+let isUserMusicPaused = false;
 let activeSource = null; // 'youtube' | 'file' | null
 let onTrackChangeCallback = null;
+let onPlayStateChangeCallback = null;
 
 let pendingPlay = false;
 
@@ -51,9 +53,11 @@ function waitForYTApi() {
  * @param {HTMLElement} containerEl - Hidden container element for YouTube music iframe
  * @param {Object} [callbacks] - Event callbacks
  * @param {Function} [callbacks.onTrackChange] - Called when the active track changes
+ * @param {Function} [callbacks.onPlayStateChange] - Called when play/pause state changes
  */
 export async function initMusic(containerEl, callbacks) {
 	onTrackChangeCallback = callbacks?.onTrackChange || null;
+	onPlayStateChangeCallback = callbacks?.onPlayStateChange || null;
 
 	// Create HTML5 Audio element for local files
 	audioElement = new Audio();
@@ -266,19 +270,37 @@ function stopCurrentSource() {
 	activeSource = null;
 }
 
+function notifyPlayStateChange() {
+	if (onPlayStateChangeCallback) {
+		onPlayStateChangeCallback({
+			isPlaying: isMusicPlaying && !isUserMusicPaused,
+			isUserPaused: isUserMusicPaused,
+			isMuted: isMusicMuted
+		});
+	}
+}
+
 /**
  * Start playing music (or resume if already active).
+ * Honors isUserMusicPaused flag: will not play if the user explicitly paused music,
+ * unless force is true (e.g. user toggling playback back on).
+ * @param {boolean} [force=false]
  */
-export function startMusic() {
+export function startMusic(force = false) {
 	if (playlist.length === 0) return;
+	if (isUserMusicPaused && !force) return;
+	if (force) {
+		isUserMusicPaused = false;
+	}
 	isMusicMuted = false;
 	unmuteMusic();
 	if (isMusicPlaying && activeSource) {
-		resumeMusic();
+		resumeMusic(force);
 		return;
 	}
 	if (currentTrackIndex < 0) currentTrackIndex = 0;
 	playCurrentTrack();
+	notifyPlayStateChange();
 }
 
 /**
@@ -292,15 +314,21 @@ export function pauseMusic() {
 	if (activeSource === 'file' && audioElement) {
 		audioElement.pause();
 	}
+	notifyPlayStateChange();
 }
 
 /**
  * Resume the current music track.
+ * @param {boolean} [force=false]
  */
-export function resumeMusic() {
+export function resumeMusic(force = false) {
 	if (playlist.length === 0) return;
+	if (isUserMusicPaused && !force) return;
+	if (force) {
+		isUserMusicPaused = false;
+	}
 	if (!isMusicPlaying || !activeSource) {
-		startMusic();
+		startMusic(force);
 		return;
 	}
 	if (activeSource === 'youtube' && ytMusicReady && ytMusicPlayer) {
@@ -309,6 +337,33 @@ export function resumeMusic() {
 	if (activeSource === 'file' && audioElement) {
 		audioElement.play().catch(() => {});
 	}
+	notifyPlayStateChange();
+}
+
+/**
+ * Toggle music playback independently of workout playback.
+ * Returns true if now playing, false if paused.
+ * @returns {boolean}
+ */
+export function toggleMusicPlayback() {
+	if (playlist.length === 0) return false;
+	if (isUserMusicPaused || !isMusicPlaying) {
+		isUserMusicPaused = false;
+		resumeMusic(true);
+		return true;
+	} else {
+		isUserMusicPaused = true;
+		pauseMusic();
+		return false;
+	}
+}
+
+/**
+ * Check if music was paused by user action.
+ * @returns {boolean}
+ */
+export function isMusicPausedByUser() {
+	return isUserMusicPaused;
 }
 
 /**
@@ -317,7 +372,9 @@ export function resumeMusic() {
 export function stopMusic() {
 	stopCurrentSource();
 	isMusicPlaying = false;
+	isUserMusicPaused = false;
 	currentTrackIndex = playlist.length > 0 ? 0 : -1;
+	notifyPlayStateChange();
 }
 
 /**

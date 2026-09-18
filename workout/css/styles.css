@@ -3741,6 +3741,11 @@ textarea.input {
 	border-color: rgba(99, 102, 241, 0.4);
 }
 
+.player-music-toggle-btn.is-paused {
+	opacity: 0.7;
+	filter: grayscale(0.6);
+}
+
 .music-quick-title {
 	max-width: 80px;
 	overflow: hidden;
@@ -3831,10 +3836,11 @@ textarea.input {
 .music-controls-bar {
 	display: flex;
 	align-items: center;
-	gap: 10px;
+	gap: 8px;
 	padding: 6px 32px;
-	background: rgba(16, 18, 26, 0.8);
+	background: rgba(16, 18, 26, 0.85);
 	border-top: 1px solid rgba(255, 255, 255, 0.06);
+	backdrop-filter: blur(12px);
 }
 
 .music-controls-bar.hidden {
@@ -3842,7 +3848,25 @@ textarea.input {
 }
 
 .music-controls-icon {
-	font-size: 1rem;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	color: #a5b4fc;
+}
+
+.music-controls-bar .btn-ghost {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 5px 8px;
+	border-radius: 6px;
+	color: var(--text-secondary);
+	transition: all var(--transition-fast);
+}
+
+.music-controls-bar .btn-ghost:hover {
+	color: var(--text-primary);
+	background: rgba(255, 255, 255, 0.08);
 }
 
 .music-track-name {
@@ -3854,38 +3878,6 @@ textarea.input {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-}
-
-.volume-slider {
-	-webkit-appearance: none;
-	appearance: none;
-	width: 90px;
-	height: 4px;
-	background: var(--border);
-	border-radius: 2px;
-	outline: none;
-	cursor: pointer;
-}
-
-.volume-slider::-webkit-slider-thumb {
-	-webkit-appearance: none;
-	appearance: none;
-	width: 12px;
-	height: 12px;
-	border-radius: 50%;
-	background: var(--accent);
-	cursor: pointer;
-	border: none;
-	box-shadow: 0 0 8px var(--accent-glow);
-}
-
-.volume-slider::-moz-range-thumb {
-	width: 12px;
-	height: 12px;
-	border-radius: 50%;
-	background: var(--accent);
-	cursor: pointer;
-	border: none;
 }
 
 /* ── Standard Buttons ────────────────────────────────────────────────────── */

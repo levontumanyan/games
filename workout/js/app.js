@@ -22,11 +22,15 @@ import {
 } from './player.js';
 import { initAudio } from './audio.js';
 import {
-	initMusic, setVolume as setMusicVolume, nextTrack, prevTrack,
-	muteMusic, unmuteMusic, isMuted as isMusicMuted, unlockAudio
+	initMusic, nextTrack, prevTrack,
+	toggleMusicPlayback, isMusicPausedByUser,
+	unlockAudio
 } from './music.js';
 import { formatTime, formatFriendlyDuration, copyToClipboard, showToast, parseYouTubeId, initInputCleanlinessEnforcer, escapeHtml } from './utils.js';
-import { getClipIcon, getTimerIcon, getBreakIcon } from './icons.js';
+import {
+	getClipIcon, getTimerIcon, getBreakIcon,
+	getMusicPlayIcon, getMusicPauseIcon
+} from './icons.js';
 import { showPrompt, showConfirm, showAlert } from './modal.js';
 import {
 	getActiveUserId, getActiveDisplayName, setActiveUser,
@@ -308,9 +312,8 @@ function cacheDom() {
 	// Music player controls
 	dom.musicControlsBar = document.getElementById('music-controls-bar');
 	dom.musicTrackName = document.getElementById('music-track-name');
-	dom.musicVolume = document.getElementById('music-volume');
-	dom.musicMuteBtn = document.getElementById('music-mute-btn');
 	dom.musicPrevBtn = document.getElementById('music-prev-btn');
+	dom.musicPlayPauseBtn = document.getElementById('music-play-pause-btn');
 	dom.musicNextBtn = document.getElementById('music-next-btn');
 
 	// Hidden YouTube music player
@@ -859,20 +862,14 @@ function bindEvents() {
 	});
 
 	// Music player controls
-	dom.musicPrevBtn.addEventListener('click', prevTrack);
-	dom.musicNextBtn.addEventListener('click', nextTrack);
-	dom.musicVolume.addEventListener('input', (e) => {
-		setMusicVolume(parseInt(e.target.value, 10) / 100);
-	});
-	dom.musicMuteBtn.addEventListener('click', () => {
-		if (isMusicMuted()) {
-			unmuteMusic();
-			dom.musicMuteBtn.textContent = '🔊';
-		} else {
-			muteMusic();
-			dom.musicMuteBtn.textContent = '🔇';
-		}
-	});
+	if (dom.musicPrevBtn) dom.musicPrevBtn.addEventListener('click', prevTrack);
+	if (dom.musicNextBtn) dom.musicNextBtn.addEventListener('click', nextTrack);
+	if (dom.musicPlayPauseBtn) {
+		dom.musicPlayPauseBtn.addEventListener('click', () => {
+			const isNowPlaying = toggleMusicPlayback();
+			updateMusicPlayPauseBtn(isNowPlaying);
+		});
+	}
 
 	// Completion modal buttons
 	if (dom.completionModalCloseBtn) {
@@ -1536,6 +1533,16 @@ async function showCompletionModal(session, completedRoutine) {
 	dom.completionModalBackdrop.classList.remove('hidden');
 }
 
+function updateMusicPlayPauseBtn(isPlaying) {
+	if (!dom.musicPlayPauseBtn) return;
+	dom.musicPlayPauseBtn.innerHTML = isPlaying ? getMusicPauseIcon(13) : getMusicPlayIcon(13);
+	dom.musicPlayPauseBtn.title = isPlaying ? 'Pause music (M)' : 'Play music (M)';
+	const musicToggleBtn = document.getElementById('player-music-toggle-btn');
+	if (musicToggleBtn) {
+		musicToggleBtn.classList.toggle('is-paused', !isPlaying);
+	}
+}
+
 // ── Bootstrap ───────────────────────────────────────────────────────────────
 
 async function initMusicModule() {
@@ -1550,6 +1557,9 @@ async function initMusicModule() {
 				quickTitle.textContent = title;
 			}
 		},
+		onPlayStateChange: (state) => {
+			updateMusicPlayPauseBtn(state.isPlaying);
+		}
 	});
 }
 

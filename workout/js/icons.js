@@ -38,6 +38,34 @@ export function getPlusIcon(size = 14) {
 	return `<svg class="icon-svg icon-plus" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
 }
 
+export function getMusicIcon(size = 16) {
+	return `<svg class="icon-svg icon-music" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>`;
+}
+
+export function getMusicPlayIcon(size = 16) {
+	return `<svg class="icon-svg icon-music-play" width="${size}" height="${size}" viewBox="0 0 24 24" fill="currentColor"><polygon points="6,4 20,12 6,20"/></svg>`;
+}
+
+export function getMusicPauseIcon(size = 16) {
+	return `<svg class="icon-svg icon-music-pause" width="${size}" height="${size}" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1.5"/><rect x="14" y="4" width="4" height="16" rx="1.5"/></svg>`;
+}
+
+export function getMusicPrevIcon(size = 16) {
+	return `<svg class="icon-svg icon-music-prev" width="${size}" height="${size}" viewBox="0 0 24 24" fill="currentColor"><polygon points="19,20 9,12 19,4"/><rect x="5" y="4" width="3" height="16" rx="1"/></svg>`;
+}
+
+export function getMusicNextIcon(size = 16) {
+	return `<svg class="icon-svg icon-music-next" width="${size}" height="${size}" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,4 15,12 5,20"/><rect x="16" y="4" width="3" height="16" rx="1"/></svg>`;
+}
+
+export function getVolumeIcon(size = 16) {
+	return `<svg class="icon-svg icon-volume" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>`;
+}
+
+export function getVolumeMuteIcon(size = 16) {
+	return `<svg class="icon-svg icon-volume-mute" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>`;
+}
+
 export function getExerciseIcon() {
 	return '🥋';
 }

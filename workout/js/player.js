@@ -12,7 +12,8 @@ import { playCountdownBeep } from './audio.js';
 import { getClipIcon, getTimerIcon, getBreakIcon } from './icons.js';
 import {
 	setPlaylist, startMusic, pauseMusic, resumeMusic,
-	stopMusic, muteMusic, unmuteMusic, hasMusic, getCurrentTrack
+	stopMusic, muteMusic, unmuteMusic, hasMusic, getCurrentTrack,
+	toggleMusicPlayback, isMusicPausedByUser
 } from './music.js';
 import {
 	startSession, updateSessionStep, pauseSession,
@@ -262,6 +263,11 @@ export async function initPlayer(domRefs, callbacks) {
 		} else if (e.key === 'r' || e.key === 'R') {
 			e.preventDefault();
 			resetPlayback();
+		} else if (e.key === 'm' || e.key === 'M') {
+			if (hasMusic()) {
+				e.preventDefault();
+				toggleMusicPlayback();
+			}
 		}
 	});
 }
@@ -993,8 +999,10 @@ function executeTimerStep(step) {
 		if (dom.musicTrackName) dom.musicTrackName.textContent = trackTitle;
 		if (quickTitle) quickTitle.textContent = trackTitle;
 		if (musicToggleBtn) musicToggleBtn.classList.add('has-music');
-		unmuteMusic();
-		startMusic();
+		if (!isMusicPausedByUser()) {
+			unmuteMusic();
+			startMusic();
+		}
 	} else {
 		stopMusic();
 		if (dom.musicControlsBar) dom.musicControlsBar.classList.add('hidden');
