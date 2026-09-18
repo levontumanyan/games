@@ -367,12 +367,12 @@ function createViewStepCard(step, index, steps, actions) {
 	mediaBox.className = 'view-step-media';
 
 	const isReps = isRepsStep(step);
-	const videoAsset = !isReps ? resolveStepVideo(step) : null;
+	const videoAsset = !isReps && !isBreakStep(step) ? resolveStepVideo(step) : null;
 	const mediaUrl = resolveStepVisual(step);
-	const isClip = !isReps && !isBreakStep(step) && Boolean(isClipStep(step) || (videoAsset && videoAsset.videoId));
+	const isClip = Boolean(videoAsset && videoAsset.videoId);
 
 	if (isClip) {
-		const vid = videoAsset?.videoId || step.videoId;
+		const vid = videoAsset.videoId;
 		if (vid) {
 			const img = document.createElement('img');
 			img.src = `https://img.youtube.com/vi/${vid}/mqdefault.jpg`;

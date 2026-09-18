@@ -1096,7 +1096,7 @@ function createTimerFields(step, onUpdate) {
 
 	// 2. Compact Control Row: Mode + Presets + Stepper (or Fixed Video Badge)
 	const vidAsset = resolveStepVideo(step);
-	const isVideoStep = isClipStep(step) && Boolean((vidAsset && vidAsset.videoId) || step.videoId);
+	const isVideoStep = Boolean(vidAsset && vidAsset.videoId);
 
 	const row = document.createElement('div');
 	row.className = 'timer-controls-row';

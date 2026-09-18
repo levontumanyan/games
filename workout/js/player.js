@@ -415,9 +415,9 @@ function disableCaptions() {
  */
 function startClipMonitor(step, videoAsset) {
 	clearClipMonitor();
-	const endSec = (videoAsset && typeof videoAsset.endSeconds === 'number') ? videoAsset.endSeconds : step?.endSeconds;
-	const hasVid = Boolean((videoAsset && videoAsset.videoId) || isClipStep(step));
-	if (!step || !hasVid || !endSec) return;
+	const vid = videoAsset?.videoId;
+	const endSec = typeof videoAsset?.endSeconds === 'number' ? videoAsset.endSeconds : step?.endSeconds;
+	if (!step || !vid || !endSec) return;
 
 	clipCheckInterval = setInterval(() => {
 		if (!isPlaying || isPaused || !ytReady || !ytPlayer) return;
@@ -473,8 +473,8 @@ function onYTStateChange(event) {
 		clipHasStartedPlaying = true;
 		if (isPlaying && !isPaused && currentRoutine) {
 			const currentStep = currentRoutine.steps[currentStepIndex];
-			const videoAsset = currentStep && !isRepsStep(currentStep) ? resolveStepVideo(currentStep) : null;
-			const isVid = Boolean((videoAsset && videoAsset.videoId) || isClipStep(currentStep));
+			const videoAsset = currentStep && !isRepsStep(currentStep) && !isBreakStep(currentStep) ? resolveStepVideo(currentStep) : null;
+			const isVid = Boolean(videoAsset && videoAsset.videoId);
 			if (currentStep && isVid) {
 				startClipMonitor(currentStep, videoAsset);
 			}
@@ -483,8 +483,8 @@ function onYTStateChange(event) {
 		// Verify this is a legitimate ENDED event and not a spurious transition event
 		if (!isPlaying || isPaused || !currentRoutine) return;
 		const currentStep = currentRoutine.steps[currentStepIndex];
-		const videoAsset = currentStep && !isRepsStep(currentStep) ? resolveStepVideo(currentStep) : null;
-		const isVid = Boolean((videoAsset && videoAsset.videoId) || isClipStep(currentStep));
+		const videoAsset = currentStep && !isRepsStep(currentStep) && !isBreakStep(currentStep) ? resolveStepVideo(currentStep) : null;
+		const isVid = Boolean(videoAsset && videoAsset.videoId);
 		if (!currentStep || !isVid) return;
 
 		// If the video never actually entered PLAYING state for this step, or loaded less than 1s ago, ignore it
@@ -578,8 +578,8 @@ function startWorkoutCountdown(routine, onComplete) {
 			if (firstLabel) firstLabel.textContent = firstStepName;
 
 			const isReps = isRepsStep(firstStep);
-			const isVid = isClipStep(firstStep);
-			const firstVidAsset = isVid ? resolveStepVideo(firstStep) : null;
+			const firstVidAsset = !isReps && !isBreakStep(firstStep) ? resolveStepVideo(firstStep) : null;
+			const isVid = Boolean(firstVidAsset && firstVidAsset.videoId);
 			const dur = getStepDuration(firstStep, firstVidAsset);
 
 			let modeTag = '';
@@ -774,7 +774,8 @@ function advanceStepOrSubStep() {
 	clearRepsTimer();
 
 	const currentStep = currentRoutine.steps[currentStepIndex];
-	const isClip = !isRepsStep(currentStep) && !isBreakStep(currentStep) && Boolean(isClipStep(currentStep) || resolveStepVideo(currentStep)?.videoId);
+	const videoAsset = !isRepsStep(currentStep) && !isBreakStep(currentStep) ? resolveStepVideo(currentStep) : null;
+	const isClip = Boolean(videoAsset && videoAsset.videoId);
 	const hasSubSteps = currentStep && !isBreakStep(currentStep) && !isClip && Array.isArray(currentStep.exercises) && currentStep.exercises.length > 1;
 
 	if (hasSubSteps && currentSubStepIndex < currentStep.exercises.length - 1) {
@@ -815,8 +816,8 @@ function executeCurrentStep() {
 	}
 
 	const isReps = isRepsStep(step);
-	const videoAsset = !isReps ? resolveStepVideo(step) : null;
-	const isClip = !isReps && !isBreakStep(step) && Boolean(isClipStep(step) || (videoAsset && videoAsset.videoId));
+	const videoAsset = !isReps && !isBreakStep(step) ? resolveStepVideo(step) : null;
+	const isClip = Boolean(videoAsset && videoAsset.videoId);
 
 	if (isClip) {
 		executeClipStep(step, videoAsset);
@@ -864,9 +865,14 @@ function executeClipStep(step, videoAsset) {
 		dom.musicControlsBar.classList.add('hidden');
 	}
 
-	const vidId = (videoAsset && videoAsset.videoId) || (step.customMedia ? step.videoId : (!step.exercises?.length ? step.videoId : null));
-	const startSec = (videoAsset && typeof videoAsset.startSeconds === 'number') ? videoAsset.startSeconds : (step.startSeconds || 0);
-	const endSec = (videoAsset && typeof videoAsset.endSeconds === 'number') ? videoAsset.endSeconds : (step.endSeconds || undefined);
+	const vidId = videoAsset?.videoId;
+	if (!vidId) {
+		console.warn(`[Workout Player] executeClipStep [${currentStepIndex}] has no valid video ID, routing to timer`);
+		executeTimerStep(step);
+		return;
+	}
+	const startSec = typeof videoAsset.startSeconds === 'number' ? videoAsset.startSeconds : (step.startSeconds || 0);
+	const endSec = typeof videoAsset.endSeconds === 'number' ? videoAsset.endSeconds : (step.endSeconds || undefined);
 
 	console.log(`[Workout Player] executeClipStep [${currentStepIndex}] ("${step.label || 'Step'}"): videoId="${vidId}", start=${startSec}s, end=${endSec !== undefined ? endSec + 's' : 'end'}, ytReady=${ytReady}, ytPlayer=${Boolean(ytPlayer)}`);
 
@@ -1149,21 +1155,21 @@ function executeTimerStep(step) {
 			}
 			const nextIsBreak = isBreakStep(next);
 			const nextIsReps = isRepsStep(next);
-			const nextIsClip = !nextIsBreak && !nextIsReps && isClipStep(next);
-			const nextVid = !nextIsReps ? resolveStepVideo(next) : null;
+			const nextVid = !nextIsBreak && !nextIsReps ? resolveStepVideo(next) : null;
+			const nextIsClip = Boolean(nextVid && nextVid.videoId);
 
 			if (dom.upNextMeta) {
 				if (nextIsBreak) {
 					dom.upNextMeta.textContent = `☕ Rest (${formatFriendlyDuration(next.durationSeconds || 30)})`;
 				} else if (nextIsReps) {
 					dom.upNextMeta.textContent = `🔢 ${next.targetReps || 20} reps`;
-				} else if (nextIsClip || (nextVid && nextVid.videoId)) {
-					const start = nextVid?.startSeconds || 0;
-					const end = nextVid?.endSeconds || (start + 60);
+				} else if (nextIsClip) {
+					const start = nextVid.startSeconds || 0;
+					const end = nextVid.endSeconds || (start + 60);
 					const dur = Math.max(1, end - start);
 					dom.upNextMeta.textContent = `🎬 ${formatFriendlyDuration(dur)} (${formatTime(start)} → ${formatTime(end)})`;
 				} else {
-					dom.upNextMeta.textContent = `⏱ ${formatFriendlyDuration(next.durationSeconds || 30)}`;
+					dom.upNextMeta.textContent = `⏱️ ${formatFriendlyDuration(next.durationSeconds || 30)}`;
 				}
 			}
 			if (dom.upNextMediaThumb) {
@@ -1314,7 +1320,8 @@ export function previousStep() {
 	clearRepsTimer();
 
 	const currentStep = currentRoutine.steps[currentStepIndex];
-	const isClip = !isRepsStep(currentStep) && !isBreakStep(currentStep) && Boolean(isClipStep(currentStep) || resolveStepVideo(currentStep)?.videoId);
+	const videoAsset = !isRepsStep(currentStep) && !isBreakStep(currentStep) ? resolveStepVideo(currentStep) : null;
+	const isClip = Boolean(videoAsset && videoAsset.videoId);
 	const hasSubSteps = currentStep && !isBreakStep(currentStep) && !isClip && Array.isArray(currentStep.exercises) && currentStep.exercises.length > 1;
 
 	if (hasSubSteps && currentSubStepIndex > 0) {
@@ -1326,7 +1333,8 @@ export function previousStep() {
 	if (currentStepIndex <= 0) return;
 	currentStepIndex--;
 	const prevStep = currentRoutine.steps[currentStepIndex];
-	const prevIsClip = prevStep && !isRepsStep(prevStep) && !isBreakStep(prevStep) && Boolean(isClipStep(prevStep) || resolveStepVideo(prevStep)?.videoId);
+	const prevVid = prevStep && !isRepsStep(prevStep) && !isBreakStep(prevStep) ? resolveStepVideo(prevStep) : null;
+	const prevIsClip = Boolean(prevVid && prevVid.videoId);
 	if (prevStep && !isBreakStep(prevStep) && !prevIsClip && Array.isArray(prevStep.exercises) && prevStep.exercises.length > 1) {
 		currentSubStepIndex = prevStep.exercises.length - 1;
 	} else {
@@ -1358,8 +1366,8 @@ export function togglePause() {
 		requestWakeLock();
 		const step = currentRoutine.steps[currentStepIndex];
 		const isReps = isRepsStep(step);
-		const videoAsset = !isReps ? resolveStepVideo(step) : null;
-		const isClip = !isReps && !isBreakStep(step) && Boolean(isClipStep(step) || (videoAsset && videoAsset.videoId));
+		const videoAsset = !isReps && !isBreakStep(step) ? resolveStepVideo(step) : null;
+		const isClip = Boolean(videoAsset && videoAsset.videoId);
 
 		if (isClip) {
 			if (ytReady && ytPlayer) {
@@ -1546,7 +1554,8 @@ function updateStepIndicator() {
 	// Update step counter with sub-step move indicator if applicable
 	if (dom.stepCounter) {
 		const curStep = currentRoutine.steps[currentStepIndex];
-		const isClip = !isRepsStep(curStep) && !isBreakStep(curStep) && Boolean(isClipStep(curStep) || resolveStepVideo(curStep)?.videoId);
+		const curVid = !isRepsStep(curStep) && !isBreakStep(curStep) ? resolveStepVideo(curStep) : null;
+		const isClip = Boolean(curVid && curVid.videoId);
 		const hasSubSteps = curStep && !isBreakStep(curStep) && !isClip && Array.isArray(curStep.exercises) && curStep.exercises.length > 1;
 		const subSuffix = hasSubSteps ? ` · Move ${currentSubStepIndex + 1}/${curStep.exercises.length}` : '';
 		dom.stepCounter.textContent = `Step ${currentStepIndex + 1} / ${currentRoutine.steps.length}${subSuffix}`;
@@ -1555,7 +1564,8 @@ function updateStepIndicator() {
 	// Update next step preview
 	if (dom.nextStepPreview) {
 		const curStep = currentRoutine.steps[currentStepIndex];
-		const isClip = !isRepsStep(curStep) && !isBreakStep(curStep) && Boolean(isClipStep(curStep) || resolveStepVideo(curStep)?.videoId);
+		const curVid = !isRepsStep(curStep) && !isBreakStep(curStep) ? resolveStepVideo(curStep) : null;
+		const isClip = Boolean(curVid && curVid.videoId);
 		const hasSubSteps = curStep && !isBreakStep(curStep) && !isClip && Array.isArray(curStep.exercises) && curStep.exercises.length > 1;
 		if (hasSubSteps && currentSubStepIndex < curStep.exercises.length - 1) {
 			const rawNext = curStep.exercises[currentSubStepIndex + 1];
