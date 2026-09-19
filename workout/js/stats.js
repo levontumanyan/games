@@ -5,6 +5,11 @@ import {
 	CATEGORIES, DISCIPLINES,
 	getCategoryBadgeHtml, getDisciplineBadgeHtml
 } from './taxonomy.js';
+import {
+	getFlameIcon, getTimerIcon, getRepsIcon, getTrophyIcon,
+	getChartIcon, getCalendarIcon, getHistoryIcon, getTargetIcon,
+	getDisciplineIcon, getCategoryIcon
+} from './icons.js';
 
 let cachedStats = null;
 
@@ -71,7 +76,7 @@ function renderStatsContent(container, stats) {
 				<!-- Weekly Bar Chart -->
 				<div class="stats-section-card">
 					<div class="section-card-header">
-						<h3>📊 Weekly Activity</h3>
+						<h3>${getChartIcon(18)} Weekly Activity</h3>
 						<span id="weekly-total-meta" class="section-header-meta">${weeklyMinutes} mins total</span>
 					</div>
 					<div class="weekly-bar-chart" id="weekly-bar-chart">
@@ -82,7 +87,7 @@ function renderStatsContent(container, stats) {
 				<!-- Monthly Heatmap Calendar -->
 				<div class="stats-section-card">
 					<div class="section-card-header">
-						<h3>📅 ${stats.monthly?.month_name || 'Monthly'} Calendar</h3>
+						<h3>${getCalendarIcon(18)} ${stats.monthly?.month_name || 'Monthly'} Calendar</h3>
 						<span id="monthly-total-meta" class="section-header-meta">${stats.monthly?.total_minutes || 0} mins</span>
 					</div>
 					<div class="monthly-calendar-container" id="monthly-calendar-container">
@@ -96,7 +101,7 @@ function renderStatsContent(container, stats) {
 				<!-- Categories Distribution -->
 				<div class="stats-section-card">
 					<div class="section-card-header">
-						<h3>🎯 Movement Types</h3>
+						<h3>${getTargetIcon(18)} Movement Types</h3>
 						<span class="section-header-meta">Categories</span>
 					</div>
 					<div class="stats-categories-list" id="stats-categories-list">
@@ -107,7 +112,7 @@ function renderStatsContent(container, stats) {
 				<!-- Disciplines Split & Top Leaderboard -->
 				<div class="stats-section-card">
 					<div class="section-card-header">
-						<h3>🥋 Disciplines & Top Movements</h3>
+						<h3>${getDisciplineIcon('muay_thai', 18)} Disciplines & Top Movements</h3>
 						<span class="section-header-meta">Split</span>
 					</div>
 					<div class="stats-disciplines-list" id="stats-disciplines-list">
@@ -122,7 +127,7 @@ function renderStatsContent(container, stats) {
 			<!-- Recent Workout History Log -->
 			<div class="stats-section-card session-history-card">
 				<div class="section-card-header">
-					<h3>📜 Workout History</h3>
+					<h3>${getHistoryIcon(18)} Workout History</h3>
 					<span id="session-history-meta" class="section-header-meta">${(stats.recent_sessions || []).length} recent sessions</span>
 				</div>
 				<div id="session-history-list" class="session-history-list">
@@ -168,7 +173,7 @@ function renderHeroGrid(stats) {
 
 	return `
 		<div class="stat-card streak-card ${currentStreak > 0 ? 'streak-active' : ''}">
-			<div class="stat-card-icon">🔥</div>
+			<div class="stat-card-icon">${getFlameIcon(22)}</div>
 			<div class="stat-card-body">
 				<div class="stat-value">${currentStreak} <span class="stat-unit">days</span></div>
 				<div class="stat-label">Current Streak</div>
@@ -177,7 +182,7 @@ function renderHeroGrid(stats) {
 		</div>
 
 		<div class="stat-card">
-			<div class="stat-card-icon">⏱️</div>
+			<div class="stat-card-icon">${getTimerIcon(22)}</div>
 			<div class="stat-card-body">
 				<div class="stat-value">${formatMinutesToReadable(totalMinutes)}</div>
 				<div class="stat-label">Active Time</div>
@@ -186,7 +191,7 @@ function renderHeroGrid(stats) {
 		</div>
 
 		<div class="stat-card">
-			<div class="stat-card-icon">🔢</div>
+			<div class="stat-card-icon">${getRepsIcon(22)}</div>
 			<div class="stat-card-body">
 				<div class="stat-value">${totalReps.toLocaleString()} <span class="stat-unit">reps</span></div>
 				<div class="stat-label">Total Reps</div>
@@ -195,7 +200,7 @@ function renderHeroGrid(stats) {
 		</div>
 
 		<div class="stat-card">
-			<div class="stat-card-icon">🏆</div>
+			<div class="stat-card-icon">${getTrophyIcon(22)}</div>
 			<div class="stat-card-body">
 				<div class="stat-value">${totalSessions}</div>
 				<div class="stat-label">Workouts</div>
@@ -304,7 +309,7 @@ function renderCategoriesList(categories) {
 		return `
 			<div class="cat-stat-row">
 				<div class="cat-stat-header">
-					<span class="cat-stat-name"><span class="cat-icon">${catInfo.icon}</span> ${catInfo.label}</span>
+					<span class="cat-stat-name"><span class="cat-icon">${getCategoryIcon(k, 14)}</span> ${catInfo.label}</span>
 					<span class="cat-stat-nums"><strong>${sets}</strong> sets${reps > 0 ? ` · ${reps} reps` : ''}</span>
 				</div>
 				<div class="cat-stat-track">
@@ -334,7 +339,7 @@ function renderDisciplinesList(disciplines) {
 
 				return `
 					<div class="disc-stat-card">
-						<div class="disc-stat-icon">${discInfo.icon}</div>
+						<div class="disc-stat-icon">${getDisciplineIcon(k, 16)}</div>
 						<div class="disc-stat-body">
 							<div class="disc-stat-title">${discInfo.label}</div>
 							<div class="disc-stat-val">${sets} sets${reps > 0 ? ` · ${reps}r` : ''}</div>

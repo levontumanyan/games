@@ -8,6 +8,7 @@ import { getExerciseById, getExercises, inferMusclesForExercise, registerComboRe
 import { showExerciseVariationsModal } from './exercises_view.js';
 import { escapeHtml, formatTime, parseYouTubeId } from './utils.js';
 import { showConfirm, showAlert, createCustomModal } from './modal.js';
+import { getComboIcon, getSearchIcon } from './icons.js';
 
 export const FLOW_TYPES = {
 	alternating: { label: 'Alternating Cadence', icon: '⮀', color: '#6aa3a9', bg: 'rgba(106, 163, 169, 0.14)' },
@@ -161,7 +162,7 @@ export function renderCombosCatalog(container, options = {}) {
 		<div class="combos-catalog-container">
 			<div class="combos-catalog-header">
 				<div>
-					<h2 class="combos-title">🔗 Combos & Flow Library</h2>
+					<h2 class="combos-title"><span class="combos-title-icon">${getComboIcon(20)}</span> Combos & Flow Library</h2>
 					<p class="combos-subtitle">Repeating alternating cadences, striking combinations, and compound superset flows</p>
 				</div>
 				<button id="btn-create-combo" class="btn btn-primary btn-sm">+ New Combo</button>
@@ -170,7 +171,7 @@ export function renderCombosCatalog(container, options = {}) {
 			<!-- Search & Filter Bar -->
 			<div class="combos-filter-bar">
 				<div class="search-box-wrapper">
-					<span class="search-icon">🔍</span>
+					<span class="search-icon">${getSearchIcon(16)}</span>
 					<input type="text" id="combo-search-input" class="input search-box-input combo-search-input clean-input" placeholder="Search combos, alternating flows, supersets..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
 				</div>
 				<div class="combo-filter-chips" id="combo-filter-chips"></div>
@@ -750,7 +751,5 @@ export function showCreateComboModal(options = {}) {
 			await showAlert({ title: 'Error', message: 'Could not create combo: ' + err.message });
 		}
 	});
-
-	backdrop.appendChild(modal);
-	document.body.appendChild(backdrop);
 }
+

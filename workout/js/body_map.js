@@ -11,6 +11,7 @@ import {
 	getCategoryBadgeHtml,
 	getDisciplineBadgeHtml,
 } from './taxonomy.js';
+import { getMuscleIcon, getAnatomyIcon, getExerciseIcon } from './icons.js';
 import {
 	getExercises,
 	getExerciseMediaAssets,
@@ -177,7 +178,7 @@ export function createBodyMap(container, options = {}) {
 	wrapper.innerHTML = `
 		<div class="body-map-header">
 			<div class="body-map-title-row">
-				<span class="body-map-heading">🧬 Interactive Muscle Anatomy Map</span>
+				<span class="body-map-heading"><span class="body-map-heading-icon">${getAnatomyIcon(16)}</span> Interactive Muscle Anatomy Map</span>
 				<div class="body-view-controls">
 					<button type="button" class="btn-view-toggle active" data-view="both" title="Dual Anterior & Posterior View">Both</button>
 					<button type="button" class="btn-view-toggle" data-view="front" title="Front (Anterior) View">Front</button>
@@ -279,16 +280,18 @@ export function createBodyMap(container, options = {}) {
 
 	function updateInfoBarHover(def) {
 		if (!infoBar) return;
-		infoBar.innerHTML = `<span class="active-muscle-name" style="color:${def.color}">${def.icon} ${def.label}</span>`;
+		const iconSvg = getMuscleIcon(def.id, 14);
+		infoBar.innerHTML = `<span class="active-muscle-name" style="color:${def.color}"><span class="chip-svg-wrap">${iconSvg}</span> ${def.label}</span>`;
 	}
 
 	function updateInfoBarSelected() {
 		if (!infoBar) return;
 		if (selectedMuscle && MUSCLE_DEFINITIONS[selectedMuscle]) {
 			const def = MUSCLE_DEFINITIONS[selectedMuscle];
+			const iconSvg = getMuscleIcon(def.id, 13);
 			infoBar.innerHTML = `
 				<span class="active-filter-pill" style="--pill-color:${def.color}">
-					<span>${def.icon} Filtered by: <strong>${def.label}</strong></span>
+					<span class="active-filter-text"><span class="chip-svg-wrap">${iconSvg}</span> Filtered by: <strong>${def.label}</strong></span>
 					<button type="button" class="btn-clear-muscle-filter" title="Clear muscle filter">✕</button>
 				</span>
 			`;
@@ -384,7 +387,7 @@ export function renderAnatomyExplorer(container, options = {}) {
 		<div class="anatomy-explorer-container">
 			<div class="anatomy-catalog-header">
 				<div>
-					<h2 class="anatomy-title">🧬 Anatomy & Muscle Explorer</h2>
+					<h2 class="anatomy-title"><span class="anatomy-title-icon">${getAnatomyIcon(20)}</span> Anatomy & Muscle Explorer</h2>
 					<p class="anatomy-subtitle">Interactive muscle visualization — select any muscle group to inspect targeting movements</p>
 				</div>
 			</div>
@@ -398,7 +401,7 @@ export function renderAnatomyExplorer(container, options = {}) {
 			<!-- Targeted Movements Section -->
 			<div class="anatomy-target-section">
 				<div class="anatomy-section-header">
-					<h3 id="anatomy-active-target-title" class="anatomy-section-title">🎯 Targeted Movements</h3>
+					<h3 id="anatomy-active-target-title" class="anatomy-section-title"><span class="target-title-icon">${getExerciseIcon(16)}</span> Targeted Movements</h3>
 					<span id="anatomy-active-target-count" class="anatomy-target-count-badge">0 movements</span>
 				</div>
 				<div id="anatomy-cards-grid" class="exercises-cards-grid"></div>
@@ -428,7 +431,8 @@ export function renderAnatomyExplorer(container, options = {}) {
 			const btn = document.createElement('button');
 			btn.type = 'button';
 			btn.className = `anatomy-quick-chip ${currentMuscleFilter === m.id ? 'active' : ''}`;
-			btn.innerHTML = `<span>${m.icon}</span> <span>${m.label}</span>`;
+			const iconSvg = getMuscleIcon(m.id, 14);
+			btn.innerHTML = `<span class="chip-svg-wrap">${iconSvg}</span> <span class="chip-text">${m.label}</span>`;
 			btn.addEventListener('click', () => {
 				currentMuscleFilter = currentMuscleFilter === m.id ? null : m.id;
 				bodyMap.setSelectedMuscle(currentMuscleFilter);
@@ -444,9 +448,10 @@ export function renderAnatomyExplorer(container, options = {}) {
 
 		if (currentMuscleFilter && MUSCLE_DEFINITIONS[currentMuscleFilter]) {
 			const mDef = MUSCLE_DEFINITIONS[currentMuscleFilter];
-			targetTitle.innerHTML = `<span>${mDef.icon}</span> Targeted Movements: <strong>${escapeHtml(mDef.label)}</strong>`;
+			const iconSvg = getMuscleIcon(mDef.id, 16);
+			targetTitle.innerHTML = `<span class="target-title-icon">${iconSvg}</span> Targeted Movements: <strong>${escapeHtml(mDef.label)}</strong>`;
 		} else {
-			targetTitle.textContent = '🎯 All Movements';
+			targetTitle.innerHTML = `<span class="target-title-icon">${getExerciseIcon(16)}</span> All Movements`;
 		}
 		targetCount.textContent = `${list.length} movement${list.length !== 1 ? 's' : ''}`;
 

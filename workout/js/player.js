@@ -9,7 +9,7 @@ import {
 } from './utils.js';
 import { resolveStepMediaUrl, getStepDisplayName } from './editor.js';
 import { playCountdownBeep } from './audio.js';
-import { getClipIcon, getTimerIcon, getBreakIcon } from './icons.js';
+import { getClipIcon, getTimerIcon, getBreakIcon, getRepsIcon, getExerciseIcon, getMuscleIcon } from './icons.js';
 import {
 	setPlaylist, startMusic, pauseMusic, resumeMusic,
 	stopMusic, muteMusic, unmuteMusic, hasMusic, getCurrentTrack,
@@ -586,7 +586,7 @@ function startWorkoutCountdown(routine, onComplete) {
 			if (isVid) {
 				modeTag = `<span class="view-tag view-tag-clip" style="font-size:0.75rem;padding:2px 6px;">${getClipIcon(11)} Video Clip</span>`;
 			} else if (isReps) {
-				modeTag = `<span class="view-tag view-tag-reps" style="font-size:0.75rem;padding:2px 6px;">🔢 ${firstStep.targetReps || 20} reps</span>`;
+				modeTag = `<span class="view-tag view-tag-reps" style="font-size:0.75rem;padding:2px 6px;">${getRepsIcon(11)} ${firstStep.targetReps || 20} reps</span>`;
 			} else {
 				modeTag = `<span class="view-tag view-tag-time" style="font-size:0.75rem;padding:2px 6px;">${getTimerIcon(11)} ${formatTime(dur)}</span>`;
 			}
@@ -600,7 +600,7 @@ function startWorkoutCountdown(routine, onComplete) {
 				if (muscles.primary && muscles.primary.length > 0) {
 					const def = MUSCLE_DEFINITIONS[muscles.primary[0]];
 					if (def) {
-						musclePills = `<span style="font-size:0.75rem;padding:2px 6px;border-radius:4px;background:rgba(255,255,255,0.06);color:var(--text-secondary);">${def.icon} ${def.label || def.name || ''}</span>`;
+						musclePills = `<span style="font-size:0.75rem;padding:2px 6px;border-radius:4px;background:rgba(255,255,255,0.06);color:var(--text-secondary);display:inline-flex;align-items:center;gap:4px;">${getMuscleIcon(def.id || muscles.primary[0], 12)} ${escapeHtml(def.label || def.name || '')}</span>`;
 					}
 				}
 			}
@@ -618,7 +618,7 @@ function startWorkoutCountdown(routine, onComplete) {
 				} else if (mediaUrl) {
 					firstThumb.innerHTML = `<img src="${mediaUrl}" alt="${escapeHtml(firstStepName)}" />`;
 				} else {
-					firstThumb.innerHTML = `<span style="font-size:1.4rem;">🥋</span>`;
+					firstThumb.innerHTML = `<span style="display:inline-flex;align-items:center;justify-content:center;opacity:0.6;">${getExerciseIcon(20)}</span>`;
 				}
 			}
 		}
@@ -891,7 +891,7 @@ function executeClipStep(step, videoAsset) {
 	if (dom.currentStepLabel) dom.currentStepLabel.textContent = isTutorial ? 'Tutorial Breakdown' : getStepDisplayName(step);
 	if (dom.currentStepType) {
 		if (isTutorial) {
-			dom.currentStepType.innerHTML = `🎬 Tutorial Breakdown · ` + (step.exercises && step.exercises.length > 0 ? step.exercises.map(e => (getExerciseById(e.id || e)?.name || e.name || 'Instruction')).join(', ') : 'Instruction');
+			dom.currentStepType.innerHTML = `${getClipIcon(14)} Tutorial Breakdown · ` + (step.exercises && step.exercises.length > 0 ? step.exercises.map(e => (getExerciseById(e.id || e)?.name || e.name || 'Instruction')).join(', ') : 'Instruction');
 		} else if (step.exercises && step.exercises.length > 0) {
 			const joiner = step.flow_type === 'alternating' ? ' ⮀ ' : ' + ';
 			dom.currentStepType.innerHTML = `${getClipIcon(14)} ` + step.exercises.map(e => (getExerciseById(e.id || e)?.name || e.name || 'Exercise')).join(joiner);
@@ -1040,7 +1040,7 @@ function executeTimerStep(step) {
 		const stepMuscles = inferMusclesForExercise(linkedEx || { name: (activeSubEx?.name || dispName), description: step.description });
 		const priMuscle = (stepMuscles.primary || [])[0];
 		const priDef = priMuscle ? MUSCLE_DEFINITIONS[priMuscle] : null;
-		const muscleTagHtml = priDef ? ` <span class="player-hud-muscle-tag" style="color:${priDef.color}">${priDef.icon} ${priDef.label}</span>` : '';
+		const muscleTagHtml = priDef ? ` <span class="player-hud-muscle-tag" style="color:${priDef.color}">${getMuscleIcon(priMuscle, 12)} ${priDef.label}</span>` : '';
 
 		const stageHeader = dom.timerStageHeader || (typeof document !== 'undefined' && document.getElementById('timer-stage-header'));
 		const stageBadge = dom.timerStageBadge || (typeof document !== 'undefined' && document.getElementById('timer-stage-badge'));
@@ -1049,7 +1049,7 @@ function executeTimerStep(step) {
 		if (stageHeader) {
 			stageHeader.classList.remove('hidden');
 			if (stageBadge) {
-				stageBadge.innerHTML = muscleTagHtml ? `🔢 REPETITIONS ${muscleTagHtml}` : '🔢 REPETITIONS';
+				stageBadge.innerHTML = muscleTagHtml ? `${getRepsIcon(12)} REPETITIONS ${muscleTagHtml}` : `${getRepsIcon(12)} REPETITIONS`;
 			}
 			if (stageTitle) {
 				stageTitle.textContent = hasSubSteps ? (activeSubEx.name || dispName) : dispName;
@@ -1060,14 +1060,14 @@ function executeTimerStep(step) {
 			const flowIcon = step.flow_type === 'alternating' ? '⮀' : (step.flow_type === 'sequence' ? '➔' : '⚡');
 			const flowLabel = step.flow_type === 'alternating' ? 'Alternating' : (step.flow_type === 'sequence' ? 'Flow' : 'Superset');
 			dom.currentStepLabel.textContent = `${activeSubEx.name || 'Exercise'} (${dispName})`;
-			dom.currentStepType.innerHTML = `<span class="player-hud-substep-badge">${flowIcon} ${flowLabel} · Move ${currentSubStepIndex + 1}/${totalSubSteps}</span> 🔢 ${targetReps} Reps${muscleTagHtml}`;
+			dom.currentStepType.innerHTML = `<span class="player-hud-substep-badge">${flowIcon} ${flowLabel} · Move ${currentSubStepIndex + 1}/${totalSubSteps}</span> ${getRepsIcon(14)} ${targetReps} Reps${muscleTagHtml}`;
 		} else {
 			dom.currentStepLabel.textContent = `${dispName} (${targetReps} reps)`;
 			if (step.exercises && step.exercises.length > 0) {
 				const joiner = step.flow_type === 'alternating' ? ' ⮀ ' : ' + ';
-				dom.currentStepType.innerHTML = `🔢 ` + step.exercises.map(e => (getExerciseById(e.id || e)?.name || e.name || 'Exercise')).join(joiner) + muscleTagHtml;
+				dom.currentStepType.innerHTML = `${getRepsIcon(14)} ` + step.exercises.map(e => (getExerciseById(e.id || e)?.name || e.name || 'Exercise')).join(joiner) + muscleTagHtml;
 			} else {
-				dom.currentStepType.innerHTML = `🔢 ${targetReps} Reps` + muscleTagHtml;
+				dom.currentStepType.innerHTML = `${getRepsIcon(14)} ${targetReps} Reps` + muscleTagHtml;
 			}
 		}
 
@@ -1089,7 +1089,7 @@ function executeTimerStep(step) {
 		const stepMuscles = inferMusclesForExercise(linkedEx || { name: (activeSubEx?.name || dispName), description: step.description });
 		const priMuscle = (stepMuscles.primary || [])[0];
 		const priDef = (!isBreak && priMuscle) ? MUSCLE_DEFINITIONS[priMuscle] : null;
-		const muscleTagHtml = priDef ? ` <span class="player-hud-muscle-tag" style="color:${priDef.color}">${priDef.icon} ${priDef.label}</span>` : '';
+		const muscleTagHtml = priDef ? ` <span class="player-hud-muscle-tag" style="color:${priDef.color}">${getMuscleIcon(priMuscle, 12)} ${priDef.label}</span>` : '';
 
 		timerRemaining = targetDuration;
 
@@ -1160,16 +1160,16 @@ function executeTimerStep(step) {
 
 			if (dom.upNextMeta) {
 				if (nextIsBreak) {
-					dom.upNextMeta.textContent = `☕ Rest (${formatFriendlyDuration(next.durationSeconds || 30)})`;
+					dom.upNextMeta.innerHTML = `${getBreakIcon(12)} Rest (${formatFriendlyDuration(next.durationSeconds || 30)})`;
 				} else if (nextIsReps) {
-					dom.upNextMeta.textContent = `🔢 ${next.targetReps || 20} reps`;
+					dom.upNextMeta.innerHTML = `${getRepsIcon(12)} ${next.targetReps || 20} reps`;
 				} else if (nextIsClip) {
 					const start = nextVid.startSeconds || 0;
 					const end = nextVid.endSeconds || (start + 60);
 					const dur = Math.max(1, end - start);
-					dom.upNextMeta.textContent = `🎬 ${formatFriendlyDuration(dur)} (${formatTime(start)} → ${formatTime(end)})`;
+					dom.upNextMeta.innerHTML = `${getClipIcon(12)} ${formatFriendlyDuration(dur)} (${formatTime(start)} → ${formatTime(end)})`;
 				} else {
-					dom.upNextMeta.textContent = `⏱️ ${formatFriendlyDuration(next.durationSeconds || 30)}`;
+					dom.upNextMeta.innerHTML = `${getTimerIcon(12)} ${formatFriendlyDuration(next.durationSeconds || 30)}`;
 				}
 			}
 			if (dom.upNextMediaThumb) {
@@ -1184,7 +1184,7 @@ function executeTimerStep(step) {
 				} else if (nextIsBreak) {
 					dom.upNextMediaThumb.innerHTML = getBreakIcon(24);
 				} else if (nextIsReps) {
-					dom.upNextMediaThumb.innerHTML = `<div class="timer-visual-box timer-visual-reps"><span class="timer-icon">🔢</span><span class="timer-badge-sec">${next.targetReps || 20}r</span></div>`;
+					dom.upNextMediaThumb.innerHTML = `<div class="timer-visual-box timer-visual-reps"><span class="timer-icon">${getRepsIcon(20)}</span><span class="timer-badge-sec">${next.targetReps || 20}r</span></div>`;
 				} else {
 					dom.upNextMediaThumb.innerHTML = `<div class="timer-visual-box"><span class="timer-icon">${getTimerIcon(22)}</span></div>`;
 				}
@@ -1503,7 +1503,7 @@ function showPlayerUI() {
 		previewBadge = document.createElement('span');
 		previewBadge.id = 'player-preview-badge';
 		previewBadge.className = 'player-preview-badge';
-		previewBadge.innerHTML = '🔍 Preview Mode (Stats Disabled)';
+		previewBadge.innerHTML = 'Preview Mode (Stats Disabled)';
 		const topBar = dom.playerView.querySelector('.player-top-bar');
 		if (topBar) {
 			topBar.insertBefore(previewBadge, dom.fullscreenTopBtn);
@@ -1608,7 +1608,7 @@ function openWorkoutTutorial(instructionAsset, exercise) {
 	modal.innerHTML = `
 		<div class="modal-header">
 			<div class="workout-tut-header-info">
-				<span class="workout-tut-badge">🎬 Technique Tutorial & Breakdown</span>
+				<span class="workout-tut-badge">${getClipIcon(12)} Technique Tutorial & Breakdown</span>
 				<h3 class="modal-title">${escapeHtml(exercise?.name || instructionAsset.exerciseName || 'Form Guide')}</h3>
 			</div>
 			<button class="modal-close-btn" title="Close (ESC)">✕</button>

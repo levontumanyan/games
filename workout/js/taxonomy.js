@@ -246,6 +246,13 @@ export const MEDIA_KINDS = {
 	photo: { label: 'Form Photo & Cue', icon: '📷', color: '#78a88a', bg: 'rgba(120, 168, 138, 0.14)' },
 };
 
+import {
+	getMuscleIcon,
+	getCategoryIcon,
+	getDisciplineIcon,
+	getMediaKindIcon,
+} from './icons.js';
+
 /**
  * Get display info for a media asset kind.
  * @param {string} kind
@@ -264,8 +271,9 @@ export function getMediaKindInfo(kind) {
  */
 export function getMediaKindBadgeHtml(kind) {
 	const info = getMediaKindInfo(kind);
+	const iconSvg = getMediaKindIcon(kind, 13);
 	return `<span class="ex-media-kind-badge" style="--kind-color:${info.color};--kind-bg:${info.bg}">
-		<span class="kind-icon">${info.icon}</span>
+		<span class="kind-icon">${iconSvg}</span>
 		<span class="kind-label">${info.label}</span>
 	</span>`;
 }
@@ -278,8 +286,9 @@ export function getMediaKindBadgeHtml(kind) {
 export function getCategoryBadgeHtml(category) {
 	const cat = (category || 'strength').toLowerCase();
 	const info = CATEGORIES[cat] || { label: cat, icon: '💪', color: '#6366f1', bg: 'rgba(99,102,241,0.15)' };
+	const iconSvg = getCategoryIcon(cat, 13);
 	return `<span class="ex-cat-badge ex-cat-${cat}" style="--badge-color:${info.color};--badge-bg:${info.bg}">
-		<span class="ex-cat-icon">${info.icon}</span>
+		<span class="ex-cat-icon">${iconSvg}</span>
 		<span class="ex-cat-label">${info.label}</span>
 	</span>`;
 }
@@ -292,8 +301,9 @@ export function getCategoryBadgeHtml(category) {
 export function getDisciplineBadgeHtml(discipline) {
 	const disc = (discipline || 'general').toLowerCase();
 	const info = DISCIPLINES[disc] || { label: disc.replace('_', ' ').toUpperCase(), icon: '🏋️', color: '#9ea2bd' };
+	const iconSvg = getDisciplineIcon(disc, 13);
 	return `<span class="ex-disc-badge ex-disc-${disc}" title="${info.label}">
-		<span class="ex-disc-icon">${info.icon}</span>
+		<span class="ex-disc-icon">${iconSvg}</span>
 		<span class="ex-disc-label">${info.label}</span>
 	</span>`;
 }
@@ -307,8 +317,10 @@ export function getDisciplineBadgeHtml(discipline) {
 export function getMuscleBadgeHtml(muscleKey, isPrimary = true) {
 	const def = MUSCLE_DEFINITIONS[muscleKey] || { label: muscleKey };
 	const typeClass = isPrimary ? 'muscle-badge-primary' : 'muscle-badge-secondary';
+	const iconSvg = getMuscleIcon(muscleKey, 12);
 	return `<span class="ex-muscle-badge ${typeClass}" title="${isPrimary ? 'Primary Target' : 'Secondary Synergist'}: ${def.label}">
-		<span class="muscle-label">${isPrimary ? '• ' : ''}${def.label}</span>
+		<span class="muscle-icon">${iconSvg}</span>
+		<span class="muscle-label">${def.label}</span>
 	</span>`;
 }
 

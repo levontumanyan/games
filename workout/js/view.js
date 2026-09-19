@@ -4,7 +4,10 @@ import {
 	isBreakStep, isRepsStep, isClipStep, isTimerStep
 } from './utils.js';
 import { resolveStepMediaUrl, getStepDisplayName } from './editor.js';
-import { getClipIcon, getTimerIcon, getBreakIcon, getStepsIcon, getShareIcon, getSaveIcon } from './icons.js';
+import {
+	getClipIcon, getTimerIcon, getBreakIcon, getStepsIcon, getShareIcon, getSaveIcon,
+	getRepsIcon, getAnatomyIcon, getExerciseIcon, getMuscleIcon, getMusicIcon, getMediaKindIcon
+} from './icons.js';
 import { getCategoryBadgeHtml, getDisciplineBadgeHtml, getMuscleBadgeHtml, MUSCLE_DEFINITIONS } from './taxonomy.js';
 import {
 	inferMusclesForExercise, getExerciseById, getExercises, getExerciseFollowAlongMedia,
@@ -174,13 +177,13 @@ export function renderRoutineOverview(routine, container, actions = {}) {
 		const emptyBox = document.createElement('div');
 		emptyBox.className = 'view-empty-card';
 		emptyBox.innerHTML = `
-			<div class="empty-icon">🏋️</div>
+			<div class="empty-icon">${getExerciseIcon(32)}</div>
 			<h3>This workout is empty</h3>
 			<p>Add video clips or timer intervals to build your workout.</p>
 		`;
 		const addBtn = document.createElement('button');
 		addBtn.className = 'btn btn-primary';
-		addBtn.textContent = '✏️ Edit Workout & Add Steps';
+		addBtn.innerHTML = `${getStepsIcon(14)} Edit Workout & Add Steps`;
 		addBtn.addEventListener('click', () => actions.onEdit?.());
 		emptyBox.appendChild(addBtn);
 		container.appendChild(emptyBox);
@@ -231,7 +234,7 @@ export function renderRoutineOverview(routine, container, actions = {}) {
 		muscleCard.innerHTML = `
 			<div class="muscle-breakdown-header">
 				<div class="muscle-breakdown-title">
-					<span class="breakdown-icon">🧬</span>
+					<span class="breakdown-icon">${getAnatomyIcon(18)}</span>
 					<h4>Muscle Engagement & Anatomy</h4>
 				</div>
 				<div class="muscle-region-distribution">
@@ -253,7 +256,7 @@ export function renderRoutineOverview(routine, container, actions = {}) {
 					const def = MUSCLE_DEFINITIONS[mId];
 					if (!def) return '';
 					return `<button type="button" class="muscle-tag-chip clickable-muscle-chip" data-muscle="${mId}" style="--chip-color:${def.color}" title="View ${def.label} in Anatomy Map">
-						<span>${def.icon}</span> <span>${def.label}</span>
+						<span class="chip-svg-wrap">${getMuscleIcon(mId, 13)}</span> <span>${def.label}</span>
 					</button>`;
 				}).join('')}
 			</div>
@@ -275,7 +278,7 @@ export function renderRoutineOverview(routine, container, actions = {}) {
 		musicCard.className = 'view-music-summary-card';
 		musicCard.innerHTML = `
 			<div class="view-music-summary-header">
-				<span class="view-music-title">🎵 Background Music Playlist (${routine.musicTracks.length} tracks)</span>
+				<span class="view-music-title">${getMusicIcon(16)} Background Music Playlist (${routine.musicTracks.length} tracks)</span>
 				<span class="view-music-subtext">Plays during timer & rest steps</span>
 			</div>
 			<div class="view-music-list">
@@ -410,7 +413,7 @@ function createViewStepCard(step, index, steps, actions) {
 			img.style.display = 'none';
 			mediaBox.innerHTML = `
 				<div class="timer-visual-box">
-					<span class="timer-icon">${isReps ? '🔢' : getTimerIcon(24)}</span>
+					<span class="timer-icon">${isReps ? getRepsIcon(24) : getTimerIcon(24)}</span>
 					<span class="timer-badge-sec">${isReps ? `${step.targetReps || 20}r` : formatTime(step.durationSeconds || 30)}</span>
 				</div>
 			`;
@@ -425,7 +428,7 @@ function createViewStepCard(step, index, steps, actions) {
 		// Timer / Reps visual box
 		mediaBox.innerHTML = `
 			<div class="timer-visual-box ${isReps ? 'timer-visual-reps' : ''}">
-				<span class="timer-icon">${isReps ? '🔢' : getTimerIcon(24)}</span>
+				<span class="timer-icon">${isReps ? getRepsIcon(24) : getTimerIcon(24)}</span>
 				<span class="timer-badge-sec">${isReps ? `${step.targetReps || 20} reps` : formatTime(step.durationSeconds || 30)}</span>
 			</div>
 		`;
@@ -459,20 +462,20 @@ function createViewStepCard(step, index, steps, actions) {
 	} else if (isReps) {
 		const repsTag = document.createElement('span');
 		repsTag.className = 'view-tag view-tag-reps';
-		repsTag.innerHTML = `🔢 ${step.targetReps || 20} Reps Total`;
+		repsTag.innerHTML = `${getRepsIcon(11)} ${step.targetReps || 20} Reps Total`;
 		tagsRow.appendChild(repsTag);
 
 		if (mediaUrl) {
 			const animTag = document.createElement('span');
 			animTag.className = 'view-tag view-tag-anim';
-			animTag.textContent = '✨ Animation';
+			animTag.innerHTML = `${getMediaKindIcon('animation', 11)} Animation`;
 			tagsRow.appendChild(animTag);
 		}
 
 		if (step.musicTracks && step.musicTracks.length > 0) {
 			const musicTag = document.createElement('span');
 			musicTag.className = 'view-tag view-tag-music';
-			musicTag.textContent = `🎵 ${step.musicTracks[0].label || 'Music'}`;
+			musicTag.innerHTML = `${getMusicIcon(11)} ${escapeHtml(step.musicTracks[0].label || 'Music')}`;
 			tagsRow.appendChild(musicTag);
 		}
 	} else {
@@ -491,14 +494,14 @@ function createViewStepCard(step, index, steps, actions) {
 		if (mediaUrl) {
 			const animTag = document.createElement('span');
 			animTag.className = 'view-tag view-tag-anim';
-			animTag.textContent = '✨ Animation';
+			animTag.innerHTML = `${getMediaKindIcon('animation', 11)} Animation`;
 			tagsRow.appendChild(animTag);
 		}
 
 		if (step.musicTracks && step.musicTracks.length > 0) {
 			const musicTag = document.createElement('span');
 			musicTag.className = 'view-tag view-tag-music';
-			musicTag.textContent = `🎵 ${step.musicTracks[0].label || 'Music'}`;
+			musicTag.innerHTML = `${getMusicIcon(11)} ${escapeHtml(step.musicTracks[0].label || 'Music')}`;
 			tagsRow.appendChild(musicTag);
 		}
 	}

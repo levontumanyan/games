@@ -9,7 +9,19 @@ import {
 } from './utils.js';
 import { saveAudioFile, deleteAudioFile } from './musicdb.js';
 import { showPrompt, showAlert, createCustomModal } from './modal.js';
-import { getTimerIcon, getBreakIcon, getComboIcon, getExerciseIcon, getDuplicateIcon, getPlusIcon } from './icons.js';
+import {
+	getTimerIcon,
+	getBreakIcon,
+	getComboIcon,
+	getExerciseIcon,
+	getDuplicateIcon,
+	getPlusIcon,
+	getSearchIcon,
+	getClipIcon,
+	getRepsIcon,
+	getMuscleIcon,
+	getMediaKindIcon,
+} from './icons.js';
 import {
 	getCategoryBadgeHtml, getDisciplineBadgeHtml, getMuscleBadgeHtml, getDisciplineFilterPillsHtml,
 	ANATOMICAL_REGIONS
@@ -654,7 +666,8 @@ function createStepElement(step, index, routine, onUpdate, onTestStep) {
 
 	// Toggle collapse on header click
 	header.addEventListener('click', (e) => {
-		if (container._isDraggingStep) return;
+		const stepsContainer = el.closest('.editor-steps-container');
+		if (stepsContainer && stepsContainer._isDraggingStep) return;
 		if (e.target.closest('button') || e.target.closest('input') || e.target.closest('.drag-handle')) {
 			return;
 		}
@@ -1793,7 +1806,7 @@ export function showAddExerciseModal(routine, onUpdate, insertIndex = -1) {
 			<!-- Filter Toolbar -->
 			<div class="nav-filter-toolbar">
 				<div class="search-box-wrapper">
-					<span class="search-icon">🔍</span>
+					<span class="search-icon">${getSearchIcon(16)}</span>
 					<input type="text" class="input search-box-input nav-search-input clean-input" id="nav-search" placeholder="Search exercises, disciplines, or muscles (e.g. Teep, Quads, Push-ups)..." autofocus autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
 				</div>
 
@@ -1805,9 +1818,9 @@ export function showAddExerciseModal(routine, onUpdate, insertIndex = -1) {
 				<div class="nav-pills-row" id="nav-media-pills">
 					<span class="nav-pill-label">Media Filter</span>
 					<button type="button" class="nav-filter-pill active" data-media="all">All Types</button>
-					<button type="button" class="nav-filter-pill" data-media="video">🎬 Has Video</button>
-					<button type="button" class="nav-filter-pill" data-media="gif">✨ Has GIF / Loop</button>
-					<button type="button" class="nav-filter-pill" data-media="tutorial">🎓 Has Tutorial</button>
+					<button type="button" class="nav-filter-pill" data-media="video"><span class="chip-svg-wrap">${getClipIcon(12)}</span> Has Video</button>
+					<button type="button" class="nav-filter-pill" data-media="gif"><span class="chip-svg-wrap">${getMediaKindIcon('animation', 12)}</span> Has GIF / Loop</button>
+					<button type="button" class="nav-filter-pill" data-media="tutorial"><span class="chip-svg-wrap">${getMediaKindIcon('instruction', 12)}</span> Has Tutorial</button>
 				</div>
 			</div>
 
@@ -1853,24 +1866,25 @@ export function showAddExerciseModal(routine, onUpdate, insertIndex = -1) {
 	const indexedExercises = allExercises.map(ex => {
 		const fullEx = ex;
 		const muscles = inferMusclesForExercise(fullEx);
+		const primaryPills = (muscles.primary || []).map(m => getMuscleBadgeHtml(m, true)).join('');
 		const allTargetMuscles = [...(muscles.primary || []), ...(muscles.secondary || [])];
-		const primaryPills = (muscles.primary || []).slice(0, 3).map(m => getMuscleBadgeHtml(m, true)).join('');
+		const followAlong = getExerciseFollowAlongMedia(fullEx);
 		const assets = getExerciseMediaAssets([fullEx]);
-		const followAlong = getExerciseFollowAlongMedia(fullEx) || assets[0];
-		const isVid = Boolean(followAlong && (followAlong.type === 'video' || Boolean(followAlong.videoId)));
-		const vid = followAlong?.videoId || (fullEx.media_url ? parseYouTubeId(fullEx.media_url) : null);
-		const hasVid = Boolean(vid || (fullEx.media_url && (fullEx.media_url.includes('youtube') || fullEx.media_url.includes('youtu.be'))));
-		const hasGifOrImg = Boolean((fullEx.media_url && !hasVid) || assets.some(a => a.kind === 'animation' || a.kind === 'photo'));
-		const hasTutorial = Boolean(assets.some(a => a.kind === 'instruction'));
-		const searchBlob = `${(fullEx.name || '').toLowerCase()} ${(fullEx.category || '').toLowerCase()} ${(fullEx.discipline || '').toLowerCase()} ${allTargetMuscles.map(m => m.toLowerCase()).join(' ')}`;
+		const isVid = Boolean(followAlong && (followAlong.type === 'video' || followAlong.videoId));
+		const vid = isVid ? (followAlong.videoId || parseYouTubeId(followAlong.url)) : null;
+		const hasVid = isVid || assets.some(a => a.type === 'video' || a.videoId);
+		const hasGifOrImg = Boolean(fullEx.media_url || assets.some(a => a.type === 'image' || a.kind === 'animation'));
+		const hasTutorial = assets.some(a => a.kind === 'instruction');
+
+		const searchBlob = `${fullEx.name || ''} ${fullEx.discipline || ''} ${fullEx.category || ''} ${allTargetMuscles.join(' ')} ${fullEx.description || ''}`.toLowerCase();
 
 		return {
 			fullEx,
 			muscles,
-			allTargetMuscles,
 			primaryPills,
-			assets,
+			allTargetMuscles,
 			followAlong,
+			assets,
 			isVid,
 			vid,
 			hasVid,
@@ -1885,8 +1899,13 @@ export function showAddExerciseModal(routine, onUpdate, insertIndex = -1) {
 		const region = ANATOMICAL_REGIONS.find(r => r.id === regionId);
 		if (!region) return true;
 
-		if (region.categories && region.categories.includes(item.fullEx.category)) return true;
-		if (region.disciplines && region.disciplines.includes(item.fullEx.discipline)) return true;
+		if (region.categories && region.categories.includes(item.fullEx.category)) {
+			return true;
+		}
+
+		if (region.disciplines && region.disciplines.includes(item.fullEx.discipline)) {
+			return true;
+		}
 
 		if (region.muscles && region.muscles.some(m => item.allTargetMuscles.includes(m))) {
 			return true;
@@ -1932,8 +1951,11 @@ export function showAddExerciseModal(routine, onUpdate, insertIndex = -1) {
 			const btn = document.createElement('button');
 			btn.type = 'button';
 			btn.className = `nav-region-btn ${activeRegion === reg.id ? 'active' : ''}`;
+			const iconSvg = reg.id === 'all'
+				? getExerciseIcon(14)
+				: (reg.muscles && reg.muscles.length > 0 ? getMuscleIcon(reg.muscles[0], 14) : getExerciseIcon(14));
 			btn.innerHTML = `
-				<span>${reg.icon} ${reg.label}</span>
+				<span class="region-btn-label"><span class="chip-svg-wrap">${iconSvg}</span> ${reg.label}</span>
 				<span class="nav-region-count">${count}</span>
 			`;
 			btn.addEventListener('click', () => {
@@ -1965,20 +1987,20 @@ export function showAddExerciseModal(routine, onUpdate, insertIndex = -1) {
 				thumbHtml = `
 					<div class="nav-card-thumb">
 						<img src="https://img.youtube.com/vi/${vid}/default.jpg" alt="${escapeHtml(fullEx.name)}" loading="lazy">
-						<span class="nav-card-thumb-badge">▶</span>
+						<span class="nav-card-thumb-badge">${getClipIcon(11)}</span>
 					</div>
 				`;
 			} else if (fullEx.media_url || followAlong?.url) {
 				thumbHtml = `
 					<div class="nav-card-thumb">
 						<img src="${fullEx.media_url || followAlong.url}" alt="${escapeHtml(fullEx.name)}" loading="lazy">
-						<span class="nav-card-thumb-badge">✨</span>
+						<span class="nav-card-thumb-badge">${getMediaKindIcon('animation', 11)}</span>
 					</div>
 				`;
 			} else {
 				thumbHtml = `
 					<div class="nav-card-thumb">
-						<span style="font-size:1.2rem;">🥋</span>
+						<span class="nav-card-icon-placeholder">${getExerciseIcon(20)}</span>
 					</div>
 				`;
 			}
@@ -2003,7 +2025,7 @@ export function showAddExerciseModal(routine, onUpdate, insertIndex = -1) {
 					</div>
 				</div>
 				<div class="nav-card-actions">
-					<button type="button" class="btn-nav-view" title="Open Full Variations Overlay">👁️ View</button>
+					<button type="button" class="btn-nav-view" title="Open Full Variations Overlay">View</button>
 					<button type="button" class="btn-nav-add" title="Add to Routine">+ Add (${qty}${unitStr})</button>
 				</div>
 			`;
@@ -2038,30 +2060,32 @@ export function showAddExerciseModal(routine, onUpdate, insertIndex = -1) {
 		});
 	}
 
-	searchInput.addEventListener('input', (e) => {
-		searchQuery = e.target.value;
+	function handleSearchChange() {
+		searchQuery = searchInput.value;
+		renderSidebar();
+		renderList();
+	}
+
+	searchInput.addEventListener('input', () => {
 		clearTimeout(searchDebounceTimer);
-		searchDebounceTimer = setTimeout(() => {
-			renderSidebar();
-			renderList();
-		}, 120);
+		searchDebounceTimer = setTimeout(handleSearchChange, 120);
 	});
 
-	modal.querySelectorAll('#nav-discipline-pills .nav-filter-pill').forEach(pill => {
-		pill.addEventListener('click', () => {
-			modal.querySelectorAll('#nav-discipline-pills .nav-filter-pill').forEach(p => p.classList.remove('active'));
-			pill.classList.add('active');
-			activeDiscipline = pill.getAttribute('data-disc');
+	modal.querySelectorAll('#nav-discipline-pills .nav-filter-pill').forEach(btn => {
+		btn.addEventListener('click', () => {
+			modal.querySelectorAll('#nav-discipline-pills .nav-filter-pill').forEach(b => b.classList.remove('active'));
+			btn.classList.add('active');
+			activeDiscipline = btn.getAttribute('data-disc') || 'all';
 			renderSidebar();
 			renderList();
 		});
 	});
 
-	modal.querySelectorAll('#nav-media-pills .nav-filter-pill').forEach(pill => {
-		pill.addEventListener('click', () => {
-			modal.querySelectorAll('#nav-media-pills .nav-filter-pill').forEach(p => p.classList.remove('active'));
-			pill.classList.add('active');
-			activeMedia = pill.getAttribute('data-media');
+	modal.querySelectorAll('#nav-media-pills .nav-filter-pill').forEach(btn => {
+		btn.addEventListener('click', () => {
+			modal.querySelectorAll('#nav-media-pills .nav-filter-pill').forEach(b => b.classList.remove('active'));
+			btn.classList.add('active');
+			activeMedia = btn.getAttribute('data-media') || 'all';
 			renderSidebar();
 			renderList();
 		});
@@ -2084,14 +2108,14 @@ export function showAddComboModal(routine, onUpdate, insertIndex = -1) {
 	const combos = getCombos();
 
 	const isInserting = typeof insertIndex === 'number' && insertIndex >= 0;
-	const titleText = isInserting ? `🔗 Select Combo Flow (Insert at #${insertIndex + 1})` : '🔗 Select Combo Flow';
+	const titleText = isInserting ? `Select Combo Flow (Insert at #${insertIndex + 1})` : 'Select Combo Flow';
 
 	const { modal, close } = createCustomModal({
 		title: titleText,
 		className: 'modal-add-picker-backdrop',
 		bodyHtml: `
 			<div class="search-box-wrapper" style="margin-bottom:12px;">
-				<span class="search-icon">🔍</span>
+				<span class="search-icon">${getSearchIcon(16)}</span>
 				<input type="text" id="add-combo-search" class="input search-box-input combo-search-input clean-input" placeholder="Search combos (Star Jumps ⮀ Coordination, Lateral Taps, Jab Knee)..." autofocus autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
 			</div>
 
@@ -2117,7 +2141,9 @@ export function showAddComboModal(routine, onUpdate, insertIndex = -1) {
 			item.className = 'add-picker-item';
 
 			const flowIcon = combo.flow_type === 'alternating' ? '⮀ Alternating' : (combo.flow_type === 'sequence' ? '➔ Flow' : '⚡ Superset');
-			const modeStr = combo.default_mode === 'reps' ? `🔢 ${combo.default_quantity || 20} Reps` : `⏱️ ${formatTime(combo.default_quantity || 190)}`;
+			const modeStr = combo.default_mode === 'reps'
+				? `<span class="chip-svg-wrap">${getRepsIcon(13)}</span> ${combo.default_quantity || 20} Reps`
+				: `<span class="chip-svg-wrap">${getTimerIcon(13)}</span> ${formatTime(combo.default_quantity || 190)}`;
 
 			item.innerHTML = `
 				<div class="add-picker-item-left">

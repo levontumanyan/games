@@ -19,6 +19,7 @@ import {
 	getDisciplineOptionsHtml,
 	getDisciplineFilterPillsHtml,
 } from './taxonomy.js';
+import { getMediaKindIcon } from './icons.js';
 
 // Re-export taxonomy definitions and badge helpers for seamless compatibility
 export {
@@ -477,9 +478,9 @@ export function renderExerciseCardElement(ex, options = {}) {
 		<p class="ex-lib-desc">${escapeHtml(ex.description || 'Movement and technique practice.')}</p>
 
 		<div class="ex-lib-media-pills">
-			${instructionCount > 0 ? `<span class="ex-media-mini-pill pill-inst">🎬 ${instructionCount} Tutorial${instructionCount > 1 ? 's' : ''}</span>` : ''}
-			${demoCount > 0 ? `<span class="ex-media-mini-pill pill-demo">⚡ ${demoCount} Drill${demoCount > 1 ? 's' : ''}</span>` : ''}
-			${animCount > 0 ? `<span class="ex-media-mini-pill pill-anim">✨ Visual Form</span>` : ''}
+			${instructionCount > 0 ? `<span class="ex-media-mini-pill pill-inst"><span class="chip-svg-wrap">${getMediaKindIcon('instruction', 11)}</span> ${instructionCount} Tutorial${instructionCount > 1 ? 's' : ''}</span>` : ''}
+			${demoCount > 0 ? `<span class="ex-media-mini-pill pill-demo"><span class="chip-svg-wrap">${getMediaKindIcon('demonstration', 11)}</span> ${demoCount} Drill${demoCount > 1 ? 's' : ''}</span>` : ''}
+			${animCount > 0 ? `<span class="ex-media-mini-pill pill-anim"><span class="chip-svg-wrap">${getMediaKindIcon('animation', 11)}</span> Visual Form</span>` : ''}
 			${assets.length === 0 ? `<span class="ex-media-mini-pill pill-none">No media</span>` : ''}
 		</div>
 

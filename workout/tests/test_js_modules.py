@@ -170,6 +170,53 @@ def test_workout_js_modules_evaluate_in_node():
 	assert res.returncode == 0, f"Node failed to evaluate workout JS modules:\n{res.stderr}"
 
 
+def test_workout_js_has_no_undeclared_or_unbound_identifiers():
+	"""
+	Run oxlint with `no-undef` enabled across all JS files.
+	Guarantees 100% of referenced variables, functions, and imported identifiers
+	exist and are bound in scope, preventing runtime ReferenceErrors in uncalled closures.
+	"""
+	import json
+	import shutil
+	import subprocess
+	import tempfile
+
+	if not shutil.which("npx"):
+		return
+
+	js_dir = Path(__file__).parent.parent / "js"
+	config = {
+		"env": {
+			"browser": True,
+			"builtin": True,
+			"es2024": True,
+		},
+		"globals": {
+			"YT": "readonly",
+		},
+		"rules": {
+			"no-undef": "error",
+			"no-unused-vars": "off",
+		},
+	}
+
+	with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as f:
+		json.dump(config, f)
+		cfg_path = f.name
+
+	try:
+		res = subprocess.run(
+			["npx", "--yes", "oxlint", "-c", cfg_path, str(js_dir)],
+			capture_output=True,
+			text=True,
+		)
+		assert res.returncode == 0, (
+			f"Undeclared / missing identifiers detected in workout JavaScript:\n{res.stdout}"
+		)
+	finally:
+		Path(cfg_path).unlink(missing_ok=True)
+
+
 def test_youtube_playlist_and_video_parsing():
 	import shutil
 	import subprocess

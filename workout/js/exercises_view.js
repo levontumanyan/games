@@ -14,6 +14,16 @@ import {
 	getDisciplineOptionsHtml,
 } from './taxonomy.js';
 import {
+	getMuscleIcon,
+	getSearchIcon,
+	getExerciseIcon,
+	getRepsIcon,
+	getTimerIcon,
+	getClipIcon,
+	getAnatomyIcon,
+	getMediaKindIcon,
+} from './icons.js';
+import {
 	getExercises,
 	getExerciseById,
 	filterExercises,
@@ -46,7 +56,7 @@ export function renderExercisesCatalog(container, options = {}) {
 		<div class="exercises-catalog-container">
 			<div class="exercises-catalog-header">
 				<div>
-					<h2 class="exercises-title">🥋 Exercise & Movement Library</h2>
+					<h2 class="exercises-title"><span class="exercises-title-icon">${getExerciseIcon(20)}</span> Exercise & Movement Library</h2>
 					<p class="exercises-subtitle">Biomechanical movements, skill taxonomy, and looping form animations</p>
 				</div>
 				<div class="exercises-header-actions">
@@ -57,7 +67,7 @@ export function renderExercisesCatalog(container, options = {}) {
 			<!-- Search & Filter Bar -->
 			<div class="exercises-filter-bar">
 				<div class="search-box-wrapper">
-					<span class="search-icon">🔍</span>
+					<span class="search-icon">${getSearchIcon(16)}</span>
 					<input type="text" id="exercise-search-input" class="input search-box-input exercise-search-input clean-input" placeholder="Search exercises, muscles, techniques, cues..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
 				</div>
 				<div class="exercise-filter-chips" id="exercise-filter-chips"></div>
@@ -99,7 +109,8 @@ export function renderExercisesCatalog(container, options = {}) {
 			const mBtn = document.createElement('button');
 			mBtn.type = 'button';
 			mBtn.className = 'ex-chip-btn active muscle-active-chip';
-			mBtn.innerHTML = `<span>${mDef.icon}</span> <span>${mDef.label}</span> <span class="chip-clear-x">✕</span>`;
+			const iconSvg = getMuscleIcon(mDef.id, 14);
+			mBtn.innerHTML = `<span class="chip-svg-wrap">${iconSvg}</span> <span>${mDef.label}</span> <span class="chip-clear-x">✕</span>`;
 			mBtn.addEventListener('click', () => {
 				currentMuscleFilter = null;
 				renderFilterChips();
@@ -303,11 +314,11 @@ function createModernVideoSlicerDrawer({
 	const intervalsBtn = document.createElement('button');
 	intervalsBtn.type = 'button';
 	intervalsBtn.className = 'mode-btn active';
-	intervalsBtn.innerHTML = '<span>✂️ Time Intervals</span>';
+	intervalsBtn.innerHTML = `<span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg> Time Intervals</span>`;
 	const fullBtn = document.createElement('button');
 	fullBtn.type = 'button';
 	fullBtn.className = 'mode-btn';
-	fullBtn.innerHTML = '<span>🎬 Full Video</span>';
+	fullBtn.innerHTML = `<span>${getClipIcon(13)} Full Video</span>`;
 	modeCapsule.append(intervalsBtn, fullBtn);
 	headerBar.append(metaWrap, modeCapsule);
 
@@ -316,14 +327,14 @@ function createModernVideoSlicerDrawer({
 	fullBanner.className = 'full-video-clean-banner hidden';
 	fullBanner.innerHTML = `
 		<div class="banner-left">
-			<div class="banner-icon-bubble">🎬</div>
+			<div class="banner-icon-bubble">${getClipIcon(18)}</div>
 			<div class="banner-text">
 				<h5>Using Complete Video (00:00 → End)</h5>
 				<p>No sliders, trim handles, or playback cuts. The player will stream the entire clip from start to finish.</p>
 			</div>
 		</div>
 		<button type="button" class="btn-add-slice-prompt">
-			<span>✂️ Add Specific Interval</span>
+			<span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg> Add Specific Interval</span>
 		</button>
 	`;
 	const switchFromBannerBtn = fullBanner.querySelector('.btn-add-slice-prompt');
@@ -407,7 +418,7 @@ function createModernVideoSlicerDrawer({
 	// Duration Capsule
 	const durCapsule = document.createElement('div');
 	durCapsule.className = 'modern-duration-capsule';
-	durCapsule.innerHTML = '<span class="dur-capsule-label">Duration</span><span class="dur-capsule-val">⏱️ 60s</span>';
+	durCapsule.innerHTML = `<span class="dur-capsule-label">Duration</span><span class="dur-capsule-val"><span class="chip-svg-wrap">${getTimerIcon(13)}</span> 60s</span>`;
 	const durValText = durCapsule.querySelector('.dur-capsule-val');
 
 	// End Box
@@ -533,7 +544,7 @@ function createModernVideoSlicerDrawer({
 
 		const dur = Math.max(1, active.end - active.start);
 		const durStr = dur >= 60 ? `${Math.floor(dur / 60)}m ${dur % 60}s` : `${dur}s`;
-		durValText.textContent = `⏱️ ${durStr}`;
+		durValText.innerHTML = `<span class="chip-svg-wrap">${getTimerIcon(13)}</span> ${durStr}`;
 
 		renderPills();
 
@@ -869,15 +880,15 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 
 		const effectiveQty = getEffectiveExerciseQuantity(exercise);
 		const modeStr = (exercise.default_mode || 'reps') === 'reps'
-			? `🔢 ${effectiveQty} Target Reps`
-			: `⏱️ ${formatTime(effectiveQty)}`;
+			? `<span class="chip-svg-wrap">${getRepsIcon(13)}</span> ${effectiveQty} Target Reps`
+			: `<span class="chip-svg-wrap">${getTimerIcon(13)}</span> ${formatTime(effectiveQty)}`;
 
 		modal.innerHTML = `
 			<div class="hud-left-panel">
 				<div class="hud-badges-row">
 					${getCategoryBadgeHtml(exercise.category)}
 					${exercise.discipline ? getDisciplineBadgeHtml(exercise.discipline) : ''}
-					<button class="btn btn-ghost btn-xs btn-edit-this-ex" title="Edit exercise name, cues, category, or default sets">✏️ Edit Movement</button>
+					<button class="btn btn-ghost btn-xs btn-edit-this-ex" title="Edit exercise name, cues, category, or default sets">Edit Movement</button>
 				</div>
 
 				<h2 class="hud-combo-title">${escapeHtml(exercise.name)}</h2>
@@ -894,7 +905,7 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 						</div>
 					` : `
 						<div class="hud-no-media-thumb">
-							<div class="hud-no-media-icon">${emptyIcon}</div>
+							<div class="hud-no-media-icon">${getExerciseIcon(28)}</div>
 							<div class="hud-no-media-title">No Media Attached</div>
 							<div class="hud-no-media-sub">Add a video demonstration, tutorial, or photo below</div>
 						</div>
@@ -913,7 +924,7 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 				<div class="hud-left-actions">
 					<button class="btn btn-primary btn-hud-play-ex" style="width:100%;">▶ Preview Follow-Along</button>
 					<button class="btn btn-ghost btn-hud-add-ex" style="width:100%;">+ Add to Workout ▾</button>
-					${onOpenInLibrary ? '<button class="btn btn-ghost btn-hud-open-lib" style="width:100%;font-size:0.8rem;opacity:0.85;">🔍 Show in Movement Library</button>' : ''}
+					${onOpenInLibrary ? '<button class="btn btn-ghost btn-hud-open-lib" style="width:100%;font-size:0.8rem;opacity:0.85;">Show in Movement Library</button>' : ''}
 				</div>
 			</div>
 
@@ -921,15 +932,15 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 				<div class="hud-right-header">
 					<div class="hud-stat-pills">
 						<span class="hud-stat-pill">${modeStr}</span>
-						<span class="hud-stat-pill">🎬 ${assets.length} Media Variation${assets.length !== 1 ? 's' : ''}</span>
+						<span class="hud-stat-pill"><span class="chip-svg-wrap">${getClipIcon(12)}</span> ${assets.length} Media Variation${assets.length !== 1 ? 's' : ''}</span>
 					</div>
 					<button class="modal-close-btn" title="Close (ESC)">✕</button>
 				</div>
 
 				<div class="hud-desc-section">
 					<div class="hud-desc-header">
-						<div class="hud-section-label" style="margin-bottom:0;">📝 Description & Coaching Cues</div>
-						${!isEditingDesc ? `<button type="button" class="btn btn-ghost btn-xs btn-edit-desc" title="${exercise.description ? 'Edit description' : 'Add description'}">✏️ ${exercise.description ? 'Edit' : '+ Add Description'}</button>` : ''}
+						<div class="hud-section-label" style="margin-bottom:0;">Description & Coaching Cues</div>
+						${!isEditingDesc ? `<button type="button" class="btn btn-ghost btn-xs btn-edit-desc" title="${exercise.description ? 'Edit description' : 'Add description'}">${exercise.description ? 'Edit' : '+ Add Description'}</button>` : ''}
 					</div>
 					<div class="hud-description-box ${!exercise.description && !isEditingDesc ? 'hud-desc-empty' : ''} ${isEditingDesc ? 'is-editing' : ''}">
 						${isEditingDesc ? `
@@ -944,13 +955,13 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 						` : (exercise.description ? `
 							<p class="hud-desc-text">${escapeHtml(exercise.description)}</p>
 						` : `
-							<p class="hud-desc-text hud-desc-placeholder"><span>➕</span> Add coaching cues, technique pointers, or form execution details...</p>
+							<p class="hud-desc-text hud-desc-placeholder">Add coaching cues, technique pointers, or form execution details...</p>
 						`)}
 					</div>
 				</div>
 
 				<div class="hud-constituents-deck">
-					<div class="hud-section-label">🎬 Tutorials, Follow-Along Variations & Photo References (${assets.length})</div>
+					<div class="hud-section-label"><span class="chip-svg-wrap">${getClipIcon(13)}</span> Tutorials, Follow-Along Variations & Photo References (${assets.length})</div>
 					
 					<div class="modal-assets-list">
 						${assets.length === 0 ? '<p class="empty-chip-hint">No extra media attached yet. Add a YouTube tutorial link, follow-along video, or photo below!</p>' : ''}
@@ -963,18 +974,18 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 
 							let actionBtnLabel = '▶ Play Video';
 							if (!isVideo) {
-								actionBtnLabel = '🔍 View Photo';
+								actionBtnLabel = 'View Photo';
 							} else if (a.kind === 'instruction') {
-								actionBtnLabel = '🎬 Watch Tutorial';
+								actionBtnLabel = 'Watch Tutorial';
 							} else if (a.kind === 'demonstration' || a.kind === 'drill') {
-								actionBtnLabel = '⚡ Follow Along';
+								actionBtnLabel = 'Follow Along';
 							}
 
 							return `
 								<div class="modal-asset-row" data-idx="${idx}">
 									<div class="modal-asset-thumb">
 										<img src="${thumb}" alt="${escapeHtml(a.title || '')}" onerror="this.src='/workout/media/placeholder.svg'">
-										${isVideo ? '<span class="modal-play-badge">▶</span>' : '<span class="modal-play-badge" style="font-size:0.75rem;">📷</span>'}
+										${isVideo ? '<span class="modal-play-badge">▶</span>' : `<span class="modal-play-badge" style="font-size:0.75rem;">${getMediaKindIcon('photo', 12)}</span>`}
 									</div>
 									<div class="modal-asset-info">
 										<div class="modal-asset-badge-row">
@@ -985,7 +996,7 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 									</div>
 									<div class="modal-asset-actions">
 										<button class="btn btn-sm btn-primary btn-play-asset-now" data-idx="${idx}" title="${isVideo ? (a.kind === 'instruction' ? 'Watch technique tutorial' : 'Preview follow-along video') : 'View image reference'}">${actionBtnLabel}</button>
-										<button class="btn btn-sm btn-ghost btn-remove-asset-now" data-idx="${idx}" title="Remove this media variation">🗑️</button>
+										<button class="btn btn-sm btn-ghost btn-remove-asset-now" data-idx="${idx}" title="Remove this media variation"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button>
 									</div>
 								</div>
 							`;
@@ -999,10 +1010,10 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 							<div class="field-group">
 								<label>Media Role / Kind</label>
 								<select id="new-asset-kind" class="input">
-									<option value="instruction">🎬 Instruction & Tutorial (YouTube Video)</option>
-									<option value="demonstration">⚡ Exercise Execution / Follow-Along (YouTube Video)</option>
-									<option value="photo">📷 Form Reference Photo (Upload / Screenshot / URL)</option>
-									<option value="animation">✨ Looping GIF / Visual (Upload / URL)</option>
+									<option value="instruction">Instruction & Tutorial (YouTube Video)</option>
+									<option value="demonstration">Exercise Execution / Follow-Along (YouTube Video)</option>
+									<option value="photo">Form Reference Photo (Upload / Screenshot / URL)</option>
+									<option value="animation">Looping GIF / Visual (Upload / URL)</option>
 								</select>
 							</div>
 
@@ -1010,7 +1021,7 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 							<div id="new-asset-upload-zone" class="media-upload-dropzone hidden">
 								<input type="file" id="new-asset-file-input" accept="image/*" class="hidden-file-input">
 								<div class="dropzone-inner" id="new-asset-dropzone-inner">
-									<span class="dropzone-icon">📷</span>
+									<span class="dropzone-icon">${getMediaKindIcon('photo', 24)}</span>
 									<div class="dropzone-text">
 										<strong>Choose photo / screenshot</strong> or drag & drop here
 									</div>
@@ -1445,7 +1456,7 @@ export function showEditExerciseModal(exercise = null, options = {}) {
 
 	modal.innerHTML = `
 		<div class="modal-header">
-			<h3 class="modal-title">${isEdit ? '✏️ Edit Custom Exercise' : '➕ Create Custom Exercise'}</h3>
+			<h3 class="modal-title">${isEdit ? 'Edit Custom Exercise' : 'Create Custom Exercise'}</h3>
 			<button class="modal-close-btn" title="Close">✕</button>
 		</div>
 
@@ -1459,14 +1470,7 @@ export function showEditExerciseModal(exercise = null, options = {}) {
 
 					<div class="field-row">
 						<div class="field-group">
-							<label>Category</label>
-							<select id="create-ex-category" class="input">
-								${getCategoryOptionsHtml(isEdit ? exercise.category : 'strength')}
-							</select>
-						</div>
-
-						<div class="field-group">
-							<label>Discipline</label>
+							<label>Primary Discipline</label>
 							<select id="create-ex-discipline" class="input">
 								${getDisciplineOptionsHtml(isEdit ? exercise.discipline : 'general')}
 							</select>
@@ -1477,8 +1481,8 @@ export function showEditExerciseModal(exercise = null, options = {}) {
 						<div class="field-group">
 							<label>Default Execution Mode</label>
 							<select id="create-ex-mode" class="input">
-								<option value="reps" ${isEdit && exercise.default_mode === 'reps' ? 'selected' : ''}>🔢 Target Reps</option>
-								<option value="time" ${isEdit && exercise.default_mode === 'time' ? 'selected' : ''}>⏱️ Timed Interval</option>
+								<option value="reps" ${isEdit && exercise.default_mode === 'reps' ? 'selected' : ''}>Target Reps</option>
+								<option value="time" ${isEdit && exercise.default_mode === 'time' ? 'selected' : ''}>Timed Interval</option>
 							</select>
 						</div>
 
@@ -1491,11 +1495,11 @@ export function showEditExerciseModal(exercise = null, options = {}) {
 					<!-- Targeted Anatomy Badges Tray -->
 					<div class="selected-badges-tray">
 						<div class="badge-group-row">
-							<span class="badge-group-label label-pri">🔴 Primary Target Muscles</span>
+							<span class="badge-group-label label-pri"><span class="badge-dot pri-dot"></span> Primary Target Muscles</span>
 							<div class="badges-pill-wrap" id="create-ex-primary-muscles"></div>
 						</div>
 						<div class="badge-group-row">
-							<span class="badge-group-label label-sec">🟡 Secondary Synergist Muscles</span>
+							<span class="badge-group-label label-sec"><span class="badge-dot sec-dot"></span> Secondary Synergist Muscles</span>
 							<div class="badges-pill-wrap" id="create-ex-secondary-muscles"></div>
 						</div>
 					</div>
@@ -1513,7 +1517,7 @@ export function showEditExerciseModal(exercise = null, options = {}) {
 						<div class="media-input-with-upload">
 							<input type="text" id="create-ex-media" class="input clean-input" placeholder="YouTube URL, image link, or upload/paste screenshot..." value="${escapeHtml(currentMediaUrl)}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
 							<input type="file" id="create-ex-file-input" accept="image/*" class="hidden-file-input">
-							<button type="button" id="btn-browse-ex-photo" class="btn btn-ghost btn-sm" title="Upload local image / screenshot">📷 Upload</button>
+							<button type="button" id="btn-browse-ex-photo" class="btn btn-ghost btn-sm" title="Upload local image / screenshot">${getMediaKindIcon('photo', 13)} Upload</button>
 						</div>
 						<div id="create-ex-upload-preview" class="create-upload-preview ${currentMediaUrl && !currentMediaUrl.includes('youtube') && !currentMediaUrl.includes('youtu.be') ? '' : 'hidden'}">
 							<img id="create-ex-preview-img" src="${escapeHtml(currentMediaUrl || '')}" onerror="this.parentElement.classList.add('hidden')">
@@ -1526,10 +1530,10 @@ export function showEditExerciseModal(exercise = null, options = {}) {
 				<!-- Anatomy Side Panel -->
 				<div class="exercise-anatomy-panel">
 					<div class="anatomy-controls-row">
-						<span class="anatomy-panel-title">🧬 Tap Muscle:</span>
+						<span class="anatomy-panel-title"><span class="panel-icon-wrap">${getAnatomyIcon(14)}</span> Tap Muscle:</span>
 						<div class="picker-mode-switch" id="ex-anatomy-mode-switch">
-							<button type="button" class="picker-mode-btn active mode-pri" data-mode="primary" title="Tap body to select Primary Target">🔴 Primary</button>
-							<button type="button" class="picker-mode-btn mode-sec" data-mode="secondary" title="Tap body to select Secondary Synergist">🟡 Secondary</button>
+							<button type="button" class="picker-mode-btn active mode-pri" data-mode="primary" title="Tap body to select Primary Target"><span class="badge-dot pri-dot"></span> Primary</button>
+							<button type="button" class="picker-mode-btn mode-sec" data-mode="secondary" title="Tap body to select Secondary Synergist"><span class="badge-dot sec-dot"></span> Secondary</button>
 						</div>
 					</div>
 
@@ -1551,7 +1555,7 @@ export function showEditExerciseModal(exercise = null, options = {}) {
 
 		<div class="modal-footer">
 			<button class="btn btn-ghost modal-btn-cancel">Cancel</button>
-			<button id="btn-submit-create-ex" class="btn btn-primary">${isEdit ? '✓ Save Changes' : 'Create Exercise'}</button>
+			<button id="btn-submit-create-ex" class="btn btn-primary">${isEdit ? 'Save Changes' : 'Create Exercise'}</button>
 		</div>
 	`;
 
@@ -1704,10 +1708,11 @@ export function showEditExerciseModal(exercise = null, options = {}) {
 			priContainer.innerHTML = '<span class="empty-badge-hint">None selected (tap body to pick)</span>';
 		} else {
 			selectedPrimary.forEach(m => {
-				const def = MUSCLE_DEFINITIONS[m] || { label: m, icon: '💪' };
+				const def = MUSCLE_DEFINITIONS[m] || { label: m };
+				const iconSvg = getMuscleIcon(m, 13);
 				const pill = document.createElement('span');
 				pill.className = 'target-pill pri-pill';
-				pill.innerHTML = `<span>${def.icon} ${escapeHtml(def.label)}</span> <button type="button" class="btn-pill-remove" title="Remove">✕</button>`;
+				pill.innerHTML = `<span class="pill-label-wrap"><span class="chip-svg-wrap">${iconSvg}</span> ${escapeHtml(def.label)}</span> <button type="button" class="btn-pill-remove" title="Remove">✕</button>`;
 				pill.querySelector('.btn-pill-remove').addEventListener('click', () => {
 					selectedPrimary.delete(m);
 					syncAnatomyState();
@@ -1720,10 +1725,11 @@ export function showEditExerciseModal(exercise = null, options = {}) {
 			secContainer.innerHTML = '<span class="empty-badge-hint">None selected (optional)</span>';
 		} else {
 			selectedSecondary.forEach(m => {
-				const def = MUSCLE_DEFINITIONS[m] || { label: m, icon: '💪' };
+				const def = MUSCLE_DEFINITIONS[m] || { label: m };
+				const iconSvg = getMuscleIcon(m, 13);
 				const pill = document.createElement('span');
 				pill.className = 'target-pill sec-pill';
-				pill.innerHTML = `<span>${def.icon} ${escapeHtml(def.label)}</span> <button type="button" class="btn-pill-remove" title="Remove">✕</button>`;
+				pill.innerHTML = `<span class="pill-label-wrap"><span class="chip-svg-wrap">${iconSvg}</span> ${escapeHtml(def.label)}</span> <button type="button" class="btn-pill-remove" title="Remove">✕</button>`;
 				pill.querySelector('.btn-pill-remove').addEventListener('click', () => {
 					selectedSecondary.delete(m);
 					syncAnatomyState();
@@ -1740,7 +1746,8 @@ export function showEditExerciseModal(exercise = null, options = {}) {
 		path.addEventListener('mouseenter', () => {
 			if (hoverInfo && def) {
 				const regionStr = (def.region || '').toUpperCase();
-				hoverInfo.textContent = `${def.icon} ${def.label}${regionStr ? ' (' + regionStr + ')' : ''}`;
+				const iconSvg = getMuscleIcon(def.id, 13);
+				hoverInfo.innerHTML = `<span class="chip-svg-wrap">${iconSvg}</span> ${def.label}${regionStr ? ' (' + regionStr + ')' : ''}`;
 			}
 		});
 
@@ -1781,7 +1788,7 @@ export function showEditExerciseModal(exercise = null, options = {}) {
 		const default_mode = modal.querySelector('#create-ex-mode').value;
 		const rawQuantity = parseInt(modal.querySelector('#create-ex-quantity').value, 10);
 		const description = modal.querySelector('#create-ex-desc').value.trim();
-		const media_url = modal.querySelector('#create-ex-media').value.trim();
+		let media_url = modal.querySelector('#create-ex-media').value.trim();
 		const primary_muscles = Array.from(selectedPrimary);
 		const secondary_muscles = Array.from(selectedSecondary);
 

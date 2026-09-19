@@ -9942,3 +9942,51 @@ textarea.input {
 	border-radius: 12px;
 }
 
+/* ── Vector SVG Icon Adjustments ─────────────────────────────────────────── */
+
+.chip-svg-wrap,
+.stat-card-icon svg,
+.disc-stat-icon svg,
+.cat-icon svg {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	vertical-align: middle;
+	flex-shrink: 0;
+}
+
+.muscle-svg,
+.cat-svg,
+.disc-svg,
+.media-kind-svg,
+.icon-svg {
+	vertical-align: -0.15em;
+	display: inline-block;
+	flex-shrink: 0;
+}
+
+.stat-card-icon svg {
+	width: 24px;
+	height: 24px;
+	stroke-width: 2.2;
+}
+
+.anatomy-quick-chip .chip-svg-wrap {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	opacity: 0.9;
+}
+
+.anatomy-quick-chip:hover .chip-svg-wrap,
+.anatomy-quick-chip.active .chip-svg-wrap {
+	opacity: 1;
+}
+
+.ex-muscle-badge svg,
+.clickable-muscle-chip svg {
+	vertical-align: middle;
+	margin-right: 2px;
+}
+
+
