@@ -588,7 +588,7 @@ function startWorkoutCountdown(routine, onComplete) {
 			const firstStepName = getStepDisplayName(firstStep);
 			if (firstLabel) firstLabel.textContent = firstStepName;
 
-const cls = classifyStep(firstStep);
+			const cls = classifyStep(firstStep);
 			const isReps = cls.mode === 'reps';
 			const isVid = Boolean(cls.video);
 			const firstVidAsset = cls.video;
@@ -825,7 +825,7 @@ function executeCurrentStep() {
 		updateSessionStep(currentStepIndex);
 	}
 
-const cls = classifyStep(step);
+	const cls = classifyStep(step);
 	const videoAsset = cls.video;
 
 	if (cls.mode === 'time' && videoAsset) {
@@ -950,20 +950,20 @@ function executeTimerStep(step) {
 	dom.timerOverlay?.classList.remove('is-video-mode');
 
 	const isBreak = isBreakStep(step);
-	const hasSubSteps = !isBreak && Array.isArray(step.exercises) && step.exercises.length > 1;
-	const totalSubSteps = hasSubSteps ? step.exercises.length : 1;
-	if (hasSubSteps) {
+	const stepHasSubSteps = hasSubSteps(step);
+	const totalSubSteps = stepHasSubSteps ? step.exercises.length : 1;
+	if (stepHasSubSteps) {
 		if (currentSubStepIndex < 0) currentSubStepIndex = 0;
 		if (currentSubStepIndex >= totalSubSteps) currentSubStepIndex = 0;
 	} else {
 		currentSubStepIndex = 0;
 	}
 
-	const rawSubEx = hasSubSteps ? step.exercises[currentSubStepIndex] : null;
+	const rawSubEx = stepHasSubSteps ? step.exercises[currentSubStepIndex] : null;
 	const resolvedSubEx = rawSubEx ? ((rawSubEx.id ? getExerciseById(rawSubEx.id) : null) || rawSubEx) : null;
 	const activeSubEx = (rawSubEx && resolvedSubEx) ? { ...resolvedSubEx, ...rawSubEx, name: rawSubEx.name || resolvedSubEx.name || '' } : (resolvedSubEx || rawSubEx);
 
-	const isSubReps = isSubStepReps(step, hasSubSteps ? activeSubEx : null);
+	const isSubReps = isSubStepReps(step, stepHasSubSteps ? activeSubEx : null);
 	isRepsMode = isSubReps;
 
 	dom.timerOverlay?.classList.toggle('is-break', isBreak);
@@ -971,7 +971,7 @@ function executeTimerStep(step) {
 
 	// Handle media/gif animation display (Hero Layout)
 	let mediaUrl = null;
-	if (hasSubSteps && activeSubEx) {
+	if (stepHasSubSteps && activeSubEx) {
 		mediaUrl = activeSubEx.media_url || activeSubEx.mediaUrl || activeSubEx.gifUrl || resolveStepMediaUrl({ label: activeSubEx.name, type: 'timer' }) || resolveStepMediaUrl(step);
 	} else {
 		mediaUrl = resolveStepMediaUrl(step);
@@ -1055,7 +1055,7 @@ function executeTimerStep(step) {
 	dom.timerOverlay?.querySelectorAll('.timer-center-text .reps-done-action-btn')?.forEach(b => b.remove());
 
 	if (isSubReps) {
-		const targetReps = hasSubSteps
+		const targetReps = stepHasSubSteps
 			? getEffectiveSubStepReps(step, currentSubStepIndex, totalSubSteps, activeSubEx)
 			: (step.targetReps || 20);
 		currentRepsValue = Number(targetReps) || 20;
@@ -1082,11 +1082,11 @@ function executeTimerStep(step) {
 				stageBadge.innerHTML = muscleTagHtml ? `${getRepsIcon(12)} REPETITIONS ${muscleTagHtml}` : `${getRepsIcon(12)} REPETITIONS`;
 			}
 			if (stageTitle) {
-				stageTitle.textContent = hasSubSteps ? (activeSubEx.name || dispName) : dispName;
+				stageTitle.textContent = stepHasSubSteps ? (activeSubEx.name || dispName) : dispName;
 			}
 		}
 
-		if (hasSubSteps) {
+		if (stepHasSubSteps) {
 			const flowIcon = step.flow_type === 'alternating' ? '⮀' : (step.flow_type === 'sequence' ? '➔' : '⚡');
 			const flowLabel = step.flow_type === 'alternating' ? 'Alternating' : (step.flow_type === 'sequence' ? 'Flow' : 'Superset');
 			dom.currentStepLabel.textContent = `${activeSubEx.name || 'Exercise'} (${dispName})`;
@@ -1111,7 +1111,7 @@ function executeTimerStep(step) {
 		if (repsContainer) {
 			repsContainer.classList.add('hidden');
 		}
-		const targetDuration = hasSubSteps
+		const targetDuration = stepHasSubSteps
 			? getEffectiveSubStepDuration(step, currentSubStepIndex, totalSubSteps, activeSubEx)
 			: (step.durationSeconds || 30);
 		const linkedEx = resolvedSubEx || (step.exercises && step.exercises[0]) || (step.exercise_id ? getExerciseById(step.exercise_id) : null);
@@ -1140,7 +1140,7 @@ function executeTimerStep(step) {
 					stageBadge.innerHTML = muscleTagHtml ? `${getTimerIcon(12)} TIMED INTERVAL ${muscleTagHtml}` : `${getTimerIcon(12)} TIMED INTERVAL`;
 				}
 				if (stageTitle) {
-					stageTitle.textContent = hasSubSteps ? (activeSubEx.name || dispName) : dispName;
+					stageTitle.textContent = stepHasSubSteps ? (activeSubEx.name || dispName) : dispName;
 				}
 			}
 			if (dom.timerLabel) {
@@ -1151,7 +1151,7 @@ function executeTimerStep(step) {
 
 		dom.timerDisplay.textContent = formatTime(timerRemaining);
 
-		if (hasSubSteps) {
+		if (stepHasSubSteps) {
 			const flowIcon = step.flow_type === 'alternating' ? '⮀' : (step.flow_type === 'sequence' ? '➔' : '⚡');
 			const flowLabel = step.flow_type === 'alternating' ? 'Alternating' : (step.flow_type === 'sequence' ? 'Flow' : 'Superset');
 			dom.currentStepLabel.textContent = `${activeSubEx.name || 'Exercise'} (${dispName})`;

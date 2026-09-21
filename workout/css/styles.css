@@ -2518,6 +2518,12 @@ html, body {
 	color: var(--text-primary);
 }
 
+.step-mode-segmented-compact .btn-mode-seg:disabled {
+	opacity: 0.45;
+	cursor: not-allowed;
+	color: var(--text-secondary);
+}
+
 .step-mode-segmented-compact .btn-mode-seg.active {
 	background: var(--accent);
 	color: #ffffff;
