@@ -879,7 +879,7 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 		const emptyIcon = discInfo?.icon || catInfo?.icon || '🎯';
 
 		const effectiveQty = getEffectiveExerciseQuantity(exercise);
-const modeStr = (exercise.default_mode || 'reps') === 'reps'
+		const modeStr = (exercise.default_mode || 'reps') === 'reps'
 		? `<span class="chip-svg-wrap">${getRepsIcon(13)}</span> ${formatModeQuantity('reps', effectiveQty, { repsLabel: 'Target Reps' })}`
 		: `<span class="chip-svg-wrap">${getTimerIcon(13)}</span> ${formatModeQuantity('time', effectiveQty)}`;
 
@@ -1470,7 +1470,14 @@ export function showEditExerciseModal(exercise = null, options = {}) {
 
 					<div class="field-row">
 						<div class="field-group">
-							<label>Primary Discipline</label>
+							<label>Category</label>
+							<select id="create-ex-category" class="input">
+								${getCategoryOptionsHtml(isEdit ? exercise.category : 'strength')}
+							</select>
+						</div>
+
+						<div class="field-group">
+							<label>Discipline</label>
 							<select id="create-ex-discipline" class="input">
 								${getDisciplineOptionsHtml(isEdit ? exercise.discipline : 'general')}
 							</select>
