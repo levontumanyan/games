@@ -3130,6 +3130,11 @@ textarea.input {
 	display: none !important;
 }
 
+/* Video + timed mode: the timer ring floats over the looping follow-along video */
+#timer-overlay.is-video-mode {
+	background: transparent;
+}
+
 #timer-overlay.is-break {
 	background: radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.16) 0%, rgba(5, 6, 10, 0.95) 75%);
 }

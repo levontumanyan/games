@@ -1,7 +1,7 @@
 import {
 	formatTime, formatFriendlyDuration, escapeHtml, parseYouTubeId,
 	getEffectiveSubStepReps, getEffectiveSubStepDuration,
-	isBreakStep, isRepsStep, isClipStep, isTimerStep
+	isBreakStep, isSubStepReps
 } from './utils.js';
 import { resolveStepMediaUrl, getStepDisplayName } from './editor.js';
 import {
@@ -11,7 +11,7 @@ import {
 import { getCategoryBadgeHtml, getDisciplineBadgeHtml, getMuscleBadgeHtml, MUSCLE_DEFINITIONS } from './taxonomy.js';
 import {
 	inferMusclesForExercise, getExerciseById, getExercises, getExerciseFollowAlongMedia,
-	resolveStepVideo, resolveStepVisual
+	classifyStep
 } from './exercises.js';
 import { getFlowTypeBadgeHtml } from './combos.js';
 
@@ -73,18 +73,22 @@ export function renderRoutineOverview(routine, container, actions = {}) {
 	}
 
 	const steps = routine.steps || [];
-	const clipCount = steps.filter(s => s.type === 'clip').length;
-	const breakCount = steps.filter(s => isBreakStep(s)).length;
-	const repsCount = steps.filter(s => s.stepMode === 'reps' || (!s.stepMode && Boolean(s.targetReps))).length;
-	const timerCount = steps.filter(s => s.type === 'timer' && !isBreakStep(s) && (s.stepMode === 'time' || (!s.stepMode && !s.targetReps))).length;
-	const totalSeconds = steps.reduce((sum, s) => {
-		if (s.type === 'timer') return sum + (s.durationSeconds || 0);
-		if (s.type === 'clip') {
-			const dur = (s.endSeconds || 0) - (s.startSeconds || 0);
-			return sum + Math.max(0, dur);
+	let clipCount = 0;
+	let breakCount = 0;
+	let repsCount = 0;
+	let totalSeconds = 0;
+	steps.forEach(s => {
+		const cls = classifyStep(s);
+		if (cls.mode === 'break') {
+			breakCount++;
+			totalSeconds += cls.targetDuration;
+		} else if (cls.mode === 'reps') {
+			repsCount++;
+		} else {
+			if (cls.video) clipCount++;
+			totalSeconds += cls.targetDuration;
 		}
-		return sum;
-	}, 0);
+	});
 
 	// ── Hero Header ──────────────────────────────────────────────────────────
 	const header = document.createElement('div');
@@ -365,8 +369,9 @@ function createViewStepCard(step, index, steps, actions) {
 	}
 
 	const isCombo = Boolean(step.combo_id || step.flow_type || (step.exercises && step.exercises.length >= 2));
+	const stepCls = classifyStep(step);
 	const card = document.createElement('div');
-	card.className = `view-step-card view-step-${step.type}` + (isCombo ? ' view-step-combo-card' : '');
+	card.className = `view-step-card view-step-${stepCls.video ? 'clip' : 'timer'}` + (isCombo ? ' view-step-combo-card' : '');
 	card.title = `Click to test this step in Preview Mode (Stats Disabled)`;
 
 	// Step index badge
@@ -378,10 +383,10 @@ function createViewStepCard(step, index, steps, actions) {
 	const mediaBox = document.createElement('div');
 	mediaBox.className = 'view-step-media';
 
-	const isReps = isRepsStep(step);
-	const videoAsset = !isReps && !isBreakStep(step) ? resolveStepVideo(step) : null;
-	const mediaUrl = resolveStepVisual(step);
-	const isClip = Boolean(videoAsset && videoAsset.videoId);
+const isReps = stepCls.mode === 'reps';
+	const videoAsset = stepCls.video;
+	const mediaUrl = stepCls.visual;
+	const isClip = Boolean(videoAsset);
 
 	if (isClip) {
 		const vid = videoAsset.videoId;
@@ -413,8 +418,8 @@ function createViewStepCard(step, index, steps, actions) {
 			img.style.display = 'none';
 			mediaBox.innerHTML = `
 				<div class="timer-visual-box">
-					<span class="timer-icon">${isReps ? getRepsIcon(24) : getTimerIcon(24)}</span>
-					<span class="timer-badge-sec">${isReps ? `${step.targetReps || 20}r` : formatTime(step.durationSeconds || 30)}</span>
+<span class="timer-icon">${isReps ? getRepsIcon(24) : getTimerIcon(24)}</span>
+					<span class="timer-badge-sec">${isReps ? `${stepCls.targetReps}r` : formatTime(stepCls.targetDuration || 30)}</span>
 				</div>
 			`;
 		};
@@ -428,8 +433,8 @@ function createViewStepCard(step, index, steps, actions) {
 		// Timer / Reps visual box
 		mediaBox.innerHTML = `
 			<div class="timer-visual-box ${isReps ? 'timer-visual-reps' : ''}">
-				<span class="timer-icon">${isReps ? getRepsIcon(24) : getTimerIcon(24)}</span>
-				<span class="timer-badge-sec">${isReps ? `${step.targetReps || 20} reps` : formatTime(step.durationSeconds || 30)}</span>
+<span class="timer-icon">${isReps ? getRepsIcon(24) : getTimerIcon(24)}</span>
+				<span class="timer-badge-sec">${isReps ? `${stepCls.targetReps} reps` : formatTime(stepCls.targetDuration || 30)}</span>
 			</div>
 		`;
 	}
@@ -462,7 +467,7 @@ function createViewStepCard(step, index, steps, actions) {
 	} else if (isReps) {
 		const repsTag = document.createElement('span');
 		repsTag.className = 'view-tag view-tag-reps';
-		repsTag.innerHTML = `${getRepsIcon(11)} ${step.targetReps || 20} Reps Total`;
+repsTag.innerHTML = `${getRepsIcon(11)} ${stepCls.targetReps} Reps Total`;
 		tagsRow.appendChild(repsTag);
 
 		if (mediaUrl) {
@@ -479,7 +484,7 @@ function createViewStepCard(step, index, steps, actions) {
 			tagsRow.appendChild(musicTag);
 		}
 	} else {
-		const dur = step.durationSeconds || 30;
+		const dur = stepCls.targetDuration || 30;
 
 		const typeTag = document.createElement('span');
 		typeTag.className = 'view-tag view-tag-timer';
@@ -558,7 +563,7 @@ function createViewStepCard(step, index, steps, actions) {
 			subRow.setAttribute('tabindex', '0');
 			subRow.title = `Click to view "${resolvedEx.name}" exercise guide & videos`;
 
-			const isSubReps = resolvedEx.stepMode === 'reps' || (!resolvedEx.durationSeconds && (step.stepMode === 'reps' || (!step.stepMode && Boolean(step.targetReps)))) || (resolvedEx.default_mode === 'reps' && !resolvedEx.durationSeconds);
+			const isSubReps = isSubStepReps(step, resolvedEx);
 			const subReps = getEffectiveSubStepReps(step, sIdx, step.exercises.length, resolvedEx);
 			const subDur = getEffectiveSubStepDuration(step, sIdx, step.exercises.length, resolvedEx);
 			const exTargetStr = isSubReps ? `${subReps} reps` : formatFriendlyDuration(subDur);

@@ -75,10 +75,20 @@ class ComboCreate(BaseSchema):
 
 class RoutineStep(BaseSchema):
 	id: str | None = Field(default=None, description="Step identifier")
-	type: str = Field(default="timer", description="Step type: timer, clip, rest, combo, etc.")
+	type: str = Field(
+		default="timer", description="Legacy step type: timer, clip, rest, combo, etc."
+	)
+	mode: str | None = Field(
+		default=None,
+		description="Execution mode: time, reps, or break (decoupled from media)",
+	)
 	label: str | None = Field(default="", description="Step display label / title")
 	durationSeconds: int | None = Field(default=None, description="Timer duration in seconds")
+	targetDuration: int | None = Field(
+		default=None, description="Execution target duration in seconds (time/break)"
+	)
 	reps: int | None = Field(default=None, description="Repetition target if reps-based")
+	targetReps: int | None = Field(default=None, description="Execution target reps (reps mode)")
 	videoId: str | None = Field(default=None, description="YouTube video ID if video clip")
 	startSeconds: float | None = Field(default=None, description="Video clip start time in seconds")
 	endSeconds: float | None = Field(default=None, description="Video clip end time in seconds")

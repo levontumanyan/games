@@ -156,22 +156,30 @@ function stopHeartbeat() {
 }
 
 /**
+ * Serialize a session into the persistable API payload shape.
+ * @param {Object} session
+ * @returns {Object}
+ */
+function toSessionPayload(session) {
+	return {
+		id: session.id,
+		routine_id: session.routine_id,
+		routine_title: session.routine_title,
+		started_at: session.started_at,
+		completed_at: session.completed_at,
+		duration_seconds: session.duration_seconds,
+		completed_steps: session.completed_steps,
+		total_steps: session.total_steps,
+		status: session.status,
+	};
+}
+
+/**
  * Send current session state to backend.
  */
 function flushSession() {
 	if (!activeSession) return;
-	const payload = {
-		id: activeSession.id,
-		routine_id: activeSession.routine_id,
-		routine_title: activeSession.routine_title,
-		started_at: activeSession.started_at,
-		completed_at: activeSession.completed_at,
-		duration_seconds: activeSession.duration_seconds,
-		completed_steps: activeSession.completed_steps,
-		total_steps: activeSession.total_steps,
-		status: activeSession.status,
-	};
-	saveSession(payload).catch(e => {
+	saveSession(toSessionPayload(activeSession)).catch(e => {
 		// Silent catch for background heartbeat
 	});
 }
@@ -184,17 +192,7 @@ window.addEventListener('beforeunload', () => {
 		activeSession.completed_at = new Date().toISOString();
 
 		const path = window.location.pathname.startsWith('/workout') ? '/workout/api/sessions' : '/api/sessions';
-		const payload = JSON.stringify({
-			id: activeSession.id,
-			routine_id: activeSession.routine_id,
-			routine_title: activeSession.routine_title,
-			started_at: activeSession.started_at,
-			completed_at: activeSession.completed_at,
-			duration_seconds: activeSession.duration_seconds,
-			completed_steps: activeSession.completed_steps,
-			total_steps: activeSession.total_steps,
-			status: activeSession.status,
-		});
+		const payload = JSON.stringify(toSessionPayload(activeSession));
 
 		try {
 			if (navigator.sendBeacon) {

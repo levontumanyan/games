@@ -40,7 +40,7 @@ import {
 } from './exercises.js';
 import { showConfirm, showAlert } from './modal.js';
 import { uploadImageFile } from './storage.js';
-import { escapeHtml, formatTime, parseTime, parseYouTubeId, showToast } from './utils.js';
+import { escapeHtml, formatTime, parseTime, parseYouTubeId, showToast, formatModeQuantity } from './utils.js';
 import { getFrontBodySvg, getBackBodySvg } from './body_map.js';
 
 /**
@@ -879,9 +879,9 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 		const emptyIcon = discInfo?.icon || catInfo?.icon || '🎯';
 
 		const effectiveQty = getEffectiveExerciseQuantity(exercise);
-		const modeStr = (exercise.default_mode || 'reps') === 'reps'
-			? `<span class="chip-svg-wrap">${getRepsIcon(13)}</span> ${effectiveQty} Target Reps`
-			: `<span class="chip-svg-wrap">${getTimerIcon(13)}</span> ${formatTime(effectiveQty)}`;
+const modeStr = (exercise.default_mode || 'reps') === 'reps'
+		? `<span class="chip-svg-wrap">${getRepsIcon(13)}</span> ${formatModeQuantity('reps', effectiveQty, { repsLabel: 'Target Reps' })}`
+		: `<span class="chip-svg-wrap">${getTimerIcon(13)}</span> ${formatModeQuantity('time', effectiveQty)}`;
 
 		modal.innerHTML = `
 			<div class="hud-left-panel">

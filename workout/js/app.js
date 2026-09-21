@@ -37,7 +37,7 @@ import {
 	fetchUsers, createUser
 } from './user.js';
 import { renderStatsDashboard } from './stats.js';
-import { loadExercises, getExerciseById, getExerciseFollowAlongMedia } from './exercises.js';
+import { loadExercises, getExerciseById, getExerciseFollowAlongMedia, classifyStep } from './exercises.js';
 import { renderExercisesCatalog, showExerciseVariationsModal, highlightExerciseCard } from './exercises_view.js';
 import { loadCombos, renderCombosCatalog } from './combos.js';
 import { renderAnatomyExplorer } from './body_map.js';
@@ -1157,13 +1157,15 @@ function renderRoutineList() {
 
 		const meta = document.createElement('span');
 		meta.className = 'routine-meta';
-		const clipCount = sharedRoutine.steps.filter(s => s.type === 'clip').length;
-		const timerCount = sharedRoutine.steps.filter(s => s.type === 'timer').length;
-		const totalTime = sharedRoutine.steps.reduce((sum, s) => {
-			if (s.type === 'timer') return sum + (s.durationSeconds || 0);
-			if (s.type === 'clip') return sum + Math.max(0, (s.endSeconds || 0) - (s.startSeconds || 0));
-			return sum;
-		}, 0);
+		const sharedSteps = sharedRoutine.steps || [];
+		let clipCount = 0;
+		let timerCount = 0;
+		let totalTime = 0;
+		sharedSteps.forEach(s => {
+			const cls = classifyStep(s);
+			if (cls.video) clipCount++; else timerCount++;
+			if (cls.targetDuration) totalTime += cls.targetDuration;
+		});
 		meta.textContent = `Shared · ${sharedRoutine.steps.length} steps · ~${formatTime(totalTime)}`;
 
 		info.append(title, meta);
@@ -1187,13 +1189,15 @@ function renderRoutineList() {
 
 		const meta = document.createElement('span');
 		meta.className = 'routine-meta';
-		const clipCount = routine.steps.filter(s => s.type === 'clip').length;
-		const timerCount = routine.steps.filter(s => s.type === 'timer').length;
-		const totalTime = routine.steps.reduce((sum, s) => {
-			if (s.type === 'timer') return sum + (s.durationSeconds || 0);
-			if (s.type === 'clip') return sum + Math.max(0, (s.endSeconds || 0) - (s.startSeconds || 0));
-			return sum;
-		}, 0);
+		const routineSteps = routine.steps || [];
+		let clipCount = 0;
+		let timerCount = 0;
+		let totalTime = 0;
+		routineSteps.forEach(s => {
+			const cls = classifyStep(s);
+			if (cls.video) clipCount++; else timerCount++;
+			if (cls.targetDuration) totalTime += cls.targetDuration;
+		});
 		meta.textContent = `${routine.steps.length} steps · ${clipCount} clips · ${timerCount} timers · ~${formatTime(totalTime)}`;
 
 		info.append(title, meta);
@@ -1508,9 +1512,8 @@ async function showCompletionModal(session, completedRoutine) {
 	let totalSecs = session?.duration_seconds || 0;
 	if (totalSecs <= 0 && completedRoutine?.steps) {
 		totalSecs = completedRoutine.steps.reduce((sum, s) => {
-			if (s.type === 'timer') return sum + (s.durationSeconds || 0);
-			if (s.type === 'clip') return sum + Math.max(0, (s.endSeconds || 0) - (s.startSeconds || 0));
-			return sum;
+			const cls = classifyStep(s);
+			return sum + (cls.targetDuration || 0);
 		}, 0);
 	}
 	if (dom.completionStatDuration) {
@@ -1554,16 +1557,23 @@ async function showCompletionModal(session, completedRoutine) {
 			let typeLabel = '';
 			let durStr = '';
 
-			if (step.type === 'clip') {
+			const cls = classifyStep(step);
+			if (cls.mode === 'break') {
+				iconSvg = getBreakIcon(16);
+				typeLabel = 'Rest Break';
+				durStr = formatFriendlyDuration(cls.targetDuration || 0);
+			} else if (cls.mode === 'reps') {
+				iconSvg = getTimerIcon(16);
+				typeLabel = `${cls.targetReps} Reps`;
+				durStr = `${cls.targetReps} reps`;
+			} else if (cls.video) {
 				iconSvg = getClipIcon(16);
-				const clipDur = Math.max(0, (step.endSeconds || 0) - (step.startSeconds || 0));
-				typeLabel = `Video Clip · ${formatTime(step.startSeconds || 0)} → ${formatTime(step.endSeconds || 0)}`;
-				durStr = formatFriendlyDuration(clipDur);
+				typeLabel = `Follow-Along · ${formatTime(cls.video.startSeconds || 0)} → ${formatTime(cls.video.endSeconds || 0)}`;
+				durStr = formatFriendlyDuration(cls.targetDuration);
 			} else {
-				const isBreak = step.label?.toLowerCase().includes('rest') || step.label?.toLowerCase().includes('break');
-				iconSvg = isBreak ? getBreakIcon(16) : getTimerIcon(16);
-				typeLabel = isBreak ? 'Rest Break' : 'Exercise Timer';
-				durStr = formatFriendlyDuration(step.durationSeconds || 0);
+				iconSvg = getTimerIcon(16);
+				typeLabel = 'Exercise Timer';
+				durStr = formatFriendlyDuration(cls.targetDuration || 0);
 			}
 
 			item.innerHTML = `

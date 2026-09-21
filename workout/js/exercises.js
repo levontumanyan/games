@@ -3,7 +3,7 @@
  */
 
 import { fetchServerExercises, saveCustomExerciseOnServer, deleteCustomExerciseOnServer } from './storage.js';
-import { escapeHtml, formatTime, parseYouTubeId, isBreakStep, isRepsStep, isClipStep, isTimerStep } from './utils.js';
+import { escapeHtml, parseYouTubeId, isBreakStep, isRepsStep, isClipStep, isTimerStep, getStepMode, getStepDuration, formatModeQuantity } from './utils.js';
 import {
 	MUSCLE_DEFINITIONS,
 	MUSCLE_GROUPS,
@@ -458,9 +458,7 @@ export function renderExerciseCardElement(ex, options = {}) {
 	const animCount = assets.filter(a => a.kind === 'animation' || a.kind === 'photo').length;
 
 	const effectiveQty = getEffectiveExerciseQuantity(ex);
-	const modeStr = (ex.default_mode || 'reps') === 'reps'
-		? `${effectiveQty} Reps`
-		: formatTime(effectiveQty);
+	const modeStr = formatModeQuantity(ex.default_mode || 'reps', effectiveQty);
 
 	card.innerHTML = `
 		<div class="ex-lib-header">
@@ -731,4 +729,61 @@ export function resolveStepVisual(step) {
 	}
 
 	return null;
+}
+
+/**
+ * Classify a step into its normalized execution + media model.
+ * This is the single entry point for "what is this step and what does it show".
+ * @param {Object} step
+ * @returns {{
+ *   mode: 'break'|'reps'|'time',
+ *   targetDuration: number,
+ *   targetReps: number,
+ *   video: { videoId: string, startSeconds: number, endSeconds: number } | null,
+ *   visual: string | null
+ * }}
+ */
+export function classifyStep(step) {
+	const mode = getStepMode(step);
+	const video = mode === 'time' ? resolveStepVideo(step) : null;
+	const visual = mode !== 'break' ? resolveStepVisual(step) : null;
+
+	if (mode === 'reps') {
+		return {
+			mode,
+			targetReps: Number(step.targetReps) || 20,
+			targetDuration: 0,
+			video: null,
+			visual,
+		};
+	}
+
+	return {
+		mode,
+		targetReps: 0,
+		targetDuration: getStepDuration(step, video),
+		video,
+		visual,
+	};
+}
+
+/**
+ * Does this step play a follow-along video (resolved dynamically)?
+ * @param {Object} step
+ * @returns {boolean}
+ */
+export function hasStepVideo(step) {
+	return Boolean(classifyStep(step).video);
+}
+
+/**
+ * Does this step break into multiple sub-exercises (compound flow)?
+ * A break step or a step that plays a video never sub-steps.
+ * @param {Object} step
+ * @returns {boolean}
+ */
+export function hasSubSteps(step) {
+	if (!step || isBreakStep(step)) return false;
+	if (hasStepVideo(step)) return false;
+	return Array.isArray(step.exercises) && step.exercises.length > 1;
 }

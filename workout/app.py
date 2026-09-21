@@ -49,12 +49,7 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 			default=None, alias="X-User-Id", description="Active user ID (defaults to 'levon')"
 		),
 	) -> str:
-		user_id = (
-			x_user_id
-			or request.headers.get("X-User-Id")
-			or request.query_params.get("user_id")
-			or "levon"
-		)
+		user_id = x_user_id or request.query_params.get("user_id") or "levon"
 		clean = user_id.strip().lower()
 		return clean if clean else "levon"
 
@@ -318,61 +313,28 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 	async def get_workout_openapi():
 		return JSONResponse(content=app.openapi())
 
-	@app.api_route("/icons_preview.html", methods=["GET", "HEAD"], include_in_schema=False)
-	@app.api_route("/workout/icons_preview.html", methods=["GET", "HEAD"], include_in_schema=False)
-	async def icons_preview():
-		preview_path = static_dir / "icons_preview.html"
-		if preview_path.exists():
+	preview_pages = (
+		"icons_preview.html",
+		"tabs_preview.html",
+		"reps_ui_review.html",
+		"design_video_slice.html",
+		"design_add_to_workout.html",
+	)
+
+	async def preview_page(request: Request) -> FileResponse:
+		name = request.url.path.rsplit("/", 1)[-1]
+		preview_path = static_dir / name
+		if name in preview_pages and preview_path.exists():
 			return FileResponse(preview_path)
 		raise HTTPException(status_code=404, detail="Preview page not found")
 
-	@app.api_route("/tabs_preview.html", methods=["GET", "HEAD"], include_in_schema=False)
-	@app.api_route("/workout/tabs_preview.html", methods=["GET", "HEAD"], include_in_schema=False)
-	async def tabs_preview():
-		preview_path = static_dir / "tabs_preview.html"
-		if preview_path.exists():
-			return FileResponse(preview_path)
-		raise HTTPException(status_code=404, detail="Tabs preview page not found")
-
-	@app.api_route(
-		"/exercise_picker_preview.html", methods=["GET", "HEAD"], include_in_schema=False
-	)
-	@app.api_route(
-		"/workout/exercise_picker_preview.html", methods=["GET", "HEAD"], include_in_schema=False
-	)
-	async def exercise_picker_preview():
-		preview_path = static_dir / "exercise_picker_preview.html"
-		if preview_path.exists():
-			return FileResponse(preview_path)
-		raise HTTPException(status_code=404, detail="Exercise picker preview page not found")
-
-	@app.api_route("/reps_ui_review.html", methods=["GET", "HEAD"], include_in_schema=False)
-	@app.api_route("/workout/reps_ui_review.html", methods=["GET", "HEAD"], include_in_schema=False)
-	async def reps_ui_review():
-		preview_path = static_dir / "reps_ui_review.html"
-		if preview_path.exists():
-			return FileResponse(preview_path)
-		raise HTTPException(status_code=404, detail="Preview page not found")
-
-	@app.api_route("/design_video_slice.html", methods=["GET", "HEAD"], include_in_schema=False)
-	@app.api_route(
-		"/workout/design_video_slice.html", methods=["GET", "HEAD"], include_in_schema=False
-	)
-	async def design_video_slice():
-		preview_path = static_dir / "design_video_slice.html"
-		if preview_path.exists():
-			return FileResponse(preview_path)
-		raise HTTPException(status_code=404, detail="Design video slice preview page not found")
-
-	@app.api_route("/design_add_to_workout.html", methods=["GET", "HEAD"], include_in_schema=False)
-	@app.api_route(
-		"/workout/design_add_to_workout.html", methods=["GET", "HEAD"], include_in_schema=False
-	)
-	async def design_add_to_workout():
-		preview_path = static_dir / "design_add_to_workout.html"
-		if preview_path.exists():
-			return FileResponse(preview_path)
-		raise HTTPException(status_code=404, detail="Design add to workout preview page not found")
+	for _page in preview_pages:
+		app.add_api_route(
+			f"/{_page}", preview_page, methods=["GET", "HEAD"], include_in_schema=False
+		)
+		app.add_api_route(
+			f"/workout/{_page}", preview_page, methods=["GET", "HEAD"], include_in_schema=False
+		)
 
 	@app.api_route("/", methods=["GET", "HEAD"], include_in_schema=False)
 	@app.api_route("/workout", methods=["GET", "HEAD"], include_in_schema=False)

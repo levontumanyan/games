@@ -311,6 +311,7 @@ def test_step_creation_from_exercise_and_combo():
 	}};
 
 	const {{ createStepFromExercise, createStepFromCombo, getStepDisplayName }} = await import('{js_dir}/editor.js');
+	const {{ resolveStepVideo }} = await import('{js_dir}/exercises.js');
 
 	// 1. Video-backed exercise (Check Repeats)
 	const checkRepeatsEx = {{
@@ -334,8 +335,13 @@ def test_step_creation_from_exercise_and_combo():
 	}};
 
 	const clipStep = createStepFromExercise(checkRepeatsEx);
-	if (clipStep.type !== 'clip' || clipStep.videoId !== 'wPGC3uFIOBA' || clipStep.endSeconds !== 60) {{
-		throw new Error('createStepFromExercise failed for video exercise: ' + JSON.stringify(clipStep));
+	if (clipStep.type !== 'timer' || clipStep.stepMode !== 'time' || clipStep.durationSeconds !== 60) {{
+		throw new Error('createStepFromExercise should not bake a clip for a video exercise: ' + JSON.stringify(clipStep));
+	}}
+	// Media is resolved dynamically from the exercise library, not baked into the step.
+	const dynamicVid = resolveStepVideo(clipStep);
+	if (!dynamicVid || dynamicVid.videoId !== 'wPGC3uFIOBA' || dynamicVid.endSeconds !== 60) {{
+		throw new Error('createStepFromExercise video should resolve dynamically: ' + JSON.stringify(dynamicVid));
 	}}
 
 	// 2. Non-video exercise (pushups timer)

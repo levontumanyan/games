@@ -5,7 +5,7 @@
 import {
 	formatTime, formatFriendlyDuration, parseYouTubeId, escapeHtml,
 	getEffectiveSubStepReps, getEffectiveSubStepDuration,
-	isBreakStep, isRepsStep, isClipStep, isTimerStep, getStepDuration
+	isBreakStep, isSubStepReps
 } from './utils.js';
 import { resolveStepMediaUrl, getStepDisplayName } from './editor.js';
 import { playCountdownBeep } from './audio.js';
@@ -21,7 +21,7 @@ import {
 } from './session.js';
 import {
 	inferMusclesForExercise, getExerciseById, getExerciseInstructionMedia, getExerciseFollowAlongMedia,
-	resolveStepVideo, resolveStepVisual
+	resolveStepVideo, resolveStepVisual, classifyStep, hasSubSteps
 } from './exercises.js';
 import { MUSCLE_DEFINITIONS } from './taxonomy.js';
 
@@ -410,23 +410,30 @@ function disableCaptions() {
 }
 
 /**
- * Start active polling to monitor clip playback position against step.endSeconds.
+ * Start active polling to loop the follow-along video slice for the duration
+ * of the step's master timer. When the video reaches its end slice, seek back
+ * to the start instead of advancing the workout; the master timer is the only
+ * authority that advances the step.
  * @param {Object} step
+ * @param {Object} videoAsset - { videoId, startSeconds, endSeconds }
  */
 function startClipMonitor(step, videoAsset) {
 	clearClipMonitor();
-	const vid = videoAsset?.videoId;
-	const endSec = typeof videoAsset?.endSeconds === 'number' ? videoAsset.endSeconds : step?.endSeconds;
-	if (!step || !vid || !endSec) return;
+const endSec = (videoAsset && typeof videoAsset.endSeconds === 'number') ? videoAsset.endSeconds : step?.endSeconds;
+	const startSec = (videoAsset && typeof videoAsset.startSeconds === 'number') ? videoAsset.startSeconds : (step?.startSeconds || 0);
+	if (!step || !endSec || !(videoAsset && videoAsset.videoId)) return;
 
 	clipCheckInterval = setInterval(() => {
 		if (!isPlaying || isPaused || !ytReady || !ytPlayer) return;
 		try {
 			const currentTime = ytPlayer.getCurrentTime();
 			if (typeof currentTime === 'number' && currentTime >= endSec - 0.25) {
-				clearClipMonitor();
-				try { ytPlayer.pauseVideo(); } catch {}
-				advanceStep();
+				if (timerRemaining > 0) {
+					try { ytPlayer.seekTo(startSec, true); } catch {}
+				} else {
+					clearClipMonitor();
+					try { ytPlayer.pauseVideo(); } catch {}
+				}
 			}
 		} catch (e) {
 			// Ignore polling exceptions
@@ -473,23 +480,27 @@ function onYTStateChange(event) {
 		clipHasStartedPlaying = true;
 		if (isPlaying && !isPaused && currentRoutine) {
 			const currentStep = currentRoutine.steps[currentStepIndex];
-			const videoAsset = currentStep && !isRepsStep(currentStep) && !isBreakStep(currentStep) ? resolveStepVideo(currentStep) : null;
-			const isVid = Boolean(videoAsset && videoAsset.videoId);
-			if (currentStep && isVid) {
-				startClipMonitor(currentStep, videoAsset);
+			const cls = currentStep ? classifyStep(currentStep) : null;
+			if (currentStep && cls && cls.video) {
+				startClipMonitor(currentStep, cls.video);
 			}
 		}
 	} else if (event.data === YT.PlayerState.ENDED) {
 		// Verify this is a legitimate ENDED event and not a spurious transition event
 		if (!isPlaying || isPaused || !currentRoutine) return;
 		const currentStep = currentRoutine.steps[currentStepIndex];
-		const videoAsset = currentStep && !isRepsStep(currentStep) && !isBreakStep(currentStep) ? resolveStepVideo(currentStep) : null;
-		const isVid = Boolean(videoAsset && videoAsset.videoId);
-		if (!currentStep || !isVid) return;
+		const cls = currentStep ? classifyStep(currentStep) : null;
+		if (!currentStep || !cls || !cls.video) return;
 
 		// If the video never actually entered PLAYING state for this step, or loaded less than 1s ago, ignore it
 		if (!clipHasStartedPlaying || (Date.now() - clipLoadedAt < 1000)) {
 			console.warn('[Workout Player] Ignoring spurious YouTube ENDED event for step:', currentStepIndex);
+			return;
+		}
+
+		// The master timer governs advancement for timed video steps; loop the slice.
+		if (timerRemaining > 0) {
+			try { ytPlayer.seekTo(cls.video.startSeconds || 0, true); } catch {}
 			return;
 		}
 
@@ -577,16 +588,17 @@ function startWorkoutCountdown(routine, onComplete) {
 			const firstStepName = getStepDisplayName(firstStep);
 			if (firstLabel) firstLabel.textContent = firstStepName;
 
-			const isReps = isRepsStep(firstStep);
-			const firstVidAsset = !isReps && !isBreakStep(firstStep) ? resolveStepVideo(firstStep) : null;
-			const isVid = Boolean(firstVidAsset && firstVidAsset.videoId);
-			const dur = getStepDuration(firstStep, firstVidAsset);
+const cls = classifyStep(firstStep);
+			const isReps = cls.mode === 'reps';
+			const isVid = Boolean(cls.video);
+			const firstVidAsset = cls.video;
+			const dur = cls.targetDuration;
 
 			let modeTag = '';
 			if (isVid) {
 				modeTag = `<span class="view-tag view-tag-clip" style="font-size:0.75rem;padding:2px 6px;">${getClipIcon(11)} Video Clip</span>`;
 			} else if (isReps) {
-				modeTag = `<span class="view-tag view-tag-reps" style="font-size:0.75rem;padding:2px 6px;">${getRepsIcon(11)} ${firstStep.targetReps || 20} reps</span>`;
+				modeTag = `<span class="view-tag view-tag-reps" style="font-size:0.75rem;padding:2px 6px;">${getRepsIcon(11)} ${cls.targetReps} reps</span>`;
 			} else {
 				modeTag = `<span class="view-tag view-tag-time" style="font-size:0.75rem;padding:2px 6px;">${getTimerIcon(11)} ${formatTime(dur)}</span>`;
 			}
@@ -774,11 +786,9 @@ function advanceStepOrSubStep() {
 	clearRepsTimer();
 
 	const currentStep = currentRoutine.steps[currentStepIndex];
-	const videoAsset = !isRepsStep(currentStep) && !isBreakStep(currentStep) ? resolveStepVideo(currentStep) : null;
-	const isClip = Boolean(videoAsset && videoAsset.videoId);
-	const hasSubSteps = currentStep && !isBreakStep(currentStep) && !isClip && Array.isArray(currentStep.exercises) && currentStep.exercises.length > 1;
+	const stepHasSubSteps = hasSubSteps(currentStep);
 
-	if (hasSubSteps && currentSubStepIndex < currentStep.exercises.length - 1) {
+	if (stepHasSubSteps && currentSubStepIndex < currentStep.exercises.length - 1) {
 		currentSubStepIndex++;
 		executeCurrentStep();
 		return;
@@ -815,12 +825,11 @@ function executeCurrentStep() {
 		updateSessionStep(currentStepIndex);
 	}
 
-	const isReps = isRepsStep(step);
-	const videoAsset = !isReps && !isBreakStep(step) ? resolveStepVideo(step) : null;
-	const isClip = Boolean(videoAsset && videoAsset.videoId);
+const cls = classifyStep(step);
+	const videoAsset = cls.video;
 
-	if (isClip) {
-		executeClipStep(step, videoAsset);
+	if (cls.mode === 'time' && videoAsset) {
+		executeVideoStep(step, cls.targetDuration, videoAsset);
 	} else {
 		executeTimerStep(step);
 	}
@@ -829,9 +838,14 @@ function executeCurrentStep() {
 }
 
 /**
- * Execute a video clip step.
+ * Execute a timed step that plays a follow-along video. The step's target
+ * duration is the authoritative master timer; the video slice loops until it
+ * reaches zero.
+ * @param {Object} step
+ * @param {number} targetDuration
+ * @param {Object} videoAsset
  */
-function executeClipStep(step, videoAsset) {
+function executeVideoStep(step, targetDuration, videoAsset) {
 	clearTimer();
 	clearRepsTimer();
 	clearClipMonitor();
@@ -839,8 +853,12 @@ function executeClipStep(step, videoAsset) {
 	clipLoadedAt = Date.now();
 	isRepsMode = false;
 
-	dom.timerOverlay?.classList.add('hidden');
+	// Show the video with the timer ring overlaid so the countdown stays visible.
 	dom.videoWrapper?.classList.remove('hidden');
+	dom.timerOverlay?.classList.remove('hidden');
+	dom.timerOverlay?.classList.add('is-video-mode');
+	dom.timerOverlay?.classList.remove('is-break');
+	dom.timerOverlay?.classList.remove('is-reps-stage');
 
 	const mediaContainer = dom.timerMediaContainer || document.getElementById('timer-media-container');
 	const mediaImg = dom.timerMediaImg || document.getElementById('timer-media-img');
@@ -851,7 +869,6 @@ function executeClipStep(step, videoAsset) {
 		mediaImg.removeAttribute('src');
 	}
 	dom.timerOverlay?.querySelector('.timer-stage-content')?.classList.remove('has-media');
-	dom.timerOverlay?.classList.remove('is-reps-stage');
 	const repsContainer = dom.timerRepsContainer || document.getElementById('timer-reps-container');
 	if (repsContainer) repsContainer.classList.add('hidden');
 
@@ -874,7 +891,7 @@ function executeClipStep(step, videoAsset) {
 	const startSec = typeof videoAsset.startSeconds === 'number' ? videoAsset.startSeconds : (step.startSeconds || 0);
 	const endSec = typeof videoAsset.endSeconds === 'number' ? videoAsset.endSeconds : (step.endSeconds || undefined);
 
-	console.log(`[Workout Player] executeClipStep [${currentStepIndex}] ("${step.label || 'Step'}"): videoId="${vidId}", start=${startSec}s, end=${endSec !== undefined ? endSec + 's' : 'end'}, ytReady=${ytReady}, ytPlayer=${Boolean(ytPlayer)}`);
+	console.log(`[Workout Player] executeVideoStep [${currentStepIndex}] ("${step.label || 'Step'}"): videoId="${vidId}", start=${startSec}s, end=${endSec !== undefined ? endSec + 's' : 'end'}, ytReady=${ytReady}, ytPlayer=${Boolean(ytPlayer)}`);
 
 	if (ytReady && ytPlayer) {
 		ytPlayer.loadVideoById({
@@ -885,6 +902,20 @@ function executeClipStep(step, videoAsset) {
 		disableCaptions();
 	} else {
 		console.warn(`[Workout Player] Cannot play clip: ytReady=${ytReady}, ytPlayer=${Boolean(ytPlayer)}`);
+	}
+
+	// Master timer: the step's target duration is authoritative; the video loops.
+	timerRemaining = targetDuration;
+	if (dom.timerDisplay) dom.timerDisplay.textContent = formatTime(targetDuration);
+	if (dom.timerLabel) {
+		dom.timerLabel.textContent = '';
+		dom.timerLabel.classList.add('hidden');
+	}
+	const videoStageHeader = dom.timerStageHeader || document.getElementById('timer-stage-header');
+	if (videoStageHeader) videoStageHeader.classList.add('hidden');
+	updateTimerProgress(targetDuration, targetDuration);
+	if (!isPaused) {
+		startTimer(targetDuration);
 	}
 
 	const isTutorial = Boolean(step.isTutorial || (step.label && step.label.includes('[Tutorial]')));
@@ -916,6 +947,7 @@ function executeTimerStep(step) {
 	}
 	dom.videoWrapper?.classList.add('hidden');
 	dom.timerOverlay?.classList.remove('hidden');
+	dom.timerOverlay?.classList.remove('is-video-mode');
 
 	const isBreak = isBreakStep(step);
 	const hasSubSteps = !isBreak && Array.isArray(step.exercises) && step.exercises.length > 1;
@@ -931,9 +963,7 @@ function executeTimerStep(step) {
 	const resolvedSubEx = rawSubEx ? ((rawSubEx.id ? getExerciseById(rawSubEx.id) : null) || rawSubEx) : null;
 	const activeSubEx = (rawSubEx && resolvedSubEx) ? { ...resolvedSubEx, ...rawSubEx, name: rawSubEx.name || resolvedSubEx.name || '' } : (resolvedSubEx || rawSubEx);
 
-	const isSubReps = hasSubSteps
-		? (activeSubEx.stepMode === 'reps' || (!activeSubEx.durationSeconds && (step.stepMode === 'reps' || (!step.stepMode && Boolean(step.targetReps)))) || (activeSubEx.default_mode === 'reps' && !activeSubEx.durationSeconds))
-		: (!isBreak && (step.stepMode === 'reps' || (!step.stepMode && Boolean(step.targetReps) && Number(step.targetReps) > 0)));
+	const isSubReps = isSubStepReps(step, hasSubSteps ? activeSubEx : null);
 	isRepsMode = isSubReps;
 
 	dom.timerOverlay?.classList.toggle('is-break', isBreak);
@@ -1153,10 +1183,11 @@ function executeTimerStep(step) {
 			if (dom.upNextLabel) {
 				dom.upNextLabel.textContent = nextName;
 			}
-			const nextIsBreak = isBreakStep(next);
-			const nextIsReps = isRepsStep(next);
-			const nextVid = !nextIsBreak && !nextIsReps ? resolveStepVideo(next) : null;
-			const nextIsClip = Boolean(nextVid && nextVid.videoId);
+const nextCls = classifyStep(next);
+			const nextIsBreak = nextCls.mode === 'break';
+			const nextIsReps = nextCls.mode === 'reps';
+			const nextIsClip = Boolean(nextCls.video);
+			const nextVid = nextCls.video;
 
 			if (dom.upNextMeta) {
 				if (nextIsBreak) {
@@ -1320,11 +1351,9 @@ export function previousStep() {
 	clearRepsTimer();
 
 	const currentStep = currentRoutine.steps[currentStepIndex];
-	const videoAsset = !isRepsStep(currentStep) && !isBreakStep(currentStep) ? resolveStepVideo(currentStep) : null;
-	const isClip = Boolean(videoAsset && videoAsset.videoId);
-	const hasSubSteps = currentStep && !isBreakStep(currentStep) && !isClip && Array.isArray(currentStep.exercises) && currentStep.exercises.length > 1;
+	const stepHasSubSteps = hasSubSteps(currentStep);
 
-	if (hasSubSteps && currentSubStepIndex > 0) {
+	if (stepHasSubSteps && currentSubStepIndex > 0) {
 		currentSubStepIndex--;
 		executeCurrentStep();
 		return;
@@ -1333,9 +1362,8 @@ export function previousStep() {
 	if (currentStepIndex <= 0) return;
 	currentStepIndex--;
 	const prevStep = currentRoutine.steps[currentStepIndex];
-	const prevVid = prevStep && !isRepsStep(prevStep) && !isBreakStep(prevStep) ? resolveStepVideo(prevStep) : null;
-	const prevIsClip = Boolean(prevVid && prevVid.videoId);
-	if (prevStep && !isBreakStep(prevStep) && !prevIsClip && Array.isArray(prevStep.exercises) && prevStep.exercises.length > 1) {
+	const prevHasSubSteps = hasSubSteps(prevStep);
+	if (prevStep && prevHasSubSteps) {
 		currentSubStepIndex = prevStep.exercises.length - 1;
 	} else {
 		currentSubStepIndex = 0;
@@ -1365,23 +1393,19 @@ export function togglePause() {
 		}
 		requestWakeLock();
 		const step = currentRoutine.steps[currentStepIndex];
-		const isReps = isRepsStep(step);
-		const videoAsset = !isReps && !isBreakStep(step) ? resolveStepVideo(step) : null;
-		const isClip = Boolean(videoAsset && videoAsset.videoId);
+		const cls = classifyStep(step);
 
-		if (isClip) {
+		if (cls.mode === 'time' && cls.video) {
 			if (ytReady && ytPlayer) {
 				ytPlayer.playVideo();
 			}
-			startClipMonitor(step, videoAsset);
+			startClipMonitor(step, cls.video);
+			startTimer(cls.targetDuration);
+		} else if (cls.mode === 'reps') {
+			startRepsStopwatch();
 		} else {
-			if (isRepsMode) {
-				startRepsStopwatch();
-			} else {
-				// Restart timer from remaining
-				const totalDuration = step.durationSeconds;
-				startTimer(totalDuration);
-			}
+			// Restart timer from remaining
+			startTimer(cls.targetDuration);
 		}
 
 		// Resume background music
@@ -1522,6 +1546,7 @@ function showPlayerUI() {
 function hidePlayerUI() {
 	dom.playerView?.classList.add('hidden');
 	dom.timerOverlay?.classList.add('hidden');
+	dom.timerOverlay?.classList.remove('is-video-mode');
 	dom.videoWrapper?.classList.add('hidden');
 	const mediaContainer = dom.timerMediaContainer || (typeof document !== 'undefined' && document.getElementById('timer-media-container'));
 	const mediaImg = dom.timerMediaImg || (typeof document !== 'undefined' && document.getElementById('timer-media-img'));
@@ -1542,8 +1567,8 @@ function updateStepIndicator() {
 		const indicator = document.createElement('button');
 		indicator.className = 'step-indicator';
 		if (i < currentStepIndex) indicator.classList.add('completed');
-		const isReps = isRepsStep(step);
-		const durLabel = isClipStep(step) ? 'Video' : (isReps ? `${step.targetReps || 20} reps` : formatTime(step.durationSeconds || 30));
+		const stepCls = classifyStep(step);
+		const durLabel = stepCls.video ? 'Video' : (stepCls.mode === 'reps' ? `${stepCls.targetReps} reps` : formatTime(stepCls.targetDuration || 30));
 		const stepTitle = getStepDisplayName(step);
 		indicator.title = `${stepTitle} (${durLabel})`;
 		indicator.textContent = i + 1;
@@ -1554,20 +1579,16 @@ function updateStepIndicator() {
 	// Update step counter with sub-step move indicator if applicable
 	if (dom.stepCounter) {
 		const curStep = currentRoutine.steps[currentStepIndex];
-		const curVid = !isRepsStep(curStep) && !isBreakStep(curStep) ? resolveStepVideo(curStep) : null;
-		const isClip = Boolean(curVid && curVid.videoId);
-		const hasSubSteps = curStep && !isBreakStep(curStep) && !isClip && Array.isArray(curStep.exercises) && curStep.exercises.length > 1;
-		const subSuffix = hasSubSteps ? ` · Move ${currentSubStepIndex + 1}/${curStep.exercises.length}` : '';
+		const curHasSubSteps = hasSubSteps(curStep);
+		const subSuffix = curHasSubSteps ? ` · Move ${currentSubStepIndex + 1}/${curStep.exercises.length}` : '';
 		dom.stepCounter.textContent = `Step ${currentStepIndex + 1} / ${currentRoutine.steps.length}${subSuffix}`;
 	}
 
 	// Update next step preview
 	if (dom.nextStepPreview) {
 		const curStep = currentRoutine.steps[currentStepIndex];
-		const curVid = !isRepsStep(curStep) && !isBreakStep(curStep) ? resolveStepVideo(curStep) : null;
-		const isClip = Boolean(curVid && curVid.videoId);
-		const hasSubSteps = curStep && !isBreakStep(curStep) && !isClip && Array.isArray(curStep.exercises) && curStep.exercises.length > 1;
-		if (hasSubSteps && currentSubStepIndex < curStep.exercises.length - 1) {
+		const curHasSubSteps = hasSubSteps(curStep);
+		if (curHasSubSteps && currentSubStepIndex < curStep.exercises.length - 1) {
 			const rawNext = curStep.exercises[currentSubStepIndex + 1];
 			const resolvedNext = rawNext ? ((rawNext.id ? getExerciseById(rawNext.id) : null) || rawNext) : null;
 			const nextSub = (rawNext && resolvedNext) ? { ...resolvedNext, ...rawNext, name: rawNext.name || resolvedNext.name || '' } : (resolvedNext || rawNext);

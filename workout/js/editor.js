@@ -4,8 +4,7 @@
 
 import {
 	generateId, parseYouTubeId, parseYouTubeInfo, parseTime, formatTime,
-	formatFriendlyDuration, escapeHtml, showToast,
-	isBreakStep, isRepsStep, isClipStep, isTimerStep, getStepDuration
+	formatFriendlyDuration, escapeHtml, showToast, isBreakStep, formatModeQuantity
 } from './utils.js';
 import { saveAudioFile, deleteAudioFile } from './musicdb.js';
 import { showPrompt, showAlert, createCustomModal } from './modal.js';
@@ -29,7 +28,7 @@ import {
 import {
 	getExercises, getExerciseById, filterExercises, createCustomExercise,
 	inferMusclesForExercise, getExerciseMediaAssets, getExerciseFollowAlongMedia,
-	resolveStepVideo, resolveStepVisual
+	resolveStepVideo, resolveStepVisual, classifyStep, hasStepVideo
 } from './exercises.js';
 import { showExerciseVariationsModal } from './exercises_view.js';
 import { getCombos, filterCombos } from './combos.js';
@@ -594,13 +593,14 @@ function createStepElement(step, index, routine, onUpdate, onTestStep) {
 
 	const headerMeta = document.createElement('span');
 	headerMeta.className = 'step-header-meta';
-	if (isRepsStep(step)) {
-		headerMeta.textContent = `${step.targetReps || 20} reps`;
-	} else if (isClipStep(step)) {
-		const dur = Math.max(0, (step.endSeconds || 60) - (step.startSeconds || 0));
-		headerMeta.textContent = `${formatTime(dur)} (${formatTime(step.startSeconds || 0)}–${formatTime(step.endSeconds || 60)})`;
+	const cls = classifyStep(step);
+	if (cls.mode === 'reps') {
+		headerMeta.textContent = `${cls.targetReps} reps`;
+	} else if (cls.video && cls.video.videoId) {
+		const vidDur = Math.max(0, cls.video.endSeconds - cls.video.startSeconds);
+		headerMeta.textContent = `${formatFriendlyDuration(cls.targetDuration)} · 🎬 ${formatTime(vidDur)}`;
 	} else {
-		headerMeta.textContent = formatFriendlyDuration(step.durationSeconds || 30);
+		headerMeta.textContent = formatFriendlyDuration(cls.targetDuration || 30);
 	}
 
 	headerInfo.append(headerTitle, editTitleBtn, headerMeta);
@@ -1112,16 +1112,13 @@ function createTimerFields(step, onUpdate) {
 	// 1. Tagged movements / exercise chips
 	frag.appendChild(createExercisePicker(step, onUpdate));
 
-	// 2. Compact Control Row: Mode + Presets + Stepper (or Fixed Video Badge)
-	const vidAsset = resolveStepVideo(step);
-	const isVideoStep = Boolean(vidAsset && vidAsset.videoId);
+// 2. Compact Control Row: Mode + Presets + Stepper (+ optional follow-along video badge)
+	const hasVideo = hasStepVideo(step);
 
-	const row = document.createElement('div');
-	row.className = 'timer-controls-row';
-
-	if (isVideoStep) {
+	if (hasVideo) {
+		const vidAsset = resolveStepVideo(step);
 		const startSec = vidAsset?.startSeconds ?? (step.startSeconds || 0);
-		const endSec = vidAsset?.endSeconds ?? (step.endSeconds || 60);
+		const endSec = vidAsset?.endSeconds ?? (step.endSeconds || (startSec + 60));
 		const dur = Math.max(1, endSec - startSec);
 		const videoPill = document.createElement('div');
 		videoPill.className = 'step-fixed-video-pill';
@@ -1131,8 +1128,13 @@ function createTimerFields(step, onUpdate) {
 			<span class="fixed-video-dur">${formatTime(dur)}</span>
 			<span class="fixed-video-timestamps">(${formatTime(startSec)} → ${formatTime(endSec)})</span>
 		`;
-		row.appendChild(videoPill);
-	} else {
+		frag.appendChild(videoPill);
+	}
+
+	const row = document.createElement('div');
+	row.className = 'timer-controls-row';
+
+	{
 		// Mode Switcher: Timed vs Reps (inline segmented button)
 		const modeToggle = document.createElement('div');
 		modeToggle.className = 'step-mode-segmented-compact';
@@ -1153,7 +1155,6 @@ function createTimerFields(step, onUpdate) {
 		repsBtn.innerHTML = `🔢 Reps`;
 		repsBtn.addEventListener('click', () => {
 			step.stepMode = 'reps';
-			if (step.type === 'clip') step.type = 'timer';
 			if (!step.targetReps) step.targetReps = 20;
 			onUpdate();
 		});
@@ -1665,8 +1666,8 @@ export function createBreakStep(durationSeconds = 30) {
 
 /**
  * Create a new step from an exercise definition.
- * If the exercise has a follow-along video asset or YouTube video, creates a 'clip' step.
- * Otherwise creates a 'timer' or 'reps' step.
+ * Always produces a time or reps step; follow-along media is resolved
+ * dynamically from the exercise library, not baked into the step.
  * @param {Object} ex
  * @returns {Object} Step object
  */
@@ -1675,26 +1676,16 @@ export function createStepFromExercise(ex) {
 	const isReps = (ex.default_mode || 'reps') === 'reps';
 	const quantity = ex.default_quantity || (isReps ? 20 : 30);
 	const asset = getExerciseFollowAlongMedia(ex);
-	const isVidAsset = asset && (asset.type === 'video' || Boolean(asset.videoId));
-	const directVid = (!isVidAsset && !isReps && ex.media_url && (ex.media_url.includes('youtube') || ex.media_url.includes('youtu.be'))) ? parseYouTubeId(ex.media_url) : null;
 
-	let newStep;
-	if (!isReps && (isVidAsset || directVid)) {
-		newStep = createClipStep();
-		newStep.label = ex.name;
-		newStep.videoId = (asset && asset.videoId) ? asset.videoId : (directVid || parseYouTubeId(asset?.url));
-		newStep.startSeconds = asset?.startSeconds || 0;
-		newStep.endSeconds = asset?.endSeconds || ((asset?.startSeconds || 0) + quantity);
-	} else {
-		newStep = createTimerStep();
-		newStep.label = ex.name;
-		newStep.stepMode = isReps ? 'reps' : 'time';
-		newStep.targetReps = isReps ? quantity : 0;
-		newStep.durationSeconds = !isReps ? quantity : 30;
-		if (asset?.url || ex.media_url) {
-			newStep.gifUrl = asset?.url || ex.media_url || '';
-			newStep.mediaUrl = asset?.url || ex.media_url || '';
-		}
+	const newStep = createTimerStep();
+	newStep.label = ex.name;
+	newStep.stepMode = isReps ? 'reps' : 'time';
+	newStep.targetReps = isReps ? quantity : 0;
+	newStep.durationSeconds = !isReps ? quantity : 30;
+
+	if (asset?.url || ex.media_url) {
+		newStep.gifUrl = asset?.url || ex.media_url || '';
+		newStep.mediaUrl = asset?.url || ex.media_url || '';
 	}
 	newStep.exercises = [{ id: ex.id, name: ex.name, category: ex.category, discipline: ex.discipline }];
 	return newStep;
@@ -1702,8 +1693,8 @@ export function createStepFromExercise(ex) {
 
 /**
  * Create a new step from a combo definition.
- * If the combo has a video asset or YouTube video, creates a 'clip' step.
- * Otherwise creates a 'timer' or 'reps' step.
+ * Always produces a time or reps step; the combo's demonstration media is
+ * resolved dynamically, not baked into the step.
  * @param {Object} combo
  * @returns {Object} Step object
  */
@@ -1728,31 +1719,13 @@ export function createStepFromCombo(combo) {
 		};
 	});
 	const isReps = combo.default_mode === 'reps';
-	const asset = (combo.media_assets || [])[0];
-	const isVideo = asset && (asset.type === 'video' || Boolean(asset.videoId));
-	const directVid = (!isVideo && !isReps && combo.media_url && (combo.media_url.includes('youtube') || combo.media_url.includes('youtu.be'))) ? parseYouTubeId(combo.media_url) : null;
 
-	let newStep;
-	if (!isReps && (isVideo || directVid)) {
-		newStep = createClipStep();
-		newStep.label = combo.name;
-		newStep.videoId = (asset && asset.videoId) ? asset.videoId : (directVid || parseYouTubeId(asset?.url || combo.media_url));
-		newStep.startSeconds = asset?.startSeconds || 0;
-		newStep.endSeconds = asset?.endSeconds || ((asset?.startSeconds || 0) + (combo.default_quantity || 190));
-	} else {
-		newStep = createTimerStep();
-		newStep.label = combo.name;
-		if (isReps) {
-			newStep.stepMode = 'reps';
-			newStep.targetReps = combo.default_quantity || 20;
-		} else {
-			newStep.durationSeconds = combo.default_quantity || 190;
-		}
-		if (asset?.url || combo.media_url) {
-			newStep.gifUrl = asset?.url || combo.media_url || '';
-			newStep.mediaUrl = asset?.url || combo.media_url || '';
-		}
-	}
+	const newStep = createTimerStep();
+	newStep.label = combo.name;
+	newStep.stepMode = isReps ? 'reps' : 'time';
+	newStep.targetReps = isReps ? (combo.default_quantity || 20) : 0;
+	newStep.durationSeconds = !isReps ? (combo.default_quantity || 190) : 30;
+
 	newStep.combo_id = combo.id;
 	newStep.flow_type = combo.flow_type || 'alternating';
 	newStep.exercises = exList;
@@ -2141,9 +2114,9 @@ export function showAddComboModal(routine, onUpdate, insertIndex = -1) {
 			item.className = 'add-picker-item';
 
 			const flowIcon = combo.flow_type === 'alternating' ? '⮀ Alternating' : (combo.flow_type === 'sequence' ? '➔ Flow' : '⚡ Superset');
-			const modeStr = combo.default_mode === 'reps'
-				? `<span class="chip-svg-wrap">${getRepsIcon(13)}</span> ${combo.default_quantity || 20} Reps`
-				: `<span class="chip-svg-wrap">${getTimerIcon(13)}</span> ${formatTime(combo.default_quantity || 190)}`;
+const modeStr = combo.default_mode === 'reps'
+			? `<span class="chip-svg-wrap">${getRepsIcon(13)}</span> ${formatModeQuantity('reps', combo.default_quantity, { repsFallback: 20 })}`
+			: `<span class="chip-svg-wrap">${getTimerIcon(13)}</span> ${formatModeQuantity('time', combo.default_quantity, { secsFallback: 190 })}`;
 
 			item.innerHTML = `
 				<div class="add-picker-item-left">

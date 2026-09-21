@@ -1,5 +1,5 @@
 import { fetchStats, fetchSessions, deleteSession } from './storage.js';
-import { formatTime } from './utils.js';
+import { formatTime, escapeHtml } from './utils.js';
 import { showConfirm, showAlert } from './modal.js';
 import {
 	CATEGORIES, DISCIPLINES,
@@ -568,10 +568,4 @@ function bindHistoryActions(container) {
 				});
 		});
 	});
-}
-
-function escapeHtml(str) {
-	const div = document.createElement('div');
-	div.textContent = str;
-	return div.innerHTML;
 }

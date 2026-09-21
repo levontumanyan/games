@@ -6,9 +6,9 @@ import { fetchServerCombos, saveCustomComboOnServer, deleteCustomComboOnServer }
 import { getCategoryBadgeHtml, getDisciplineBadgeHtml, getMuscleBadgeHtml, getCategoryOptionsHtml, getDisciplineOptionsHtml, CATEGORIES, DISCIPLINES } from './taxonomy.js';
 import { getExerciseById, getExercises, inferMusclesForExercise, registerComboResolver, getEffectiveExerciseQuantity } from './exercises.js';
 import { showExerciseVariationsModal } from './exercises_view.js';
-import { escapeHtml, formatTime, parseYouTubeId } from './utils.js';
+import { escapeHtml, parseYouTubeId, formatModeQuantity } from './utils.js';
 import { showConfirm, showAlert, createCustomModal } from './modal.js';
-import { getComboIcon, getSearchIcon } from './icons.js';
+import { getComboIcon, getSearchIcon, getRepsIcon, getTimerIcon } from './icons.js';
 
 export const FLOW_TYPES = {
 	alternating: { label: 'Alternating Cadence', icon: '⮀', color: '#6aa3a9', bg: 'rgba(106, 163, 169, 0.14)' },
@@ -228,8 +228,6 @@ export function renderCombosCatalog(container, options = {}) {
 		let disc = '';
 		if (currentFilter.startsWith('flow:')) {
 			flow = currentFilter.replace('flow:', '');
-		} else if (currentFilter.startsWith('cat:')) {
-			cat = currentFilter.replace('cat:', '');
 		} else if (currentFilter.startsWith('disc:')) {
 			disc = currentFilter.replace('disc:', '');
 		}
@@ -254,9 +252,7 @@ export function renderCombosCatalog(container, options = {}) {
 			const card = document.createElement('div');
 			card.className = 'combo-library-card';
 
-			const modeStr = (combo.default_mode || 'time') === 'reps'
-				? `${combo.default_quantity || 20} Reps`
-				: formatTime(combo.default_quantity || 190);
+			const modeStr = formatModeQuantity(combo.default_mode || 'time', combo.default_quantity, { secsFallback: 190 });
 
 			card.innerHTML = `
 				<div class="combo-card-header">
@@ -304,23 +300,6 @@ export function renderCombosCatalog(container, options = {}) {
 				e.stopPropagation();
 				onAddToRoutine(combo, addRoutineBtn);
 			});
-
-			const delBtn = card.querySelector('.btn-del-combo');
-			if (delBtn) {
-				delBtn.addEventListener('click', async (e) => {
-					e.stopPropagation();
-					const confirmed = await showConfirm({
-						title: 'Delete Combo',
-						message: `Are you sure you want to delete "${combo.name}" from your custom combo library?`,
-						confirmText: 'Delete',
-						danger: true
-					});
-					if (confirmed) {
-						await deleteCustomCombo(combo.id);
-						renderGrid();
-					}
-				});
-			}
 
 			// Entire card is clickable to open top-layer breakdown overlay
 			card.addEventListener('click', () => {
@@ -370,8 +349,8 @@ export function showComboDetailModal(combo, options = {}) {
 	const vid = primaryAsset?.videoId || parseYouTubeId(primaryAsset?.url || combo.media_url);
 
 	const modeStr = (combo.default_mode || 'time') === 'reps'
-		? `🔢 ${combo.default_quantity || 20} Total Reps`
-		: `⏱️ ${formatTime(combo.default_quantity || 190)}`;
+		? `<span class="chip-svg-wrap">${getRepsIcon(13)}</span> ${formatModeQuantity('reps', combo.default_quantity, { repsLabel: 'Total Reps' })}`
+		: `<span class="chip-svg-wrap">${getTimerIcon(13)}</span> ${formatModeQuantity('time', combo.default_quantity, { secsFallback: 190 })}`;
 
 	// Collect aggregated muscles
 	const primarySet = new Set();
@@ -460,9 +439,7 @@ export function showComboDetailModal(combo, options = {}) {
 					${exList.map((ex, idx) => {
 						const muscles = inferMusclesForExercise(ex);
 						const effectiveQty = getEffectiveExerciseQuantity(ex);
-						const exModeStr = (ex.default_mode || 'reps') === 'reps'
-							? `${effectiveQty} Reps`
-							: formatTime(effectiveQty);
+						const exModeStr = formatModeQuantity(ex.default_mode || 'reps', effectiveQty);
 
 						return `
 							<div class="hud-step-card hud-step-card-clickable" data-idx="${idx}" title="Click to view ${escapeHtml(ex.name)} exercise guide & videos" style="cursor:pointer;">

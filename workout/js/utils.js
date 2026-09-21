@@ -438,17 +438,34 @@ export function isBreakStep(step) {
 }
 
 /**
+ * Determine the execution mode of a step: 'break', 'reps', or 'time'.
+ * This is the single source of truth for how a step is executed, decoupled
+ * from what media (if any) is displayed on screen. A 'time' step may or may
+ * not carry a follow-along video; the video is a display concern, not a mode.
+ * @param {Object} step
+ * @returns {'break'|'reps'|'time'}
+ */
+export function getStepMode(step) {
+	if (!step) return 'time';
+	if (isBreakStep(step)) return 'break';
+	if (step.stepMode === 'reps' || (!step.stepMode && Boolean(step.targetReps) && Number(step.targetReps) > 0)) return 'reps';
+	return 'time';
+}
+
+/**
  * Check if a step represents a repetition-based exercise set.
  * @param {Object} step
  * @returns {boolean}
  */
 export function isRepsStep(step) {
-	if (!step || isBreakStep(step)) return false;
-	return step.stepMode === 'reps' || (!step.stepMode && Boolean(step.targetReps) && Number(step.targetReps) > 0);
+	return getStepMode(step) === 'reps';
 }
 
 /**
- * Check if a step represents a follow-along video clip.
+ * Legacy media hint: does the step carry its own video reference directly?
+ * This only checks the step's own fields; it does NOT resolve dynamically
+ * inherited exercise/combo media. Prefer `hasStepVideo` / `classifyStep`
+ * (exercises.js) for the authoritative "does this step play a video" answer.
  * @param {Object} step
  * @returns {boolean}
  */
@@ -458,32 +475,73 @@ export function isClipStep(step) {
 }
 
 /**
- * Check if a step represents a timed interval exercise.
+ * Check if a step represents a timed interval exercise (regardless of video).
  * @param {Object} step
  * @returns {boolean}
  */
 export function isTimerStep(step) {
-	if (!step || isBreakStep(step) || isRepsStep(step) || isClipStep(step)) return false;
-	return true;
+	return getStepMode(step) === 'time';
 }
 
 /**
  * Calculate the playback duration in seconds for any step.
+ * For timed steps the explicit duration is authoritative (and decoupled from
+ * any attached video); a legacy 'clip' step without an explicit duration falls
+ * back to its video slice length.
  * @param {Object} step
  * @param {Object} [videoAsset]
  * @returns {number}
  */
 export function getStepDuration(step, videoAsset) {
 	if (!step) return 0;
-	if (isClipStep(step)) {
-		const start = (videoAsset && typeof videoAsset.startSeconds === 'number')
-			? videoAsset.startSeconds
-			: (typeof step.startSeconds === 'number' ? step.startSeconds : 0);
-		const end = (videoAsset && typeof videoAsset.endSeconds === 'number')
-			? videoAsset.endSeconds
-			: (typeof step.endSeconds === 'number' ? step.endSeconds : (start + 60));
-		return Math.max(1, end - start);
+	const mode = getStepMode(step);
+	if (mode === 'reps') return step.targetReps || 20;
+	if (mode === 'break') return step.durationSeconds || 30;
+
+	if (step.durationSeconds) return step.durationSeconds;
+
+	const start = (videoAsset && typeof videoAsset.startSeconds === 'number')
+		? videoAsset.startSeconds
+		: (typeof step.startSeconds === 'number' ? step.startSeconds : 0);
+	const end = (videoAsset && typeof videoAsset.endSeconds === 'number')
+		? videoAsset.endSeconds
+		: (typeof step.endSeconds === 'number' ? step.endSeconds : (start + 60));
+	return Math.max(1, end - start);
+}
+
+/**
+ * Determine whether a sub-exercise within a compound step executes in reps mode.
+ * A sub-exercise is reps-based if it explicitly declares reps, or the parent
+ * step is reps-based and the sub-exercise has no explicit timed duration, or it
+ * defaults to reps with no explicit duration.
+ * @param {Object} step - Parent step
+ * @param {Object} [subEx] - Resolved sub-exercise (omit to classify the step itself)
+ * @returns {boolean}
+ */
+export function isSubStepReps(step, subEx) {
+	if (!subEx) return getStepMode(step) === 'reps';
+	if (subEx.stepMode === 'reps') return true;
+	if (!subEx.durationSeconds && getStepMode(step) === 'reps') return true;
+	if (subEx.default_mode === 'reps' && !subEx.durationSeconds) return true;
+	return false;
+}
+
+/**
+ * Format an execution mode + quantity into a human-readable label
+ * (e.g. "20 Reps" or "01:15"). Icon rendering is handled by callers via
+ * getRepsIcon/getTimerIcon where a visual is needed.
+ * @param {string} mode - 'reps' or 'time'
+ * @param {number} [quantity]
+ * @param {Object} [options]
+ * @param {number} [options.repsFallback=20]
+ * @param {number} [options.secsFallback=30]
+ * @param {string} [options.repsLabel='Reps']
+ * @returns {string}
+ */
+export function formatModeQuantity(mode, quantity, { repsFallback = 20, secsFallback = 30, repsLabel = 'Reps' } = {}) {
+	if (mode === 'reps') {
+		return `${Number(quantity) || repsFallback} ${repsLabel}`;
 	}
-	return step.durationSeconds || 30;
+	return formatTime(Number(quantity) || secsFallback);
 }
 
