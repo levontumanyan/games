@@ -546,7 +546,8 @@ export function resolveStepVideo(step) {
 		};
 	}
 
-	// 2. Tutorial breakdown resolution (coaching / form tutorial videos)
+	// 2. Tutorial breakdown resolution (coaching / form tutorial videos).
+	// Checked before combo resolution; strictly guarded by isTutorial / [Tutorial] tag so standard combos fall through.
 	const isTutorial = Boolean(step.isTutorial || (step.label && step.label.includes('[Tutorial]')));
 	if (isTutorial) {
 		if (step.videoId) {
