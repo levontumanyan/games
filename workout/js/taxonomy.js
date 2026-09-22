@@ -255,23 +255,36 @@ import {
 
 /**
  * Get display info for a media asset kind.
- * @param {string} kind
+ * @param {string|Object} kind
+ * @param {string|null} [type]
  * @returns {Object}
  */
-export function getMediaKindInfo(kind) {
+export function getMediaKindInfo(kind, type = null) {
+	if (kind && typeof kind === 'object') {
+		type = kind.type;
+		kind = kind.kind;
+	}
 	let k = (kind || 'demonstration').toLowerCase();
 	if (k === 'drill') k = 'demonstration';
+	if (k === 'demonstration' && type === 'image') {
+		return { label: 'Visual Form', icon: '📷', color: '#78a88a', bg: 'rgba(120, 168, 138, 0.14)' };
+	}
 	return MEDIA_KINDS[k] || { label: 'Media', icon: '🎬', color: '#9ea2bd', bg: 'rgba(255,255,255,0.1)' };
 }
 
 /**
  * Render HTML badge for a media asset kind.
- * @param {string} kind
+ * @param {string|Object} kind
+ * @param {string|null} [type]
  * @returns {string}
  */
-export function getMediaKindBadgeHtml(kind) {
-	const info = getMediaKindInfo(kind);
-	const iconSvg = getMediaKindIcon(kind, 13);
+export function getMediaKindBadgeHtml(kind, type = null) {
+	if (kind && typeof kind === 'object') {
+		type = kind.type;
+		kind = kind.kind;
+	}
+	const info = getMediaKindInfo(kind, type);
+	const iconSvg = type === 'image' ? getMediaKindIcon('photo', 13) : getMediaKindIcon(kind, 13);
 	return `<span class="ex-media-kind-badge" style="--kind-color:${info.color};--kind-bg:${info.bg}">
 		<span class="kind-icon">${iconSvg}</span>
 		<span class="kind-label">${info.label}</span>

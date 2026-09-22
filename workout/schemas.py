@@ -16,7 +16,7 @@ class UserCreate(BaseSchema):
 class MediaAsset(BaseSchema):
 	id: str = Field(..., description="Unique asset identifier")
 	kind: str = Field(
-		..., description="Kind of asset: demonstration, animation, photo, or instruction"
+		..., description="Role of asset: demonstration (follow-along) or instruction (tutorial)"
 	)
 	type: str = Field(..., description="Media type: video or image")
 	title: str = Field(..., description="Asset title or label")

@@ -821,27 +821,25 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 				if (file) {
 					e.preventDefault();
 					const kindSelect = modal.querySelector('#new-asset-kind');
-					if (kindSelect && kindSelect.value !== 'photo' && kindSelect.value !== 'animation') {
-						kindSelect.value = 'photo';
-						const timeRow = modal.querySelector('#new-asset-time-row');
-						const uploadZone = modal.querySelector('#new-asset-upload-zone');
-						const urlLabel = modal.querySelector('#new-asset-url-label');
-						const urlInput = modal.querySelector('#new-asset-url');
-						const titleInput = modal.querySelector('#new-asset-title');
-						if (timeRow) timeRow.classList.add('hidden');
-						if (uploadZone) uploadZone.classList.remove('hidden');
-						if (urlLabel) urlLabel.textContent = 'Or Enter Direct Image URL / Path';
-						if (urlInput) urlInput.placeholder = 'https://example.com/photo.jpg or /workout/media/exercise.jpg';
-						if (titleInput && !titleInput.value) titleInput.placeholder = 'e.g., Stance & Setup Reference Photo';
-					}
+					const formatSelect = modal.querySelector('#new-asset-format');
+					if (kindSelect) kindSelect.value = 'demonstration';
+					if (formatSelect) formatSelect.value = 'image';
+					const uploadZone = modal.querySelector('#new-asset-upload-zone');
+					const slicerContainer = modal.querySelector('#new-asset-slicer-container');
+					const urlLabel = modal.querySelector('#new-asset-url-label');
+					const urlInput = modal.querySelector('#new-asset-url');
+					const titleInput = modal.querySelector('#new-asset-title');
+					if (slicerContainer) slicerContainer.classList.add('hidden');
+					if (uploadZone) uploadZone.classList.remove('hidden');
+					if (urlLabel) urlLabel.textContent = 'Or Enter Direct Image URL / Path';
+					if (urlInput) urlInput.placeholder = 'https://example.com/photo.jpg or /workout/media/exercise.jpg';
+					if (titleInput && !titleInput.value) titleInput.placeholder = 'e.g., Stance & Setup Reference Photo';
 					const addForm = modal.querySelector('#add-asset-form');
 					if (addForm) addForm.classList.remove('hidden');
 					const dropzoneInner = modal.querySelector('#new-asset-dropzone-inner');
 					const previewBox = modal.querySelector('#new-asset-preview-box');
 					const previewImg = modal.querySelector('#new-asset-preview-img');
 					const previewFilename = modal.querySelector('#new-asset-preview-filename');
-					const urlInput = modal.querySelector('#new-asset-url');
-					const titleInput = modal.querySelector('#new-asset-title');
 
 					uploadImageFile(file).then((uploaded) => {
 						if (urlInput) urlInput.value = uploaded.url;
@@ -989,7 +987,7 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 									</div>
 									<div class="modal-asset-info">
 										<div class="modal-asset-badge-row">
-											${getMediaKindBadgeHtml(a.kind)}
+											${getMediaKindBadgeHtml(a)}
 											${isVideo && a.startSeconds !== undefined && a.endSeconds ? `<span class="asset-timestamp">${formatTime(a.startSeconds)} - ${formatTime(a.endSeconds)}</span>` : ''}
 										</div>
 										<div class="modal-asset-title">${escapeHtml(a.title || (isVideo ? 'Video Variation' : 'Form Image'))}</div>
@@ -1007,14 +1005,21 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 					<div class="add-asset-collapse-section" style="margin-top:12px;">
 						<button id="toggle-add-asset-btn" class="btn btn-ghost btn-sm">+ Add New Video or Photo Variation</button>
 						<div id="add-asset-form" class="add-asset-form hidden">
-							<div class="field-group">
-								<label>Media Role / Kind</label>
-								<select id="new-asset-kind" class="input">
-									<option value="instruction">Instruction & Tutorial (YouTube Video)</option>
-									<option value="demonstration">Exercise Execution / Follow-Along (YouTube Video)</option>
-									<option value="photo">Form Reference Photo (Upload / Screenshot / URL)</option>
-									<option value="animation">Looping GIF / Visual (Upload / URL)</option>
-								</select>
+							<div class="field-row">
+								<div class="field-group">
+									<label>Media Role</label>
+									<select id="new-asset-kind" class="input">
+										<option value="demonstration">Follow-Along Demonstration</option>
+										<option value="instruction">Instruction & Tutorial (YouTube Video)</option>
+									</select>
+								</div>
+								<div class="field-group" id="new-asset-format-group">
+									<label>Media Format</label>
+									<select id="new-asset-format" class="input">
+										<option value="video">YouTube Video</option>
+										<option value="image">Photo / Screenshot / GIF</option>
+									</select>
+								</div>
 							</div>
 
 							<!-- Image Upload & Dropzone Area (shown for photo/animation) -->
@@ -1222,6 +1227,8 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 		}
 
 		const kindSelect = modal.querySelector('#new-asset-kind');
+		const formatSelect = modal.querySelector('#new-asset-format');
+		const formatGroup = modal.querySelector('#new-asset-format-group');
 		const uploadZone = modal.querySelector('#new-asset-upload-zone');
 		const dropzoneInner = modal.querySelector('#new-asset-dropzone-inner');
 		const fileInput = modal.querySelector('#new-asset-file-input');
@@ -1243,7 +1250,8 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 		});
 
 		urlInput.addEventListener('input', () => {
-			if (kindSelect.value !== 'photo' && kindSelect.value !== 'animation') {
+			const isImage = (kindSelect && kindSelect.value === 'demonstration') && (formatSelect && formatSelect.value === 'image');
+			if (!isImage) {
 				variationSlicer.syncWithUrl(urlInput.value.trim());
 			}
 		});
@@ -1251,26 +1259,25 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 		function updateAddFormFields() {
 			if (!kindSelect || !urlLabel || !urlInput || !titleInput) return;
 			const kind = kindSelect.value;
-			const isImage = kind === 'photo' || kind === 'animation';
+			const isInstruction = kind === 'instruction';
+			if (formatGroup) {
+				formatGroup.style.display = isInstruction ? 'none' : '';
+			}
+			const format = isInstruction ? 'video' : (formatSelect ? formatSelect.value : 'video');
+			const isImage = format === 'image';
 
 			if (isImage) {
 				if (slicerContainer) slicerContainer.classList.add('hidden');
 				if (uploadZone) uploadZone.classList.remove('hidden');
-				if (kind === 'photo') {
-					urlLabel.textContent = 'Or Enter Direct Image URL / Path';
-					urlInput.placeholder = 'https://example.com/photo.jpg or /workout/media/exercise.jpg';
-					if (!titleInput.value) titleInput.placeholder = 'e.g., Stance & Setup Reference Photo';
-				} else {
-					urlLabel.textContent = 'Or Enter Looping GIF / Animation URL';
-					urlInput.placeholder = 'https://example.com/drill.gif or /workout/media/exercise.gif';
-					if (!titleInput.value) titleInput.placeholder = 'e.g., Form Animation Loop';
-				}
+				urlLabel.textContent = 'Or Enter Direct Image URL / Path';
+				urlInput.placeholder = 'https://example.com/photo.jpg or /workout/media/exercise.jpg';
+				if (!titleInput.value) titleInput.placeholder = 'e.g., Stance & Setup Reference Photo / GIF';
 			} else {
 				if (uploadZone) uploadZone.classList.add('hidden');
 				if (slicerContainer) slicerContainer.classList.remove('hidden');
 				urlLabel.textContent = 'YouTube Video URL';
 				urlInput.placeholder = 'https://youtube.com/watch?v=... or https://youtu.be/...';
-				if (kind === 'instruction') {
+				if (isInstruction) {
 					if (!titleInput.value) titleInput.placeholder = 'e.g., Technique Breakdown & Coaching Cues';
 				} else {
 					if (!titleInput.value) titleInput.placeholder = 'e.g., Continuous Execution Follow-Along';
@@ -1281,8 +1288,11 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 
 		if (kindSelect) {
 			kindSelect.addEventListener('change', updateAddFormFields);
-			updateAddFormFields();
 		}
+		if (formatSelect) {
+			formatSelect.addEventListener('change', updateAddFormFields);
+		}
+		updateAddFormFields();
 
 		async function handleFileSelected(file) {
 			if (!file || !file.type.startsWith('image/')) {
@@ -1350,18 +1360,25 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 		if (saveAssetBtn) {
 			saveAssetBtn.addEventListener('click', async () => {
 				const kind = kindSelect.value;
-				const title = titleInput.value.trim() || (kind === 'instruction' ? 'Instruction Tutorial' : (kind === 'photo' ? 'Form Photo' : 'Demonstration'));
+				const isInstruction = kind === 'instruction';
+				const format = isInstruction ? 'video' : (formatSelect ? formatSelect.value : 'video');
+				const isImage = format === 'image';
+				const title = titleInput.value.trim() || (isInstruction ? 'Instruction Tutorial' : (isImage ? 'Form Photo' : 'Follow-Along Demo'));
 				const url = urlInput.value.trim();
 
 				if (!url) {
-					await showAlert({ title: 'Missing URL / Media', message: 'Please provide a YouTube URL or upload an image file.' });
+					await showAlert({ title: 'Missing URL / Media', message: isInstruction ? 'Please provide a YouTube URL.' : 'Please provide a YouTube URL or upload an image file.' });
 					return;
 				}
 
 				const vid = parseYouTubeId(url);
-				const isImgKind = kind === 'photo' || kind === 'animation';
-				const isYtUrl = Boolean(vid);
-				const finalType = isYtUrl ? 'video' : (isImgKind ? 'image' : (url.match(/\.(mp4|webm|mov)$/i) ? 'video' : 'image'));
+				if (isInstruction && !vid) {
+					await showAlert({ title: 'Invalid Video URL', message: 'Instruction & Tutorial variations must be a valid YouTube video.' });
+					return;
+				}
+
+				const finalType = isImage ? 'image' : (vid ? 'video' : (url.match(/\.(mp4|webm|mov)$/i) ? 'video' : 'image'));
+				const finalKind = finalType === 'image' ? 'demonstration' : kind;
 
 				const slicerState = variationSlicer.getState();
 
@@ -1371,7 +1388,7 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 							const inv = slicerState.intervals[i];
 							const invAsset = {
 								id: `asset-${Date.now()}-${i + 1}`,
-								kind,
+								kind: finalKind,
 								type: 'video',
 								title: inv.name || `${title} Part ${i + 1}`,
 								url,
@@ -1398,7 +1415,7 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 
 				const newAsset = {
 					id: `asset-${Date.now()}`,
-					kind,
+					kind: finalKind,
 					type: finalType,
 					title,
 					url,
@@ -1453,6 +1470,9 @@ export function showEditExerciseModal(exercise = null, options = {}) {
 		: new Set();
 
 	const currentMediaUrl = isEdit ? (exercise.media_url || (exercise.media_assets?.[0]?.url || '')) : '';
+	const initialMediaKind = isEdit && Array.isArray(exercise.media_assets) && exercise.media_assets.length > 0
+		? (exercise.media_assets.find(a => a.url === currentMediaUrl)?.kind || exercise.media_assets[0]?.kind || 'demonstration')
+		: 'demonstration';
 
 	modal.innerHTML = `
 		<div class="modal-header">
@@ -1504,9 +1524,19 @@ export function showEditExerciseModal(exercise = null, options = {}) {
 						<textarea id="create-ex-desc" class="input clean-input" rows="4" placeholder="Key form cues, tempo, or setup instructions..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">${isEdit ? escapeHtml(exercise.description || '') : ''}</textarea>
 					</div>
 
+					<div class="field-row">
+						<div class="field-group">
+							<label>Media Role</label>
+							<select id="create-ex-media-role" class="input">
+								<option value="demonstration" ${initialMediaKind !== 'instruction' ? 'selected' : ''}>Follow-Along (Loops during timed step)</option>
+								<option value="instruction" ${initialMediaKind === 'instruction' ? 'selected' : ''}>Instruction / Tutorial (YouTube video only)</option>
+							</select>
+						</div>
+					</div>
+
 					<div class="field-group">
 						<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-							<label style="margin-bottom:0;">Exercise Visual / Media (YouTube Link, Photo, or Screenshot)</label>
+							<label id="create-ex-media-label" style="margin-bottom:0;">Exercise Visual / Media (YouTube Link, Photo, or Screenshot)</label>
 							${isEdit && currentMediaUrl ? '<button type="button" id="btn-clear-ex-media" class="btn btn-ghost btn-xs" style="color:var(--text-danger,#ef4444);padding:1px 6px;">✕ Clear Video/Media</button>' : ''}
 						</div>
 						<div class="media-input-with-upload">
@@ -1583,6 +1613,33 @@ export function showEditExerciseModal(exercise = null, options = {}) {
 	const browseBtn = modal.querySelector('#btn-browse-ex-photo');
 	const previewBox = modal.querySelector('#create-ex-upload-preview');
 	const previewImg = modal.querySelector('#create-ex-preview-img');
+	const mediaRoleSelect = modal.querySelector('#create-ex-media-role');
+	const mediaLabel = modal.querySelector('#create-ex-media-label');
+
+	function syncMediaRoleUI() {
+		const isInstruction = mediaRoleSelect && mediaRoleSelect.value === 'instruction';
+		if (browseBtn) {
+			browseBtn.style.display = isInstruction ? 'none' : '';
+		}
+		if (mediaLabel) {
+			mediaLabel.textContent = isInstruction
+				? 'Exercise Tutorial Video (YouTube Link Only)'
+				: 'Exercise Visual / Media (YouTube Link, Photo, or Screenshot)';
+		}
+		if (mediaInput) {
+			mediaInput.placeholder = isInstruction
+				? 'https://youtube.com/watch?v=... or https://youtu.be/...'
+				: 'YouTube URL, image link, or upload/paste screenshot...';
+		}
+		if (isInstruction && previewBox) {
+			previewBox.classList.add('hidden');
+		}
+	}
+
+	if (mediaRoleSelect) {
+		mediaRoleSelect.addEventListener('change', syncMediaRoleUI);
+		syncMediaRoleUI();
+	}
 
 	async function handleEditUploadedFile(file) {
 		if (!file || !file.type.startsWith('image/')) {
@@ -1616,6 +1673,10 @@ export function showEditExerciseModal(exercise = null, options = {}) {
 				const file = items[i].getAsFile();
 				if (file) {
 					e.preventDefault();
+					if (mediaRoleSelect && mediaRoleSelect.value === 'instruction') {
+						mediaRoleSelect.value = 'demonstration';
+						syncMediaRoleUI();
+					}
 					handleEditUploadedFile(file);
 					break;
 				}
@@ -1826,6 +1887,8 @@ export function showEditExerciseModal(exercise = null, options = {}) {
 		}
 
 		let media_assets = isEdit ? (Array.isArray(exercise.media_assets) ? [...exercise.media_assets] : []) : [];
+		const mediaRole = modal.querySelector('#create-ex-media-role')?.value || 'demonstration';
+
 		if (!media_url) {
 			if (isEdit && currentMediaUrl && media_assets.length > 0) {
 				media_assets = media_assets.filter(a => a.url !== currentMediaUrl);
@@ -1838,14 +1901,18 @@ export function showEditExerciseModal(exercise = null, options = {}) {
 		} else {
 			const isYt = media_url.includes('youtube') || media_url.includes('youtu.be');
 			const vid = isYt ? parseYouTubeId(media_url) : null;
+			if (mediaRole === 'instruction' && !vid) {
+				await showAlert({ title: 'Invalid Video URL', message: 'Instruction & Tutorial media must be a valid YouTube video.' });
+				return;
+			}
 			if (isYt && vid) {
 				const primaryStart = slicerState.isFullVideo ? 0 : slicerState.primaryStart;
 				const primaryEnd = slicerState.isFullVideo ? undefined : slicerState.primaryEnd;
-				const primaryTitle = slicerState.intervals[0]?.name || `${name} Video`;
+				const primaryTitle = slicerState.intervals[0]?.name || (mediaRole === 'instruction' ? `${name} Tutorial` : `${name} Video`);
 
 				const primaryAsset = {
 					id: `asset-${Date.now()}-1`,
-					kind: 'demonstration',
+					kind: mediaRole,
 					type: 'video',
 					title: primaryTitle,
 					url: media_url,
@@ -1861,7 +1928,7 @@ export function showEditExerciseModal(exercise = null, options = {}) {
 					slicerState.intervals.slice(1).forEach((inv, idx) => {
 						media_assets.push({
 							id: `asset-${Date.now()}-${idx + 2}`,
-							kind: 'demonstration',
+							kind: mediaRole,
 							type: 'video',
 							title: inv.name || `${name} Variation ${idx + 2}`,
 							url: media_url,
@@ -1874,7 +1941,7 @@ export function showEditExerciseModal(exercise = null, options = {}) {
 			} else if (media_url !== currentMediaUrl) {
 				const newAsset = {
 					id: `asset-${Date.now()}`,
-					kind: 'animation',
+					kind: 'demonstration',
 					type: 'image',
 					title: `${name} Visual`,
 					url: media_url,

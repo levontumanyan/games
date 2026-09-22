@@ -98,11 +98,12 @@ export function getExerciseMediaAssets(exercisesOrIds = []) {
 			const fallbackId = `fb-${ex.id}`;
 			if (!seenIds.has(fallbackId)) {
 				seenIds.add(fallbackId);
+				const isYt = Boolean(parseYouTubeId(ex.media_url));
 				assets.push({
 					id: fallbackId,
-					kind: 'animation',
-					type: 'image',
-					title: `${ex.name} Animation`,
+					kind: 'demonstration',
+					type: isYt ? 'video' : 'image',
+					title: `${ex.name} ${isYt ? 'Video' : 'Visual'}`,
 					url: ex.media_url,
 					exerciseName: ex.name,
 					exerciseCategory: ex.category,
@@ -126,8 +127,8 @@ export function getExerciseFollowAlongMedia(exerciseOrId) {
 	// 1. Prefer explicit demonstration / follow-along video
 	const demo = assets.find(a => (a.kind === 'demonstration' || a.kind === 'drill') && (a.type === 'video' || Boolean(a.videoId)));
 	if (demo) return demo;
-	// 2. Prefer looping visual animation or photo
-	const visual = assets.find(a => a.kind === 'animation' || a.kind === 'photo');
+	// 2. Prefer looping visual animation or photo (or demonstration image)
+	const visual = assets.find(a => (a.kind === 'demonstration' && a.type === 'image') || a.kind === 'animation' || a.kind === 'photo' || a.type === 'image');
 	if (visual) return visual;
 	// 3. Fallback: Any non-instruction video asset
 	const nonInst = assets.find(a => a.kind !== 'instruction');
@@ -454,8 +455,8 @@ export function renderExerciseCardElement(ex, options = {}) {
 	card.dataset.id = ex.id;
 
 	const instructionCount = assets.filter(a => a.kind === 'instruction').length;
-	const demoCount = assets.filter(a => a.kind === 'demonstration').length;
-	const animCount = assets.filter(a => a.kind === 'animation' || a.kind === 'photo').length;
+	const demoCount = assets.filter(a => (a.kind === 'demonstration' || a.kind === 'drill') && (a.type === 'video' || a.videoId)).length;
+	const animCount = assets.filter(a => (a.kind === 'demonstration' && a.type === 'image') || a.kind === 'animation' || a.kind === 'photo').length;
 
 	const effectiveQty = getEffectiveExerciseQuantity(ex);
 	const modeStr = formatModeQuantity(ex.default_mode || 'reps', effectiveQty);
@@ -540,9 +541,43 @@ export function resolveStepVideo(step) {
 	if (step.customMedia && step.videoId) {
 		return {
 			videoId: step.videoId,
-			startSeconds: step.startSeconds || 0,
-			endSeconds: step.endSeconds || ((step.startSeconds || 0) + (step.durationSeconds || 60))
+			startSeconds: typeof step.startSeconds === 'number' ? step.startSeconds : 0,
+			endSeconds: typeof step.endSeconds === 'number' ? step.endSeconds : ((step.startSeconds || 0) + (step.durationSeconds || 60))
 		};
+	}
+
+	// 2. Tutorial breakdown resolution (coaching / form tutorial videos)
+	const isTutorial = Boolean(step.isTutorial || (step.label && step.label.includes('[Tutorial]')));
+	if (isTutorial) {
+		if (step.videoId) {
+			return {
+				videoId: step.videoId,
+				startSeconds: typeof step.startSeconds === 'number' ? step.startSeconds : 0,
+				endSeconds: typeof step.endSeconds === 'number' ? step.endSeconds : ((step.startSeconds || 0) + (step.durationSeconds || 60))
+			};
+		}
+		if (Array.isArray(step.exercises) && step.exercises.length > 0) {
+			for (const exRef of step.exercises) {
+				const fullEx = exRef && exRef.id ? getExerciseById(exRef.id) : null;
+				const target = fullEx || (typeof exRef === 'object' ? exRef : null);
+				if (target) {
+					const inst = getExerciseInstructionMedia(target);
+					if (inst && (inst.type === 'video' || inst.videoId)) {
+						const vid = inst.videoId || parseYouTubeId(inst.url);
+						if (vid) {
+							const start = typeof inst.startSeconds === 'number' ? inst.startSeconds : 0;
+							const end = typeof inst.endSeconds === 'number' ? inst.endSeconds : (start + (step.durationSeconds || target.default_quantity || 60));
+							return {
+								videoId: vid,
+								startSeconds: start,
+								endSeconds: end
+							};
+						}
+					}
+				}
+			}
+		}
+		return null;
 	}
 
 	// 2. Compound combo dynamic resolution (never fall through to individual sub-exercises)

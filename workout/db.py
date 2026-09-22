@@ -171,6 +171,17 @@ class Database:
 			except Exception:
 				pass
 
+			# Migrate legacy 'animation' and 'photo' media asset kinds to 'demonstration'
+			try:
+				for table in ("exercises", "combos"):
+					for leg in ("animation", "photo"):
+						conn.execute(
+							f'UPDATE {table} SET media_assets_json = replace(media_assets_json, \'"kind": "{leg}"\', \'"kind": "demonstration"\') '
+							f'WHERE media_assets_json LIKE \'%"kind": "{leg}"%\''
+						)
+			except Exception:
+				pass
+
 			# Ensure default user 'levon' exists
 			cursor = conn.execute("SELECT id FROM users WHERE id = ?", ("levon",))
 			if not cursor.fetchone():
@@ -798,9 +809,9 @@ class Database:
 					d["media_assets"] = [
 						{
 							"id": f"{d['id']}-default",
-							"kind": "demonstration" if is_video else "animation",
+							"kind": "demonstration",
 							"type": "video" if is_video else "image",
-							"title": "Demonstration" if is_video else "Animation",
+							"title": "Demonstration" if is_video else "Visual Form",
 							"url": d["media_url"],
 						}
 					]
@@ -830,9 +841,9 @@ class Database:
 				d["media_assets"] = [
 					{
 						"id": f"{d['id']}-default",
-						"kind": "demonstration" if is_video else "animation",
+						"kind": "demonstration",
 						"type": "video" if is_video else "image",
-						"title": "Demonstration" if is_video else "Animation",
+						"title": "Demonstration" if is_video else "Visual Form",
 						"url": d["media_url"],
 					}
 				]
@@ -865,9 +876,9 @@ class Database:
 			media_assets = [
 				{
 					"id": f"{ex_id}-default",
-					"kind": "demonstration" if is_video else "animation",
+					"kind": "demonstration",
 					"type": "video" if is_video else "image",
-					"title": "Demonstration" if is_video else "Animation",
+					"title": "Demonstration" if is_video else "Visual Form",
 					"url": media_url,
 				}
 			]

@@ -494,6 +494,7 @@ export function buildPreviewStep(item, asset = null, { isCombo = false } = {}) {
 			id: isCombo ? 'preview-combo-step' : 'preview-step',
 			type: 'clip',
 			isTutorial,
+			customMedia: true,
 			videoId: vidId,
 			startSeconds: start,
 			endSeconds: end,
@@ -516,6 +517,7 @@ export function buildPreviewStep(item, asset = null, { isCombo = false } = {}) {
 		targetReps: isExReps ? targetQty : 0,
 		durationSeconds: !isExReps ? targetQty : 30,
 		label,
+		customMedia: true,
 		gifUrl: rawGif || '',
 		exercises: exList
 	};

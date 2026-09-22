@@ -1883,7 +1883,7 @@ export function showAddExerciseModal(routine, onUpdate, insertIndex = -1) {
 		const isVid = Boolean(followAlong && (followAlong.type === 'video' || followAlong.videoId));
 		const vid = isVid ? (followAlong.videoId || parseYouTubeId(followAlong.url)) : null;
 		const hasVid = isVid || assets.some(a => a.type === 'video' || a.videoId);
-		const hasGifOrImg = Boolean(fullEx.media_url || assets.some(a => a.type === 'image' || a.kind === 'animation'));
+		const hasGifOrImg = Boolean(fullEx.media_url || assets.some(a => a.type === 'image' || a.kind === 'animation' || a.kind === 'photo'));
 		const hasTutorial = assets.some(a => a.kind === 'instruction');
 
 		const searchBlob = `${fullEx.name || ''} ${fullEx.discipline || ''} ${fullEx.category || ''} ${allTargetMuscles.join(' ')} ${fullEx.description || ''}`.toLowerCase();

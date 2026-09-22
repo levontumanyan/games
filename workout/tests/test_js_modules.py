@@ -969,6 +969,43 @@ def test_combo_video_resolution_and_up_next_metadata():
 	if (getStepDuration(timedStep) !== 60) {{
 		throw new Error('getStepDuration failed for timed step, expected 60, got: ' + getStepDuration(timedStep));
 	}}
+
+	// 5. Instruction tutorial breakdown preview must resolve to tutorial video slice
+	const tutorialStep = {{
+		id: 'preview-step',
+		type: 'clip',
+		isTutorial: true,
+		customMedia: true,
+		videoId: '7sLw5dHdRG4',
+		startSeconds: 662,
+		endSeconds: 846,
+		label: 'Jab-Cross Combo: [Tutorial] Jab Cross Punching Mechanics',
+		exercises: [{{ id: 'ex-jab-cross' }}]
+	}};
+
+	if (!isClipStep(tutorialStep)) {{
+		throw new Error('isClipStep failed for tutorial step');
+	}}
+	const resolvedTutVid = resolveStepVideo(tutorialStep);
+	if (!resolvedTutVid || resolvedTutVid.videoId !== '7sLw5dHdRG4' || resolvedTutVid.startSeconds !== 662 || resolvedTutVid.endSeconds !== 846) {{
+		throw new Error('resolveStepVideo failed for tutorial step, got: ' + JSON.stringify(resolvedTutVid));
+	}}
+	if (getStepDuration(tutorialStep, resolvedTutVid) !== 184) {{
+		throw new Error('getStepDuration failed for tutorial step, expected 184, got: ' + getStepDuration(tutorialStep, resolvedTutVid));
+	}}
+
+	// 6. Tutorial step with only exercise reference and isTutorial flag dynamically resolves instruction media
+	const dynamicTutStep = {{
+		id: 'preview-step-dyn',
+		type: 'clip',
+		isTutorial: true,
+		label: 'Jab-Cross [Tutorial]',
+		exercises: [{{ id: 'ex-jab-cross' }}]
+	}};
+	const resolvedDynTut = resolveStepVideo(dynamicTutStep);
+	if (!resolvedDynTut || resolvedDynTut.videoId !== '7sLw5dHdRG4' || resolvedDynTut.startSeconds !== 662) {{
+		throw new Error('resolveStepVideo failed to dynamically resolve instruction media, got: ' + JSON.stringify(resolvedDynTut));
+	}}
 	"""
 
 	res = subprocess.run(
@@ -1159,3 +1196,59 @@ def test_editor_insert_divider_and_wheel_protections():
 	assert res.returncode == 0, (
 		f"Node test_editor_insert_divider_and_wheel_protections failed:\n{res.stderr}"
 	)
+
+
+def test_media_kinds_roles_and_visual_resolution():
+	"""Verify media roles (demonstration vs instruction) and image demonstration handling."""
+	js_dir = Path(__file__).parent.parent / "js"
+	node_script = f"""
+	globalThis.localStorage = {{ getItem: () => null, setItem: () => {{}}, removeItem: () => {{}} }};
+	globalThis.window = {{ addEventListener: () => {{}}, removeEventListener: () => {{}} }};
+	globalThis.document = {{ addEventListener: () => {{}}, removeEventListener: () => {{}} }};
+
+	const {{ getMediaKindInfo, getMediaKindBadgeHtml }} = await import('{js_dir}/taxonomy.js');
+	const {{ getExerciseFollowAlongMedia, getExerciseInstructionMedia }} = await import('{js_dir}/exercises.js');
+
+	// 1. Taxonomy info for demonstration video vs demonstration image
+	const vidInfo = getMediaKindInfo('demonstration', 'video');
+	if (vidInfo.label !== 'Follow-Along Demo') {{
+		throw new Error('Expected Follow-Along Demo, got: ' + vidInfo.label);
+	}}
+	const imgInfo = getMediaKindInfo('demonstration', 'image');
+	if (imgInfo.label !== 'Visual Form') {{
+		throw new Error('Expected Visual Form, got: ' + imgInfo.label);
+	}}
+
+	// 2. Badge generation with asset object
+	const imgBadge = getMediaKindBadgeHtml({{ kind: 'demonstration', type: 'image' }});
+	if (!imgBadge.includes('Visual Form')) {{
+		throw new Error('Expected Visual Form in badge, got: ' + imgBadge);
+	}}
+
+	// 3. Exercise follow-along resolution with demonstration image
+	const exWithImgDemo = {{
+		id: 'ex-img',
+		name: 'Photo Pushup',
+		media_assets: [
+			{{ id: 'a1', kind: 'demonstration', type: 'image', url: '/workout/media/pushup.png' }},
+			{{ id: 'a2', kind: 'instruction', type: 'video', videoId: 'abc123' }}
+		]
+	}};
+	const followAlong = getExerciseFollowAlongMedia(exWithImgDemo);
+	if (!followAlong || followAlong.id !== 'a1') {{
+		throw new Error('Expected followAlong to resolve to a1, got: ' + JSON.stringify(followAlong));
+	}}
+
+	const instruction = getExerciseInstructionMedia(exWithImgDemo);
+	if (!instruction || instruction.id !== 'a2') {{
+		throw new Error('Expected instruction to resolve to a2, got: ' + JSON.stringify(instruction));
+	}}
+	"""
+
+	res = subprocess.run(
+		["node", "--input-type=module", "-e", node_script],
+		capture_output=True,
+		text=True,
+		timeout=5,
+	)
+	assert res.returncode == 0, f"Node media kinds test failed:\n{res.stderr}"

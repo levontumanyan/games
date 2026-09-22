@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 from pathlib import Path
 
@@ -872,3 +873,47 @@ def test_exercise_rename_cascades_to_routines(client: TestClient):
 	step_custom = r["steps"][1]
 	assert step_custom["label"] == "Custom Slow Squats"
 	assert step_custom["exercises"][0]["name"] == "Renamed Squat Movement"
+
+
+def test_media_kinds_consolidation_and_backfill(tmp_path: Path):
+	from db import Database
+
+	db_file = tmp_path / "test_migration.db"
+	db = Database(db_file)
+
+	# Insert legacy animation and photo kinds into exercises and combos
+	with db.get_connection() as conn:
+		conn.execute(
+			"""
+			INSERT INTO exercises (id, user_id, name, category, discipline, media_assets_json, created_at)
+			VALUES ('ex-legacy', 'levon', 'Legacy Pushups', 'strength', 'general',
+			'[{"id": "a1", "kind": "animation", "type": "image", "url": "test.gif"}, {"id": "a2", "kind": "photo", "type": "image", "url": "test.jpg"}, {"id": "a3", "kind": "instruction", "type": "video", "url": "inst.mp4"}]',
+			'2026-01-01T00:00:00')
+			"""
+		)
+		conn.execute(
+			"""
+			INSERT INTO combos (id, user_id, name, category, discipline, media_assets_json, created_at)
+			VALUES ('combo-legacy', 'levon', 'Legacy Combo', 'drill', 'general',
+			'[{"id": "c1", "kind": "animation", "type": "image", "url": "c.gif"}]',
+			'2026-01-01T00:00:00')
+			"""
+		)
+
+	# Re-run init_db() to trigger backfill
+	db.init_db()
+
+	with db.get_connection() as conn:
+		ex_row = conn.execute(
+			"SELECT media_assets_json FROM exercises WHERE id = 'ex-legacy'"
+		).fetchone()
+		ex_assets = json.loads(ex_row["media_assets_json"])
+		assert ex_assets[0]["kind"] == "demonstration"
+		assert ex_assets[1]["kind"] == "demonstration"
+		assert ex_assets[2]["kind"] == "instruction"
+
+		combo_row = conn.execute(
+			"SELECT media_assets_json FROM combos WHERE id = 'combo-legacy'"
+		).fetchone()
+		combo_assets = json.loads(combo_row["media_assets_json"])
+		assert combo_assets[0]["kind"] == "demonstration"
