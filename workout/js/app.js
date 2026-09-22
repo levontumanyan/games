@@ -12,6 +12,7 @@ import {
 	renderEditor, createClipStep, createTimerStep, createBreakStep, createRoutine,
 	createStepFromExercise, createStepFromCombo,
 	showAddExerciseModal, showAddComboModal, toggleAllStepCards, expandStep,
+	appendStepWithBreak, trimTrailingBreaks,
 	getStepDisplayName
 } from './editor.js';
 import { renderRoutineOverview } from './view.js';
@@ -430,8 +431,7 @@ function handleAddToRoutineWithPicker(item, triggerBtn, type = 'exercise') {
 			selectedRoutineId = routine.id;
 		}
 		const newStep = type === 'combo' ? createStepFromCombo(item) : createStepFromExercise(item);
-		routine.steps.push(newStep);
-		expandStep(newStep.id);
+		appendStepWithBreak(routine, newStep);
 		persist();
 		showToast(`Added "${item.name}" to ${routine.title}!`);
 		return;
@@ -733,6 +733,8 @@ function bindEvents() {
 	}
 	if (dom.addBreakBtn) dom.addBreakBtn.addEventListener('click', handleAddBreak);
 	dom.doneEditingBtn.addEventListener('click', () => {
+		const routine = getSelectedRoutine();
+		if (routine) trimTrailingBreaks(routine);
 		editingRoutineSnapshot = null;
 		isNewRoutineEditing = false;
 		currentMode = 'view';
@@ -1250,8 +1252,7 @@ function goToExercise(exerciseOrId) {
 				selectedRoutineId = routine.id;
 			}
 			const newStep = createStepFromExercise(fullEx);
-			routine.steps.push(newStep);
-			expandStep(newStep.id);
+			appendStepWithBreak(routine, newStep);
 			persist();
 			currentMode = 'edit';
 			switchTab('routines');

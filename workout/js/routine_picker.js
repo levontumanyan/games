@@ -3,7 +3,7 @@
  */
 
 import { escapeHtml } from './utils.js';
-import { createStepFromExercise, createStepFromCombo, createRoutine, expandStep } from './editor.js';
+import { createStepFromExercise, createStepFromCombo, createRoutine, appendStepWithBreak } from './editor.js';
 
 let activePopover = null;
 let activeCleanup = null;
@@ -129,8 +129,7 @@ export function showRoutinePickerPopover(triggerBtn, item, type = 'exercise', op
 			onSelectRoutine(newRoutine.id);
 
 			const newStep = type === 'combo' ? createStepFromCombo(item) : createStepFromExercise(item);
-			newRoutine.steps.push(newStep);
-			expandStep(newStep.id);
+			appendStepWithBreak(newRoutine, newStep);
 			onSave();
 
 			createBtn.innerHTML = `<span class="popover-item-success">✓ Created & Added!</span>`;
@@ -147,8 +146,7 @@ export function showRoutinePickerPopover(triggerBtn, item, type = 'exercise', op
 			const targetRoutine = routines.find(r => r.id === routineId);
 			if (targetRoutine) {
 				const newStep = type === 'combo' ? createStepFromCombo(item) : createStepFromExercise(item);
-				targetRoutine.steps.push(newStep);
-				expandStep(newStep.id);
+				appendStepWithBreak(targetRoutine, newStep);
 				onSelectRoutine(targetRoutine.id);
 				onSave();
 

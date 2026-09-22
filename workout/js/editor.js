@@ -351,6 +351,38 @@ export function insertBreakStep(routine, index, durationSeconds = 30) {
 }
 
 /**
+ * Insert a step (exercise or combo) and automatically follow it with a 30s
+ * break so the routine is always interleaved with rest between movements.
+ * @param {Object} routine
+ * @param {Object} step
+ * @param {number} [insertIndex=-1] - Target index; -1 appends to the end
+ * @returns {number} The index at which the step was inserted
+ */
+export function appendStepWithBreak(routine, step, insertIndex = -1) {
+	if (!routine || !step) return -1;
+	if (!Array.isArray(routine.steps)) routine.steps = [];
+	const idx = (typeof insertIndex === 'number' && insertIndex >= 0 && insertIndex <= routine.steps.length)
+		? insertIndex
+		: routine.steps.length;
+	routine.steps.splice(idx, 0, step);
+	routine.steps.splice(idx + 1, 0, createBreakStep(30));
+	expandStep(step.id);
+	return idx;
+}
+
+/**
+ * Remove any break/rest steps from the end of a routine so the last step is
+ * always an actual exercise/combo movement.
+ * @param {Object} routine
+ */
+export function trimTrailingBreaks(routine) {
+	if (!routine || !Array.isArray(routine.steps)) return;
+	while (routine.steps.length > 0 && isBreakStep(routine.steps[routine.steps.length - 1])) {
+		routine.steps.pop();
+	}
+}
+
+/**
  * Insert a new timer step at a specific index.
  * @param {Object} routine
  * @param {number} [index]
@@ -1904,18 +1936,12 @@ export function showAddExerciseModal(routine, onUpdate, insertIndex = -1) {
 	function commitAddExercise(ex) {
 		const newStep = createStepFromExercise(ex);
 
-		if (typeof insertIndex === 'number' && insertIndex >= 0 && insertIndex <= routine.steps.length) {
-			routine.steps.splice(insertIndex, 0, newStep);
-		} else {
-			routine.steps.push(newStep);
-		}
+		const idx = appendStepWithBreak(routine, newStep, insertIndex);
 
-		expandStep(newStep.id);
 		clearTimeout(searchDebounceTimer);
 		close();
 		onUpdate();
-		const pos = (typeof insertIndex === 'number' && insertIndex >= 0) ? insertIndex + 1 : routine.steps.length;
-		showToast(`Added "${ex.name}" at step #${pos}`);
+		showToast(`Added "${ex.name}" at step #${idx + 1}`);
 		highlightStepElement(newStep.id);
 	}
 
@@ -2135,17 +2161,11 @@ export function showAddComboModal(routine, onUpdate, insertIndex = -1) {
 			item.addEventListener('click', () => {
 				const newStep = createStepFromCombo(combo);
 
-				if (typeof insertIndex === 'number' && insertIndex >= 0 && insertIndex <= routine.steps.length) {
-					routine.steps.splice(insertIndex, 0, newStep);
-				} else {
-					routine.steps.push(newStep);
-				}
+				const idx = appendStepWithBreak(routine, newStep, insertIndex);
 
-				expandStep(newStep.id);
 				close();
 				onUpdate();
-				const pos = (typeof insertIndex === 'number' && insertIndex >= 0) ? insertIndex + 1 : routine.steps.length;
-				showToast(`Added "${combo.name}" at step #${pos}`);
+				showToast(`Added "${combo.name}" at step #${idx + 1}`);
 				highlightStepElement(newStep.id);
 			});
 
