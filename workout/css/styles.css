@@ -7021,10 +7021,8 @@ textarea.input {
 	display: flex;
 	flex-direction: column;
 	gap: 10px;
-	background: rgba(0, 0, 0, 0.15);
-	border: 1px solid var(--border);
-	border-radius: var(--radius-md, 8px);
-	padding: 10px 12px;
+	border-top: 1px solid var(--border);
+	padding-top: 12px;
 }
 
 .selected-badges-tray .badge-group-row {
@@ -7043,12 +7041,9 @@ textarea.input {
 	gap: 6px;
 }
 
-.selected-badges-tray .label-pri {
-	color: #f43f5e;
-}
-
+.selected-badges-tray .label-pri,
 .selected-badges-tray .label-sec {
-	color: #06b6d4;
+	color: var(--text-secondary);
 }
 
 .badges-pill-wrap {

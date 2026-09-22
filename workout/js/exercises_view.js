@@ -1486,7 +1486,7 @@ export function showEditExerciseModal(exercise = null, options = {}) {
 
 					<div class="field-row">
 						<div class="field-group">
-							<label>Default Execution Mode</label>
+							<label>Execution Mode</label>
 							<select id="create-ex-mode" class="input">
 								<option value="reps" ${isEdit && exercise.default_mode === 'reps' ? 'selected' : ''}>Target Reps</option>
 								<option value="time" ${isEdit && exercise.default_mode === 'time' ? 'selected' : ''}>Timed Interval</option>
@@ -1494,20 +1494,8 @@ export function showEditExerciseModal(exercise = null, options = {}) {
 						</div>
 
 						<div class="field-group">
-							<label>Default Quantity (reps or sec)</label>
+							<label id="create-ex-quantity-label">Target Reps</label>
 							<input type="number" id="create-ex-quantity" class="input clean-input" min="1" value="${isEdit ? getEffectiveExerciseQuantity(exercise) : 20}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
-						</div>
-					</div>
-
-					<!-- Targeted Anatomy Badges Tray -->
-					<div class="selected-badges-tray">
-						<div class="badge-group-row">
-							<span class="badge-group-label label-pri"><span class="badge-dot pri-dot"></span> Primary Target Muscles</span>
-							<div class="badges-pill-wrap" id="create-ex-primary-muscles"></div>
-						</div>
-						<div class="badge-group-row">
-							<span class="badge-group-label label-sec"><span class="badge-dot sec-dot"></span> Secondary Synergist Muscles</span>
-							<div class="badges-pill-wrap" id="create-ex-secondary-muscles"></div>
 						</div>
 					</div>
 
@@ -1552,6 +1540,17 @@ export function showEditExerciseModal(exercise = null, options = {}) {
 						<div class="modal-mini-body-view">
 							<span class="modal-mini-body-tag">Back (Posterior)</span>
 							${getBackBodySvg()}
+						</div>
+					</div>
+
+					<div class="selected-badges-tray">
+						<div class="badge-group-row">
+							<span class="badge-group-label label-pri"><span class="badge-dot pri-dot"></span> Primary Target Muscles</span>
+							<div class="badges-pill-wrap" id="create-ex-primary-muscles"></div>
+						</div>
+						<div class="badge-group-row">
+							<span class="badge-group-label label-sec"><span class="badge-dot sec-dot"></span> Secondary Synergist Muscles</span>
+							<div class="badges-pill-wrap" id="create-ex-secondary-muscles"></div>
 						</div>
 					</div>
 
@@ -1644,21 +1643,31 @@ export function showEditExerciseModal(exercise = null, options = {}) {
 
 	const modeSelect = modal.querySelector('#create-ex-mode');
 	const qtyInput = modal.querySelector('#create-ex-quantity');
+	const qtyLabel = modal.querySelector('#create-ex-quantity-label');
+
+	function syncQuantityUnit() {
+		const isReps = modeSelect && modeSelect.value !== 'time';
+		if (qtyLabel) qtyLabel.textContent = isReps ? 'Target Reps' : 'Duration (seconds)';
+		if (qtyInput) qtyInput.placeholder = isReps ? '20' : '30';
+	}
+
 	if (modeSelect && qtyInput) {
+		syncQuantityUnit();
 		modeSelect.addEventListener('change', () => {
 			if (modeSelect.value === 'time') {
 				const state = exerciseSlicer.getState();
 				if (!state.isFullVideo && typeof state.primaryEnd === 'number' && typeof state.primaryStart === 'number' && state.primaryEnd > state.primaryStart) {
 					qtyInput.value = state.primaryEnd - state.primaryStart;
-				} else if (qtyInput.value === '20') {
-					qtyInput.value = '30';
-				}
-			} else if (modeSelect.value === 'reps') {
-				if (qtyInput.value === '30' || qtyInput.value === '60') {
-					qtyInput.value = '20';
-				}
+} else if (qtyInput.value === '20') {
+				qtyInput.value = '30';
 			}
-		});
+		} else if (modeSelect.value === 'reps') {
+			if (qtyInput.value === '30' || qtyInput.value === '60') {
+				qtyInput.value = '20';
+			}
+		}
+		syncQuantityUnit();
+	});
 	}
 
 	mediaInput.addEventListener('input', () => {
@@ -1712,7 +1721,7 @@ export function showEditExerciseModal(exercise = null, options = {}) {
 		secContainer.innerHTML = '';
 
 		if (selectedPrimary.size === 0) {
-			priContainer.innerHTML = '<span class="empty-badge-hint">None selected (tap body to pick)</span>';
+			priContainer.innerHTML = '<span class="empty-badge-hint">None selected</span>';
 		} else {
 			selectedPrimary.forEach(m => {
 				const def = MUSCLE_DEFINITIONS[m] || { label: m };
@@ -1729,7 +1738,7 @@ export function showEditExerciseModal(exercise = null, options = {}) {
 		}
 
 		if (selectedSecondary.size === 0) {
-			secContainer.innerHTML = '<span class="empty-badge-hint">None selected (optional)</span>';
+			secContainer.innerHTML = '<span class="empty-badge-hint">None selected</span>';
 		} else {
 			selectedSecondary.forEach(m => {
 				const def = MUSCLE_DEFINITIONS[m] || { label: m };

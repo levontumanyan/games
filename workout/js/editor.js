@@ -113,9 +113,11 @@ export function renderEditor(routine, container, actions) {
 		return;
 	}
 
-	// Workout-level background music playlist card
-	const musicCard = createRoutineMusicCard(routine, onUpdate);
-	container.appendChild(musicCard);
+	// Workout-level background music playlist card (only once there are steps)
+	if (routine.steps.length > 0) {
+		const musicCard = createRoutineMusicCard(routine, onUpdate);
+		container.appendChild(musicCard);
+	}
 
 	if (routine.steps.length === 0) {
 		const emptyCard = document.createElement('div');

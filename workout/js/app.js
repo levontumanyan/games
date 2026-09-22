@@ -1192,15 +1192,20 @@ function renderRoutineList() {
 		const meta = document.createElement('span');
 		meta.className = 'routine-meta';
 		const routineSteps = routine.steps || [];
-		let clipCount = 0;
-		let timerCount = 0;
-		let totalTime = 0;
+		let timeCount = 0;
+		let repsCount = 0;
+		let breakCount = 0;
 		routineSteps.forEach(s => {
 			const cls = classifyStep(s);
-			if (cls.video) clipCount++; else timerCount++;
-			if (cls.targetDuration) totalTime += cls.targetDuration;
+			if (cls.mode === 'break') breakCount++;
+			else if (cls.mode === 'reps') repsCount++;
+			else timeCount++;
 		});
-		meta.textContent = `${routine.steps.length} steps · ${clipCount} clips · ${timerCount} timers · ~${formatTime(totalTime)}`;
+		const parts = [`${routineSteps.length} steps`];
+		if (timeCount) parts.push(`${timeCount} timed`);
+		if (repsCount) parts.push(`${repsCount} reps`);
+		if (breakCount) parts.push(`${breakCount} rest`);
+		meta.textContent = routineSteps.length === 0 ? '' : parts.join(' · ');
 
 		info.append(title, meta);
 		li.appendChild(info);
