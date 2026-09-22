@@ -3136,9 +3136,88 @@ textarea.input {
 	display: none !important;
 }
 
-/* Video + timed mode: the timer ring floats over the looping follow-along video */
+/* Video + timed mode: compact floating HUD capsule in top-right corner, completely clear of the video */
 #timer-overlay.is-video-mode {
 	background: transparent;
+	pointer-events: none;
+	align-items: flex-start;
+	justify-content: flex-end;
+	z-index: 25;
+}
+
+#timer-overlay.is-video-mode .timer-stage-content {
+	position: absolute;
+	top: clamp(68px, 11vh, 84px);
+	right: clamp(16px, 3vw, 28px);
+	bottom: auto;
+	left: auto;
+	width: auto;
+	max-width: none;
+	padding: 0;
+	margin: 0;
+	gap: 0;
+	pointer-events: none;
+}
+
+#timer-overlay.is-video-mode .timer-stage-header,
+#timer-overlay.is-video-mode .timer-media-container,
+#timer-overlay.is-video-mode .timer-reps-container,
+#timer-overlay.is-video-mode .up-next-card,
+#timer-overlay.is-video-mode #timer-label {
+	display: none !important;
+}
+
+#timer-overlay.is-video-mode .timer-ring-container {
+	position: relative;
+	display: inline-flex;
+	flex-direction: row;
+	align-items: center;
+	gap: 10px;
+	width: auto;
+	height: auto;
+	padding: 6px 16px 6px 10px;
+	background: rgba(9, 11, 20, 0.82);
+	backdrop-filter: blur(14px);
+	-webkit-backdrop-filter: blur(14px);
+	border: 1px solid rgba(255, 255, 255, 0.16);
+	border-radius: 9999px;
+	box-shadow: 0 6px 22px rgba(0, 0, 0, 0.6), 0 0 16px rgba(99, 102, 241, 0.2);
+	filter: none;
+	animation: fadeIn 0.25s ease;
+}
+
+#timer-overlay.is-video-mode .timer-ring-container svg {
+	width: 28px;
+	height: 28px;
+	flex-shrink: 0;
+	transform: rotate(-90deg);
+}
+
+#timer-overlay.is-video-mode .timer-ring-bg,
+#timer-overlay.is-video-mode #timer-ring {
+	stroke-width: 32;
+}
+
+#timer-overlay.is-video-mode .timer-center-text {
+	position: static;
+	transform: none;
+	width: auto;
+	max-width: none;
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+}
+
+#timer-overlay.is-video-mode #timer-display {
+	font-size: 1.25rem;
+	font-weight: 800;
+	line-height: 1;
+	letter-spacing: -0.01em;
+	background: none;
+	-webkit-background-clip: unset;
+	-webkit-text-fill-color: unset;
+	color: #ffffff;
+	text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
 }
 
 #timer-overlay.is-break {
