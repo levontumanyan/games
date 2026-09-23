@@ -495,7 +495,10 @@ export function isTimerStep(step) {
 export function getStepDuration(step, videoAsset) {
 	if (!step) return 0;
 	const mode = getStepMode(step);
-	if (mode === 'reps') return 0;
+	if (mode === 'reps') {
+		const reps = Math.max(1, Number(step.targetReps) || 20);
+		return Math.round(reps * 3);
+	}
 	if (mode === 'break') return step.durationSeconds || 30;
 
 	if (step.durationSeconds) return step.durationSeconds;

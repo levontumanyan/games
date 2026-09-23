@@ -337,6 +337,32 @@ def test_stats_category_and_discipline_breakdown(client: TestClient):
 	assert stats["disciplines"]["calisthenics"]["reps"] == 30
 	assert len(stats["top_exercises"]) >= 3
 
+	# Complete a second session where user adjusted push-ups to 45 and teeps to 50
+	sess_payload_adjusted = {
+		"id": "sess-completed-2",
+		"routine_id": routine_id,
+		"routine_title": "Muay Thai & Strength Blast",
+		"started_at": datetime.now().isoformat(),
+		"completed_at": datetime.now().isoformat(),
+		"duration_seconds": 300,
+		"completed_steps": 3,
+		"total_steps": 3,
+		"status": "completed",
+		"is_preview": False,
+		"exercises": [
+			{"step_index": 0, "name": "Push-Ups", "reps": 45},
+			{"step_index": 1, "name": "Muay Thai Teep Push Kicks", "reps": 50},
+		],
+	}
+	client.post("/api/sessions", json=sess_payload_adjusted, headers={"X-User-Id": "levon"})
+	stats_res2 = client.get("/api/stats", headers={"X-User-Id": "levon"})
+	stats2 = stats_res2.json()
+	assert stats2["total_sessions"] == 2
+	# Total reps = 70 (first session) + 95 (second session: 45 + 50) = 165
+	assert stats2["total_reps"] == 165
+	assert stats2["categories"]["strength"]["reps"] == 75  # 30 + 45
+	assert stats2["categories"]["drill"]["reps"] == 90  # 40 + 50
+
 
 def test_exercise_multi_media_assets(client: TestClient):
 	# Create a custom exercise with multiple categorized media assets

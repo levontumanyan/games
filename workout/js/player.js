@@ -17,7 +17,8 @@ import {
 } from './music.js';
 import {
 	startSession, updateSessionStep, pauseSession,
-	resumeSession, completeSession, stopSession
+	resumeSession, completeSession, stopSession,
+	isSessionActive, recordStepReps
 } from './session.js';
 import {
 	inferMusclesForExercise, getExerciseById, getExerciseInstructionMedia, getExerciseFollowAlongMedia,
@@ -47,8 +48,6 @@ let isPlaying = false;
 let isPaused = false;
 let isPreviewMode = false;
 let isRepsMode = false;
-let repsElapsedSeconds = 0;
-let repsInterval = null;
 let currentRepsValue = 20;
 
 // Timer state
@@ -617,6 +616,9 @@ export function clearCountdown() {
 export function skipCountdown() {
 	if (!isCountingDown) return;
 	clearCountdown();
+	if (!isPreviewMode && !isSessionActive() && currentRoutine) {
+		startSession(currentRoutine);
+	}
 	executeCurrentStep();
 }
 
@@ -628,7 +630,6 @@ export function skipCountdown() {
 function startWorkoutCountdown(routine, onComplete) {
 	clearCountdown();
 	clearTimer();
-	clearRepsTimer();
 	clearClipMonitor();
 
 	isCountingDown = true;
@@ -791,18 +792,21 @@ export function startRoutine(routine, startIndex = 0, isPreview = false) {
 	isPaused = false;
 	isPreviewMode = Boolean(isPreview);
 
-	if (!isPreviewMode) {
-		startSession(routine);
-	}
 	requestWakeLock();
 
 	showPlayerUI();
 
 	if (!isPreviewMode && startIndex === 0) {
 		startWorkoutCountdown(routine, () => {
+			if (!isPreviewMode && !isSessionActive()) {
+				startSession(routine);
+			}
 			executeCurrentStep();
 		});
 	} else {
+		if (!isPreviewMode && !isSessionActive()) {
+			startSession(routine);
+		}
 		clearCountdown();
 		executeCurrentStep();
 	}
@@ -820,7 +824,6 @@ export function completeRepsStep() {
 		dom.repsDoneBtn.classList.add('active');
 		setTimeout(() => dom.repsDoneBtn?.classList.remove('active'), 250);
 	}
-	clearRepsTimer();
 	advanceStepOrSubStep();
 }
 
@@ -856,13 +859,40 @@ function updateRepsStepperDisplay() {
 }
 
 /**
+ * Save actual reps progress for the active step and sub-exercise into the routine and session.
+ */
+function saveCurrentRepsProgress() {
+	if (!currentRoutine || !isRepsMode || currentStepIndex < 0) return;
+	const step = currentRoutine.steps[currentStepIndex];
+	if (!step) return;
+
+	const stepHasSub = hasSubSteps(step);
+	const activeSubEx = (stepHasSub && step.exercises) ? step.exercises[currentSubStepIndex] : null;
+
+	if (stepHasSub) {
+		if (!step.completedSubReps) step.completedSubReps = [];
+		step.completedSubReps[currentSubStepIndex] = currentRepsValue;
+		step.completedReps = step.completedSubReps.reduce((a, b) => a + (b || 0), 0);
+	} else {
+		step.completedReps = currentRepsValue;
+	}
+
+	const exObj = activeSubEx || (step.exercises && step.exercises[0]) || { id: step.exercise_id, name: getStepDisplayName(step) };
+	if (!isPreviewMode) {
+		recordStepReps(currentStepIndex, currentRepsValue, exObj);
+	}
+}
+
+/**
  * Advance to next sub-step within a combo or next step in routine.
  */
 function advanceStepOrSubStep() {
 	if (!currentRoutine) return;
+	if (isRepsMode) {
+		saveCurrentRepsProgress();
+	}
 	clearClipMonitor();
 	clearTimer();
-	clearRepsTimer();
 
 	const currentStep = currentRoutine.steps[currentStepIndex];
 	const stepHasSubSteps = hasSubSteps(currentStep);
@@ -897,7 +927,6 @@ function executeCurrentStep() {
 
 	clearClipMonitor();
 	clearTimer();
-	clearRepsTimer();
 	const step = currentRoutine.steps[currentStepIndex];
 	updateStepIndicator();
 	if (!isPreviewMode) {
@@ -926,7 +955,6 @@ function executeCurrentStep() {
  */
 function executeVideoStep(step, targetDuration, videoAsset) {
 	clearTimer();
-	clearRepsTimer();
 	clearClipMonitor();
 	clearVideoFallback();
 	clipHasStartedPlaying = false;
@@ -1043,7 +1071,6 @@ function executeVideoStep(step, targetDuration, videoAsset) {
 function executeTimerStep(step) {
 	clearClipMonitor();
 	clearTimer();
-	clearRepsTimer();
 	clipHasStartedPlaying = false;
 
 	// Stop YouTube playback and hide
@@ -1208,10 +1235,6 @@ function executeTimerStep(step) {
 
 		// Update progress ring to full
 		updateTimerProgress(100, 100);
-
-		if (!isPaused) {
-			startRepsStopwatch();
-		}
 	} else {
 		if (repsContainer) {
 			repsContainer.classList.add('hidden');
@@ -1336,32 +1359,6 @@ function executeTimerStep(step) {
 }
 
 /**
- * Start stopwatch counting elapsed seconds for Reps steps.
- */
-function startRepsStopwatch() {
-	clearRepsTimer();
-	const startTime = performance.now();
-	const initialSec = repsElapsedSeconds;
-
-	repsInterval = setInterval(() => {
-		if (isPaused) return;
-		const elapsed = (performance.now() - startTime) / 1000;
-		repsElapsedSeconds = initialSec + elapsed;
-	}, 200);
-}
-
-/**
- * Clear reps stopwatch timer.
- */
-function clearRepsTimer() {
-	if (repsInterval) {
-		clearInterval(repsInterval);
-		repsInterval = null;
-	}
-	repsElapsedSeconds = 0;
-}
-
-/**
  * Start the countdown timer.
  */
 function startTimer(totalDuration) {
@@ -1425,7 +1422,6 @@ function advanceStep() {
 	if (!currentRoutine) return;
 	clearClipMonitor();
 	clearTimer();
-	clearRepsTimer();
 
 	currentStepIndex++;
 	currentSubStepIndex = 0;
@@ -1457,7 +1453,6 @@ export function previousStep() {
 	if (!currentRoutine) return;
 	clearClipMonitor();
 	clearTimer();
-	clearRepsTimer();
 
 	const currentStep = currentRoutine.steps[currentStepIndex];
 	const stepHasSubSteps = hasSubSteps(currentStep);
@@ -1509,9 +1504,7 @@ export function togglePause() {
 				ytPlayer.playVideo();
 			}
 			startClipMonitor(step, cls.video, cls.targetDuration);
-		} else if (cls.mode === 'reps') {
-			startRepsStopwatch();
-		} else {
+		} else if (cls.mode === 'time') {
 			// Restart timer from remaining
 			startTimer(cls.targetDuration);
 		}
@@ -1530,7 +1523,6 @@ export function togglePause() {
 			pauseSession();
 		}
 		clearTimer();
-		clearRepsTimer();
 		clearClipMonitor();
 		if (!isNativeFullscreen()) {
 			releaseWakeLock();
@@ -1569,7 +1561,6 @@ export function resetPlayback() {
 export function stopPlayback(isCompleted = false) {
 	clearCountdown();
 	clearTimer();
-	clearRepsTimer();
 	clearClipMonitor();
 	clearHudIdleTimer();
 	if (!isNativeFullscreen()) {
@@ -1595,7 +1586,7 @@ export function stopPlayback(isCompleted = false) {
 
 	hidePlayerUI();
 
-	if (!isCompleted && !isPreviewMode) {
+	if (!isCompleted && !isPreviewMode && isSessionActive()) {
 		stopSession();
 	}
 

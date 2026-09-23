@@ -1132,7 +1132,14 @@ class Database:
 				(user_id,),
 			).fetchall()
 
-		sessions = [dict(r) for r in rows]
+		sessions = []
+		for r in rows:
+			d = dict(r)
+			try:
+				d["exercises"] = json.loads(d.get("exercises_json") or "[]")
+			except Exception:
+				d["exercises"] = []
+			sessions.append(d)
 
 		# Group duration and workouts by local date YYYY-MM-DD
 		daily_stats: dict[str, dict[str, int]] = {}
@@ -1246,10 +1253,28 @@ class Database:
 				(s["duration_seconds"] / len(steps_to_count)) if steps_to_count else 0
 			)
 
-			for step in steps_to_count:
+			session_exercises = s.get("exercises") or []
+			recorded_reps_by_step: dict[int, int] = {}
+			recorded_reps_by_ex: dict[tuple[int, str], int] = {}
+			for rec in session_exercises:
+				if isinstance(rec, dict):
+					s_idx = rec.get("step_index")
+					reps_val = rec.get("reps")
+					ex_id = rec.get("id")
+					if s_idx is not None and reps_val is not None:
+						recorded_reps_by_step[s_idx] = recorded_reps_by_step.get(s_idx, 0) + int(
+							reps_val
+						)
+						if ex_id:
+							recorded_reps_by_ex[(s_idx, str(ex_id))] = int(reps_val)
+
+			for step_idx, step in enumerate(steps_to_count):
 				step_exercises = step.get("exercises") or []
 				step_mode = step.get("stepMode") or ("reps" if step.get("targetReps") else "time")
-				step_reps = int(step.get("targetReps", 0)) if step_mode == "reps" else 0
+				if step_idx in recorded_reps_by_step:
+					step_reps = recorded_reps_by_step[step_idx]
+				else:
+					step_reps = int(step.get("targetReps", 0)) if step_mode == "reps" else 0
 				total_reps += step_reps
 
 				if not step_exercises:
@@ -1276,12 +1301,17 @@ class Database:
 
 				# Distribute step duration and reps across exercises attached to this step
 				ex_share_sec = session_step_duration / max(1, len(step_exercises))
-				ex_share_reps = round(step_reps / max(1, len(step_exercises)))
 
 				for ex in step_exercises:
 					cat = (ex.get("category") or "strength").lower()
 					disc = (ex.get("discipline") or "general").lower()
 					ex_name = ex.get("name") or "Exercise"
+					ex_id = str(ex.get("id") or "")
+
+					if (step_idx, ex_id) in recorded_reps_by_ex:
+						ex_share_reps = recorded_reps_by_ex[(step_idx, ex_id)]
+					else:
+						ex_share_reps = round(step_reps / max(1, len(step_exercises)))
 
 					if cat not in category_stats:
 						category_stats[cat] = {

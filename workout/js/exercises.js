@@ -785,10 +785,11 @@ export function classifyStep(step) {
 	const visual = mode !== 'break' ? resolveStepVisual(step) : null;
 
 	if (mode === 'reps') {
+		const reps = Number(step.targetReps) || 20;
 		return {
 			mode,
-			targetReps: Number(step.targetReps) || 20,
-			targetDuration: 0,
+			targetReps: reps,
+			targetDuration: Math.round(reps * 3),
 			video: null,
 			visual,
 		};

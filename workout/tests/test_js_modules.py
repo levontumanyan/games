@@ -969,6 +969,16 @@ def test_combo_video_resolution_and_up_next_metadata():
 	if (getStepDuration(timedStep) !== 60) {{
 		throw new Error('getStepDuration failed for timed step, expected 60, got: ' + getStepDuration(timedStep));
 	}}
+	const repStep = {{
+		id: 'step-rep-1',
+		type: 'timer',
+		stepMode: 'reps',
+		targetReps: 25,
+		label: 'Pushups',
+	}};
+	if (getStepDuration(repStep) !== 75) {{
+		throw new Error('getStepDuration failed for rep step, expected 75, got: ' + getStepDuration(repStep));
+	}}
 
 	// 5. Instruction tutorial breakdown preview must resolve to tutorial video slice
 	const tutorialStep = {{

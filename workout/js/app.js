@@ -1571,9 +1571,10 @@ async function showCompletionModal(session, completedRoutine) {
 				typeLabel = 'Rest Break';
 				durStr = formatFriendlyDuration(cls.targetDuration || 0);
 			} else if (cls.mode === 'reps') {
+				const actualReps = step.completedReps ?? cls.targetReps;
 				iconSvg = getTimerIcon(16);
-				typeLabel = `${cls.targetReps} Reps`;
-				durStr = `${cls.targetReps} reps`;
+				typeLabel = `${actualReps} Reps`;
+				durStr = `${actualReps} reps`;
 			} else if (cls.video) {
 				iconSvg = getClipIcon(16);
 				typeLabel = `Follow-Along · ${formatTime(cls.video.startSeconds || 0)} → ${formatTime(cls.video.endSeconds || 0)}`;

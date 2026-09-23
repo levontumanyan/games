@@ -11,6 +11,14 @@ let heartbeatInterval = null;
 let lastActiveTimestamp = null;
 
 /**
+ * Check if a live session is currently active.
+ * @returns {boolean}
+ */
+export function isSessionActive() {
+	return Boolean(activeSession);
+}
+
+/**
  * Start tracking a new live workout session.
  * @param {Object} routine
  */
@@ -29,6 +37,7 @@ export function startSession(routine) {
 		total_steps: routine.steps ? routine.steps.length : 0,
 		status: 'in_progress',
 		is_paused: false,
+		exercises: [],
 	};
 
 	lastActiveTimestamp = Date.now();
@@ -156,6 +165,35 @@ function stopHeartbeat() {
 }
 
 /**
+ * Record actual completed reps for a step or exercise.
+ * @param {number} stepIndex
+ * @param {number} reps
+ * @param {Object} [exercise]
+ */
+export function recordStepReps(stepIndex, reps, exercise = null) {
+	if (!activeSession) return;
+	if (!Array.isArray(activeSession.exercises)) {
+		activeSession.exercises = [];
+	}
+	const exId = exercise?.id || `step-${stepIndex}`;
+	const exName = exercise?.name || 'Exercise';
+	const existing = activeSession.exercises.find(
+		e => e.step_index === stepIndex && (exercise?.id ? e.id === exercise.id : true)
+	);
+	if (existing) {
+		existing.reps = reps;
+	} else {
+		activeSession.exercises.push({
+			step_index: stepIndex,
+			id: exId,
+			name: exName,
+			reps: reps,
+		});
+	}
+	flushSession();
+}
+
+/**
  * Serialize a session into the persistable API payload shape.
  * @param {Object} session
  * @returns {Object}
@@ -171,6 +209,7 @@ function toSessionPayload(session) {
 		completed_steps: session.completed_steps,
 		total_steps: session.total_steps,
 		status: session.status,
+		exercises: session.exercises || [],
 	};
 }
 
