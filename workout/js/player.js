@@ -59,6 +59,9 @@ let timerRemaining = 0;
 let clipCheckInterval = null;
 let clipHasStartedPlaying = false;
 let clipLoadedAt = 0;
+let accumulatedVideoTime = 0;
+let videoSafetyFallbackTimeout = null;
+let cuedVideoAsset = null;
 
 // HUD idle timer
 let hudIdleTimer = null;
@@ -410,44 +413,109 @@ function disableCaptions() {
 }
 
 /**
- * Start active polling to loop the follow-along video slice for the duration
- * of the step's master timer. When the video reaches its end slice, seek back
- * to the start instead of advancing the workout; the master timer is the only
- * authority that advances the step.
+ * Start active polling to monitor clip playback position and drive HUD timer directly from the video.
  * @param {Object} step
  * @param {Object} videoAsset - { videoId, startSeconds, endSeconds }
+ * @param {number} [targetDuration] - Step target duration in seconds
  */
-function startClipMonitor(step, videoAsset) {
+function startClipMonitor(step, videoAsset, targetDuration) {
 	clearClipMonitor();
-const endSec = (videoAsset && typeof videoAsset.endSeconds === 'number') ? videoAsset.endSeconds : step?.endSeconds;
+	const endSec = (videoAsset && typeof videoAsset.endSeconds === 'number') ? videoAsset.endSeconds : step?.endSeconds;
 	const startSec = (videoAsset && typeof videoAsset.startSeconds === 'number') ? videoAsset.startSeconds : (step?.startSeconds || 0);
 	if (!step || !endSec || !(videoAsset && videoAsset.videoId)) return;
+
+	const dur = (typeof targetDuration === 'number' && targetDuration > 0) ? targetDuration : Math.max(1, endSec - startSec);
+	const sliceDuration = Math.max(1, endSec - startSec);
+	const isLooping = dur > sliceDuration + 1.0;
+	let lastBeeped = Math.ceil(dur) + 1;
 
 	clipCheckInterval = setInterval(() => {
 		if (!isPlaying || isPaused || !ytReady || !ytPlayer) return;
 		try {
 			const currentTime = ytPlayer.getCurrentTime();
-			if (typeof currentTime === 'number' && currentTime >= endSec - 0.25) {
-				if (timerRemaining > 0) {
+			if (typeof currentTime !== 'number' || isNaN(currentTime)) return;
+
+			// Video clock calculation: elapsed time in current slice + previous completed loops
+			const sliceProgress = Math.max(0, Math.min(sliceDuration, currentTime - startSec));
+			const totalElapsed = accumulatedVideoTime + sliceProgress;
+			timerRemaining = Math.max(0, dur - totalElapsed);
+			const displaySeconds = Math.ceil(timerRemaining);
+
+			// Update HUD countdown and progress ring directly from the video
+			if (dom.timerDisplay) dom.timerDisplay.textContent = formatTime(displaySeconds);
+			updateTimerProgress(dur, timerRemaining);
+
+			// Countdown beeps at 3, 2, 1
+			if (displaySeconds < lastBeeped) {
+				lastBeeped = displaySeconds;
+				if (displaySeconds <= 3 && displaySeconds >= 1) {
+					playCountdownBeep(displaySeconds);
+				}
+			}
+
+			// Slice completion check (250ms lead time before endSec)
+			if (currentTime >= endSec - 0.25) {
+				if (isLooping && timerRemaining > 1.0) {
+					accumulatedVideoTime += sliceDuration;
 					try { ytPlayer.seekTo(startSec, true); } catch {}
 				} else {
 					clearClipMonitor();
 					try { ytPlayer.pauseVideo(); } catch {}
+					advanceStepOrSubStep();
 				}
 			}
 		} catch (e) {
 			// Ignore polling exceptions
 		}
-	}, 200);
+	}, 100);
 }
 
 /**
- * Clear clip monitor interval.
+ * Clear clip monitor interval and any active fallback timeouts.
  */
 function clearClipMonitor() {
 	if (clipCheckInterval) {
 		clearInterval(clipCheckInterval);
 		clipCheckInterval = null;
+	}
+	clearVideoFallback();
+}
+
+/**
+ * Clear YouTube fallback safety timeout.
+ */
+function clearVideoFallback() {
+	if (videoSafetyFallbackTimeout) {
+		clearTimeout(videoSafetyFallbackTimeout);
+		videoSafetyFallbackTimeout = null;
+	}
+}
+
+/**
+ * Pre-cue upcoming video in YouTube player without starting playback.
+ * Ensures the video metadata and player buffer are primed ahead of time.
+ * @param {Object} videoAsset - { videoId, startSeconds, endSeconds }
+ */
+export function preCueVideo(videoAsset) {
+	if (!ytReady || !ytPlayer || !videoAsset || !videoAsset.videoId) return;
+	const vidId = videoAsset.videoId;
+	const startSec = typeof videoAsset.startSeconds === 'number' ? videoAsset.startSeconds : 0;
+	const endSec = typeof videoAsset.endSeconds === 'number' ? videoAsset.endSeconds : undefined;
+
+	if (cuedVideoAsset && cuedVideoAsset.videoId === vidId && cuedVideoAsset.startSeconds === startSec && cuedVideoAsset.endSeconds === endSec) {
+		return;
+	}
+
+	try {
+		console.log(`[Workout Player] Pre-cueing upcoming video: ${vidId} (start: ${startSec}s, end: ${endSec !== undefined ? endSec + 's' : 'end'})`);
+		cuedVideoAsset = { videoId: vidId, startSeconds: startSec, endSeconds: endSec };
+		ytPlayer.cueVideoById({
+			videoId: vidId,
+			startSeconds: startSec,
+			endSeconds: endSec,
+		});
+	} catch (e) {
+		console.warn('[Workout Player] Pre-cue error:', e);
 	}
 }
 
@@ -478,11 +546,12 @@ function onYTStateChange(event) {
 	if (event.data === YT.PlayerState.PLAYING) {
 		disableCaptions();
 		clipHasStartedPlaying = true;
+		clearVideoFallback();
 		if (isPlaying && !isPaused && currentRoutine) {
 			const currentStep = currentRoutine.steps[currentStepIndex];
 			const cls = currentStep ? classifyStep(currentStep) : null;
 			if (currentStep && cls && cls.video) {
-				startClipMonitor(currentStep, cls.video);
+				startClipMonitor(currentStep, cls.video, cls.targetDuration);
 			}
 		}
 	} else if (event.data === YT.PlayerState.ENDED) {
@@ -498,14 +567,20 @@ function onYTStateChange(event) {
 			return;
 		}
 
-		// The master timer governs advancement for timed video steps; loop the slice.
-		if (timerRemaining > 0) {
-			try { ytPlayer.seekTo(cls.video.startSeconds || 0, true); } catch {}
+		// Check if more looping is needed (remaining > 1.0s)
+		const sliceDur = Math.max(1, (cls.video.endSeconds || 0) - (cls.video.startSeconds || 0));
+		const isLooping = cls.targetDuration > sliceDur + 1.0;
+		if (isLooping && timerRemaining > 1.0) {
+			accumulatedVideoTime += sliceDur;
+			try {
+				ytPlayer.seekTo(cls.video.startSeconds || 0, true);
+				ytPlayer.playVideo();
+			} catch {}
 			return;
 		}
 
 		clearClipMonitor();
-		advanceStep();
+		advanceStepOrSubStep();
 	}
 }
 
@@ -593,6 +668,10 @@ function startWorkoutCountdown(routine, onComplete) {
 			const isVid = Boolean(cls.video);
 			const firstVidAsset = cls.video;
 			const dur = cls.targetDuration;
+
+			if (isVid && firstVidAsset) {
+				preCueVideo(firstVidAsset);
+			}
 
 			let modeTag = '';
 			if (isVid) {
@@ -849,9 +928,11 @@ function executeVideoStep(step, targetDuration, videoAsset) {
 	clearTimer();
 	clearRepsTimer();
 	clearClipMonitor();
+	clearVideoFallback();
 	clipHasStartedPlaying = false;
 	clipLoadedAt = Date.now();
 	isRepsMode = false;
+	accumulatedVideoTime = 0;
 
 	// Show the video with the timer ring overlaid so the countdown stays visible.
 	dom.videoWrapper?.classList.remove('hidden');
@@ -893,18 +974,37 @@ function executeVideoStep(step, targetDuration, videoAsset) {
 
 	console.log(`[Workout Player] executeVideoStep [${currentStepIndex}] ("${step.label || 'Step'}"): videoId="${vidId}", start=${startSec}s, end=${endSec !== undefined ? endSec + 's' : 'end'}, ytReady=${ytReady}, ytPlayer=${Boolean(ytPlayer)}`);
 
+	const isAlreadyCued = cuedVideoAsset && cuedVideoAsset.videoId === vidId && cuedVideoAsset.startSeconds === startSec;
+
 	if (ytReady && ytPlayer) {
-		ytPlayer.loadVideoById({
-			videoId: vidId,
-			startSeconds: startSec,
-			endSeconds: endSec,
-		});
+		if (isAlreadyCued) {
+			console.log(`[Workout Player] Playing already cued video: ${vidId} at ${startSec}s`);
+			try {
+				ytPlayer.seekTo(startSec, true);
+				ytPlayer.playVideo();
+			} catch (e) {
+				console.warn('[Workout Player] Failed to play cued video, falling back to loadVideoById:', e);
+				ytPlayer.loadVideoById({
+					videoId: vidId,
+					startSeconds: startSec,
+					endSeconds: endSec,
+				});
+			}
+		} else {
+			cuedVideoAsset = { videoId: vidId, startSeconds: startSec, endSeconds: endSec };
+			ytPlayer.loadVideoById({
+				videoId: vidId,
+				startSeconds: startSec,
+				endSeconds: endSec,
+			});
+		}
 		disableCaptions();
 	} else {
 		console.warn(`[Workout Player] Cannot play clip: ytReady=${ytReady}, ytPlayer=${Boolean(ytPlayer)}`);
 	}
 
-	// Master timer: the step's target duration is authoritative; the video loops.
+	// Initialize HUD with target duration, but do NOT start wall-clock timer!
+	// The video's playback position in startClipMonitor is the authoritative clock.
 	timerRemaining = targetDuration;
 	if (dom.timerDisplay) dom.timerDisplay.textContent = formatTime(targetDuration);
 	if (dom.timerLabel) {
@@ -914,9 +1014,14 @@ function executeVideoStep(step, targetDuration, videoAsset) {
 	const videoStageHeader = dom.timerStageHeader || document.getElementById('timer-stage-header');
 	if (videoStageHeader) videoStageHeader.classList.add('hidden');
 	updateTimerProgress(targetDuration, targetDuration);
-	if (!isPaused) {
-		startTimer(targetDuration);
-	}
+
+	// 6-second safety fallback: if YouTube fails to play (ad-block, offline, error), fall back to standard timer step
+	videoSafetyFallbackTimeout = setTimeout(() => {
+		if (!clipHasStartedPlaying && isPlaying && !isPaused) {
+			console.warn('[Workout Player] Video playback failed to start within 6s, falling back to timer step');
+			executeTimerStep(step);
+		}
+	}, 6000);
 
 	const isTutorial = Boolean(step.isTutorial || (step.label && step.label.includes('[Tutorial]')));
 	if (dom.currentStepLabel) dom.currentStepLabel.textContent = isTutorial ? 'Tutorial Breakdown' : getStepDisplayName(step);
@@ -1183,11 +1288,15 @@ function executeTimerStep(step) {
 			if (dom.upNextLabel) {
 				dom.upNextLabel.textContent = nextName;
 			}
-const nextCls = classifyStep(next);
+			const nextCls = classifyStep(next);
 			const nextIsBreak = nextCls.mode === 'break';
 			const nextIsReps = nextCls.mode === 'reps';
 			const nextIsClip = Boolean(nextCls.video);
 			const nextVid = nextCls.video;
+
+			if (nextIsClip && nextVid) {
+				preCueVideo(nextVid);
+			}
 
 			if (dom.upNextMeta) {
 				if (nextIsBreak) {
@@ -1399,8 +1508,7 @@ export function togglePause() {
 			if (ytReady && ytPlayer) {
 				ytPlayer.playVideo();
 			}
-			startClipMonitor(step, cls.video);
-			startTimer(cls.targetDuration);
+			startClipMonitor(step, cls.video, cls.targetDuration);
 		} else if (cls.mode === 'reps') {
 			startRepsStopwatch();
 		} else {
@@ -1473,6 +1581,8 @@ export function stopPlayback(isCompleted = false) {
 	const repsContainer = dom.timerRepsContainer || document.getElementById('timer-reps-container');
 	if (repsContainer) repsContainer.classList.add('hidden');
 	clipHasStartedPlaying = false;
+	accumulatedVideoTime = 0;
+	cuedVideoAsset = null;
 	currentStepIndex = -1;
 	currentSubStepIndex = 0;
 

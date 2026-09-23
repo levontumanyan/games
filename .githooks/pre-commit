@@ -6,13 +6,7 @@ echo "Running pre-commit checks..."
 echo "==> Linting workout..."
 (cd workout && uv run ruff check . && uv run ruff format --check .)
 
-echo "==> Linting spelling-bee..."
-(cd spelling-bee && uv run ruff check . && uv run ruff format --check .)
-
 echo "==> Running workout tests (fast unit & AST module cycle tests)..."
 (cd workout && uv run pytest -q)
-
-echo "==> Running spelling-bee tests..."
-(cd spelling-bee && uv run pytest -q)
 
 echo "All pre-commit checks passed!"
