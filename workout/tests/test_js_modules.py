@@ -1262,3 +1262,34 @@ def test_media_kinds_roles_and_visual_resolution():
 		timeout=5,
 	)
 	assert res.returncode == 0, f"Node media kinds test failed:\n{res.stderr}"
+
+
+def test_unspecified_muscles_and_default_break_duration():
+	"""Ensure an empty muscle selection stays empty and inserted rests default to one minute."""
+	js_dir = Path(__file__).parent.parent / "js"
+	node_script = f"""
+	globalThis.window = {{ addEventListener() {{}}, removeEventListener() {{}} }};
+	globalThis.document = {{ addEventListener() {{}}, removeEventListener() {{}}, createElement() {{ return {{ classList: {{ add() {{}} }} }}; }} }};
+	globalThis.localStorage = {{ getItem() {{ return null; }}, setItem() {{}}, removeItem() {{}} }};
+
+	const {{ inferMusclesForExercise }} = await import('{js_dir}/exercises.js');
+	const {{ appendStepWithBreak, createBreakStep }} = await import('{js_dir}/editor.js');
+	const muscles = inferMusclesForExercise({{ name: 'Bench Press', primary_muscles: [], secondary_muscles: [] }});
+	if (muscles.primary.length || muscles.secondary.length) {{
+		throw new Error('An explicitly empty muscle selection must stay empty: ' + JSON.stringify(muscles));
+	}}
+
+	const routine = {{ steps: [] }};
+	appendStepWithBreak(routine, {{ id: 'exercise-1' }});
+	if (routine.steps[1].durationSeconds !== 60 || createBreakStep().durationSeconds !== 60) {{
+		throw new Error('Default rests must be 60 seconds.');
+	}}
+	"""
+
+	res = subprocess.run(
+		["node", "--input-type=module", "-e", node_script],
+		capture_output=True,
+		text=True,
+		timeout=5,
+	)
+	assert res.returncode == 0, f"Node muscle/rest defaults test failed:\n{res.stderr}"

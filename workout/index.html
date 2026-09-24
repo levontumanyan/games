@@ -104,19 +104,19 @@
 		<main class="main-content">
 
 			<!-- ── Combos & Flows Library Catalog View ───────────────── -->
-			<div id="combos-view" class="hidden"></div>
+			<div id="combos-view" class="hidden main-scroll-surface"></div>
 
 			<!-- ── Exercises Library Catalog View ────────────────────── -->
-			<div id="exercises-view" class="hidden"></div>
+			<div id="exercises-view" class="hidden main-scroll-surface"></div>
 
 			<!-- ── Anatomy & Muscle Explorer View ────────────────────── -->
-			<div id="anatomy-view" class="hidden"></div>
+			<div id="anatomy-view" class="hidden main-scroll-surface"></div>
 
 			<!-- ── Stats & Streaks Dashboard View ────────────────────── -->
-			<div id="stats-view" class="hidden"></div>
+			<div id="stats-view" class="hidden main-scroll-surface"></div>
 
 			<!-- ── Empty View ────────────────────────────────────────── -->
-			<div id="empty-view" class="empty-state-view">
+			<div id="empty-view" class="empty-state-view main-scroll-surface">
 				<div class="empty-hero-card">
 					<div class="empty-icon-circle">🏋️</div>
 					<h3>No Workout Selected</h3>
@@ -128,13 +128,13 @@
 			</div>
 
 			<!-- ── Routine Overview View (View Mode) ────────────────── -->
-			<div id="routine-view" class="hidden">
+			<div id="routine-view" class="hidden main-scroll-surface">
 				<div id="routine-overview-container"></div>
 			</div>
 
 			<!-- ── Editor View (Edit Mode) ──────────────────────────── -->
 			<div id="editor-view" class="hidden">
-				<div id="editor-content">
+				<div id="editor-content" class="main-scroll-surface">
 					<div class="editor-header">
 						<input
 							type="text"
@@ -179,10 +179,20 @@
 
 					<div id="step-list"></div>
 				</div>
+				<div class="editor-save-bar">
+					<div class="editor-save-message">
+						<span class="editor-save-message-title">Ready to save?</span>
+						<span class="editor-save-message-hint">Finish editing and return to your workout.</span>
+					</div>
+					<button id="save-editing-btn" class="btn btn-primary editor-save-btn" type="button">
+						<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+						<span>Save workout</span>
+					</button>
+				</div>
 			</div>
 
 			<!-- ── Player View ───────────────────────────────────────── -->
-			<div id="player-view" class="hidden">
+			<div id="player-view" class="hidden main-scroll-surface">
 
 				<!-- Floating Top Bar -->
 				<div class="player-top-bar">

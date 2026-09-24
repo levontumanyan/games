@@ -1118,6 +1118,16 @@ html, body {
 	min-width: 0;
 }
 
+.main-content > .main-scroll-surface {
+	flex: 1;
+	min-height: 0;
+}
+
+.main-scroll-surface {
+	overflow-y: auto;
+	overscroll-behavior: contain;
+}
+
 /* ── Empty View & Layouts ────────────────────────────────────────────────── */
 
 .empty-state-view {
@@ -1604,11 +1614,68 @@ html, body {
 
 #editor-view {
 	flex: 1;
-	overflow-y: auto;
-	padding: 24px 28px;
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+	overflow: hidden;
+	padding: 0;
 	max-width: 960px;
 	width: 100%;
 	margin: 0 auto;
+}
+
+#editor-content {
+	flex: 1;
+	min-height: 0;
+	padding: 24px 28px 32px;
+}
+
+.editor-save-bar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+	flex-shrink: 0;
+	padding: 12px 28px;
+	border-top: 1px solid var(--border);
+	background: color-mix(in srgb, var(--bg-secondary) 92%, transparent);
+	backdrop-filter: blur(16px);
+	box-shadow: 0 -10px 28px rgba(0, 0, 0, 0.2);
+	z-index: 10;
+}
+
+.editor-save-message {
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+	min-width: 0;
+}
+
+.editor-save-message-title {
+	color: var(--text-primary);
+	font-size: 0.86rem;
+	font-weight: 700;
+}
+
+.editor-save-message-hint {
+	color: var(--text-muted);
+	font-size: 0.74rem;
+}
+
+.editor-save-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	min-height: 42px;
+	padding: 0 18px;
+	font-weight: 700;
+	white-space: nowrap;
+	box-shadow: 0 4px 14px var(--accent-glow);
+}
+
+.editor-save-btn svg {
+	flex-shrink: 0;
 }
 
 .editor-header {
@@ -5521,6 +5588,34 @@ textarea.input {
 	#combos-view,
 	#anatomy-view {
 		padding: 16px 14px 70px 14px;
+	}
+
+	#editor-view {
+		padding: 0;
+	}
+
+	#editor-content {
+		padding: 16px 14px 24px;
+	}
+
+	.editor-save-bar {
+		gap: 10px;
+		padding: 9px 14px;
+		min-height: 62px;
+	}
+
+	.editor-save-message-title {
+		font-size: 0.78rem;
+	}
+
+	.editor-save-message-hint {
+		display: none;
+	}
+
+	.editor-save-btn {
+		min-height: 42px;
+		padding: 0 13px;
+		font-size: 0.8rem;
 	}
 
 	.view-hero-header {
@@ -10076,5 +10171,3 @@ textarea.input {
 	vertical-align: middle;
 	margin-right: 2px;
 }
-
-

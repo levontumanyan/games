@@ -135,7 +135,7 @@ export function renderEditor(routine, container, actions) {
 		emptyCard.querySelector('.btn-empty-add-ex').addEventListener('click', () => showAddExerciseModal(routine, onUpdate, 0));
 		emptyCard.querySelector('.btn-empty-add-combo').addEventListener('click', () => showAddComboModal(routine, onUpdate, 0));
 		emptyCard.querySelector('.btn-empty-add-break').addEventListener('click', () => {
-			const s = insertBreakStep(routine, 0, 30);
+			const s = insertBreakStep(routine, 0, 60);
 			onUpdate();
 			highlightStepElement(s.id);
 		});
@@ -339,10 +339,10 @@ export function duplicateStep(routine, index) {
  * Insert a new break/rest step at a specific index.
  * @param {Object} routine
  * @param {number} [index]
- * @param {number} [durationSeconds=30]
+ * @param {number} [durationSeconds=60]
  * @returns {Object}
  */
-export function insertBreakStep(routine, index, durationSeconds = 30) {
+export function insertBreakStep(routine, index, durationSeconds = 60) {
 	if (!routine) return null;
 	if (!Array.isArray(routine.steps)) routine.steps = [];
 	const step = createBreakStep(durationSeconds);
@@ -353,7 +353,7 @@ export function insertBreakStep(routine, index, durationSeconds = 30) {
 }
 
 /**
- * Insert a step (exercise or combo) and automatically follow it with a 30s
+ * Insert a step (exercise or combo) and automatically follow it with a 60s
  * break so the routine is always interleaved with rest between movements.
  * @param {Object} routine
  * @param {Object} step
@@ -367,7 +367,7 @@ export function appendStepWithBreak(routine, step, insertIndex = -1) {
 		? insertIndex
 		: routine.steps.length;
 	routine.steps.splice(idx, 0, step);
-	routine.steps.splice(idx + 1, 0, createBreakStep(30));
+	routine.steps.splice(idx + 1, 0, createBreakStep(60));
 	expandStep(step.id);
 	return idx;
 }
@@ -479,7 +479,7 @@ export function createInsertDivider(routine, insertIndex, onUpdate) {
 	breakBtn.addEventListener('click', (e) => {
 		e.stopPropagation();
 		closeMenu();
-		const step = insertBreakStep(routine, insertIndex, 30);
+		const step = insertBreakStep(routine, insertIndex, 60);
 		onUpdate();
 		showToast(`Inserted Rest break at #${insertIndex + 1}`);
 		highlightStepElement(step.id);
@@ -1685,10 +1685,10 @@ export function createTimerStep() {
 
 /**
  * Create a new break/rest timer step with defaults.
- * @param {number} [durationSeconds=30]
+ * @param {number} [durationSeconds=60]
  * @returns {Object} Step object
  */
-export function createBreakStep(durationSeconds = 30) {
+export function createBreakStep(durationSeconds = 60) {
 	return {
 		id: generateId(),
 		type: 'timer',
@@ -1848,11 +1848,14 @@ export function showAddExerciseModal(routine, onUpdate, insertIndex = -1) {
 	};
 
 	const handleEsc = (e) => {
+		if (e.key !== 'Escape' && e.keyCode !== 27) return;
 		const modalDlg = document.getElementById('modal-backdrop');
 		if (modalDlg && !modalDlg.classList.contains('hidden')) {
 			return;
 		}
-		if (e.key === 'Escape' || e.keyCode === 27) close();
+		e.preventDefault();
+		e.stopPropagation();
+		close();
 	};
 	document.addEventListener('keydown', handleEsc);
 
@@ -2185,5 +2188,4 @@ export function showAddComboModal(routine, onUpdate, insertIndex = -1) {
 
 	renderList();
 }
-
 

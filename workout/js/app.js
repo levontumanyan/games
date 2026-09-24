@@ -221,6 +221,7 @@ function cacheDom() {
 	dom.addComboBtn = document.getElementById('add-combo-btn');
 	dom.addBreakBtn = document.getElementById('add-break-btn');
 	dom.doneEditingBtn = document.getElementById('done-editing-btn');
+	dom.saveEditingBtn = document.getElementById('save-editing-btn');
 	dom.cancelEditingBtn = document.getElementById('cancel-editing-btn');
 	dom.deleteRoutineBtn = document.getElementById('delete-routine-btn');
 
@@ -705,6 +706,18 @@ function toggleSidebar(hide) {
  */
 function bindEvents() {
 	dom.addWorkoutBtn.addEventListener('click', handleAddWorkout);
+	const mainContent = document.querySelector('.main-content');
+	if (mainContent) {
+		mainContent.addEventListener('wheel', (event) => {
+			const activeScrollSurface = Array.from(mainContent.querySelectorAll('.main-scroll-surface'))
+				.find(surface => surface.getClientRects().length > 0);
+			if (!activeScrollSurface || activeScrollSurface.contains(event.target)) return;
+			const deltaMultiplier = event.deltaMode === 1
+				? 16
+				: (event.deltaMode === 2 ? activeScrollSurface.clientHeight : 1);
+			activeScrollSurface.scrollTop += event.deltaY * deltaMultiplier;
+		}, { passive: true });
+	}
 	if (dom.sidebarToggleBtn) {
 		dom.sidebarToggleBtn.addEventListener('click', () => toggleSidebar(true));
 	}
@@ -734,16 +747,8 @@ function bindEvents() {
 		});
 	}
 	if (dom.addBreakBtn) dom.addBreakBtn.addEventListener('click', handleAddBreak);
-	dom.doneEditingBtn.addEventListener('click', () => {
-		const routine = getSelectedRoutine();
-		if (routine) trimTrailingBreaks(routine);
-		editingRoutineSnapshot = null;
-		isNewRoutineEditing = false;
-		currentMode = 'view';
-		persist(true);
-		renderRoutineList();
-		renderSelectedRoutine();
-	});
+	dom.doneEditingBtn.addEventListener('click', handleDoneEditing);
+	if (dom.saveEditingBtn) dom.saveEditingBtn.addEventListener('click', handleDoneEditing);
 	if (dom.cancelEditingBtn) {
 		dom.cancelEditingBtn.addEventListener('click', handleCancelEditing);
 	}
@@ -1389,6 +1394,17 @@ function handleCancelEditing() {
 	renderRoutineList();
 	renderSelectedRoutine();
 	showToast('Changes discarded');
+}
+
+function handleDoneEditing() {
+	const routine = getSelectedRoutine();
+	if (routine) trimTrailingBreaks(routine);
+	editingRoutineSnapshot = null;
+	isNewRoutineEditing = false;
+	currentMode = 'view';
+	persist(true);
+	renderRoutineList();
+	renderSelectedRoutine();
 }
 
 function handleSaveSharedToLibrary(notify = true) {

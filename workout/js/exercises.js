@@ -291,15 +291,15 @@ export function setExercises(list = []) {
 
 /**
  * Retrieve primary and secondary target muscle groups for an exercise.
- * Prioritizes explicit database definitions, falling back to name heuristics if needed.
+ * Prioritizes explicit database definitions, then uses name heuristics when available.
  * @param {Object} ex
  * @returns {{ primary: Array<string>, secondary: Array<string> }}
  */
 export function inferMusclesForExercise(ex) {
 	if (!ex) return { primary: [], secondary: [] };
-	if (Array.isArray(ex.primary_muscles) && ex.primary_muscles.length > 0) {
+	if (Array.isArray(ex.primary_muscles) || Array.isArray(ex.secondary_muscles)) {
 		return {
-			primary: ex.primary_muscles.map(m => m === 'groin' ? 'adductors' : m),
+			primary: (Array.isArray(ex.primary_muscles) ? ex.primary_muscles : []).map(m => m === 'groin' ? 'adductors' : m),
 			secondary: (Array.isArray(ex.secondary_muscles) ? ex.secondary_muscles : []).map(m => m === 'groin' ? 'adductors' : m),
 		};
 	}
@@ -340,7 +340,7 @@ export function inferMusclesForExercise(ex) {
 	if (/\b(fold|hamstring|hamstrings)\b/.test(combined)) {
 		return { primary: ['hamstrings', 'lower_back'], secondary: ['calves', 'adductors'] };
 	}
-	return { primary: ['abs'], secondary: ['shoulders', 'pelvic_floor'] };
+	return { primary: [], secondary: [] };
 }
 
 /**
