@@ -18,6 +18,19 @@ let cachedStats = null;
  * @param {HTMLElement} container
  */
 export async function renderStatsDashboard(container) {
+	// SWR: If we have cached stats, render immediately without any loading spinner!
+	if (cachedStats) {
+		renderStatsContent(container, cachedStats);
+		// Silently revalidate fresh stats in background
+		fetchStats().then(freshStats => {
+			cachedStats = freshStats;
+			updateStatsMetrics(container, freshStats);
+		}).catch(err => {
+			console.warn('Background stats refresh failed:', err);
+		});
+		return;
+	}
+
 	container.innerHTML = `
 		<div class="stats-loading">
 			<div class="spinner"></div>
@@ -39,7 +52,10 @@ export async function renderStatsDashboard(container) {
 		`;
 		const retryBtn = container.querySelector('#stats-retry-btn');
 		if (retryBtn) {
-			retryBtn.addEventListener('click', () => renderStatsDashboard(container));
+			retryBtn.addEventListener('click', () => {
+				cachedStats = null;
+				renderStatsDashboard(container);
+			});
 		}
 	}
 }
@@ -96,6 +112,31 @@ function renderStatsContent(container, stats) {
 				</div>
 			</div>
 
+			<!-- Personal Records & Milestone Achievements -->
+			<div class="stats-visual-grid stats-pr-achievements-grid">
+				<!-- Auto-Detected Rep PR Leaderboard -->
+				<div class="stats-section-card">
+					<div class="section-card-header">
+						<h3>${getTrophyIcon(18)} Personal Records (PRs)</h3>
+						<span class="section-header-meta">Movement Bests</span>
+					</div>
+					<div id="stats-pr-leaderboard-wrap">
+						${renderRepLeaderboard(stats.rep_leaderboard || [])}
+					</div>
+				</div>
+
+				<!-- Milestone Badges -->
+				<div class="stats-section-card">
+					<div class="section-card-header">
+						<h3>${getTargetIcon(18)} Milestone Badges</h3>
+						<span id="milestones-meta" class="section-header-meta">${(stats.milestones || []).filter(m => m.unlocked).length}/${(stats.milestones || []).length} Unlocked</span>
+					</div>
+					<div id="stats-milestones-wrap">
+						${renderMilestonesGrid(stats.milestones || [])}
+					</div>
+				</div>
+			</div>
+
 			<!-- Movement Taxonomy & Discipline Split -->
 			<div class="stats-visual-grid stats-taxonomy-grid">
 				<!-- Categories Distribution -->
@@ -141,14 +182,18 @@ function renderStatsContent(container, stats) {
 	const refreshBtn = container.querySelector('#stats-refresh-btn');
 	if (refreshBtn) {
 		refreshBtn.addEventListener('click', async () => {
+			refreshBtn.disabled = true;
+			const originalText = refreshBtn.innerHTML;
+			refreshBtn.innerHTML = '🔄 Refreshing...';
 			try {
 				const freshStats = await fetchStats();
 				cachedStats = freshStats;
-				const scrollPos = container.scrollTop;
-				renderStatsContent(container, freshStats);
-				container.scrollTop = scrollPos;
+				updateStatsMetrics(container, freshStats);
 			} catch (e) {
 				console.error('Failed to refresh stats:', e);
+			} finally {
+				refreshBtn.innerHTML = originalText;
+				refreshBtn.disabled = false;
 			}
 		});
 	}
@@ -264,6 +309,29 @@ function updateStatsMetrics(container, stats) {
 
 	const topExWrap = container.querySelector('#stats-top-exercises-wrap');
 	if (topExWrap) topExWrap.innerHTML = renderTopExercises(stats.top_exercises || []);
+
+	const prWrap = container.querySelector('#stats-pr-leaderboard-wrap');
+	if (prWrap) prWrap.innerHTML = renderRepLeaderboard(stats.rep_leaderboard || []);
+
+	const milestonesMeta = container.querySelector('#milestones-meta');
+	if (milestonesMeta) {
+		const unlockedCnt = (stats.milestones || []).filter(m => m.unlocked).length;
+		milestonesMeta.textContent = `${unlockedCnt}/${(stats.milestones || []).length} Unlocked`;
+	}
+
+	const mileWrap = container.querySelector('#stats-milestones-wrap');
+	if (mileWrap) mileWrap.innerHTML = renderMilestonesGrid(stats.milestones || []);
+
+	const historyMeta = container.querySelector('#session-history-meta');
+	if (historyMeta) {
+		historyMeta.textContent = `${(stats.recent_sessions || []).length} recent sessions`;
+	}
+
+	const historyList = container.querySelector('#session-history-list');
+	if (historyList) {
+		historyList.innerHTML = renderSessionList(stats.recent_sessions || []);
+		bindHistoryActions(container);
+	}
 }
 
 /**
@@ -302,7 +370,7 @@ function renderCategoriesList(categories) {
 	return keys.map(k => {
 		const catInfo = CATEGORIES[k] || { label: k, icon: '💪', color: '#6366f1' };
 		const data = categories[k];
-		const sets = data.sets || 0;
+		const sets = data.sets ?? data.count ?? 0;
 		const reps = data.reps || 0;
 		const pct = Math.min(100, Math.round((sets / maxSets) * 100));
 
@@ -334,7 +402,7 @@ function renderDisciplinesList(disciplines) {
 			${keys.map(k => {
 				const discInfo = DISCIPLINES[k] || { label: k.replace('_', ' ').toUpperCase(), icon: '🏋️', color: '#9ea2bd' };
 				const data = disciplines[k];
-				const sets = data.sets || 0;
+				const sets = data.sets ?? data.count ?? 0;
 				const reps = data.reps || 0;
 
 				return `
@@ -347,6 +415,142 @@ function renderDisciplinesList(disciplines) {
 					</div>
 				`;
 			}).join('')}
+		</div>
+	`;
+}
+
+/**
+ * Render auto-detected rep-based PR leaderboard.
+ * @param {Array} records
+ * @returns {string}
+ */
+function renderRepLeaderboard(records) {
+	if (!records || records.length === 0) {
+		return `
+			<div class="empty-sub" style="padding: 24px 16px; text-align: center;">
+				<p style="font-weight: 600; margin-bottom: 4px;">No repetition movements logged yet.</p>
+				<p style="font-size: 0.82rem; opacity: 0.7;">Complete reps-mode exercises to automatically establish your personal records!</p>
+			</div>
+		`;
+	}
+
+	const medals = ['🥇', '🥈', '🥉'];
+	const defaultLimit = 5;
+	const hasMore = records.length > defaultLimit;
+
+	const renderCard = (rec, rank, hidden = false) => {
+		const isPushup = /pushup|push-up/i.test(rec.name);
+		const medal = medals[rank] || `#${rank + 1}`;
+
+		return `
+			<div class="pr-card ${isPushup ? 'pr-highlight' : ''} ${hidden ? 'pr-card-extra' : ''}" style="${hidden ? 'display: none;' : ''}">
+				<div class="pr-card-main">
+					<div class="pr-card-left">
+						<span class="pr-medal-badge">${medal}</span>
+						<div class="pr-title-group">
+							<div class="pr-name-line">
+								<span class="pr-movement-name">${escapeHtml(rec.name)}</span>
+								<span class="pr-badge-tag">${escapeHtml(rec.category || 'strength')}</span>
+							</div>
+							<div class="pr-sub-details">
+								${rec.total_reps.toLocaleString()} reps total · ${rec.sessions_count} workout${rec.sessions_count === 1 ? '' : 's'} · avg ${rec.avg_reps}r
+							</div>
+						</div>
+					</div>
+					<div class="pr-card-right">
+						<div class="pr-val-badge">
+							<span class="pr-val-num">${rec.max_session_reps}</span>
+							<span class="pr-val-unit">reps PR</span>
+						</div>
+						${rec.max_session_date ? `<span class="pr-val-date">${rec.max_session_date}</span>` : ''}
+					</div>
+				</div>
+			</div>
+		`;
+	};
+
+	return `
+		<div class="pr-leaderboard-grid">
+			${records.map((rec, rank) => renderCard(rec, rank, rank >= defaultLimit)).join('')}
+			${hasMore ? `
+				<button class="pr-expand-btn" data-expanded="false" onclick="
+					const isExp = this.dataset.expanded === 'true';
+					const extras = this.closest('.pr-leaderboard-grid').querySelectorAll('.pr-card-extra');
+					extras.forEach(el => el.style.display = isExp ? 'none' : '');
+					this.dataset.expanded = isExp ? 'false' : 'true';
+					this.innerHTML = isExp ? 'Show ${records.length - defaultLimit} more PRs ▾' : 'Show less ▴';
+				">
+					Show ${records.length - defaultLimit} more PRs ▾
+				</button>
+			` : ''}
+		</div>
+	`;
+}
+
+/**
+ * Render milestone badges with earned achievements and active targets.
+ * @param {Array} milestones
+ * @returns {string}
+ */
+function renderMilestonesGrid(milestones) {
+	if (!milestones || milestones.length === 0) {
+		return '<p class="text-muted empty-sub">No milestones available.</p>';
+	}
+
+	const unlocked = milestones.filter(m => m.unlocked);
+	const inProgress = milestones.filter(m => !m.unlocked);
+
+	return `
+		<div class="milestones-container">
+			${inProgress.length > 0 ? `
+				<div class="milestones-sub-section">
+					<div class="milestones-sub-heading">🎯 In Progress</div>
+					<div class="milestones-inprogress-grid">
+						${inProgress.map(m => {
+							const pct = m.progress_pct || 0;
+							return `
+								<div class="milestone-target-card tier-${m.tier || 'bronze'}">
+									<div class="milestone-target-header">
+										<span class="milestone-target-icon">${m.icon || '🎯'}</span>
+										<div class="milestone-target-info">
+											<div class="milestone-target-title">${escapeHtml(m.title)}</div>
+											<div class="milestone-target-desc">${escapeHtml(m.desc)}</div>
+										</div>
+										<span class="milestone-tier-pill tier-${m.tier}">${m.tier.toUpperCase()}</span>
+									</div>
+									<div class="milestone-target-meter">
+										<div class="meter-track">
+											<div class="meter-fill" style="width: ${pct}%;"></div>
+										</div>
+										<div class="meter-labels">
+											<span>${m.progress} / ${m.target}</span>
+											<span class="meter-pct">${pct}%</span>
+										</div>
+									</div>
+								</div>
+							`;
+						}).join('')}
+					</div>
+				</div>
+			` : ''}
+
+			${unlocked.length > 0 ? `
+				<div class="milestones-sub-section">
+					<div class="milestones-sub-heading">🏆 Earned Badges (${unlocked.length})</div>
+					<div class="milestones-earned-chips">
+						${unlocked.map(m => `
+							<div class="earned-badge-chip tier-${m.tier}" title="${escapeHtml(m.desc)}">
+								<span class="earned-badge-icon">${m.icon}</span>
+								<div class="earned-badge-text">
+									<span class="earned-badge-title">${escapeHtml(m.title)}</span>
+									<span class="earned-badge-tier">${m.tier.toUpperCase()}</span>
+								</div>
+								<span class="earned-badge-check">✓</span>
+							</div>
+						`).join('')}
+					</div>
+				</div>
+			` : ''}
 		</div>
 	`;
 }

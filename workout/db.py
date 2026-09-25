@@ -2,7 +2,7 @@ import json
 import secrets
 import sqlite3
 import string
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -10,6 +10,7 @@ from typing import Any
 class Database:
 	def __init__(self, db_path: Path):
 		self.db_path = db_path
+		self._stats_cache: dict[tuple[str, int], dict[str, Any]] = {}
 		self.init_db()
 
 	def get_connection(self) -> sqlite3.Connection:
@@ -1070,7 +1071,13 @@ class Database:
 					exercises_json,
 				),
 			)
+		self.invalidate_stats_cache(user_id)
 		return session
+
+	def invalidate_stats_cache(self, user_id: str) -> None:
+		keys_to_del = [k for k in self._stats_cache if k[0] == user_id]
+		for k in keys_to_del:
+			self._stats_cache.pop(k, None)
 
 	def get_sessions(self, user_id: str, limit: int = 50) -> list[dict[str, Any]]:
 		with self.get_connection() as conn:
@@ -1102,24 +1109,51 @@ class Database:
 				"DELETE FROM sessions WHERE id = ? AND user_id = ?",
 				(session_id, user_id),
 			)
-			return cursor.rowcount > 0
+			if cursor.rowcount > 0:
+				self.invalidate_stats_cache(user_id)
+				return True
+			return False
 
 	# ── Stats & Streaks Computation ──────────────────────────────────────────
 
 	def get_stats(self, user_id: str, timezone_offset_minutes: int = 0) -> dict[str, Any]:
-		with self.get_connection() as conn:
-			# Fetch all routines for mapping steps & exercises
-			routine_rows = conn.execute(
-				"SELECT id, steps_json FROM routines WHERE user_id = ?", (user_id,)
-			).fetchall()
-			routine_map = {}
-			for r in routine_rows:
-				try:
-					routine_map[r["id"]] = json.loads(r["steps_json"])
-				except Exception:
-					routine_map[r["id"]] = []
+		cache_key = (user_id, timezone_offset_minutes)
+		if cache_key in self._stats_cache:
+			return self._stats_cache[cache_key]
 
-			# Fetch all non-preview sessions for user
+		with self.get_connection() as conn:
+			# 1. High-level aggregates via fast SQL
+			totals_row = conn.execute(
+				"""
+				SELECT
+					COUNT(*) AS total_sessions,
+					COALESCE(SUM(duration_seconds), 0) AS total_duration,
+					COALESCE(SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END), 0) AS completed_count
+				FROM sessions
+				WHERE user_id = ? AND is_preview = 0 AND (duration_seconds >= 15 OR status = 'completed')
+				""",
+				(user_id,),
+			).fetchone()
+			total_sessions = totals_row["total_sessions"] if totals_row else 0
+			total_duration = totals_row["total_duration"] if totals_row else 0
+			completed_count = totals_row["completed_count"] if totals_row else 0
+
+			# 2. Recent 20 sessions for history view
+			recent_rows = conn.execute(
+				"""
+				SELECT
+					id, routine_id, routine_title, started_at, completed_at,
+					duration_seconds, completed_steps, total_steps, status
+				FROM sessions
+				WHERE user_id = ? AND is_preview = 0 AND (duration_seconds >= 15 OR status = 'completed')
+				ORDER BY started_at DESC
+				LIMIT 20
+				""",
+				(user_id,),
+			).fetchall()
+			recent = [dict(r) for r in recent_rows]
+
+			# 3. Fetch qualified sessions for streaks, weekly, monthly, and movement taxonomy
 			rows = conn.execute(
 				"""
 				SELECT
@@ -1132,19 +1166,37 @@ class Database:
 				(user_id,),
 			).fetchall()
 
-		sessions = []
-		for r in rows:
-			d = dict(r)
-			try:
-				d["exercises"] = json.loads(d.get("exercises_json") or "[]")
-			except Exception:
-				d["exercises"] = []
-			sessions.append(d)
+			routine_map: dict[str, list[dict[str, Any]]] = {}
+			needs_routine_map = False
+			sessions = []
+			for r in rows:
+				d = dict(r)
+				try:
+					d["exercises"] = json.loads(d.get("exercises_json") or "[]")
+				except Exception:
+					d["exercises"] = []
 
-		# Group duration and workouts by local date YYYY-MM-DD
+				has_step_snapshot = any(
+					isinstance(item, dict)
+					and ("exercises" in item or "planned_duration" in item or "is_break" in item)
+					for item in d["exercises"]
+				)
+				d["_has_snapshot"] = has_step_snapshot
+				if not has_step_snapshot and d.get("routine_id"):
+					needs_routine_map = True
+				sessions.append(d)
+
+			if needs_routine_map:
+				routine_rows = conn.execute(
+					"SELECT id, steps_json FROM routines WHERE user_id = ?", (user_id,)
+				).fetchall()
+				for r in routine_rows:
+					try:
+						routine_map[r["id"]] = json.loads(r["steps_json"])
+					except Exception:
+						routine_map[r["id"]] = []
+
 		daily_stats: dict[str, dict[str, int]] = {}
-		total_duration = 0
-		completed_count = 0
 		total_reps = 0
 
 		# Exercise analytics maps
@@ -1153,6 +1205,7 @@ class Database:
 				"minutes": 0,
 				"reps": 0,
 				"count": 0,
+				"sets": 0,
 				"label": "Strength / Force",
 				"icon": "💪",
 				"color": "#6366f1",
@@ -1161,6 +1214,7 @@ class Database:
 				"minutes": 0,
 				"reps": 0,
 				"count": 0,
+				"sets": 0,
 				"label": "Drills",
 				"icon": "⚡",
 				"color": "#06b6d4",
@@ -1169,6 +1223,7 @@ class Database:
 				"minutes": 0,
 				"reps": 0,
 				"count": 0,
+				"sets": 0,
 				"label": "Technique",
 				"icon": "🥋",
 				"color": "#8b5cf6",
@@ -1177,6 +1232,7 @@ class Database:
 				"minutes": 0,
 				"reps": 0,
 				"count": 0,
+				"sets": 0,
 				"label": "Stretch & Recovery",
 				"icon": "🧘",
 				"color": "#10b981",
@@ -1185,6 +1241,7 @@ class Database:
 				"minutes": 0,
 				"reps": 0,
 				"count": 0,
+				"sets": 0,
 				"label": "Cardio & Conditioning",
 				"icon": "🫀",
 				"color": "#ef4444",
@@ -1193,6 +1250,7 @@ class Database:
 				"minutes": 0,
 				"reps": 0,
 				"count": 0,
+				"sets": 0,
 				"label": "Mobility",
 				"icon": "🔄",
 				"color": "#f59e0b",
@@ -1200,12 +1258,27 @@ class Database:
 		}
 
 		discipline_stats: dict[str, dict[str, Any]] = {
-			"muay_thai": {"minutes": 0, "reps": 0, "count": 0, "label": "Muay Thai", "icon": "🥊"},
-			"boxing": {"minutes": 0, "reps": 0, "count": 0, "label": "Boxing", "icon": "🥊"},
+			"muay_thai": {
+				"minutes": 0,
+				"reps": 0,
+				"count": 0,
+				"sets": 0,
+				"label": "Muay Thai",
+				"icon": "🥊",
+			},
+			"boxing": {
+				"minutes": 0,
+				"reps": 0,
+				"count": 0,
+				"sets": 0,
+				"label": "Boxing",
+				"icon": "🥊",
+			},
 			"calisthenics": {
 				"minutes": 0,
 				"reps": 0,
 				"count": 0,
+				"sets": 0,
 				"label": "Calisthenics",
 				"icon": "🤸",
 			},
@@ -1213,23 +1286,26 @@ class Database:
 				"minutes": 0,
 				"reps": 0,
 				"count": 0,
+				"sets": 0,
 				"label": "General Fitness",
 				"icon": "🏋️",
 			},
-			"yoga": {"minutes": 0, "reps": 0, "count": 0, "label": "Yoga", "icon": "🧘"},
+			"yoga": {"minutes": 0, "reps": 0, "count": 0, "sets": 0, "label": "Yoga", "icon": "🧘"},
 		}
 
 		exercise_frequency: dict[str, dict[str, Any]] = {}
+		movement_records: dict[str, dict[str, Any]] = {}
 
 		for s in sessions:
-			total_duration += s["duration_seconds"]
-			if s["status"] == "completed":
-				completed_count += 1
+			session_ex_reps: dict[str, int] = {}
+			session_ex_meta: dict[str, tuple[str, str]] = {}
 
-			# Parse started_at with client timezone offset
+			# Parse started_at with client timezone offset relative to UTC
 			try:
 				raw_iso = s["started_at"].replace("Z", "+00:00")
 				dt = datetime.fromisoformat(raw_iso)
+				if dt.tzinfo is None:
+					dt = dt.replace(tzinfo=timezone.utc)
 				if timezone_offset_minutes:
 					dt = dt - timedelta(minutes=timezone_offset_minutes)
 				day_str = dt.strftime("%Y-%m-%d")
@@ -1243,48 +1319,105 @@ class Database:
 			if s["status"] == "completed":
 				daily_stats[day_str]["completed"] += 1
 
-			# Aggregate exercise stats from routine steps
-			r_id = s.get("routine_id")
-			steps = routine_map.get(r_id, [])
-			completed_steps_cnt = s.get("completed_steps") or len(steps)
-			steps_to_count = steps[:completed_steps_cnt] if steps else []
-
-			session_step_duration = (
-				(s["duration_seconds"] / len(steps_to_count)) if steps_to_count else 0
-			)
-
+			# Determine steps to process
+			has_snapshot = s.get("_has_snapshot")
 			session_exercises = s.get("exercises") or []
+			completed_steps_cnt = s.get("completed_steps")
+
+			if has_snapshot:
+				cnt = (
+					completed_steps_cnt
+					if (completed_steps_cnt is not None and completed_steps_cnt > 0)
+					else len(session_exercises)
+				)
+				steps_to_count = session_exercises[:cnt] if cnt > 0 else session_exercises
+			else:
+				r_id = s.get("routine_id")
+				steps = routine_map.get(r_id, [])
+				cnt = (
+					completed_steps_cnt
+					if (completed_steps_cnt is not None and completed_steps_cnt > 0)
+					else len(steps)
+				)
+				steps_to_count = steps[:cnt] if steps else []
+
+			if not steps_to_count:
+				continue
+
+			# Calculate planned durations for proportional distribution
+			planned_durations = []
+			for st in steps_to_count:
+				dur = (
+					st.get("planned_duration")
+					or st.get("targetDuration")
+					or st.get("durationSeconds")
+					or 0
+				)
+				try:
+					planned_durations.append(max(0.0, float(dur)))
+				except Exception:
+					planned_durations.append(0.0)
+
+			total_planned_sec = sum(planned_durations)
+			use_proportional = total_planned_sec > 0
+
+			# Reps map for legacy format
 			recorded_reps_by_step: dict[int, int] = {}
 			recorded_reps_by_ex: dict[tuple[int, str], int] = {}
-			for rec in session_exercises:
-				if isinstance(rec, dict):
-					s_idx = rec.get("step_index")
-					reps_val = rec.get("reps")
-					ex_id = rec.get("id")
-					if s_idx is not None and reps_val is not None:
-						recorded_reps_by_step[s_idx] = recorded_reps_by_step.get(s_idx, 0) + int(
-							reps_val
-						)
-						if ex_id:
-							recorded_reps_by_ex[(s_idx, str(ex_id))] = int(reps_val)
+			if not has_snapshot:
+				for rec in session_exercises:
+					if isinstance(rec, dict):
+						s_idx = rec.get("step_index")
+						reps_val = rec.get("reps")
+						ex_id = rec.get("id")
+						if s_idx is not None and reps_val is not None:
+							recorded_reps_by_step[s_idx] = recorded_reps_by_step.get(
+								s_idx, 0
+							) + int(reps_val)
+							if ex_id:
+								recorded_reps_by_ex[(s_idx, str(ex_id))] = int(reps_val)
 
 			for step_idx, step in enumerate(steps_to_count):
-				step_exercises = step.get("exercises") or []
-				step_mode = step.get("stepMode") or ("reps" if step.get("targetReps") else "time")
-				if step_idx in recorded_reps_by_step:
-					step_reps = recorded_reps_by_step[step_idx]
+				if use_proportional:
+					step_duration = s["duration_seconds"] * (
+						planned_durations[step_idx] / total_planned_sec
+					)
 				else:
-					step_reps = int(step.get("targetReps", 0)) if step_mode == "reps" else 0
+					step_duration = s["duration_seconds"] / max(1, len(steps_to_count))
+
+				is_break = (
+					step.get("is_break")
+					or step.get("subtype") == "break"
+					or step.get("mode") == "break"
+					or str(step.get("label", "")).strip().lower() in ("rest", "break")
+				)
+
+				step_exercises = step.get("exercises") or []
+				step_mode = (
+					step.get("mode")
+					or step.get("stepMode")
+					or ("reps" if step.get("targetReps") else "time")
+				)
+
+				if has_snapshot:
+					step_reps = int(step.get("reps") or 0)
+					if step_reps == 0 and step_mode == "reps":
+						step_reps = int(step.get("target_reps") or step.get("targetReps") or 0)
+				else:
+					if step_idx in recorded_reps_by_step:
+						step_reps = recorded_reps_by_step[step_idx]
+					else:
+						step_reps = int(step.get("targetReps", 0)) if step_mode == "reps" else 0
+
 				total_reps += step_reps
 
+				# If this is a rest/break step without specific exercises, do NOT count towards movement taxonomy
+				if is_break and not step_exercises:
+					continue
+
 				if not step_exercises:
-					# Infer from label or subtype
 					lbl = str(step.get("label", "")).lower()
-					inf_cat = (
-						"stretch"
-						if ("stretch" in lbl or "pose" in lbl or step.get("subtype") == "break")
-						else "strength"
-					)
+					inf_cat = "stretch" if ("stretch" in lbl or "pose" in lbl) else "strength"
 					inf_disc = (
 						"muay_thai"
 						if ("kick" in lbl or "teep" in lbl or "clinch" in lbl)
@@ -1299,8 +1432,7 @@ class Database:
 						}
 					]
 
-				# Distribute step duration and reps across exercises attached to this step
-				ex_share_sec = session_step_duration / max(1, len(step_exercises))
+				ex_share_sec = step_duration / max(1, len(step_exercises))
 
 				for ex in step_exercises:
 					cat = (ex.get("category") or "strength").lower()
@@ -1308,16 +1440,23 @@ class Database:
 					ex_name = ex.get("name") or "Exercise"
 					ex_id = str(ex.get("id") or "")
 
-					if (step_idx, ex_id) in recorded_reps_by_ex:
+					if has_snapshot and ex.get("reps") is not None and ex.get("reps") > 0:
+						ex_share_reps = int(ex["reps"])
+					elif not has_snapshot and (step_idx, ex_id) in recorded_reps_by_ex:
 						ex_share_reps = recorded_reps_by_ex[(step_idx, ex_id)]
 					else:
 						ex_share_reps = round(step_reps / max(1, len(step_exercises)))
+
+					if ex_share_reps > 0:
+						session_ex_reps[ex_name] = session_ex_reps.get(ex_name, 0) + ex_share_reps
+						session_ex_meta[ex_name] = (cat, disc)
 
 					if cat not in category_stats:
 						category_stats[cat] = {
 							"minutes": 0,
 							"reps": 0,
 							"count": 0,
+							"sets": 0,
 							"label": cat.title(),
 							"icon": "💪",
 							"color": "#6366f1",
@@ -1325,18 +1464,21 @@ class Database:
 					category_stats[cat]["minutes"] += round(ex_share_sec / 60, 1)
 					category_stats[cat]["reps"] += ex_share_reps
 					category_stats[cat]["count"] += 1
+					category_stats[cat]["sets"] += 1
 
 					if disc not in discipline_stats:
 						discipline_stats[disc] = {
 							"minutes": 0,
 							"reps": 0,
 							"count": 0,
+							"sets": 0,
 							"label": disc.replace("_", " ").title(),
 							"icon": "🏋️",
 						}
 					discipline_stats[disc]["minutes"] += round(ex_share_sec / 60, 1)
 					discipline_stats[disc]["reps"] += ex_share_reps
 					discipline_stats[disc]["count"] += 1
+					discipline_stats[disc]["sets"] += 1
 
 					if ex_name not in exercise_frequency:
 						exercise_frequency[ex_name] = {
@@ -1351,16 +1493,183 @@ class Database:
 					exercise_frequency[ex_name]["total_reps"] += ex_share_reps
 					exercise_frequency[ex_name]["total_minutes"] += round(ex_share_sec / 60, 1)
 
-		# Compute streaks
+			# Aggregate session-level movement PRs
+			for ex_name, s_reps in session_ex_reps.items():
+				cat, disc = session_ex_meta.get(ex_name, ("strength", "general"))
+				if ex_name not in movement_records:
+					movement_records[ex_name] = {
+						"name": ex_name,
+						"category": cat,
+						"discipline": disc,
+						"total_reps": 0,
+						"max_session_reps": 0,
+						"max_session_date": "",
+						"sessions_count": 0,
+					}
+				mrec = movement_records[ex_name]
+				mrec["total_reps"] += s_reps
+				mrec["sessions_count"] += 1
+				if s_reps > mrec["max_session_reps"]:
+					mrec["max_session_reps"] = s_reps
+					mrec["max_session_date"] = day_str
+
+		# Compute streaks using UTC-anchored client date
 		active_dates = sorted(daily_stats.keys())
 		current_streak, longest_streak = self._calculate_streaks(
 			active_dates, timezone_offset_minutes
 		)
 
-		# Weekly breakdown (current ISO week Mon-Sun)
-		client_now = datetime.now()
-		if timezone_offset_minutes:
-			client_now = client_now - timedelta(minutes=timezone_offset_minutes)
+		# Build auto-detected rep leaderboard
+		rep_leaderboard = []
+		for mrec in movement_records.values():
+			if mrec["total_reps"] > 0:
+				mrec["avg_reps"] = round(mrec["total_reps"] / max(1, mrec["sessions_count"]))
+				rep_leaderboard.append(mrec)
+
+		# Sort by highest PR first, then lifetime volume
+		rep_leaderboard.sort(key=lambda x: (x["max_session_reps"], x["total_reps"]), reverse=True)
+
+		# Build milestone badges
+		pushup_total = sum(
+			m["total_reps"]
+			for m in rep_leaderboard
+			if "pushup" in m["name"].lower() or "push-up" in m["name"].lower()
+		)
+		pushup_pr = max(
+			[
+				m["max_session_reps"]
+				for m in rep_leaderboard
+				if "pushup" in m["name"].lower() or "push-up" in m["name"].lower()
+			]
+			or [0]
+		)
+		max_any_pr = max([m["max_session_reps"] for m in rep_leaderboard] or [0])
+
+		milestones = [
+			{
+				"id": "pushup_century",
+				"title": "Pushup Century",
+				"desc": "100 lifetime pushups",
+				"icon": "💪",
+				"tier": "bronze",
+				"category": "pushup",
+				"unlocked": pushup_total >= 100,
+				"progress": min(pushup_total, 100),
+				"target": 100,
+				"progress_pct": min(100, round((pushup_total / 100) * 100)),
+			},
+			{
+				"id": "pushup_500",
+				"title": "500 Pushup Club",
+				"desc": "500 lifetime pushups",
+				"icon": "⚡",
+				"tier": "silver",
+				"category": "pushup",
+				"unlocked": pushup_total >= 500,
+				"progress": min(pushup_total, 500),
+				"target": 500,
+				"progress_pct": min(100, round((pushup_total / 500) * 100)),
+			},
+			{
+				"id": "pushup_1k",
+				"title": "1,000 Pushup Titan",
+				"desc": "1,000 lifetime pushups",
+				"icon": "👑",
+				"tier": "gold",
+				"category": "pushup",
+				"unlocked": pushup_total >= 1000,
+				"progress": min(pushup_total, 1000),
+				"target": 1000,
+				"progress_pct": min(100, round((pushup_total / 1000) * 100)),
+			},
+			{
+				"id": "pushup_storm",
+				"title": "Pushup Storm",
+				"desc": "50+ pushups in a single workout",
+				"icon": "🌪️",
+				"tier": "silver",
+				"category": "pushup",
+				"unlocked": pushup_pr >= 50,
+				"progress": min(pushup_pr, 50),
+				"target": 50,
+				"progress_pct": min(100, round((pushup_pr / 50) * 100)),
+			},
+			{
+				"id": "reps_century_session",
+				"title": "Century Session",
+				"desc": "100+ reps of a movement in one workout",
+				"icon": "🎯",
+				"tier": "gold",
+				"category": "pr",
+				"unlocked": max_any_pr >= 100,
+				"progress": min(max_any_pr, 100),
+				"target": 100,
+				"progress_pct": min(100, round((max_any_pr / 100) * 100)),
+			},
+			{
+				"id": "total_reps_1k",
+				"title": "1K Total Reps",
+				"desc": "1,000 total reps across all movements",
+				"icon": "🏆",
+				"tier": "silver",
+				"category": "volume",
+				"unlocked": total_reps >= 1000,
+				"progress": min(total_reps, 1000),
+				"target": 1000,
+				"progress_pct": min(100, round((total_reps / 1000) * 100)),
+			},
+			{
+				"id": "streak_3",
+				"title": "Ignition",
+				"desc": "3-day workout streak",
+				"icon": "🔥",
+				"tier": "bronze",
+				"category": "streak",
+				"unlocked": longest_streak >= 3,
+				"progress": min(longest_streak, 3),
+				"target": 3,
+				"progress_pct": min(100, round((longest_streak / 3) * 100)),
+			},
+			{
+				"id": "streak_7",
+				"title": "Iron Discipline",
+				"desc": "7-day workout streak",
+				"icon": "🛡️",
+				"tier": "silver",
+				"category": "streak",
+				"unlocked": longest_streak >= 7,
+				"progress": min(longest_streak, 7),
+				"target": 7,
+				"progress_pct": min(100, round((longest_streak / 7) * 100)),
+			},
+			{
+				"id": "streak_30",
+				"title": "Monthly Warrior",
+				"desc": "30-day workout streak",
+				"icon": "⚔️",
+				"tier": "gold",
+				"category": "streak",
+				"unlocked": longest_streak >= 30,
+				"progress": min(longest_streak, 30),
+				"target": 30,
+				"progress_pct": min(100, round((longest_streak / 30) * 100)),
+			},
+			{
+				"id": "workouts_10",
+				"title": "Decathlete",
+				"desc": "10 completed workouts",
+				"icon": "🏅",
+				"tier": "bronze",
+				"category": "workouts",
+				"unlocked": completed_count >= 10,
+				"progress": min(completed_count, 10),
+				"target": 10,
+				"progress_pct": min(100, round((completed_count / 10) * 100)),
+			},
+		]
+
+		# Client local now: UTC now minus timezone_offset_minutes
+		client_now = datetime.now(timezone.utc) - timedelta(minutes=timezone_offset_minutes)
 		today_date = client_now.date()
 
 		# Compute current week (Mon-Sun)
@@ -1397,25 +1706,24 @@ class Database:
 				)
 				month_total_minutes += st["minutes"]
 
-		# Recent 20 sessions (latest first)
-		recent = sorted(sessions, key=lambda x: x["started_at"], reverse=True)[:20]
-
 		top_exercises = sorted(
 			exercise_frequency.values(),
 			key=lambda x: (x["count"], x["total_reps"], x["total_minutes"]),
 			reverse=True,
 		)[:10]
 
-		return {
+		result = {
 			"current_streak": current_streak,
 			"longest_streak": longest_streak,
-			"total_sessions": len(sessions),
+			"total_sessions": total_sessions,
 			"total_minutes": round(total_duration / 60),
 			"total_reps": total_reps,
 			"completed_count": completed_count,
 			"categories": category_stats,
 			"disciplines": discipline_stats,
 			"top_exercises": top_exercises,
+			"rep_leaderboard": rep_leaderboard[:8],
+			"milestones": milestones,
 			"weekly": weekly_data,
 			"monthly": {
 				"year": today_date.year,
@@ -1426,6 +1734,9 @@ class Database:
 			},
 			"recent_sessions": recent,
 		}
+
+		self._stats_cache[cache_key] = result
+		return result
 
 	def _calculate_streaks(
 		self, active_date_strs: list[str], timezone_offset_minutes: int
@@ -1456,10 +1767,9 @@ class Database:
 			elif sorted_dates[i] > sorted_dates[i - 1] + timedelta(days=1):
 				current_run = 1
 
-		# Current streak calculation
-		client_now = datetime.now()
-		if timezone_offset_minutes:
-			client_now = client_now - timedelta(minutes=timezone_offset_minutes)
+		# Current streak calculation:
+		# Anchor to UTC now and shift by client's timezone offset
+		client_now = datetime.now(timezone.utc) - timedelta(minutes=timezone_offset_minutes)
 		today = client_now.date()
 		yesterday = today - timedelta(days=1)
 

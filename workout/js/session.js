@@ -25,6 +25,7 @@ export function isSessionActive() {
 export function startSession(routine) {
 	stopHeartbeat();
 
+	const stepsSnapshot = (routine.steps || []).map((step, idx) => buildStepSnapshot(step, idx));
 	const nowIso = new Date().toISOString();
 	activeSession = {
 		id: generateId(),
@@ -37,7 +38,7 @@ export function startSession(routine) {
 		total_steps: routine.steps ? routine.steps.length : 0,
 		status: 'in_progress',
 		is_paused: false,
-		exercises: [],
+		exercises: stepsSnapshot,
 	};
 
 	lastActiveTimestamp = Date.now();
@@ -177,20 +178,64 @@ export function recordStepReps(stepIndex, reps, exercise = null) {
 	}
 	const exId = exercise?.id || `step-${stepIndex}`;
 	const exName = exercise?.name || 'Exercise';
+
 	const existing = activeSession.exercises.find(
-		e => e.step_index === stepIndex && (exercise?.id ? e.id === exercise.id : true)
+		e => e.step_index === stepIndex
 	);
 	if (existing) {
 		existing.reps = reps;
+		if (Array.isArray(existing.exercises) && existing.exercises.length > 0) {
+			const sub = existing.exercises.find(s => s.id === exercise?.id);
+			if (sub) {
+				sub.reps = reps;
+			}
+		}
 	} else {
 		activeSession.exercises.push({
 			step_index: stepIndex,
 			id: exId,
 			name: exName,
 			reps: reps,
+			exercises: exercise ? [exercise] : []
 		});
 	}
 	flushSession();
+}
+
+/**
+ * Build snapshot of a routine step for immutable session history.
+ * @param {Object} step
+ * @param {number} idx
+ * @returns {Object}
+ */
+function buildStepSnapshot(step, idx) {
+	const stepMode = step.mode || (step.targetReps ? 'reps' : 'time');
+	const durationSec = Number(step.targetDuration || step.durationSeconds || 0);
+	const targetReps = Number(step.targetReps || step.reps || 0);
+	const isBreak = step.subtype === 'break' || stepMode === 'break' || (step.label && /^(rest|break)\b/i.test(String(step.label).trim()));
+
+	const subExercises = Array.isArray(step.exercises) && step.exercises.length > 0
+		? step.exercises.map(ex => ({
+			id: ex.id || '',
+			name: ex.name || step.label || 'Exercise',
+			category: (ex.category || 'strength').toLowerCase(),
+			discipline: (ex.discipline || 'general').toLowerCase(),
+			primary_muscles: Array.isArray(ex.primary_muscles) ? ex.primary_muscles : [],
+			secondary_muscles: Array.isArray(ex.secondary_muscles) ? ex.secondary_muscles : []
+		}))
+		: [];
+
+	return {
+		step_index: idx,
+		id: (subExercises[0] && subExercises[0].id) || step.exercise_id || `step-${idx}`,
+		name: step.label || 'Exercise',
+		mode: stepMode,
+		is_break: isBreak,
+		planned_duration: durationSec,
+		target_reps: targetReps,
+		reps: 0,
+		exercises: subExercises
+	};
 }
 
 /**

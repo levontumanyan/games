@@ -175,3 +175,168 @@ def test_delete_session(client: TestClient):
 	del_res = client.delete("/api/sessions/del-test-1", headers={"X-User-Id": "levon"})
 	assert del_res.status_code == 200
 	assert len(client.get("/api/sessions", headers={"X-User-Id": "levon"}).json()) == 0
+
+
+def test_session_snapshot_survives_routine_deletion(client: TestClient, tmp_path: Path):
+	db_path = tmp_path / "workout.db"
+	db = Database(db_path)
+
+	# Session with full step snapshot (as created by session.js)
+	session_data = {
+		"id": "sess-snap-1",
+		"routine_id": "deleted-routine-99",
+		"routine_title": "Pushup Power",
+		"started_at": datetime.now().isoformat(),
+		"duration_seconds": 180,
+		"completed_steps": 2,
+		"total_steps": 2,
+		"status": "completed",
+		"exercises": [
+			{
+				"step_index": 0,
+				"label": "Pushups",
+				"mode": "reps",
+				"is_break": False,
+				"planned_duration": 60,
+				"target_reps": 20,
+				"reps": 25,
+				"exercises": [
+					{
+						"id": "ex-pushups",
+						"name": "Pushups",
+						"category": "strength",
+						"discipline": "calisthenics",
+					}
+				],
+			},
+			{
+				"step_index": 1,
+				"label": "Rest & Hydrate",
+				"mode": "break",
+				"is_break": True,
+				"planned_duration": 30,
+				"target_reps": 0,
+				"reps": 0,
+				"exercises": [],
+			},
+		],
+	}
+
+	db.upsert_session("levon", session_data)
+
+	# Note: deleted-routine-99 does NOT exist in routines table
+	stats = db.get_stats("levon")
+	assert stats["total_sessions"] == 1
+	assert stats["total_reps"] == 25
+	# Strength category must be counted
+	assert stats["categories"]["strength"]["reps"] == 25
+	assert stats["categories"]["strength"]["count"] == 1
+	# Rest step must NOT be counted as stretch
+	assert stats["categories"]["stretch"]["count"] == 0
+	assert stats["categories"]["stretch"]["minutes"] == 0
+
+
+def test_stats_cache_invalidation_on_upsert_and_delete(client: TestClient, tmp_path: Path):
+	db_path = tmp_path / "workout.db"
+	db = Database(db_path)
+
+	db.upsert_session(
+		"levon",
+		{
+			"id": "s-c-1",
+			"started_at": datetime.now().isoformat(),
+			"duration_seconds": 100,
+			"status": "completed",
+		},
+	)
+	stats1 = db.get_stats("levon")
+	assert stats1["total_sessions"] == 1
+
+	# Add another session -> cache must invalidate
+	db.upsert_session(
+		"levon",
+		{
+			"id": "s-c-2",
+			"started_at": datetime.now().isoformat(),
+			"duration_seconds": 120,
+			"status": "completed",
+		},
+	)
+	stats2 = db.get_stats("levon")
+	assert stats2["total_sessions"] == 2
+
+	# Delete session -> cache must invalidate
+	db.delete_session("levon", "s-c-1")
+	stats3 = db.get_stats("levon")
+	assert stats3["total_sessions"] == 1
+
+
+def test_rep_leaderboard_and_milestones(client: TestClient, tmp_path: Path):
+	db_path = tmp_path / "workout.db"
+	db = Database(db_path)
+
+	# Session 1: 30 pushups and 10 pullups
+	s1 = {
+		"id": "sess-lead-1",
+		"started_at": "2026-09-20T10:00:00",
+		"duration_seconds": 300,
+		"status": "completed",
+		"exercises": [
+			{
+				"step_index": 0,
+				"label": "Standard Pushups",
+				"mode": "reps",
+				"is_break": False,
+				"reps": 30,
+				"exercises": [{"id": "ex-pushups", "name": "Pushups", "category": "strength"}],
+			},
+			{
+				"step_index": 1,
+				"label": "Pull-ups",
+				"mode": "reps",
+				"is_break": False,
+				"reps": 10,
+				"exercises": [{"id": "ex-pullups", "name": "Pull-ups", "category": "strength"}],
+			},
+		],
+	}
+	# Session 2: 45 pushups (PR)
+	s2 = {
+		"id": "sess-lead-2",
+		"started_at": "2026-09-22T10:00:00",
+		"duration_seconds": 300,
+		"status": "completed",
+		"exercises": [
+			{
+				"step_index": 0,
+				"label": "Pushups",
+				"mode": "reps",
+				"is_break": False,
+				"reps": 45,
+				"exercises": [{"id": "ex-pushups", "name": "Pushups", "category": "strength"}],
+			}
+		],
+	}
+
+	db.upsert_session("levon", s1)
+	db.upsert_session("levon", s2)
+
+	stats = db.get_stats("levon")
+	leaderboard = stats.get("rep_leaderboard", [])
+	assert len(leaderboard) >= 2
+
+	pushup_entry = next((e for e in leaderboard if e["name"] == "Pushups"), None)
+	assert pushup_entry is not None
+	assert pushup_entry["total_reps"] == 75  # 30 + 45
+	assert pushup_entry["max_session_reps"] == 45  # PR
+	assert pushup_entry["sessions_count"] == 2
+	assert pushup_entry["avg_reps"] == 38  # round(75 / 2)
+
+	# Verify milestones exist and have pushup tracking
+	milestones = stats.get("milestones", [])
+	assert len(milestones) > 0
+	pushup_cent = next((m for m in milestones if m["id"] == "pushup_century"), None)
+	assert pushup_cent is not None
+	assert pushup_cent["progress"] == 75
+	assert pushup_cent["target"] == 100
+	assert pushup_cent["unlocked"] is False
