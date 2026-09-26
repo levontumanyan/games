@@ -31,7 +31,7 @@ import {
 	resolveStepVideo, resolveStepVisual, classifyStep, hasStepVideo
 } from './exercises.js';
 import { showExerciseVariationsModal } from './exercises_view.js';
-import { getCombos, filterCombos } from './combos.js';
+import { getCombos, getComboById, filterCombos } from './combos.js';
 
 // Track expanded step IDs across renders
 const expandedStepIds = new Set();
@@ -998,6 +998,12 @@ function createExercisePicker(step, onUpdate) {
 			removeBtn.addEventListener('click', (e) => {
 				e.stopPropagation();
 				step.exercises.splice(i, 1);
+				if (step.exercises.length > 0) {
+					const nextEx = (step.exercises[0].id ? getExerciseById(step.exercises[0].id) : null) || step.exercises[0];
+					if (nextEx?.default_mode) {
+						step.stepMode = nextEx.default_mode;
+					}
+				}
 				renderChips();
 				onUpdate();
 			});
@@ -1086,12 +1092,12 @@ function createExercisePicker(step, onUpdate) {
 						if (item.media_url && !step.gifUrl && !step.mediaUrl) {
 							step.gifUrl = item.media_url;
 						}
-						if (item.default_mode && !step.stepMode) {
+						if (item.default_mode) {
 							step.stepMode = item.default_mode;
-							if (item.default_mode === 'reps' && item.default_quantity) {
-								step.targetReps = item.default_quantity;
-							} else if (item.default_mode === 'time' && item.default_quantity) {
-								step.durationSeconds = item.default_quantity;
+							if (item.default_mode === 'reps') {
+								step.targetReps = item.default_quantity || step.targetReps || 20;
+							} else if (item.default_mode === 'time') {
+								step.durationSeconds = item.default_quantity || step.durationSeconds || 30;
 							}
 						}
 						input.value = '';
@@ -1148,6 +1154,39 @@ function createTimerFields(step, onUpdate) {
 
 	// 2. Compact Control Row: Mode + Presets + Stepper (+ optional follow-along video badge)
 	const hasVideo = hasStepVideo(step);
+	const combo = step.combo_id ? getComboById(step.combo_id) : null;
+	const primaryEx = (step.exercises && step.exercises.length > 0)
+		? (getExerciseById(step.exercises[0].id) || step.exercises[0])
+		: null;
+
+	let lockedMode = null;
+	let lockedReason = '';
+
+	if (hasVideo) {
+		lockedMode = 'time';
+		lockedReason = 'Follow-along video steps are always timed';
+	} else if (combo?.default_mode) {
+		lockedMode = combo.default_mode;
+		lockedReason = `Locked to combo mode (${combo.default_mode === 'reps' ? 'Reps' : 'Time'})`;
+	} else if (primaryEx?.default_mode) {
+		lockedMode = primaryEx.default_mode;
+		lockedReason = `Locked to ${primaryEx.name || 'exercise'} mode (${primaryEx.default_mode === 'reps' ? 'Reps' : 'Time'})`;
+	}
+
+	if (lockedMode) {
+		step.stepMode = lockedMode;
+		if (lockedMode === 'reps') {
+			if (!step.targetReps || Number(step.targetReps) <= 0) {
+				step.targetReps = primaryEx?.default_quantity || combo?.default_quantity || 20;
+			}
+		} else if (lockedMode === 'time') {
+			if (!step.durationSeconds || Number(step.durationSeconds) <= 0) {
+				step.durationSeconds = primaryEx?.default_quantity || combo?.default_quantity || 30;
+			}
+		}
+	} else if (!step.stepMode) {
+		step.stepMode = step.targetReps ? 'reps' : 'time';
+	}
 
 	if (hasVideo) {
 		const vidAsset = resolveStepVideo(step);
@@ -1168,14 +1207,15 @@ function createTimerFields(step, onUpdate) {
 	const row = document.createElement('div');
 	row.className = 'timer-controls-row';
 
-	// Mode Switcher: Timed vs Reps (inline segmented button)
-	const modeToggle = document.createElement('div');
-	modeToggle.className = 'step-mode-segmented-compact';
+	// Mode Switcher: only shown for ad-hoc custom steps without an attached exercise/combo/video
+	if (!lockedMode) {
+		const modeToggle = document.createElement('div');
+		modeToggle.className = 'step-mode-segmented-compact';
 
-	const timedBtn = document.createElement('button');
-	timedBtn.type = 'button';
-	timedBtn.className = `btn-mode-seg ${step.stepMode !== 'reps' ? 'active' : ''}`;
-	timedBtn.innerHTML = `⏱️ Time`;
+		const timedBtn = document.createElement('button');
+		timedBtn.type = 'button';
+		timedBtn.className = `btn-mode-seg ${step.stepMode !== 'reps' ? 'active' : ''}`;
+		timedBtn.innerHTML = `⏱️ Time`;
 		timedBtn.addEventListener('click', () => {
 			step.stepMode = 'time';
 			step.targetReps = 0;
@@ -1187,17 +1227,15 @@ function createTimerFields(step, onUpdate) {
 		repsBtn.type = 'button';
 		repsBtn.className = `btn-mode-seg ${step.stepMode === 'reps' ? 'active' : ''}`;
 		repsBtn.innerHTML = `🔢 Reps`;
-		if (hasVideo) {
-			repsBtn.disabled = true;
-			repsBtn.title = 'Follow-along video steps are always timed';
-		}
 		repsBtn.addEventListener('click', () => {
 			step.stepMode = 'reps';
 			if (!step.targetReps) step.targetReps = 20;
 			onUpdate();
 		});
 
-	modeToggle.append(timedBtn, repsBtn);
+		modeToggle.append(timedBtn, repsBtn);
+		row.appendChild(modeToggle);
+	}
 
 	// Presets & Stepper Group
 	const presetsGroup = document.createElement('div');
@@ -1358,7 +1396,7 @@ function createTimerFields(step, onUpdate) {
 		stepperGroup.append(decBtn, customInput, incBtn);
 	}
 
-	row.append(modeToggle, presetsGroup, stepperGroup);
+	row.append(presetsGroup, stepperGroup);
 	frag.appendChild(row);
 
 	return frag;
@@ -1718,7 +1756,7 @@ export function createStepFromExercise(ex) {
 	newStep.label = ex.name;
 	newStep.stepMode = isReps ? 'reps' : 'time';
 	newStep.targetReps = isReps ? quantity : 0;
-	newStep.durationSeconds = !isReps ? quantity : 30;
+	newStep.durationSeconds = !isReps ? quantity : null;
 
 	if (asset?.url || ex.media_url) {
 		newStep.gifUrl = asset?.url || ex.media_url || '';
