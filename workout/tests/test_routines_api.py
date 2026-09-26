@@ -298,3 +298,252 @@ def test_dynamic_exercise_propagation_to_routines(client: TestClient, tmp_path: 
 	assert list_res.status_code == 200
 	matching_routine = next(r for r in list_res.json() if r["id"] == "routine-dynamic-test")
 	assert matching_routine["steps"][0]["exercises"][0]["name"] == "Dynamic Pushup V2 Renamed"
+
+
+def test_concise_step_ingestion_and_expansion(client: TestClient):
+	# 1. Create backing exercises
+	client.post(
+		"/api/exercises",
+		json={
+			"id": "ex-concise-pushup",
+			"name": "Concise Pushups",
+			"category": "strength",
+			"discipline": "calisthenics",
+			"default_mode": "reps",
+			"default_quantity": 15,
+			"media_url": "/workout/media/pushups.svg",
+		},
+		headers={"X-User-Id": "levon"},
+	)
+	client.post(
+		"/api/exercises",
+		json={
+			"id": "ex-concise-plank",
+			"name": "Concise Plank",
+			"category": "core",
+			"discipline": "general",
+			"default_mode": "time",
+			"default_quantity": 45,
+			"media_url": "/workout/media/plank.svg",
+		},
+		headers={"X-User-Id": "levon"},
+	)
+
+	# 2. Ingest routine with concise steps
+	concise_payload = {
+		"id": "routine-concise-test",
+		"title": "Concise Test Routine",
+		"steps": [
+			{"exercise_id": "ex-concise-pushup", "reps": 12},
+			{"rest": 25},
+			{"exercise_id": "ex-concise-plank"},  # Falls back to default_quantity 45 & time mode
+		],
+	}
+	put_res = client.put(
+		"/api/routines/routine-concise-test",
+		json=concise_payload,
+		headers={"X-User-Id": "levon"},
+	)
+	assert put_res.status_code == 200
+	saved_routine = put_res.json()["routine"]
+	assert len(saved_routine["steps"]) == 3
+
+	# Step 1: Reps exercise
+	s1 = saved_routine["steps"][0]
+	assert s1["id"].startswith("s-")
+	assert s1["label"] == "Concise Pushups"
+	assert s1["stepMode"] == "reps"
+	assert s1["targetReps"] == 12
+	assert s1["mediaUrl"] == "/workout/media/pushups.svg"
+	assert s1["exercises"][0]["name"] == "Concise Pushups"
+
+	# Step 2: Rest step
+	s2 = saved_routine["steps"][1]
+	assert s2["id"].startswith("s-")
+	assert s2["label"] == "Rest"
+	assert s2["isBreak"] is True
+	assert s2["subtype"] == "break"
+	assert s2["stepMode"] == "time"
+	assert s2["durationSeconds"] == 25
+	assert s2["targetDuration"] == 25
+
+	# Step 3: Default quantity exercise
+	s3 = saved_routine["steps"][2]
+	assert s3["id"].startswith("s-")
+	assert s3["label"] == "Concise Plank"
+	assert s3["stepMode"] == "time"
+	assert s3["durationSeconds"] == 45
+	assert s3["targetDuration"] == 45
+	assert s3["mediaUrl"] == "/workout/media/plank.svg"
+
+	# 3. Verify parity via GET /api/routines/{id}
+	get_res = client.get("/api/routines/routine-concise-test", headers={"X-User-Id": "levon"})
+	assert get_res.status_code == 200
+	fetched = get_res.json()
+	assert len(fetched["steps"]) == 3
+	assert fetched["steps"][0]["targetReps"] == 12
+	assert fetched["steps"][1]["isBreak"] is True
+	assert fetched["steps"][2]["durationSeconds"] == 45
+
+
+def test_granular_step_post_append_and_insert(client: TestClient):
+	client.put(
+		"/api/routines/r-granular-post",
+		json={
+			"title": "Granular Post",
+			"steps": [
+				{"id": "step-1", "label": "First Step", "durationSeconds": 30},
+				{"id": "step-2", "label": "Second Step", "durationSeconds": 30},
+			],
+		},
+		headers={"X-User-Id": "levon"},
+	)
+
+	# 1. Append step by default (no index specified)
+	append_res = client.post(
+		"/api/routines/r-granular-post/steps",
+		json={"rest": 15},
+		headers={"X-User-Id": "levon"},
+	)
+	assert append_res.status_code == 200
+	routine = append_res.json()["routine"]
+	assert len(routine["steps"]) == 3
+	assert routine["steps"][2]["isBreak"] is True
+	assert routine["steps"][2]["durationSeconds"] == 15
+
+	# 2. Insert step at index 1
+	insert_res = client.post(
+		"/api/routines/r-granular-post/steps?index=1",
+		json={"label": "Inserted Step", "durationSeconds": 20},
+		headers={"X-User-Id": "levon"},
+	)
+	assert insert_res.status_code == 200
+	routine_ins = insert_res.json()["routine"]
+	assert len(routine_ins["steps"]) == 4
+	assert routine_ins["steps"][0]["id"] == "step-1"
+	assert routine_ins["steps"][1]["label"] == "Inserted Step"
+	assert routine_ins["steps"][2]["id"] == "step-2"
+
+
+def test_granular_step_patch(client: TestClient):
+	client.put(
+		"/api/routines/r-granular-patch",
+		json={
+			"title": "Granular Patch",
+			"steps": [
+				{"id": "s-target", "label": "Old Pushups", "stepMode": "reps", "targetReps": 10},
+				{"id": "s-other", "label": "Other Step", "durationSeconds": 30},
+			],
+		},
+		headers={"X-User-Id": "levon"},
+	)
+
+	# Patch targetReps and label
+	patch_res = client.patch(
+		"/api/routines/r-granular-patch/steps/s-target",
+		json={"reps": 16, "label": "Diamond Pushups"},
+		headers={"X-User-Id": "levon"},
+	)
+	assert patch_res.status_code == 200
+	routine = patch_res.json()["routine"]
+	patched_step = next(s for s in routine["steps"] if s["id"] == "s-target")
+	assert patched_step["targetReps"] == 16
+	assert patched_step["label"] == "Diamond Pushups"
+
+	# Non-target step remains unchanged
+	other_step = next(s for s in routine["steps"] if s["id"] == "s-other")
+	assert other_step["durationSeconds"] == 30
+
+	# 404 for non-existent step
+	bad_patch = client.patch(
+		"/api/routines/r-granular-patch/steps/s-nonexist",
+		json={"targetReps": 20},
+		headers={"X-User-Id": "levon"},
+	)
+	assert bad_patch.status_code == 404
+
+
+def test_granular_step_delete(client: TestClient):
+	client.put(
+		"/api/routines/r-granular-delete",
+		json={
+			"title": "Granular Delete",
+			"steps": [
+				{"id": "s-del-1", "label": "Step 1"},
+				{"id": "s-del-2", "label": "Step 2"},
+				{"id": "s-del-3", "label": "Step 3"},
+			],
+		},
+		headers={"X-User-Id": "levon"},
+	)
+
+	# Delete step 2
+	del_res = client.delete(
+		"/api/routines/r-granular-delete/steps/s-del-2",
+		headers={"X-User-Id": "levon"},
+	)
+	assert del_res.status_code == 200
+	routine = del_res.json()["routine"]
+	assert len(routine["steps"]) == 2
+	assert [s["id"] for s in routine["steps"]] == ["s-del-1", "s-del-3"]
+
+	# Deleting again returns 404
+	del_404 = client.delete(
+		"/api/routines/r-granular-delete/steps/s-del-2",
+		headers={"X-User-Id": "levon"},
+	)
+	assert del_404.status_code == 404
+
+
+def test_granular_bulk_delete_by_exercise_both_top_level_and_nested(client: TestClient):
+	client.put(
+		"/api/routines/r-bulk-del",
+		json={
+			"title": "Bulk Delete Test",
+			"steps": [
+				{"id": "s-1", "exercise_id": "ex-target", "label": "Target Set 1"},
+				{"id": "s-2", "label": "Keep Me", "durationSeconds": 30},
+				{"id": "s-3", "exercises": [{"id": "ex-target"}], "label": "Target Set 2 (Legacy)"},
+				{"id": "s-4", "exercise_id": "ex-other", "label": "Other Exercise"},
+			],
+		},
+		headers={"X-User-Id": "levon"},
+	)
+
+	# Bulk delete by exercise_id=ex-target
+	del_res = client.delete(
+		"/api/routines/r-bulk-del/steps?exercise_id=ex-target",
+		headers={"X-User-Id": "levon"},
+	)
+	assert del_res.status_code == 200
+	data = del_res.json()
+	assert data["deleted_count"] == 2
+	remaining_ids = [s["id"] for s in data["routine"]["steps"]]
+	assert remaining_ids == ["s-2", "s-4"]
+
+
+def test_granular_step_reorder_graceful_trailing(client: TestClient):
+	client.put(
+		"/api/routines/r-reorder",
+		json={
+			"title": "Reorder Test",
+			"steps": [
+				{"id": "s-1", "label": "Step 1"},
+				{"id": "s-2", "label": "Step 2"},
+				{"id": "s-3", "label": "Step 3"},
+				{"id": "s-4", "label": "Step 4"},
+			],
+		},
+		headers={"X-User-Id": "levon"},
+	)
+
+	# Client reorders s-3 and s-1; unmentioned s-2 and s-4 must gracefully stay appended
+	reorder_res = client.post(
+		"/api/routines/r-reorder/steps/reorder",
+		json={"step_ids": ["s-3", "s-1"]},
+		headers={"X-User-Id": "levon"},
+	)
+	assert reorder_res.status_code == 200
+	routine = reorder_res.json()["routine"]
+	step_ids = [s["id"] for s in routine["steps"]]
+	assert step_ids == ["s-3", "s-1", "s-2", "s-4"]

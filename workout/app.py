@@ -1,6 +1,7 @@
 import secrets
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 from fastapi import (
 	APIRouter,
@@ -18,7 +19,16 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from db import Database
-from schemas import ComboCreate, ExerciseCreate, RoutineUpsert, SessionUpsert, UserCreate
+from schemas import (
+	ComboCreate,
+	ExerciseCreate,
+	RoutineStep,
+	RoutineUpsert,
+	SessionUpsert,
+	StepPatch,
+	StepReorder,
+	UserCreate,
+)
 from taxonomy import get_taxonomy_payload
 
 
@@ -115,6 +125,65 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 		if not success:
 			raise HTTPException(status_code=404, detail="Routine not found")
 		return {"status": "ok"}
+
+	@api_router.post("/routines/{routine_id}/steps")
+	async def add_routine_step(
+		routine_id: str,
+		payload: RoutineStep | dict[str, Any],
+		index: int | None = Query(default=None, description="0-based insertion index"),
+		user_id: str = Depends(get_user_id),
+	):
+		data = payload.model_dump(by_alias=True) if hasattr(payload, "model_dump") else payload
+		routine = db.add_routine_step(user_id, routine_id, data, index=index)
+		if not routine:
+			raise HTTPException(status_code=404, detail="Routine not found")
+		return JSONResponse(content={"status": "ok", "routine": routine})
+
+	@api_router.patch("/routines/{routine_id}/steps/{step_id}")
+	async def patch_routine_step(
+		routine_id: str,
+		step_id: str,
+		payload: StepPatch,
+		user_id: str = Depends(get_user_id),
+	):
+		data = payload.model_dump(exclude_none=True, by_alias=True)
+		routine = db.patch_routine_step(user_id, routine_id, step_id, data)
+		if not routine:
+			raise HTTPException(status_code=404, detail="Routine or step not found")
+		return JSONResponse(content={"status": "ok", "routine": routine})
+
+	@api_router.delete("/routines/{routine_id}/steps/{step_id}")
+	async def delete_routine_step(
+		routine_id: str,
+		step_id: str,
+		user_id: str = Depends(get_user_id),
+	):
+		routine = db.delete_routine_step(user_id, routine_id, step_id)
+		if not routine:
+			raise HTTPException(status_code=404, detail="Routine or step not found")
+		return JSONResponse(content={"status": "ok", "routine": routine})
+
+	@api_router.delete("/routines/{routine_id}/steps")
+	async def delete_routine_steps_by_exercise(
+		routine_id: str,
+		exercise_id: str = Query(..., description="Exercise ID to remove across all steps"),
+		user_id: str = Depends(get_user_id),
+	):
+		result = db.delete_routine_steps_by_exercise(user_id, routine_id, exercise_id)
+		if not result:
+			raise HTTPException(status_code=404, detail="Routine not found")
+		return JSONResponse(content=result)
+
+	@api_router.post("/routines/{routine_id}/steps/reorder")
+	async def reorder_routine_steps(
+		routine_id: str,
+		payload: StepReorder,
+		user_id: str = Depends(get_user_id),
+	):
+		routine = db.reorder_routine_steps(user_id, routine_id, payload.step_ids)
+		if not routine:
+			raise HTTPException(status_code=404, detail="Routine not found")
+		return JSONResponse(content={"status": "ok", "routine": routine})
 
 	# ── Sessions API ──────────────────────────────────────────────────────────
 

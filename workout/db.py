@@ -296,7 +296,7 @@ class Database:
 			return []
 		clean_user = user_id.strip().lower() if user_id else "levon"
 		rows = conn.execute(
-			"SELECT id, name, flow_type, exercise_ids_json FROM combos WHERE user_id = ? OR user_id IS NULL",
+			"SELECT id, name, flow_type, exercise_ids_json, media_url, default_mode, default_quantity FROM combos WHERE user_id = ? OR user_id IS NULL",
 			(clean_user,),
 		).fetchall()
 		combos_by_id = {}
@@ -313,18 +313,57 @@ class Database:
 				"name": r["name"],
 				"flow_type": r["flow_type"],
 				"exercise_ids": ex_ids,
+				"media_url": r["media_url"] if "media_url" in r.keys() else "",
+				"default_mode": r["default_mode"] if "default_mode" in r.keys() else "time",
+				"default_quantity": r["default_quantity"]
+				if "default_quantity" in r.keys()
+				else 190,
 			}
 			combos_by_id[c_id] = info
 			combos_by_name[c_name] = info
 
 		ex_rows = conn.execute(
-			"SELECT id, name, category, discipline, default_mode, default_quantity FROM exercises"
+			"SELECT id, name, category, discipline, default_mode, default_quantity, media_url FROM exercises"
 		).fetchall()
 		ex_map = {row["id"]: dict(row) for row in ex_rows}
 
 		hydrated = []
 		for step in steps:
 			s = dict(step)
+			if not s.get("id"):
+				s["id"] = f"s-{secrets.token_hex(4)}"
+
+			is_break = bool(
+				s.get("isBreak")
+				or s.get("subtype") == "break"
+				or s.get("type") in ("rest", "break")
+				or s.get("mode") == "break"
+				or s.get("rest") is not None
+			)
+			if is_break:
+				s["type"] = "timer"
+				s["subtype"] = "break"
+				s["isBreak"] = True
+				s["mode"] = "break"
+				s["stepMode"] = "time"
+				dur = (
+					s.get("rest")
+					if s.get("rest") is not None
+					else (
+						s.get("duration")
+						or s.get("durationSeconds")
+						or s.get("targetDuration")
+						or 20
+					)
+				)
+				s["durationSeconds"] = int(dur)
+				s["targetDuration"] = int(dur)
+				if not (s.get("label") or "").strip():
+					s["label"] = "Rest"
+				s["exercises"] = []
+				hydrated.append(s)
+				continue
+
 			combo = None
 			if s.get("combo_id") and s["combo_id"] in combos_by_id:
 				combo = combos_by_id[s["combo_id"]]
@@ -334,6 +373,8 @@ class Database:
 			if combo:
 				s["combo_id"] = combo["id"]
 				s["flow_type"] = combo["flow_type"]
+				if not s.get("mediaUrl") and combo.get("media_url"):
+					s["mediaUrl"] = combo["media_url"]
 				hydrated_exs = []
 				for ex_id in combo["exercise_ids"]:
 					eid = ex_id if isinstance(ex_id, str) else ex_id.get("id")
@@ -352,56 +393,233 @@ class Database:
 					else:
 						hydrated_exs.append({"id": eid})
 				s["exercises"] = hydrated_exs
-			elif s.get("exercises"):
+				if not s.get("stepMode"):
+					s["stepMode"] = (
+						"reps"
+						if (
+							s.get("targetReps")
+							or s.get("reps")
+							or combo.get("default_mode") == "reps"
+						)
+						else "time"
+					)
+				if not s.get("mode"):
+					s["mode"] = s["stepMode"]
+				if s.get("reps") is not None and s.get("targetReps") is None:
+					s["targetReps"] = s["reps"]
+				if s.get("duration") is not None:
+					if s.get("durationSeconds") is None:
+						s["durationSeconds"] = s["duration"]
+					if s.get("targetDuration") is None:
+						s["targetDuration"] = s["duration"]
+				if s["stepMode"] == "reps":
+					if s.get("targetReps") is None:
+						s["targetReps"] = combo.get("default_quantity") or 10
+						s["reps"] = s["targetReps"]
+				else:
+					if s.get("durationSeconds") is None:
+						s["durationSeconds"] = combo.get("default_quantity") or 30
+						s["targetDuration"] = s["durationSeconds"]
+					elif s.get("targetDuration") is None:
+						s["targetDuration"] = s["durationSeconds"]
+			elif s.get("exercises") or s.get("exercise_id"):
+				ref_list = s.get("exercises") or [{"id": s["exercise_id"]}]
 				hydrated_exs = []
-				for ex_ref in s["exercises"]:
+				first_ex_row = None
+				for ex_ref in ref_list:
 					eid = ex_ref if isinstance(ex_ref, str) else ex_ref.get("id")
 					stored_name = ex_ref.get("name") if isinstance(ex_ref, dict) else None
 					if eid in ex_map:
+						ex_row = ex_map[eid]
+						if first_ex_row is None:
+							first_ex_row = ex_row
 						ex_item = {
 							"id": eid,
-							"name": ex_map[eid]["name"],
-							"category": ex_map[eid]["category"],
-							"discipline": ex_map[eid]["discipline"],
+							"name": ex_row["name"],
+							"category": ex_row["category"],
+							"discipline": ex_row["discipline"],
 						}
-						if ex_map[eid].get("default_mode"):
-							ex_item["default_mode"] = ex_map[eid]["default_mode"]
-						if ex_map[eid].get("default_quantity"):
-							ex_item["default_quantity"] = ex_map[eid]["default_quantity"]
+						if ex_row.get("default_mode"):
+							ex_item["default_mode"] = ex_row["default_mode"]
+						if ex_row.get("default_quantity"):
+							ex_item["default_quantity"] = ex_row["default_quantity"]
 						hydrated_exs.append(ex_item)
 						if not s.get("customLabel"):
 							cur_lbl = (s.get("label") or "").strip()
 							if stored_name and cur_lbl.lower() == stored_name.lower():
-								s["label"] = ex_map[eid]["name"]
+								s["label"] = ex_row["name"]
 							elif cur_lbl in ("", "Exercise", "Video Clip", "Timer"):
-								s["label"] = ex_map[eid]["name"]
+								s["label"] = ex_row["name"]
 					elif isinstance(ex_ref, dict):
 						hydrated_exs.append(ex_ref)
 					else:
 						hydrated_exs.append({"id": eid})
 				s["exercises"] = hydrated_exs
-			elif s.get("exercise_id"):
-				eid = s["exercise_id"]
-				if eid in ex_map:
-					ex_item = {
-						"id": eid,
-						"name": ex_map[eid]["name"],
-						"category": ex_map[eid]["category"],
-						"discipline": ex_map[eid]["discipline"],
-					}
-					if ex_map[eid].get("default_mode"):
-						ex_item["default_mode"] = ex_map[eid]["default_mode"]
-					if ex_map[eid].get("default_quantity"):
-						ex_item["default_quantity"] = ex_map[eid]["default_quantity"]
-					s["exercises"] = [ex_item]
-					if not s.get("customLabel"):
-						cur_lbl = (s.get("label") or "").strip()
-						if cur_lbl in ("", "Exercise", "Video Clip", "Timer"):
-							s["label"] = ex_map[eid]["name"]
-				else:
-					s["exercises"] = [{"id": eid}]
+				if first_ex_row:
+					if not s.get("mediaUrl") and first_ex_row.get("media_url"):
+						s["mediaUrl"] = first_ex_row["media_url"]
+					if not s.get("stepMode"):
+						s["stepMode"] = (
+							"reps"
+							if (
+								s.get("targetReps")
+								or s.get("reps")
+								or first_ex_row.get("default_mode") == "reps"
+							)
+							else "time"
+						)
+					if not s.get("mode"):
+						s["mode"] = s["stepMode"]
+					if s.get("reps") is not None and s.get("targetReps") is None:
+						s["targetReps"] = s["reps"]
+					if s.get("duration") is not None:
+						if s.get("durationSeconds") is None:
+							s["durationSeconds"] = s["duration"]
+						if s.get("targetDuration") is None:
+							s["targetDuration"] = s["duration"]
+					if s["stepMode"] == "reps":
+						if s.get("targetReps") is None:
+							s["targetReps"] = first_ex_row.get("default_quantity") or 10
+							s["reps"] = s["targetReps"]
+					else:
+						if s.get("durationSeconds") is None:
+							s["durationSeconds"] = first_ex_row.get("default_quantity") or 30
+							s["targetDuration"] = s["durationSeconds"]
+						elif s.get("targetDuration") is None:
+							s["targetDuration"] = s["durationSeconds"]
 			hydrated.append(s)
 		return hydrated
+
+	def normalize_step(self, conn: sqlite3.Connection, step: dict[str, Any]) -> dict[str, Any]:
+		s = dict(step)
+		if not s.get("id"):
+			s["id"] = f"s-{secrets.token_hex(4)}"
+
+		is_break = bool(
+			s.get("isBreak")
+			or s.get("subtype") == "break"
+			or s.get("type") in ("rest", "break")
+			or s.get("mode") == "break"
+			or s.get("rest") is not None
+		)
+		if is_break:
+			dur = (
+				s.get("rest")
+				if s.get("rest") is not None
+				else (
+					s.get("duration") or s.get("durationSeconds") or s.get("targetDuration") or 20
+				)
+			)
+			s["type"] = "timer"
+			s["subtype"] = "break"
+			s["isBreak"] = True
+			s["mode"] = "break"
+			s["stepMode"] = "time"
+			s["durationSeconds"] = int(dur)
+			s["targetDuration"] = int(dur)
+			s["label"] = (s.get("label") or "").strip() or "Rest"
+			s["exercises"] = []
+			if "musicTracks" not in s:
+				s["musicTracks"] = []
+			return s
+
+		# Reps / duration mapping
+		if s.get("reps") is not None and s.get("targetReps") is None:
+			s["targetReps"] = s["reps"]
+		if s.get("duration") is not None:
+			if s.get("durationSeconds") is None:
+				s["durationSeconds"] = s["duration"]
+			if s.get("targetDuration") is None:
+				s["targetDuration"] = s["duration"]
+
+		ex_id = s.get("exercise_id")
+		if not ex_id and s.get("exercises") and len(s["exercises"]) > 0:
+			first = s["exercises"][0]
+			ex_id = first if isinstance(first, str) else first.get("id")
+
+		if ex_id:
+			s["exercise_id"] = ex_id
+			row = conn.execute(
+				"SELECT id, name, category, discipline, default_mode, default_quantity, media_url FROM exercises WHERE id = ?",
+				(ex_id,),
+			).fetchone()
+			if row:
+				ex_dict = dict(row)
+				if not (s.get("label") or "").strip() or s.get("label") in (
+					"Exercise",
+					"Timer",
+					"Video Clip",
+				):
+					s["label"] = ex_dict["name"]
+				if not s.get("mediaUrl") and ex_dict.get("media_url"):
+					s["mediaUrl"] = ex_dict["media_url"]
+
+				mode = s.get("mode") or s.get("stepMode")
+				if not mode:
+					if s.get("targetReps") is not None:
+						mode = "reps"
+					elif s.get("durationSeconds") is not None:
+						mode = "time"
+					else:
+						mode = ex_dict.get("default_mode") or "time"
+				s["mode"] = mode
+				s["stepMode"] = "reps" if mode == "reps" else "time"
+
+				if s["stepMode"] == "reps":
+					if s.get("targetReps") is None:
+						s["targetReps"] = ex_dict.get("default_quantity") or 10
+						s["reps"] = s["targetReps"]
+				else:
+					if s.get("durationSeconds") is None:
+						s["durationSeconds"] = ex_dict.get("default_quantity") or 30
+						s["targetDuration"] = s["durationSeconds"]
+					elif s.get("targetDuration") is None:
+						s["targetDuration"] = s["durationSeconds"]
+
+				s["exercises"] = [
+					{
+						"id": ex_dict["id"],
+						"name": ex_dict["name"],
+						"category": ex_dict["category"],
+						"discipline": ex_dict["discipline"],
+						"default_mode": ex_dict["default_mode"],
+						"default_quantity": ex_dict["default_quantity"],
+					}
+				]
+
+		c_id = s.get("combo_id")
+		if c_id:
+			row = conn.execute(
+				"SELECT id, name, flow_type, media_url, default_mode, default_quantity, exercise_ids_json FROM combos WHERE id = ?",
+				(c_id,),
+			).fetchone()
+			if row:
+				c_dict = dict(row)
+				if not (s.get("label") or "").strip():
+					s["label"] = c_dict["name"]
+				if not s.get("flow_type"):
+					s["flow_type"] = c_dict["flow_type"]
+				if not s.get("mediaUrl") and c_dict.get("media_url"):
+					s["mediaUrl"] = c_dict["media_url"]
+				mode = s.get("mode") or s.get("stepMode") or c_dict.get("default_mode") or "time"
+				s["mode"] = mode
+				s["stepMode"] = "reps" if mode == "reps" else "time"
+				if s["stepMode"] == "reps":
+					if s.get("targetReps") is None:
+						s["targetReps"] = c_dict.get("default_quantity") or 10
+						s["reps"] = s["targetReps"]
+				else:
+					if s.get("durationSeconds") is None:
+						s["durationSeconds"] = c_dict.get("default_quantity") or 30
+						s["targetDuration"] = s["durationSeconds"]
+					elif s.get("targetDuration") is None:
+						s["targetDuration"] = s["durationSeconds"]
+
+		if not s.get("type"):
+			s["type"] = "timer"
+		if "musicTracks" not in s:
+			s["musicTracks"] = []
+		return s
 
 	def get_routines(self, user_id: str) -> list[dict[str, Any]]:
 		with self.get_connection() as conn:
@@ -441,7 +659,9 @@ class Database:
 				if not r_id:
 					continue
 				title = routine.get("title", "Untitled Workout")
-				steps_json = json.dumps(routine.get("steps", []), ensure_ascii=False)
+				raw_steps = routine.get("steps", [])
+				norm_steps = [self.normalize_step(conn, st) for st in raw_steps]
+				steps_json = json.dumps(norm_steps, ensure_ascii=False)
 				music_json = json.dumps(routine.get("musicTracks", []), ensure_ascii=False)
 				conn.execute(
 					"""
@@ -496,12 +716,13 @@ class Database:
 			chars = string.ascii_lowercase + string.digits
 			r_id = f"routine_{int(datetime.now().timestamp())}_{''.join(secrets.choice(chars) for _ in range(6))}"
 		title = routine.get("title", "Untitled Workout")
-		steps = routine.get("steps", [])
+		raw_steps = routine.get("steps", [])
 		music = routine.get("musicTracks", [])
-		steps_json = json.dumps(steps, ensure_ascii=False)
-		music_json = json.dumps(music, ensure_ascii=False)
 		now = datetime.now().isoformat()
 		with self.get_connection() as conn:
+			norm_steps = [self.normalize_step(conn, st) for st in raw_steps]
+			steps_json = json.dumps(norm_steps, ensure_ascii=False)
+			music_json = json.dumps(music, ensure_ascii=False)
 			conn.execute(
 				"""
 				INSERT INTO routines (id, user_id, title, steps_json, music_tracks_json, updated_at)
@@ -514,12 +735,301 @@ class Database:
 				""",
 				(r_id, clean_user, title, steps_json, music_json, now),
 			)
+			hydrated_steps = self._hydrate_routine_steps(conn, norm_steps, clean_user)
 		return {
 			"id": r_id,
 			"title": title,
-			"steps": steps,
+			"steps": hydrated_steps,
 			"musicTracks": music,
 		}
+
+	def add_routine_step(
+		self, user_id: str, routine_id: str, step: dict[str, Any], index: int | None = None
+	) -> dict[str, Any] | None:
+		clean_user = user_id.strip().lower()
+		clean_id = routine_id.strip()
+		with self.get_connection() as conn:
+			row = conn.execute(
+				"SELECT id, title, steps_json, music_tracks_json FROM routines WHERE user_id = ? AND id = ?",
+				(clean_user, clean_id),
+			).fetchone()
+			if not row:
+				rows = conn.execute(
+					"SELECT id, title, steps_json, music_tracks_json FROM routines WHERE user_id = ?",
+					(clean_user,),
+				).fetchall()
+				for r in rows:
+					slug = r["title"].lower().replace(" ", "-").replace("_", "-")
+					if r["title"].lower() == clean_id.lower() or slug == clean_id.lower():
+						row = r
+						break
+			if not row:
+				return None
+
+			actual_id = row["id"]
+			try:
+				steps = json.loads(row["steps_json"])
+			except Exception:
+				steps = []
+
+			norm_step = self.normalize_step(conn, step)
+			if index is None or index >= len(steps):
+				steps.append(norm_step)
+			elif index < 0:
+				steps.insert(0, norm_step)
+			else:
+				steps.insert(index, norm_step)
+
+			now = datetime.now().isoformat()
+			conn.execute(
+				"UPDATE routines SET steps_json = ?, updated_at = ? WHERE user_id = ? AND id = ?",
+				(json.dumps(steps, ensure_ascii=False), now, clean_user, actual_id),
+			)
+			hydrated_steps = self._hydrate_routine_steps(conn, steps, clean_user)
+			try:
+				music = json.loads(row["music_tracks_json"])
+			except Exception:
+				music = []
+			return {
+				"id": actual_id,
+				"title": row["title"],
+				"steps": hydrated_steps,
+				"musicTracks": music,
+			}
+
+	def patch_routine_step(
+		self, user_id: str, routine_id: str, step_id: str, patch_data: dict[str, Any]
+	) -> dict[str, Any] | None:
+		clean_user = user_id.strip().lower()
+		clean_id = routine_id.strip()
+		clean_step_id = step_id.strip()
+		with self.get_connection() as conn:
+			row = conn.execute(
+				"SELECT id, title, steps_json, music_tracks_json FROM routines WHERE user_id = ? AND id = ?",
+				(clean_user, clean_id),
+			).fetchone()
+			if not row:
+				rows = conn.execute(
+					"SELECT id, title, steps_json, music_tracks_json FROM routines WHERE user_id = ?",
+					(clean_user,),
+				).fetchall()
+				for r in rows:
+					slug = r["title"].lower().replace(" ", "-").replace("_", "-")
+					if r["title"].lower() == clean_id.lower() or slug == clean_id.lower():
+						row = r
+						break
+			if not row:
+				return None
+
+			actual_id = row["id"]
+			try:
+				steps = json.loads(row["steps_json"])
+			except Exception:
+				steps = []
+
+			found = False
+			for i, st in enumerate(steps):
+				if st.get("id") == clean_step_id:
+					updated_step = dict(st)
+					for k, v in patch_data.items():
+						if v is not None:
+							updated_step[k] = v
+					if "reps" in patch_data and "targetReps" not in patch_data:
+						updated_step["targetReps"] = patch_data["reps"]
+					if "duration" in patch_data:
+						if "durationSeconds" not in patch_data:
+							updated_step["durationSeconds"] = patch_data["duration"]
+						if "targetDuration" not in patch_data:
+							updated_step["targetDuration"] = patch_data["duration"]
+					steps[i] = self.normalize_step(conn, updated_step)
+					found = True
+					break
+
+			if not found:
+				return None
+
+			now = datetime.now().isoformat()
+			conn.execute(
+				"UPDATE routines SET steps_json = ?, updated_at = ? WHERE user_id = ? AND id = ?",
+				(json.dumps(steps, ensure_ascii=False), now, clean_user, actual_id),
+			)
+			hydrated_steps = self._hydrate_routine_steps(conn, steps, clean_user)
+			try:
+				music = json.loads(row["music_tracks_json"])
+			except Exception:
+				music = []
+			return {
+				"id": actual_id,
+				"title": row["title"],
+				"steps": hydrated_steps,
+				"musicTracks": music,
+			}
+
+	def delete_routine_step(
+		self, user_id: str, routine_id: str, step_id: str
+	) -> dict[str, Any] | None:
+		clean_user = user_id.strip().lower()
+		clean_id = routine_id.strip()
+		clean_step_id = step_id.strip()
+		with self.get_connection() as conn:
+			row = conn.execute(
+				"SELECT id, title, steps_json, music_tracks_json FROM routines WHERE user_id = ? AND id = ?",
+				(clean_user, clean_id),
+			).fetchone()
+			if not row:
+				rows = conn.execute(
+					"SELECT id, title, steps_json, music_tracks_json FROM routines WHERE user_id = ?",
+					(clean_user,),
+				).fetchall()
+				for r in rows:
+					slug = r["title"].lower().replace(" ", "-").replace("_", "-")
+					if r["title"].lower() == clean_id.lower() or slug == clean_id.lower():
+						row = r
+						break
+			if not row:
+				return None
+
+			actual_id = row["id"]
+			try:
+				steps = json.loads(row["steps_json"])
+			except Exception:
+				steps = []
+
+			new_steps = [st for st in steps if st.get("id") != clean_step_id]
+			if len(new_steps) == len(steps):
+				return None
+
+			now = datetime.now().isoformat()
+			conn.execute(
+				"UPDATE routines SET steps_json = ?, updated_at = ? WHERE user_id = ? AND id = ?",
+				(json.dumps(new_steps, ensure_ascii=False), now, clean_user, actual_id),
+			)
+			hydrated_steps = self._hydrate_routine_steps(conn, new_steps, clean_user)
+			try:
+				music = json.loads(row["music_tracks_json"])
+			except Exception:
+				music = []
+			return {
+				"id": actual_id,
+				"title": row["title"],
+				"steps": hydrated_steps,
+				"musicTracks": music,
+			}
+
+	def delete_routine_steps_by_exercise(
+		self, user_id: str, routine_id: str, exercise_id: str
+	) -> dict[str, Any] | None:
+		clean_user = user_id.strip().lower()
+		clean_id = routine_id.strip()
+		target_ex = exercise_id.strip()
+		with self.get_connection() as conn:
+			row = conn.execute(
+				"SELECT id, title, steps_json, music_tracks_json FROM routines WHERE user_id = ? AND id = ?",
+				(clean_user, clean_id),
+			).fetchone()
+			if not row:
+				rows = conn.execute(
+					"SELECT id, title, steps_json, music_tracks_json FROM routines WHERE user_id = ?",
+					(clean_user,),
+				).fetchall()
+				for r in rows:
+					slug = r["title"].lower().replace(" ", "-").replace("_", "-")
+					if r["title"].lower() == clean_id.lower() or slug == clean_id.lower():
+						row = r
+						break
+			if not row:
+				return None
+
+			actual_id = row["id"]
+			try:
+				steps = json.loads(row["steps_json"])
+			except Exception:
+				steps = []
+
+			def matches_exercise(st):
+				if st.get("exercise_id") == target_ex:
+					return True
+				for ex in st.get("exercises", []):
+					eid = ex if isinstance(ex, str) else ex.get("id")
+					if eid == target_ex:
+						return True
+				return False
+
+			new_steps = [st for st in steps if not matches_exercise(st)]
+			deleted_count = len(steps) - len(new_steps)
+			now = datetime.now().isoformat()
+			conn.execute(
+				"UPDATE routines SET steps_json = ?, updated_at = ? WHERE user_id = ? AND id = ?",
+				(json.dumps(new_steps, ensure_ascii=False), now, clean_user, actual_id),
+			)
+			hydrated_steps = self._hydrate_routine_steps(conn, new_steps, clean_user)
+			try:
+				music = json.loads(row["music_tracks_json"])
+			except Exception:
+				music = []
+			return {
+				"status": "ok",
+				"deleted_count": deleted_count,
+				"routine": {
+					"id": actual_id,
+					"title": row["title"],
+					"steps": hydrated_steps,
+					"musicTracks": music,
+				},
+			}
+
+	def reorder_routine_steps(
+		self, user_id: str, routine_id: str, step_ids: list[str]
+	) -> dict[str, Any] | None:
+		clean_user = user_id.strip().lower()
+		clean_id = routine_id.strip()
+		with self.get_connection() as conn:
+			row = conn.execute(
+				"SELECT id, title, steps_json, music_tracks_json FROM routines WHERE user_id = ? AND id = ?",
+				(clean_user, clean_id),
+			).fetchone()
+			if not row:
+				rows = conn.execute(
+					"SELECT id, title, steps_json, music_tracks_json FROM routines WHERE user_id = ?",
+					(clean_user,),
+				).fetchall()
+				for r in rows:
+					slug = r["title"].lower().replace(" ", "-").replace("_", "-")
+					if r["title"].lower() == clean_id.lower() or slug == clean_id.lower():
+						row = r
+						break
+			if not row:
+				return None
+
+			actual_id = row["id"]
+			try:
+				steps = json.loads(row["steps_json"])
+			except Exception:
+				steps = []
+
+			step_map = {st.get("id"): st for st in steps if st.get("id")}
+			reordered = [step_map[sid] for sid in step_ids if sid in step_map]
+			mentioned = set(step_ids)
+			for st in steps:
+				if st.get("id") not in mentioned:
+					reordered.append(st)
+
+			now = datetime.now().isoformat()
+			conn.execute(
+				"UPDATE routines SET steps_json = ?, updated_at = ? WHERE user_id = ? AND id = ?",
+				(json.dumps(reordered, ensure_ascii=False), now, clean_user, actual_id),
+			)
+			hydrated_steps = self._hydrate_routine_steps(conn, reordered, clean_user)
+			try:
+				music = json.loads(row["music_tracks_json"])
+			except Exception:
+				music = []
+			return {
+				"id": actual_id,
+				"title": row["title"],
+				"steps": hydrated_steps,
+				"musicTracks": music,
+			}
 
 	def delete_routine(self, user_id: str, routine_id: str) -> bool:
 		clean_user = user_id.strip().lower()
