@@ -21,6 +21,10 @@ When given a workout link (`https://levon.ajwest.ca/workout/#u=<user>&r=<id>` or
 - **Live OpenAPI Spec**: Inspect `GET https://levon.ajwest.ca/workout/openapi.json` or interactive docs at `https://levon.ajwest.ca/workout/docs`.
 - **Codebase Schemas**: In this repository, inspect [`schemas.py`](file:///Users/levontumanyan/repos/games/workout/schemas.py) for typed Pydantic models (payload definitions, field constraints, defaults) and [`app.py`](file:///Users/levontumanyan/repos/games/workout/app.py) for endpoint declarations.
 
+# Routine Authoring & Step Mutations
+- **Concise Step Ingestion**: Prefer minimal step descriptors (e.g. `{"exercise_id": "...", "reps": 10}` or `{"rest": 20}`); the backend automatically inflates metadata, IDs, and modes.
+- **Granular Step Mutations**: Use the `/steps` sub-resource endpoints (`POST`, `PATCH`, `DELETE`, `reorder`) for partial updates, appends, reordering, and deletions rather than re-uploading the entire routine array.
+
 # Development & UI Verification
 
 ## Shared UI Primitives

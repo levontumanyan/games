@@ -82,13 +82,45 @@ class RoutineStep(BaseSchema):
 		default=None,
 		description="Execution mode: time, reps, or break (decoupled from media)",
 	)
+	stepMode: str | None = Field(
+		default=None,
+		validation_alias=AliasChoices("stepMode", "step_mode"),
+		description="Execution mode: reps or time",
+	)
 	label: str | None = Field(default="", description="Step display label / title")
-	durationSeconds: int | None = Field(default=None, description="Timer duration in seconds")
+	durationSeconds: int | None = Field(
+		default=None,
+		validation_alias=AliasChoices("durationSeconds", "duration", "duration_seconds"),
+		description="Timer duration in seconds",
+	)
 	targetDuration: int | None = Field(
-		default=None, description="Execution target duration in seconds (time/break)"
+		default=None,
+		validation_alias=AliasChoices("targetDuration", "target_duration"),
+		description="Execution target duration in seconds (time/break)",
+	)
+	duration: int | None = Field(
+		default=None, description="Concise shorthand for step duration in seconds"
 	)
 	reps: int | None = Field(default=None, description="Repetition target if reps-based")
-	targetReps: int | None = Field(default=None, description="Execution target reps (reps mode)")
+	targetReps: int | None = Field(
+		default=None,
+		validation_alias=AliasChoices("targetReps", "reps", "target_reps"),
+		description="Execution target reps (reps mode)",
+	)
+	rest: int | None = Field(default=None, description="Concise rest duration in seconds")
+	exercise_id: str | None = Field(default=None, description="Direct exercise identifier")
+	mediaUrl: str | None = Field(
+		default=None,
+		validation_alias=AliasChoices("mediaUrl", "media_url", "gifUrl", "gif_url"),
+		description="Demonstration media or image URL",
+	)
+	gifUrl: str | None = Field(default=None, description="Legacy media or gif URL")
+	isBreak: bool | None = Field(
+		default=None,
+		validation_alias=AliasChoices("isBreak", "is_break"),
+		description="Break step indicator",
+	)
+	subtype: str | None = Field(default=None, description="Step subtype (e.g. break)")
 	videoId: str | None = Field(default=None, description="YouTube video ID if video clip")
 	startSeconds: float | None = Field(default=None, description="Video clip start time in seconds")
 	endSeconds: float | None = Field(default=None, description="Video clip end time in seconds")
@@ -99,6 +131,50 @@ class RoutineStep(BaseSchema):
 	)
 	flow_type: str | None = Field(default=None, description="Combo flow type if applicable")
 	exercises: list[Any] = Field(default_factory=list, description="Referenced exercises in step")
+
+
+class StepPatch(BaseSchema):
+	label: str | None = Field(default=None, description="Step display label / title")
+	durationSeconds: int | None = Field(
+		default=None,
+		validation_alias=AliasChoices("durationSeconds", "duration", "duration_seconds"),
+		description="Timer duration in seconds",
+	)
+	targetDuration: int | None = Field(
+		default=None,
+		validation_alias=AliasChoices("targetDuration", "target_duration"),
+		description="Execution target duration in seconds",
+	)
+	reps: int | None = Field(default=None, description="Repetition target if reps-based")
+	targetReps: int | None = Field(
+		default=None,
+		validation_alias=AliasChoices("targetReps", "reps", "target_reps"),
+		description="Execution target reps",
+	)
+	duration: int | None = Field(default=None, description="Shorthand for duration")
+	mode: str | None = Field(default=None, description="Execution mode: time, reps, or break")
+	stepMode: str | None = Field(
+		default=None,
+		validation_alias=AliasChoices("stepMode", "step_mode"),
+		description="Execution mode: reps or time",
+	)
+	speed: float | None = Field(default=None, description="Playback speed multiplier")
+	mediaUrl: str | None = Field(
+		default=None,
+		validation_alias=AliasChoices("mediaUrl", "media_url", "gifUrl", "gif_url"),
+		description="Demonstration media URL",
+	)
+	exercise_id: str | None = Field(default=None, description="Associated exercise ID")
+	isBreak: bool | None = Field(
+		default=None,
+		validation_alias=AliasChoices("isBreak", "is_break"),
+		description="Break flag",
+	)
+	subtype: str | None = Field(default=None, description="Step subtype")
+
+
+class StepReorder(BaseSchema):
+	step_ids: list[str] = Field(..., description="Ordered list of step identifiers", min_length=1)
 
 
 class RoutineUpsert(BaseSchema):
