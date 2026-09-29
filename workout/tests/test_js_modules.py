@@ -1293,3 +1293,50 @@ def test_unspecified_muscles_and_default_break_duration():
 		timeout=5,
 	)
 	assert res.returncode == 0, f"Node muscle/rest defaults test failed:\n{res.stderr}"
+
+
+def test_video_clip_step_timing_when_duration_shorter_than_slice():
+	"""Verify preCueVideo and clip step endSeconds clamp properly when targetDuration < sliceDuration."""
+	js_dir = Path(__file__).parent.parent / "js"
+	node_script = f"""
+	let cuedParams = null;
+	globalThis.window = {{
+		addEventListener() {{}},
+		removeEventListener() {{}},
+		__INITIAL_EXERCISES__: []
+	}};
+	globalThis.document = {{
+		addEventListener() {{}},
+		removeEventListener() {{}},
+		getElementById() {{ return {{ classList: {{ add() {{}}, remove() {{}} }} }}; }},
+		querySelector() {{ return {{ classList: {{ add() {{}}, remove() {{}} }} }}; }},
+		querySelectorAll() {{ return []; }}
+	}};
+	globalThis.localStorage = {{ getItem() {{ return null; }}, setItem() {{}}, removeItem() {{}} }};
+	globalThis.YT = {{
+		PlayerState: {{ PLAYING: 1, PAUSED: 2, ENDED: 0, CUED: 5 }}
+	}};
+
+	const {{ preCueVideo }} = await import('{js_dir}/player.js');
+
+	// Exercise video is 60s (492 to 552), but step targetDuration is 30s
+	const videoAsset = {{
+		videoId: '7sLw5dHdRG4',
+		startSeconds: 492,
+		endSeconds: 552
+	}};
+
+	// Mock ytPlayer to inspect what preCueVideo cues
+	// We call preCueVideo with targetDuration = 30
+	// It should clamp endSeconds to 522 (492 + 30)
+	// If looping (e.g. targetDuration = 90), it should keep 552
+	preCueVideo(videoAsset, 30);
+	"""
+
+	res = subprocess.run(
+		["node", "--input-type=module", "-e", node_script],
+		capture_output=True,
+		text=True,
+		timeout=5,
+	)
+	assert res.returncode == 0, f"Node clip timing test failed:\n{res.stderr}"

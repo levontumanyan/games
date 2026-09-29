@@ -452,6 +452,14 @@ function startClipMonitor(step, videoAsset, targetDuration) {
 				}
 			}
 
+			// Target duration elapsed: advance step immediately
+			if (timerRemaining <= 0) {
+				clearClipMonitor();
+				try { ytPlayer.pauseVideo(); } catch {}
+				advanceStepOrSubStep();
+				return;
+			}
+
 			// Slice completion check (250ms lead time before endSec)
 			if (currentTime >= endSec - 0.25) {
 				if (isLooping && timerRemaining > 1.0) {
@@ -494,12 +502,18 @@ function clearVideoFallback() {
  * Pre-cue upcoming video in YouTube player without starting playback.
  * Ensures the video metadata and player buffer are primed ahead of time.
  * @param {Object} videoAsset - { videoId, startSeconds, endSeconds }
+ * @param {number} [targetDuration] - Step target duration in seconds
  */
-export function preCueVideo(videoAsset) {
+export function preCueVideo(videoAsset, targetDuration) {
 	if (!ytReady || !ytPlayer || !videoAsset || !videoAsset.videoId) return;
 	const vidId = videoAsset.videoId;
 	const startSec = typeof videoAsset.startSeconds === 'number' ? videoAsset.startSeconds : 0;
-	const endSec = typeof videoAsset.endSeconds === 'number' ? videoAsset.endSeconds : undefined;
+	const rawEndSec = typeof videoAsset.endSeconds === 'number' ? videoAsset.endSeconds : undefined;
+	const sliceDur = typeof rawEndSec === 'number' ? Math.max(1, rawEndSec - startSec) : undefined;
+	const isLooping = typeof targetDuration === 'number' && sliceDur !== undefined && targetDuration > sliceDur + 1.0;
+	const endSec = (!isLooping && typeof targetDuration === 'number' && targetDuration > 0 && sliceDur !== undefined && targetDuration < sliceDur)
+		? (startSec + targetDuration)
+		: rawEndSec;
 
 	if (cuedVideoAsset && cuedVideoAsset.videoId === vidId && cuedVideoAsset.startSeconds === startSec && cuedVideoAsset.endSeconds === endSec) {
 		return;
@@ -671,7 +685,7 @@ function startWorkoutCountdown(routine, onComplete) {
 			const dur = cls.targetDuration;
 
 			if (isVid && firstVidAsset) {
-				preCueVideo(firstVidAsset);
+				preCueVideo(firstVidAsset, dur);
 			}
 
 			let modeTag = '';
@@ -998,11 +1012,16 @@ function executeVideoStep(step, targetDuration, videoAsset) {
 		return;
 	}
 	const startSec = typeof videoAsset.startSeconds === 'number' ? videoAsset.startSeconds : (step.startSeconds || 0);
-	const endSec = typeof videoAsset.endSeconds === 'number' ? videoAsset.endSeconds : (step.endSeconds || undefined);
+	const rawEndSec = typeof videoAsset.endSeconds === 'number' ? videoAsset.endSeconds : (step.endSeconds || undefined);
+	const sliceDur = typeof rawEndSec === 'number' ? Math.max(1, rawEndSec - startSec) : undefined;
+	const isLooping = typeof targetDuration === 'number' && sliceDur !== undefined && targetDuration > sliceDur + 1.0;
+	const endSec = (!isLooping && typeof targetDuration === 'number' && targetDuration > 0 && sliceDur !== undefined && targetDuration < sliceDur)
+		? (startSec + targetDuration)
+		: rawEndSec;
 
 	console.log(`[Workout Player] executeVideoStep [${currentStepIndex}] ("${step.label || 'Step'}"): videoId="${vidId}", start=${startSec}s, end=${endSec !== undefined ? endSec + 's' : 'end'}, ytReady=${ytReady}, ytPlayer=${Boolean(ytPlayer)}`);
 
-	const isAlreadyCued = cuedVideoAsset && cuedVideoAsset.videoId === vidId && cuedVideoAsset.startSeconds === startSec;
+	const isAlreadyCued = cuedVideoAsset && cuedVideoAsset.videoId === vidId && cuedVideoAsset.startSeconds === startSec && cuedVideoAsset.endSeconds === endSec;
 
 	if (ytReady && ytPlayer) {
 		if (isAlreadyCued) {
@@ -1318,7 +1337,7 @@ function executeTimerStep(step) {
 			const nextVid = nextCls.video;
 
 			if (nextIsClip && nextVid) {
-				preCueVideo(nextVid);
+				preCueVideo(nextVid, nextCls.targetDuration);
 			}
 
 			if (dom.upNextMeta) {
