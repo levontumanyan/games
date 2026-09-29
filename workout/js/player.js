@@ -266,7 +266,10 @@ export async function initPlayer(domRefs, callbacks) {
 			e.preventDefault();
 			resetPlayback();
 		} else if (e.key === 'm' || e.key === 'M') {
-			if (hasMusic()) {
+			// During follow-along video steps, background music is kept paused so as not to clash with video audio
+			const currentStep = currentRoutine?.steps?.[currentStepIndex];
+			const isVideoStep = currentStep ? Boolean(classifyStep(currentStep).video) : false;
+			if (hasMusic() && !isVideoStep) {
 				e.preventDefault();
 				toggleMusicPlayback();
 			}
@@ -1520,16 +1523,16 @@ export function togglePause() {
 
 		if (cls.mode === 'time' && cls.video) {
 			if (ytReady && ytPlayer) {
-				ytPlayer.playVideo();
+				try { ytPlayer.playVideo(); } catch {}
 			}
 			startClipMonitor(step, cls.video, cls.targetDuration);
-		} else if (cls.mode === 'time') {
-			// Restart timer from remaining
+		} else if (cls.mode === 'time' || cls.mode === 'break') {
+			// Restart timer from remaining duration
 			startTimer(cls.targetDuration);
 		}
 
-		// Resume background music
-		if (hasMusic()) {
+		// Resume background music only if not a follow-along video step and not paused by user
+		if (!cls.video && hasMusic() && !isMusicPausedByUser()) {
 			resumeMusic();
 		}
 
