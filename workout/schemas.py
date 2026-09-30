@@ -47,6 +47,10 @@ class ExerciseCreate(BaseSchema):
 	secondary_muscles: list[str] = Field(
 		default_factory=list, description="Targeted secondary muscles"
 	)
+	laterality: str = Field(
+		default="bilateral",
+		description="Side coverage: bilateral (both sides together) or unilateral (one side at a time)",
+	)
 
 
 class ComboCreate(BaseSchema):

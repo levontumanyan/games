@@ -1520,6 +1520,14 @@ export function showEditExerciseModal(exercise = null, options = {}) {
 					</div>
 
 					<div class="field-group">
+						<label>Side Coverage</label>
+						<select id="create-ex-laterality" class="input">
+							<option value="bilateral" ${!isEdit || exercise.laterality !== 'unilateral' ? 'selected' : ''}>Both sides together (duration is total)</option>
+							<option value="unilateral" ${isEdit && exercise.laterality === 'unilateral' ? 'selected' : ''}>One side at a time (duration is per side)</option>
+						</select>
+					</div>
+
+					<div class="field-group">
 						<label>Description & Technical Cues</label>
 						<textarea id="create-ex-desc" class="input clean-input" rows="4" placeholder="Key form cues, tempo, or setup instructions..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">${isEdit ? escapeHtml(exercise.description || '') : ''}</textarea>
 					</div>
@@ -1863,6 +1871,7 @@ export function showEditExerciseModal(exercise = null, options = {}) {
 		const category = modal.querySelector('#create-ex-category').value;
 		const discipline = modal.querySelector('#create-ex-discipline').value;
 		const default_mode = modal.querySelector('#create-ex-mode').value;
+		const laterality = modal.querySelector('#create-ex-laterality').value;
 		const rawQuantity = parseInt(modal.querySelector('#create-ex-quantity').value, 10);
 		const description = modal.querySelector('#create-ex-desc').value.trim();
 		let media_url = modal.querySelector('#create-ex-media').value.trim();
@@ -1966,6 +1975,7 @@ export function showEditExerciseModal(exercise = null, options = {}) {
 				discipline,
 				default_mode,
 				default_quantity,
+				laterality,
 				description,
 				media_url,
 				media_assets,

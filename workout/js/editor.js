@@ -1749,14 +1749,19 @@ export function createBreakStep(durationSeconds = 60) {
 export function createStepFromExercise(ex) {
 	if (!ex) return createTimerStep();
 	const isReps = (ex.default_mode || 'reps') === 'reps';
+	const unilateral = ex.laterality === 'unilateral';
 	const quantity = ex.default_quantity || (isReps ? 20 : 30);
+	const doubled = unilateral ? quantity * 2 : quantity;
 	const asset = getExerciseFollowAlongMedia(ex);
 
 	const newStep = createTimerStep();
 	newStep.label = ex.name;
 	newStep.stepMode = isReps ? 'reps' : 'time';
-	newStep.targetReps = isReps ? quantity : 0;
-	newStep.durationSeconds = !isReps ? quantity : null;
+	newStep.targetReps = isReps ? doubled : 0;
+	newStep.durationSeconds = !isReps ? doubled : null;
+	if (unilateral && !isReps) {
+		newStep.switchSides = true;
+	}
 
 	if (asset?.url || ex.media_url) {
 		newStep.gifUrl = asset?.url || ex.media_url || '';

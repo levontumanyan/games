@@ -59,6 +59,14 @@ export function playCountdownBeep(secondsRemaining) {
 }
 
 /**
+ * Play a soft, gentle two-tone chime to signal switching sides.
+ */
+export function playSwitchCue() {
+	playTone(660, 0.18, 0.4);
+	setTimeout(() => playTone(880, 0.3, 0.4), 180);
+}
+
+/**
  * Initialize audio context on first user interaction.
  * Call this from a click/touch handler to unlock audio on mobile.
  */

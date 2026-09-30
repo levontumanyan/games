@@ -8,7 +8,7 @@ import {
 	isBreakStep, isSubStepReps
 } from './utils.js';
 import { resolveStepMediaUrl, getStepDisplayName } from './editor.js';
-import { playCountdownBeep } from './audio.js';
+import { playCountdownBeep, playSwitchCue } from './audio.js';
 import { getClipIcon, getTimerIcon, getBreakIcon, getRepsIcon, getExerciseIcon, getMuscleIcon } from './icons.js';
 import {
 	setPlaylist, startMusic, pauseMusic, resumeMusic,
@@ -53,6 +53,7 @@ let currentRepsValue = 20;
 // Timer state
 let timerInterval = null;
 let timerRemaining = 0;
+let switchCueFired = false;
 
 // Clip state
 let clipCheckInterval = null;
@@ -446,6 +447,7 @@ function startClipMonitor(step, videoAsset, targetDuration) {
 			// Update HUD countdown and progress ring directly from the video
 			if (dom.timerDisplay) dom.timerDisplay.textContent = formatTime(displaySeconds);
 			updateTimerProgress(dur, timerRemaining);
+			maybeTriggerSwitchCue(dur, timerRemaining);
 
 			// Countdown beeps at 3, 2, 1
 			if (displaySeconds < lastBeeped) {
@@ -976,6 +978,7 @@ function executeVideoStep(step, targetDuration, videoAsset) {
 	clearVideoFallback();
 	clipHasStartedPlaying = false;
 	clipLoadedAt = Date.now();
+	switchCueFired = false;
 	isRepsMode = false;
 	accumulatedVideoTime = 0;
 
@@ -1094,6 +1097,7 @@ function executeTimerStep(step) {
 	clearClipMonitor();
 	clearTimer();
 	clipHasStartedPlaying = false;
+	switchCueFired = false;
 
 	// Stop YouTube playback and hide
 	if (ytReady && ytPlayer) {
@@ -1383,6 +1387,39 @@ function executeTimerStep(step) {
 /**
  * Start the countdown timer.
  */
+/**
+ * Trigger a gentle "switch sides" cue at the halfway point of a
+ * unilateral timed step.
+ * @param {number} totalDuration
+ * @param {number} remaining
+ */
+function maybeTriggerSwitchCue(totalDuration, remaining) {
+	if (switchCueFired) return;
+	const step = currentRoutine?.steps?.[currentStepIndex];
+	if (!step || !step.switchSides || !totalDuration) return;
+	if (remaining > totalDuration / 2) return;
+
+	switchCueFired = true;
+	playSwitchCue();
+
+	const label = dom.timerLabel || document.getElementById('timer-label');
+	const overlay = dom.timerOverlay || document.getElementById('timer-overlay');
+	if (label) {
+		label.textContent = 'Switch sides';
+		label.classList.remove('hidden');
+		label.classList.add('switch-sides-label');
+	}
+	if (overlay) overlay.classList.add('switch-sides-pulse');
+
+	setTimeout(() => {
+		if (label) label.classList.add('hidden');
+		if (overlay) overlay.classList.remove('switch-sides-pulse');
+	}, 2200);
+}
+
+/**
+ * Start the countdown timer.
+ */
 function startTimer(totalDuration) {
 	clearTimer();
 	const startTime = performance.now();
@@ -1398,6 +1435,7 @@ function startTimer(totalDuration) {
 
 		dom.timerDisplay.textContent = formatTime(displaySeconds);
 		updateTimerProgress(totalDuration, timerRemaining);
+		maybeTriggerSwitchCue(totalDuration, timerRemaining);
 
 		// Play countdown beeps when crossing a new second boundary
 		if (displaySeconds < lastBeeped) {

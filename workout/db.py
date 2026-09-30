@@ -65,13 +65,14 @@ class Database:
 					default_quantity INTEGER NOT NULL DEFAULT 30,
 					description TEXT DEFAULT '',
 					media_url TEXT DEFAULT '',
-					media_assets_json TEXT NOT NULL DEFAULT '[]',
-					primary_muscles_json TEXT NOT NULL DEFAULT '[]',
-					secondary_muscles_json TEXT NOT NULL DEFAULT '[]',
-					created_at TEXT NOT NULL
-				);
+media_assets_json TEXT NOT NULL DEFAULT '[]',
+				primary_muscles_json TEXT NOT NULL DEFAULT '[]',
+				secondary_muscles_json TEXT NOT NULL DEFAULT '[]',
+				laterality TEXT NOT NULL DEFAULT 'bilateral',
+				created_at TEXT NOT NULL
+			);
 
-				CREATE TABLE IF NOT EXISTS combos (
+			CREATE TABLE IF NOT EXISTS combos (
 					id TEXT PRIMARY KEY,
 					user_id TEXT,
 					name TEXT NOT NULL,
@@ -157,6 +158,13 @@ class Database:
 				try:
 					conn.execute(
 						"ALTER TABLE exercises ADD COLUMN secondary_muscles_json TEXT NOT NULL DEFAULT '[]'"
+					)
+				except Exception:
+					pass
+			if "laterality" not in ex_cols:
+				try:
+					conn.execute(
+						"ALTER TABLE exercises ADD COLUMN laterality TEXT NOT NULL DEFAULT 'bilateral'"
 					)
 				except Exception:
 					pass
@@ -1264,7 +1272,7 @@ class Database:
 	) -> list[dict[str, Any]]:
 		clean_user = user_id.strip().lower() if user_id else "levon"
 		query = """
-			SELECT id, user_id, name, category, discipline, default_mode, default_quantity, description, media_url, media_assets_json, primary_muscles_json, secondary_muscles_json, created_at
+			SELECT id, user_id, name, category, discipline, default_mode, default_quantity, description, media_url, media_assets_json, primary_muscles_json, secondary_muscles_json, laterality, created_at
 			FROM exercises
 			WHERE (user_id IS NULL OR user_id = ?)
 		"""
@@ -1377,6 +1385,9 @@ class Database:
 			.lower()
 		)
 		default_quantity = int(data.get("default_quantity", 20 if default_mode == "reps" else 30))
+		laterality = str(data.get("laterality", "bilateral")).strip().lower()
+		if laterality not in ("bilateral", "unilateral"):
+			laterality = "bilateral"
 		description = str(data.get("description", "")).strip()
 		media_url = str(data.get("media_url", "")).strip()
 		media_assets = data.get("media_assets", [])
@@ -1426,8 +1437,8 @@ class Database:
 			conn.execute(
 				"""
 				INSERT INTO exercises (
-					id, user_id, name, category, discipline, default_mode, default_quantity, description, media_url, media_assets_json, primary_muscles_json, secondary_muscles_json, created_at
-				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+					id, user_id, name, category, discipline, default_mode, default_quantity, description, media_url, media_assets_json, primary_muscles_json, secondary_muscles_json, laterality, created_at
+				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 				ON CONFLICT(id) DO UPDATE SET
 					name = excluded.name,
 					category = excluded.category,
@@ -1438,7 +1449,8 @@ class Database:
 					media_url = excluded.media_url,
 					media_assets_json = excluded.media_assets_json,
 					primary_muscles_json = excluded.primary_muscles_json,
-					secondary_muscles_json = excluded.secondary_muscles_json
+					secondary_muscles_json = excluded.secondary_muscles_json,
+					laterality = excluded.laterality
 				""",
 				(
 					ex_id,
@@ -1453,6 +1465,7 @@ class Database:
 					media_assets_json,
 					primary_muscles_json,
 					secondary_muscles_json,
+					laterality,
 					now,
 				),
 			)
@@ -1517,6 +1530,7 @@ class Database:
 			"media_assets": media_assets,
 			"primary_muscles": primary_muscles,
 			"secondary_muscles": secondary_muscles,
+			"laterality": laterality,
 			"created_at": now,
 		}
 
