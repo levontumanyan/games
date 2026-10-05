@@ -22,6 +22,8 @@ from db import Database
 from schemas import (
 	ComboCreate,
 	ExerciseCreate,
+	ExerciseMediaAdd,
+	ExerciseUpdate,
 	RoutineStep,
 	RoutineUpsert,
 	SessionUpsert,
@@ -257,6 +259,53 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 			data = payload.model_dump(exclude_none=True)
 			created = db.create_exercise(user_id, data)
 			return JSONResponse(content=created)
+		except ValueError as e:
+			raise HTTPException(status_code=400, detail=str(e))
+		except Exception as e:
+			raise HTTPException(status_code=500, detail=str(e))
+
+	@api_router.patch("/exercises/{exercise_id}")
+	async def patch_exercise(
+		exercise_id: str,
+		payload: ExerciseUpdate,
+		user_id: str = Depends(get_user_id),
+	):
+		updates = payload.model_dump(exclude_unset=True)
+		if not updates:
+			raise HTTPException(status_code=400, detail="No fields provided for update")
+		try:
+			updated = db.update_exercise(user_id, exercise_id, updates)
+			if not updated:
+				raise HTTPException(status_code=404, detail="Exercise not found")
+			return JSONResponse(content=updated)
+		except HTTPException:
+			raise
+		except ValueError as e:
+			raise HTTPException(status_code=400, detail=str(e))
+		except Exception as e:
+			raise HTTPException(status_code=500, detail=str(e))
+
+	@api_router.post("/exercises/{exercise_id}/media")
+	async def add_exercise_media(
+		exercise_id: str,
+		payload: ExerciseMediaAdd,
+		user_id: str = Depends(get_user_id),
+	):
+		try:
+			updated = db.add_exercise_media(
+				user_id=user_id,
+				exercise_id=exercise_id,
+				url=payload.url,
+				kind=payload.kind,
+				media_type=payload.type,
+				title=payload.title,
+				set_as_primary=payload.set_as_primary,
+			)
+			if not updated:
+				raise HTTPException(status_code=404, detail="Exercise not found")
+			return JSONResponse(content=updated)
+		except HTTPException:
+			raise
 		except ValueError as e:
 			raise HTTPException(status_code=400, detail=str(e))
 		except Exception as e:

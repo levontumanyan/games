@@ -943,3 +943,109 @@ def test_media_kinds_consolidation_and_backfill(tmp_path: Path):
 		).fetchone()
 		combo_assets = json.loads(combo_row["media_assets_json"])
 		assert combo_assets[0]["kind"] == "demonstration"
+
+
+def test_patch_exercise_and_add_media(client: TestClient):
+	# Create an exercise first
+	create_res = client.post(
+		"/api/exercises",
+		json={
+			"id": "ex-patch-test",
+			"name": "Initial Name",
+			"category": "strength",
+			"discipline": "general",
+			"default_mode": "reps",
+			"default_quantity": 10,
+		},
+		headers={"X-User-Id": "levon"},
+	)
+	assert create_res.status_code == 200
+
+	# 1. Test PATCH /exercises/{id}
+	patch_res = client.patch(
+		"/api/exercises/ex-patch-test",
+		json={
+			"name": "Updated Exercise Name",
+			"default_quantity": 25,
+			"media_url": "https://example.com/demo.jpg",
+		},
+		headers={"X-User-Id": "levon"},
+	)
+	assert patch_res.status_code == 200
+	patched = patch_res.json()
+	assert patched["name"] == "Updated Exercise Name"
+	assert patched["default_quantity"] == 25
+	assert patched["media_url"] == "https://example.com/demo.jpg"
+
+	# Test PATCH non-existent
+	err_patch = client.patch(
+		"/api/exercises/non-existent-id",
+		json={"name": "Does Not Matter"},
+		headers={"X-User-Id": "levon"},
+	)
+	assert err_patch.status_code == 404
+
+	# Test empty PATCH payload
+	empty_patch = client.patch(
+		"/api/exercises/ex-patch-test",
+		json={},
+		headers={"X-User-Id": "levon"},
+	)
+	assert empty_patch.status_code == 400
+
+	# 2. Test POST /exercises/{id}/media
+	media_res = client.post(
+		"/api/exercises/ex-patch-test/media",
+		json={
+			"url": "https://example.com/video.mp4",
+			"kind": "instruction",
+			"title": "Instructional Video",
+			"set_as_primary": True,
+		},
+		headers={"X-User-Id": "levon"},
+	)
+	assert media_res.status_code == 200
+	media_data = media_res.json()
+	assert media_data["media_url"] == "https://example.com/video.mp4"
+	assert any(
+		a["url"] == "https://example.com/video.mp4" and a["kind"] == "instruction"
+		for a in media_data["media_assets"]
+	)
+
+	# Test add media to non-existent
+	err_media = client.post(
+		"/api/exercises/non-existent-id/media",
+		json={"url": "https://example.com/foo.png"},
+		headers={"X-User-Id": "levon"},
+	)
+	assert err_media.status_code == 404
+
+	# Test duplicate media addition does not duplicate asset entry
+	dup_res = client.post(
+		"/api/exercises/ex-patch-test/media",
+		json={
+			"url": "https://example.com/video.mp4",
+		},
+		headers={"X-User-Id": "levon"},
+	)
+	assert dup_res.status_code == 200
+	dup_data = dup_res.json()
+	matching = [
+		a for a in dup_data["media_assets"] if a.get("url") == "https://example.com/video.mp4"
+	]
+	assert len(matching) == 1
+
+	# Test adding photo with set_as_primary=False retains existing media_url
+	sec_res = client.post(
+		"/api/exercises/ex-patch-test/media",
+		json={
+			"url": "https://example.com/secondary.jpg?token=abc",
+			"set_as_primary": False,
+		},
+		headers={"X-User-Id": "levon"},
+	)
+	assert sec_res.status_code == 200
+	sec_data = sec_res.json()
+	assert sec_data["media_url"] == "https://example.com/video.mp4"
+	sec_asset = next(a for a in sec_data["media_assets"] if "secondary.jpg" in a["url"])
+	assert sec_asset["type"] == "image"

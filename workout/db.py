@@ -1543,6 +1543,79 @@ media_assets_json TEXT NOT NULL DEFAULT '[]',
 			)
 			return cursor.rowcount > 0
 
+	def update_exercise(
+		self, user_id: str, exercise_id: str, updates: dict[str, Any]
+	) -> dict[str, Any] | None:
+		clean_user = user_id.strip().lower() if user_id else "levon"
+		existing = self.get_exercise(exercise_id)
+		if not existing:
+			return None
+
+		merged = dict(existing)
+		for k, v in updates.items():
+			if v is not None:
+				merged[k] = v
+
+		merged["id"] = exercise_id
+		return self.create_exercise(clean_user, merged)
+
+	def add_exercise_media(
+		self,
+		user_id: str,
+		exercise_id: str,
+		url: str,
+		kind: str = "demonstration",
+		media_type: str | None = None,
+		title: str | None = None,
+		set_as_primary: bool = True,
+	) -> dict[str, Any] | None:
+		clean_user = user_id.strip().lower() if user_id else "levon"
+		existing = self.get_exercise(exercise_id)
+		if not existing:
+			return None
+
+		clean_url = str(url).strip()
+		if not clean_url:
+			raise ValueError("Media URL is required")
+
+		if not media_type:
+			from urllib.parse import urlparse
+
+			parsed_path = urlparse(clean_url).path.lower()
+			is_video = (
+				"youtube.com" in clean_url
+				or "youtu.be" in clean_url
+				or parsed_path.endswith((".mp4", ".webm", ".mov", ".m4v"))
+			)
+			media_type = "video" if is_video else "image"
+
+		media_title = (title or "").strip() or (
+			"Demonstration" if media_type == "video" else "Visual Form"
+		)
+		asset_id = f"asset-{secrets.token_hex(4)}"
+
+		assets = list(existing.get("media_assets", []))
+		# Check if already present to avoid duplicates
+		exists = any(a.get("url") == clean_url for a in assets if isinstance(a, dict))
+		if not exists:
+			assets.append(
+				{
+					"id": asset_id,
+					"kind": kind,
+					"type": media_type,
+					"title": media_title,
+					"url": clean_url,
+				}
+			)
+
+		updates = {
+			"media_assets": assets,
+		}
+		if set_as_primary or not existing.get("media_url"):
+			updates["media_url"] = clean_url
+
+		return self.update_exercise(clean_user, exercise_id, updates)
+
 	# ── Sessions ─────────────────────────────────────────────────────────────
 
 	def upsert_session(self, user_id: str, session: dict[str, Any]) -> dict[str, Any]:

@@ -53,6 +53,51 @@ class ExerciseCreate(BaseSchema):
 	)
 
 
+class ExerciseUpdate(BaseSchema):
+	name: str | None = Field(default=None, description="Exercise name", min_length=1)
+	category: str | None = Field(
+		default=None, description="Category e.g. strength, cardio, technique, mobility, drill"
+	)
+	discipline: str | None = Field(
+		default=None, description="Discipline e.g. general, boxing, muay_thai, kickboxing, bjj"
+	)
+	default_mode: str | None = Field(default=None, description="Execution mode: reps or time")
+	default_quantity: int | None = Field(
+		default=None, description="Default reps count or seconds duration"
+	)
+	description: str | None = Field(default=None, description="Instructional details or cue notes")
+	media_url: str | None = Field(
+		default=None, description="Primary demonstration video or image URL"
+	)
+	media_assets: list[MediaAsset | dict[str, Any]] | None = Field(
+		default=None, description="Structured media assets"
+	)
+	primary_muscles: list[str] | None = Field(default=None, description="Targeted primary muscles")
+	secondary_muscles: list[str] | None = Field(
+		default=None, description="Targeted secondary muscles"
+	)
+	laterality: str | None = Field(
+		default=None,
+		description="Side coverage: bilateral (both sides together) or unilateral (one side at a time)",
+	)
+
+
+class ExerciseMediaAdd(BaseSchema):
+	url: str = Field(..., description="Media resource URL", min_length=1)
+	kind: str = Field(
+		default="demonstration",
+		description="Role of asset: demonstration (follow-along) or instruction (tutorial)",
+	)
+	type: str | None = Field(
+		default=None, description="Media type: video or image (auto-detected if omitted)"
+	)
+	title: str | None = Field(default=None, description="Asset title or label")
+	set_as_primary: bool = Field(
+		default=True,
+		description="Whether to also update exercise media_url with this URL",
+	)
+
+
 class ComboCreate(BaseSchema):
 	id: str | None = Field(default=None, description="Optional combo ID (auto-generated if empty)")
 	name: str = Field(..., description="Combo title/name", min_length=1)
