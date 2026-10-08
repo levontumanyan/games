@@ -373,7 +373,10 @@ export function filterExercises(query = '', category = '', discipline = '', musc
 			const catMatch = (ex.category || '').toLowerCase().includes(q);
 			const discMatch = (ex.discipline || '').toLowerCase().includes(q);
 			const targetMuscles = inferMusclesForExercise(ex);
-			const musMatch = [...(targetMuscles.primary || []), ...(targetMuscles.secondary || [])].some(m => m.toLowerCase().includes(q));
+			const musMatch = [...(targetMuscles.primary || []), ...(targetMuscles.secondary || [])].some(m => {
+				const lower = m.toLowerCase();
+				return lower.includes(q) || lower.replace(/_/g, ' ').includes(q);
+			});
 			return nameMatch || descMatch || catMatch || discMatch || musMatch;
 		}
 		return true;

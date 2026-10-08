@@ -1340,3 +1340,42 @@ def test_video_clip_step_timing_when_duration_shorter_than_slice():
 		timeout=5,
 	)
 	assert res.returncode == 0, f"Node clip timing test failed:\n{res.stderr}"
+
+
+def test_filter_exercises_matches_muscle_tags_with_spaces():
+	"""Verify that filterExercises matches snake_case muscle IDs when queries have spaces."""
+	js_dir = Path(__file__).parent.parent / "js"
+	node_script = f"""
+	globalThis.window = {{
+		addEventListener() {{}},
+		removeEventListener() {{}},
+		__INITIAL_EXERCISES__: [
+			{{
+				id: 'ex-wall-pulses',
+				name: 'Wall Pulses',
+				category: 'strength',
+				discipline: 'general',
+				primary_muscles: ['hip_flexors', 'glutes']
+			}}
+		]
+	}};
+	globalThis.document = {{
+		addEventListener() {{}},
+		removeEventListener() {{}}
+	}};
+	globalThis.localStorage = {{ getItem() {{ return null; }}, setItem() {{}}, removeItem() {{}} }};
+
+	const {{ filterExercises }} = await import('{js_dir}/exercises.js');
+	const results = filterExercises('hip flex');
+	if (results.length !== 1 || results[0].id !== 'ex-wall-pulses') {{
+		throw new Error('Expected query "hip flex" to match hip_flexors, got: ' + JSON.stringify(results));
+	}}
+	"""
+
+	res = subprocess.run(
+		["node", "--input-type=module", "-e", node_script],
+		capture_output=True,
+		text=True,
+		timeout=5,
+	)
+	assert res.returncode == 0, f"Muscle filter test failed:\n{res.stderr}"
