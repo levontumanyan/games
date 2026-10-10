@@ -1068,13 +1068,13 @@ function executeVideoStep(step, targetDuration, videoAsset) {
 	if (videoStageHeader) videoStageHeader.classList.add('hidden');
 	updateTimerProgress(targetDuration, targetDuration);
 
-	// 6-second safety fallback: if YouTube fails to play (ad-block, offline, error), fall back to standard timer step
+	// 10-second safety fallback: if YouTube fails to play (ad-block, offline, error), fall back to standard timer step
 	videoSafetyFallbackTimeout = setTimeout(() => {
 		if (!clipHasStartedPlaying && isPlaying && !isPaused) {
-			console.warn('[Workout Player] Video playback failed to start within 6s, falling back to timer step');
+			console.warn('[Workout Player] Video playback failed to start within 10s, falling back to timer step');
 			executeTimerStep(step);
 		}
-	}, 6000);
+	}, 10000);
 
 	const isTutorial = Boolean(step.isTutorial || (step.label && step.label.includes('[Tutorial]')));
 	if (dom.currentStepLabel) dom.currentStepLabel.textContent = isTutorial ? 'Tutorial Breakdown' : getStepDisplayName(step);
