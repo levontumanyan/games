@@ -270,6 +270,69 @@ media_assets_json TEXT NOT NULL DEFAULT '[]',
 			except Exception:
 				pass
 
+			# Reconcile combo steps in routines with canonical combo movements
+			try:
+				combo_rows = conn.execute(
+					"SELECT id, name, exercise_ids_json FROM combos"
+				).fetchall()
+				combos_lookup: dict[str, Any] = {}
+				for cr in combo_rows:
+					try:
+						combos_lookup[cr["id"]] = {
+							"name": cr["name"].strip().lower(),
+							"exercise_ids": json.loads(cr["exercise_ids_json"] or "[]"),
+						}
+					except Exception:
+						pass
+
+				ex_rows = conn.execute(
+					"SELECT id, name, category, discipline, default_mode, default_quantity FROM exercises"
+				).fetchall()
+				ex_lookup = {r["id"]: dict(r) for r in ex_rows}
+
+				r_rows = conn.execute("SELECT id, user_id, steps_json FROM routines").fetchall()
+				for r_row in r_rows:
+					try:
+						steps = json.loads(r_row["steps_json"])
+					except Exception:
+						continue
+					updated_routine = False
+					for st in steps:
+						cid = st.get("combo_id")
+						if not cid and st.get("label"):
+							lbl = st["label"].strip().lower()
+							for k, v in combos_lookup.items():
+								if v["name"] == lbl:
+									cid = k
+									st["combo_id"] = cid
+									updated_routine = True
+									break
+						if cid and cid in combos_lookup:
+							combo_info = combos_lookup[cid]
+							curr_ids = [
+								e.get("id")
+								for e in (st.get("exercises") or [])
+								if isinstance(e, dict)
+							]
+							if curr_ids != combo_info["exercise_ids"]:
+								st["exercises"] = [
+									ex_lookup[eid]
+									for eid in combo_info["exercise_ids"]
+									if eid in ex_lookup
+								]
+								updated_routine = True
+					if updated_routine:
+						conn.execute(
+							"UPDATE routines SET steps_json = ? WHERE id = ? AND user_id = ?",
+							(
+								json.dumps(steps, ensure_ascii=False),
+								r_row["id"],
+								r_row["user_id"],
+							),
+						)
+			except Exception:
+				pass
+
 	# ── Users ────────────────────────────────────────────────────────────────
 
 	def list_users(self) -> list[dict[str, Any]]:
