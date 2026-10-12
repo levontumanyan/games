@@ -62,6 +62,8 @@ let clipLoadedAt = 0;
 let accumulatedVideoTime = 0;
 let videoSafetyFallbackTimeout = null;
 let cuedVideoAsset = null;
+let isWarmingUpVideo = false;
+let isVideoWarmed = false;
 
 // HUD idle timer
 let hudIdleTimer = null;
@@ -520,20 +522,27 @@ export function preCueVideo(videoAsset, targetDuration) {
 		? (startSec + targetDuration)
 		: rawEndSec;
 
-	if (cuedVideoAsset && cuedVideoAsset.videoId === vidId && cuedVideoAsset.startSeconds === startSec && cuedVideoAsset.endSeconds === endSec) {
+	if (cuedVideoAsset && cuedVideoAsset.videoId === vidId && cuedVideoAsset.startSeconds === startSec && cuedVideoAsset.endSeconds === endSec && isVideoWarmed) {
 		return;
 	}
 
 	try {
-		console.log(`[Workout Player] Pre-cueing upcoming video: ${vidId} (start: ${startSec}s, end: ${endSec !== undefined ? endSec + 's' : 'end'})`);
+		console.log(`[Workout Player] Pre-warming upcoming video buffer: ${vidId} (start: ${startSec}s, end: ${endSec !== undefined ? endSec + 's' : 'end'})`);
 		cuedVideoAsset = { videoId: vidId, startSeconds: startSec, endSeconds: endSec };
-		ytPlayer.cueVideoById({
+		isVideoWarmed = false;
+		isWarmingUpVideo = true;
+
+		// Mute before loading so audio never bleeds during countdown or break
+		try { ytPlayer.mute(); } catch {}
+
+		ytPlayer.loadVideoById({
 			videoId: vidId,
 			startSeconds: startSec,
 			endSeconds: endSec,
 		});
 	} catch (e) {
-		console.warn('[Workout Player] Pre-cue error:', e);
+		console.warn('[Workout Player] Pre-warm error:', e);
+		isWarmingUpVideo = false;
 	}
 }
 
@@ -563,6 +572,19 @@ function onYTStateChange(event) {
 
 	if (event.data === YT.PlayerState.PLAYING) {
 		disableCaptions();
+		if (isWarmingUpVideo) {
+			isWarmingUpVideo = false;
+			isVideoWarmed = true;
+			console.log('[Workout Player] Video buffer primed and ready in memory. Pausing until step start.');
+			try {
+				ytPlayer.pauseVideo();
+				if (cuedVideoAsset && typeof cuedVideoAsset.startSeconds === 'number') {
+					ytPlayer.seekTo(cuedVideoAsset.startSeconds, true);
+				}
+			} catch {}
+			return;
+		}
+
 		clipHasStartedPlaying = true;
 		clearVideoFallback();
 		if (isPlaying && !isPaused && currentRoutine) {
@@ -1030,7 +1052,24 @@ function executeVideoStep(step, targetDuration, videoAsset) {
 	const isAlreadyCued = cuedVideoAsset && cuedVideoAsset.videoId === vidId && cuedVideoAsset.startSeconds === startSec && cuedVideoAsset.endSeconds === endSec;
 
 	if (ytReady && ytPlayer) {
-		if (isAlreadyCued) {
+		isWarmingUpVideo = false;
+		// Unmute player so step video audio plays
+		try { ytPlayer.unMute(); } catch {}
+
+		if (isAlreadyCued && isVideoWarmed) {
+			console.log(`[Workout Player] Instant start: playing pre-warmed video ${vidId} at ${startSec}s`);
+			try {
+				ytPlayer.seekTo(startSec, true);
+				ytPlayer.playVideo();
+			} catch (e) {
+				console.warn('[Workout Player] Failed to play pre-warmed video, falling back to loadVideoById:', e);
+				ytPlayer.loadVideoById({
+					videoId: vidId,
+					startSeconds: startSec,
+					endSeconds: endSec,
+				});
+			}
+		} else if (isAlreadyCued) {
 			console.log(`[Workout Player] Playing already cued video: ${vidId} at ${startSec}s`);
 			try {
 				ytPlayer.seekTo(startSec, true);
@@ -1045,6 +1084,7 @@ function executeVideoStep(step, targetDuration, videoAsset) {
 			}
 		} else {
 			cuedVideoAsset = { videoId: vidId, startSeconds: startSec, endSeconds: endSec };
+			isVideoWarmed = false;
 			ytPlayer.loadVideoById({
 				videoId: vidId,
 				startSeconds: startSec,
@@ -1634,6 +1674,8 @@ export function stopPlayback(isCompleted = false) {
 	clipHasStartedPlaying = false;
 	accumulatedVideoTime = 0;
 	cuedVideoAsset = null;
+	isWarmingUpVideo = false;
+	isVideoWarmed = false;
 	currentStepIndex = -1;
 	currentSubStepIndex = 0;
 
