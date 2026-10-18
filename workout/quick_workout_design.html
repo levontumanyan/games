@@ -1,0 +1,1658 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="matcha-dark">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Quick Workout & Quick Log UX Prototypes - Workout Player</title>
+	<link rel="stylesheet" href="css/styles.css">
+	<style>
+		/* Preview page bespoke scaffolding & layout */
+		:root {
+			--proto-bg: #111412;
+			--proto-card: #181d1a;
+			--proto-card-hover: #202723;
+			--proto-border: rgba(95, 167, 120, 0.2);
+			--proto-border-light: rgba(255, 255, 255, 0.08);
+			--proto-accent: #5fa778;
+			--proto-accent-bright: #48bb78;
+			--proto-gold: #e5b869;
+			--proto-text: #e6eae6;
+			--proto-muted: #8b9990;
+		}
+
+		body {
+			font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+			background: var(--proto-bg);
+			color: var(--proto-text);
+			margin: 0;
+			padding: 24px;
+			line-height: 1.5;
+			min-height: 100vh;
+			overflow-y: auto;
+		}
+
+		.design-shell {
+			max-width: 1280px;
+			margin: 0 auto;
+		}
+
+		/* Top Navigation Bar Preview */
+		.design-header {
+			background: var(--proto-card);
+			border: 1px solid var(--proto-border);
+			border-radius: var(--radius-lg);
+			padding: 24px 28px;
+			margin-bottom: 24px;
+			box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+		}
+
+		.header-badge-row {
+			display: flex;
+			align-items: center;
+			gap: 12px;
+			margin-bottom: 10px;
+			flex-wrap: wrap;
+		}
+
+		.header-pill {
+			display: inline-flex;
+			align-items: center;
+			gap: 6px;
+			padding: 4px 12px;
+			border-radius: 999px;
+			font-size: 0.78rem;
+			font-weight: 700;
+			letter-spacing: 0.05em;
+			text-transform: uppercase;
+			background: rgba(95, 167, 120, 0.15);
+			color: var(--proto-accent-bright);
+			border: 1px solid rgba(95, 167, 120, 0.3);
+		}
+
+		.header-pill.gold {
+			background: rgba(229, 184, 105, 0.15);
+			color: var(--proto-gold);
+			border-color: rgba(229, 184, 105, 0.3);
+		}
+
+		.design-title {
+			font-size: 2rem;
+			font-weight: 800;
+			color: #ffffff;
+			margin: 0 0 8px;
+			letter-spacing: -0.02em;
+			display: flex;
+			align-items: center;
+			gap: 12px;
+		}
+
+		.design-subtitle {
+			color: var(--proto-muted);
+			font-size: 1.02rem;
+			margin: 0 0 20px;
+			max-width: 920px;
+		}
+
+		/* Architecture Question Card (Total vs Broken Down) */
+		.architecture-callout {
+			background: rgba(95, 167, 120, 0.08);
+			border: 1px solid rgba(95, 167, 120, 0.25);
+			border-radius: var(--radius);
+			padding: 16px 20px;
+			margin-bottom: 24px;
+			display: flex;
+			flex-direction: column;
+			gap: 10px;
+		}
+
+		.callout-header {
+			display: flex;
+			align-items: center;
+			gap: 10px;
+			font-weight: 700;
+			font-size: 1.05rem;
+			color: var(--proto-accent-bright);
+		}
+
+		.callout-grid {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+			gap: 14px;
+			margin-top: 6px;
+		}
+
+		.callout-card {
+			background: rgba(0, 0, 0, 0.25);
+			border: 1px solid var(--proto-border-light);
+			border-radius: var(--radius-sm);
+			padding: 12px 16px;
+			font-size: 0.9rem;
+		}
+
+		.callout-card h4 {
+			margin: 0 0 6px;
+			color: #ffffff;
+			display: flex;
+			align-items: center;
+			gap: 6px;
+		}
+
+		.callout-card p {
+			margin: 0;
+			color: var(--proto-muted);
+			line-height: 1.45;
+		}
+
+		.callout-card.recommended {
+			border-color: var(--proto-accent);
+			background: rgba(95, 167, 120, 0.12);
+		}
+
+		/* Option Selector Tabs */
+		.nav-tabs-wrapper {
+			display: flex;
+			gap: 10px;
+			overflow-x: auto;
+			padding-bottom: 6px;
+		}
+
+		.proto-tab-btn {
+			background: var(--proto-card);
+			border: 1px solid var(--proto-border-light);
+			color: var(--proto-muted);
+			padding: 12px 20px;
+			border-radius: var(--radius);
+			cursor: pointer;
+			font-size: 0.95rem;
+			font-weight: 600;
+			display: flex;
+			align-items: center;
+			gap: 10px;
+			transition: all var(--transition-fast);
+			white-space: nowrap;
+		}
+
+		.proto-tab-btn:hover {
+			background: var(--proto-card-hover);
+			color: var(--proto-text);
+			border-color: var(--proto-border);
+		}
+
+		.proto-tab-btn.active {
+			background: var(--proto-accent-bright);
+			color: #0b110e;
+			border-color: var(--proto-accent-bright);
+			box-shadow: 0 4px 16px rgba(72, 187, 120, 0.35);
+			font-weight: 700;
+		}
+
+		/* Prototype Viewport Section */
+		.prototype-view {
+			display: none;
+			margin-top: 24px;
+			animation: fadeIn 0.2s ease forwards;
+		}
+
+		.prototype-view.active {
+			display: block;
+		}
+
+		@keyframes fadeIn {
+			from { opacity: 0; transform: translateY(6px); }
+			to { opacity: 1; transform: translateY(0); }
+		}
+
+		.view-hero-card {
+			background: var(--proto-card);
+			border: 1px solid var(--proto-border);
+			border-radius: var(--radius-lg);
+			padding: 24px;
+			margin-bottom: 24px;
+		}
+
+		.view-hero-top {
+			display: flex;
+			justify-content: space-between;
+			align-items: flex-start;
+			gap: 16px;
+			flex-wrap: wrap;
+			margin-bottom: 14px;
+		}
+
+		.view-title {
+			font-size: 1.5rem;
+			font-weight: 700;
+			color: #ffffff;
+			margin: 0 0 6px;
+		}
+
+		.view-desc {
+			color: var(--proto-muted);
+			font-size: 0.96rem;
+			margin: 0;
+			max-width: 820px;
+		}
+
+		/* Split Layout: Interactive UI on left, Live Stats Wire on right */
+		.interactive-stage-grid {
+			display: grid;
+			grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+			gap: 24px;
+		}
+
+		@media (max-width: 980px) {
+			.interactive-stage-grid {
+				grid-template-columns: 1fr;
+			}
+		}
+
+		.stage-canvas {
+			background: var(--proto-card);
+			border: 1px solid var(--proto-border);
+			border-radius: var(--radius-lg);
+			padding: 28px;
+			box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+			position: relative;
+			min-height: 520px;
+		}
+
+		.stage-inspector {
+			background: #141815;
+			border: 1px solid var(--proto-border-light);
+			border-radius: var(--radius-lg);
+			padding: 24px;
+			display: flex;
+			flex-direction: column;
+			gap: 20px;
+		}
+
+		.inspector-header {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			padding-bottom: 12px;
+			border-bottom: 1px solid var(--proto-border-light);
+		}
+
+		.inspector-title {
+			font-size: 0.95rem;
+			font-weight: 700;
+			color: var(--proto-accent-bright);
+			display: flex;
+			align-items: center;
+			gap: 8px;
+			text-transform: uppercase;
+			letter-spacing: 0.05em;
+		}
+
+		/* Live Stats Wire Simulator Box */
+		.stats-wire-metric-grid {
+			display: grid;
+			grid-template-columns: 1fr 1fr;
+			gap: 12px;
+		}
+
+		.wire-metric-tile {
+			background: rgba(255, 255, 255, 0.03);
+			border: 1px solid var(--proto-border-light);
+			border-radius: var(--radius-sm);
+			padding: 12px;
+		}
+
+		.wire-metric-label {
+			font-size: 0.75rem;
+			text-transform: uppercase;
+			color: var(--proto-muted);
+			font-weight: 600;
+			letter-spacing: 0.05em;
+			margin-bottom: 4px;
+		}
+
+		.wire-metric-value {
+			font-size: 1.35rem;
+			font-weight: 800;
+			color: #ffffff;
+			display: flex;
+			align-items: baseline;
+			gap: 4px;
+		}
+
+		.wire-metric-value small {
+			font-size: 0.8rem;
+			color: var(--proto-muted);
+			font-weight: 500;
+		}
+
+		.wire-json-box {
+			background: #090c0a;
+			border: 1px solid var(--proto-border-light);
+			border-radius: var(--radius-sm);
+			padding: 14px;
+			font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+			font-size: 0.82rem;
+			color: #9cdcfe;
+			max-height: 240px;
+			overflow-y: auto;
+			white-space: pre-wrap;
+			line-height: 1.4;
+		}
+
+		/* ── OPTION 1 STYLES: Speed Logger Modal / Bottom Sheet ─────── */
+		.speed-logger-sheet {
+			background: var(--bg-card, #1f2622);
+			border: 1px solid var(--proto-border);
+			border-radius: var(--radius-lg);
+			padding: 24px;
+			max-width: 480px;
+			margin: 0 auto;
+			box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+		}
+
+		.speed-sheet-header {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			margin-bottom: 20px;
+		}
+
+		.movement-pills-scroll {
+			display: flex;
+			gap: 8px;
+			overflow-x: auto;
+			padding-bottom: 12px;
+			margin-bottom: 16px;
+		}
+
+		.move-pill {
+			background: rgba(255, 255, 255, 0.05);
+			border: 1px solid var(--proto-border-light);
+			color: var(--proto-muted);
+			border-radius: 999px;
+			padding: 6px 14px;
+			font-size: 0.88rem;
+			font-weight: 600;
+			cursor: pointer;
+			white-space: nowrap;
+			transition: all var(--transition-fast);
+		}
+
+		.move-pill:hover {
+			border-color: var(--proto-accent);
+			color: var(--proto-text);
+		}
+
+		.move-pill.active {
+			background: rgba(95, 167, 120, 0.2);
+			border-color: var(--proto-accent-bright);
+			color: var(--proto-accent-bright);
+		}
+
+		.rep-hero-display {
+			background: rgba(0, 0, 0, 0.35);
+			border: 1px solid var(--proto-border-light);
+			border-radius: var(--radius);
+			padding: 24px;
+			text-align: center;
+			margin-bottom: 20px;
+			position: relative;
+		}
+
+		.rep-huge-number {
+			font-size: 4rem;
+			font-weight: 900;
+			color: #ffffff;
+			line-height: 1;
+			font-variant-numeric: tabular-nums;
+			letter-spacing: -0.04em;
+		}
+
+		.rep-hero-label {
+			font-size: 0.85rem;
+			font-weight: 700;
+			text-transform: uppercase;
+			color: var(--proto-muted);
+			letter-spacing: 0.1em;
+			margin-top: 6px;
+		}
+
+		.rep-stepper-btn-row {
+			display: flex;
+			justify-content: center;
+			gap: 16px;
+			margin-top: 14px;
+		}
+
+		.stepper-circle-btn {
+			width: 44px;
+			height: 44px;
+			border-radius: 50%;
+			background: rgba(255, 255, 255, 0.08);
+			border: 1px solid var(--proto-border-light);
+			color: #ffffff;
+			font-size: 1.4rem;
+			font-weight: 700;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			cursor: pointer;
+			transition: all var(--transition-fast);
+		}
+
+		.stepper-circle-btn:hover {
+			background: rgba(95, 167, 120, 0.25);
+			border-color: var(--proto-accent);
+			transform: scale(1.06);
+		}
+
+		.speed-increments-grid {
+			display: grid;
+			grid-template-columns: repeat(4, 1fr);
+			gap: 8px;
+			margin-bottom: 20px;
+		}
+
+		.speed-inc-btn {
+			background: rgba(255, 255, 255, 0.05);
+			border: 1px solid var(--proto-border-light);
+			border-radius: var(--radius-sm);
+			color: var(--proto-text);
+			padding: 10px 4px;
+			font-weight: 700;
+			font-size: 0.95rem;
+			cursor: pointer;
+			transition: all var(--transition-fast);
+		}
+
+		.speed-inc-btn:hover {
+			background: rgba(95, 167, 120, 0.15);
+			border-color: var(--proto-accent);
+			color: var(--proto-accent-bright);
+		}
+
+		.speed-log-btn {
+			width: 100%;
+			padding: 14px;
+			border-radius: var(--radius);
+			background: var(--proto-accent-bright);
+			color: #0c120e;
+			font-weight: 800;
+			font-size: 1.05rem;
+			border: none;
+			cursor: pointer;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			gap: 8px;
+			box-shadow: 0 4px 16px rgba(72, 187, 120, 0.35);
+			transition: all var(--transition-fast);
+		}
+
+		.speed-log-btn:hover {
+			background: #38a169;
+			transform: translateY(-1px);
+			box-shadow: 0 6px 20px rgba(72, 187, 120, 0.45);
+		}
+
+		/* ── OPTION 2 STYLES: Live Tap Counter HUD ──────────────────── */
+		.live-counter-hud {
+			background: #0d110f;
+			border: 1px solid var(--proto-border);
+			border-radius: var(--radius-lg);
+			padding: 24px;
+			text-align: center;
+			position: relative;
+			overflow: hidden;
+		}
+
+		.live-top-meta {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			margin-bottom: 20px;
+		}
+
+		.live-timer-chip {
+			display: inline-flex;
+			align-items: center;
+			gap: 6px;
+			background: rgba(229, 184, 105, 0.15);
+			color: var(--proto-gold);
+			border: 1px solid rgba(229, 184, 105, 0.3);
+			border-radius: 999px;
+			padding: 4px 12px;
+			font-size: 0.85rem;
+			font-weight: 700;
+			font-variant-numeric: tabular-nums;
+		}
+
+		.tap-pad-surface {
+			background: radial-gradient(circle at center, rgba(95, 167, 120, 0.12) 0%, rgba(0, 0, 0, 0.4) 75%);
+			border: 2px dashed rgba(95, 167, 120, 0.3);
+			border-radius: var(--radius-lg);
+			padding: 48px 24px;
+			cursor: pointer;
+			user-select: none;
+			transition: all 0.12s ease;
+			margin-bottom: 20px;
+		}
+
+		.tap-pad-surface:active {
+			background: radial-gradient(circle at center, rgba(95, 167, 120, 0.28) 0%, rgba(0, 0, 0, 0.5) 75%);
+			border-color: var(--proto-accent-bright);
+			transform: scale(0.985);
+		}
+
+		.tap-huge-number {
+			font-size: 5.5rem;
+			font-weight: 900;
+			color: #ffffff;
+			line-height: 1;
+			margin-bottom: 8px;
+			font-variant-numeric: tabular-nums;
+			text-shadow: 0 4px 24px rgba(72, 187, 120, 0.3);
+		}
+
+		.tap-hint-text {
+			color: var(--proto-muted);
+			font-size: 0.95rem;
+			font-weight: 600;
+			text-transform: uppercase;
+			letter-spacing: 0.08em;
+		}
+
+		.live-actions-row {
+			display: flex;
+			gap: 12px;
+		}
+
+		/* ── OPTION 3 STYLES: Multi-Movement Express Table ──────────── */
+		.express-table-card {
+			background: var(--proto-card);
+			border: 1px solid var(--proto-border);
+			border-radius: var(--radius-lg);
+			padding: 24px;
+		}
+
+		.express-row {
+			background: rgba(255, 255, 255, 0.03);
+			border: 1px solid var(--proto-border-light);
+			border-radius: var(--radius);
+			padding: 16px;
+			margin-bottom: 14px;
+			display: flex;
+			flex-direction: column;
+			gap: 12px;
+		}
+
+		.express-row-header {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+		}
+
+		.express-sets-wrap {
+			display: flex;
+			gap: 8px;
+			flex-wrap: wrap;
+			align-items: center;
+		}
+
+		.set-pill-box {
+			background: rgba(0, 0, 0, 0.35);
+			border: 1px solid var(--proto-border-light);
+			border-radius: var(--radius-sm);
+			padding: 6px 12px;
+			display: inline-flex;
+			align-items: center;
+			gap: 6px;
+			font-size: 0.88rem;
+		}
+
+		.set-pill-box input {
+			width: 44px;
+			background: transparent;
+			border: none;
+			color: #ffffff;
+			font-weight: 800;
+			font-size: 1rem;
+			text-align: center;
+			outline: none;
+		}
+
+		/* ── OPTION 4 STYLES: Daily Habit Quota Bar ─────────────────── */
+		.quota-widget-card {
+			background: linear-gradient(135deg, rgba(95, 167, 120, 0.12) 0%, rgba(20, 26, 22, 0.9) 100%);
+			border: 1px solid var(--proto-border);
+			border-radius: var(--radius-lg);
+			padding: 24px;
+			display: flex;
+			flex-direction: column;
+			gap: 20px;
+		}
+
+		.quota-ring-row {
+			display: flex;
+			align-items: center;
+			gap: 24px;
+		}
+
+		.quota-ring-svg {
+			width: 100px;
+			height: 100px;
+			transform: rotate(-90deg);
+		}
+
+		.quota-ring-bg {
+			fill: none;
+			stroke: rgba(255, 255, 255, 0.08);
+			stroke-width: 8;
+		}
+
+		.quota-ring-fill {
+			fill: none;
+			stroke: var(--proto-accent-bright);
+			stroke-width: 8;
+			stroke-linecap: round;
+			stroke-dasharray: 283;
+			stroke-dashoffset: 80;
+			transition: stroke-dashoffset 0.4s ease;
+		}
+
+		.quota-details {
+			flex: 1;
+		}
+
+		.quota-title {
+			font-size: 1.15rem;
+			font-weight: 700;
+			color: #ffffff;
+			margin: 0 0 4px;
+		}
+
+		.quota-progress-text {
+			font-size: 1.6rem;
+			font-weight: 900;
+			color: var(--proto-accent-bright);
+			font-variant-numeric: tabular-nums;
+		}
+
+		.quota-streak-pill {
+			display: inline-flex;
+			align-items: center;
+			gap: 6px;
+			font-size: 0.8rem;
+			font-weight: 700;
+			color: #f6ad55;
+			margin-top: 4px;
+		}
+
+		.quota-fast-actions {
+			display: flex;
+			gap: 10px;
+		}
+
+		.quota-tap-chip {
+			flex: 1;
+			background: rgba(255, 255, 255, 0.06);
+			border: 1px solid var(--proto-border-light);
+			border-radius: var(--radius);
+			padding: 12px;
+			text-align: center;
+			cursor: pointer;
+			font-weight: 800;
+			font-size: 1rem;
+			color: #ffffff;
+			transition: all var(--transition-fast);
+		}
+
+		.quota-tap-chip:hover {
+			background: rgba(95, 167, 120, 0.2);
+			border-color: var(--proto-accent-bright);
+			color: var(--proto-accent-bright);
+			transform: translateY(-2px);
+		}
+
+		/* Toast message */
+		.toast-pill {
+			position: fixed;
+			bottom: 30px;
+			right: 30px;
+			background: #1a221d;
+			border: 1px solid var(--proto-accent-bright);
+			color: #ffffff;
+			padding: 14px 20px;
+			border-radius: var(--radius);
+			box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+			display: flex;
+			align-items: center;
+			gap: 12px;
+			font-size: 0.95rem;
+			font-weight: 600;
+			z-index: 9999;
+			transform: translateY(100px);
+			opacity: 0;
+			transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+		}
+
+		.toast-pill.show {
+			transform: translateY(0);
+			opacity: 1;
+		}
+
+		/* Comparison Matrix Table */
+		.compare-table {
+			width: 100%;
+			border-collapse: collapse;
+			margin-top: 14px;
+			font-size: 0.92rem;
+		}
+
+		.compare-table th {
+			text-align: left;
+			padding: 12px;
+			color: var(--proto-muted);
+			font-weight: 600;
+			border-bottom: 1px solid var(--proto-border-light);
+		}
+
+		.compare-table td {
+			padding: 12px;
+			border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+			vertical-align: middle;
+		}
+
+		.compare-table tr:hover td {
+			background: rgba(255, 255, 255, 0.02);
+		}
+	</style>
+</head>
+<body>
+
+	<div class="design-shell">
+
+		<!-- ── Top Header & Executive Summary ─────────────────────────── -->
+		<header class="design-header">
+			<div class="header-badge-row">
+				<span class="header-pill">⚡ Feature Proposal</span>
+				<span class="header-pill gold">📊 Stats & Streaks Architecture</span>
+				<span class="header-pill">🎨 4 Interactive Prototypes</span>
+			</div>
+			<h1 class="design-title">
+				Quick Workout & Pushup Logger Explorations
+			</h1>
+			<p class="design-subtitle">
+				Explore 4 distinct UI paradigms for logging quick pushups or micro-workouts without creating a formal multi-step routine. Test each concept interactively below and see how it writes to the live stats engine, daily streaks, PR leaderboards, and movement badges.
+			</p>
+
+			<!-- ── Core Architectural Recommendation ───────────────────── -->
+			<div class="architecture-callout">
+				<div class="callout-header">
+					<span>🧠 Architectural Verdict: Total Exercise Lump Sum vs. Exercise Breakdown</span>
+				</div>
+				<p style="margin: 0; color: var(--proto-text); font-size: 0.93rem;">
+					<strong>Question:</strong> <em>"Is it better to do quick workout and total number of exercise, or each exercise broken down?"</em>
+				</p>
+				<div class="callout-grid">
+					<div class="callout-card">
+						<h4>⚠️ Generic Total ("50 Reps Total")</h4>
+						<p>
+							Lumping reps into a single generic bucket gives you a streak day and total minutes, but <strong>breaks your PR leaderboard and milestones</strong>. The system cannot tell if you did 50 pushups or 50 jumping jacks, so pushup milestone badges, chest anatomy heatmaps, and movement PRs cannot trigger.
+						</p>
+					</div>
+					<div class="callout-card recommended">
+						<h4>⭐ Winner: Fast Single-Click Movement Breakdown</h4>
+						<p>
+							<strong>Best of both worlds:</strong> Keep the user interaction dead-simple (default to <em>Push-ups</em> with 1-tap rep pills like <code>+25</code>), but under the hood save the canonical schema: <code>{ name: "Push-ups", category: "strength", discipline: "calisthenics", reps: 25 }</code>. This instantly triggers <strong>Pushup PRs</strong>, unlocks <strong>Century Pushup Club</strong> badges, and lights up chest & triceps on the Anatomy map!
+						</p>
+					</div>
+				</div>
+			</div>
+
+			<!-- ── Tab Navigation Bar ──────────────────────────────────── -->
+			<div class="nav-tabs-wrapper">
+				<button class="proto-tab-btn active" onclick="switchProto('proto-1')">
+					<span>⚡ Option 1: Lightning Numpad & Speed Pills</span>
+				</button>
+				<button class="proto-tab-btn" onclick="switchProto('proto-2')">
+					<span>⏱️ Option 2: Live Tap-to-Count HUD & Rest Interval</span>
+				</button>
+				<button class="proto-tab-btn" onclick="switchProto('proto-3')">
+					<span>📋 Option 3: Express Multi-Movement Table</span>
+				</button>
+				<button class="proto-tab-btn" onclick="switchProto('proto-4')">
+					<span>🎯 Option 4: Daily Target Ring & 1-Tap Widget</span>
+				</button>
+				<button class="proto-tab-btn" onclick="switchProto('proto-compare')">
+					<span>⚖️ Side-by-Side Comparison</span>
+				</button>
+			</div>
+		</header>
+
+		<!-- ══════════════════════════════════════════════════════════════ -->
+		<!-- ── OPTION 1: LIGHTNING NUMPAD & SPEED PILLS (Sub-3s Entry) ── -->
+		<!-- ══════════════════════════════════════════════════════════════ -->
+		<section id="proto-1" class="prototype-view active">
+			<div class="view-hero-card">
+				<div class="view-hero-top">
+					<div>
+						<h2 class="view-title">Option 1: Lightning Numpad & Speed Pills Modal</h2>
+						<p class="view-desc">
+							Designed for frictionless post-workout logging (e.g. <em>"I just dropped down and knocked out 35 pushups between compiling code"</em>). Accessible via a permanent <strong>⚡ Quick Log</strong> button in the top navigation bar.
+						</p>
+					</div>
+					<span class="header-pill">Friction: ~3 seconds</span>
+				</div>
+			</div>
+
+			<div class="interactive-stage-grid">
+				<!-- Stage Left: Interactive Modal Simulation -->
+				<div class="stage-canvas">
+					<div class="speed-logger-sheet">
+						<div class="speed-sheet-header">
+							<div style="display:flex; align-items:center; gap:8px;">
+								<span style="font-size:1.3rem;">⚡</span>
+								<h3 style="margin:0; font-size:1.15rem; font-weight:700;">Quick Movement Log</h3>
+							</div>
+							<span class="header-pill" style="margin:0; font-size:0.75rem;">Instant</span>
+						</div>
+
+						<!-- Movement Selector Chips -->
+						<div class="movement-pills-scroll" id="p1-move-pills">
+							<button class="move-pill active" onclick="p1SelectMove('Push-ups', 'strength', 'calisthenics', this)">💪 Push-ups</button>
+							<button class="move-pill" onclick="p1SelectMove('Pull-ups', 'strength', 'calisthenics', this)">🧗 Pull-ups</button>
+							<button class="move-pill" onclick="p1SelectMove('Dips', 'strength', 'calisthenics', this)">🤸 Dips</button>
+							<button class="move-pill" onclick="p1SelectMove('Air Squats', 'strength', 'calisthenics', this)">🦵 Squats</button>
+							<button class="move-pill" onclick="p1SelectMove('Plank (sec)', 'core', 'calisthenics', this)">⏱ Plank</button>
+						</div>
+
+						<!-- Giant Reps Counter -->
+						<div class="rep-hero-display">
+							<div id="p1-rep-count" class="rep-huge-number">30</div>
+							<div id="p1-unit-label" class="rep-hero-label">PUSH-UPS REPS</div>
+
+							<div class="rep-stepper-btn-row">
+								<button class="stepper-circle-btn" onclick="p1AdjustReps(-5)" title="Minus 5">−</button>
+								<button class="stepper-circle-btn" onclick="p1AdjustReps(1)" title="Plus 1" style="font-size:1rem;">+1</button>
+								<button class="stepper-circle-btn" onclick="p1AdjustReps(5)" title="Plus 5">+</button>
+							</div>
+						</div>
+
+						<!-- Speed Increment Pills -->
+						<div class="speed-increments-grid">
+							<button class="speed-inc-btn" onclick="p1SetReps(10)">10</button>
+							<button class="speed-inc-btn" onclick="p1SetReps(20)">20</button>
+							<button class="speed-inc-btn" onclick="p1SetReps(30)">30</button>
+							<button class="speed-inc-btn" onclick="p1SetReps(50)">50</button>
+							<button class="speed-inc-btn" onclick="p1AdjustReps(10)">+10</button>
+							<button class="speed-inc-btn" onclick="p1AdjustReps(25)">+25</button>
+							<button class="speed-inc-btn" onclick="p1AdjustReps(50)">+50</button>
+							<button class="speed-inc-btn" onclick="p1SetReps(0)" style="color:var(--danger);">Clear</button>
+						</div>
+
+						<!-- Multi-set checkbox toggle -->
+						<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; font-size:0.88rem; color:var(--proto-muted);">
+							<label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+								<input type="checkbox" id="p1-multiset" onchange="p1ToggleMultiSet(this)">
+								<span>Log as 3 Sets (10, 10, 10)</span>
+							</label>
+							<span id="p1-time-est">⏱ ~2 mins</span>
+						</div>
+
+						<!-- Action Button -->
+						<button class="speed-log-btn" onclick="p1Submit()">
+							<span>⚡ Log Workout</span>
+						</button>
+					</div>
+				</div>
+
+				<!-- Stage Right: Live Stats Engine Simulator -->
+				<div class="stage-inspector">
+					<div class="inspector-header">
+						<span class="inspector-title">📊 Live Stats & DB Wire</span>
+						<span class="header-pill">Realtime Preview</span>
+					</div>
+
+					<p style="margin:0; font-size:0.88rem; color:var(--proto-muted);">
+						When you tap <strong>Log Workout</strong>, here is how the data is packaged and parsed by <code>upsert_session()</code> in <code>db.py</code>:
+					</p>
+
+					<div class="stats-wire-metric-grid">
+						<div class="wire-metric-tile">
+							<div class="wire-metric-label">Daily Streak</div>
+							<div class="wire-metric-value" id="p1-wire-streak">🔥 6 <small>days</small></div>
+						</div>
+						<div class="wire-metric-tile">
+							<div class="wire-metric-label">Pushup PR</div>
+							<div class="wire-metric-value" id="p1-wire-pr" style="color:var(--proto-gold);">🏆 45 <small>reps</small></div>
+						</div>
+						<div class="wire-metric-tile">
+							<div class="wire-metric-label">Today's Pushups</div>
+							<div class="wire-metric-value" id="p1-wire-total">75 <small>total</small></div>
+						</div>
+						<div class="wire-metric-tile">
+							<div class="wire-metric-label">Milestone Badge</div>
+							<div class="wire-metric-value" id="p1-wire-badge" style="font-size:1rem;">🏅 Century Club</div>
+						</div>
+					</div>
+
+					<div>
+						<div class="wire-metric-label">Generated Session JSON Payload</div>
+						<div class="wire-json-box" id="p1-wire-json"></div>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<!-- ══════════════════════════════════════════════════════════════ -->
+		<!-- ── OPTION 2: LIVE TAP-TO-COUNT HUD & REST INTERVAL ────────── -->
+		<!-- ══════════════════════════════════════════════════════════════ -->
+		<section id="proto-2" class="prototype-view">
+			<div class="view-hero-card">
+				<div class="view-hero-top">
+					<div>
+						<h2 class="view-title">Option 2: Live Tap-to-Count HUD & Rest Interval</h2>
+						<p class="view-desc">
+							Designed for tracking pushups <em>while you do them</em>. Tap anywhere on the giant target area or hit <kbd>Space</kbd> for each pushup. Track multiple sets with automatic rest timer intervals and sound/vibration feedback.
+						</p>
+					</div>
+					<span class="header-pill">Active Workout HUD</span>
+				</div>
+			</div>
+
+			<div class="interactive-stage-grid">
+				<!-- Stage Left: Interactive Live Player HUD -->
+				<div class="stage-canvas">
+					<div class="live-counter-hud">
+						<div class="live-top-meta">
+							<div style="display:flex; align-items:center; gap:8px;">
+								<span style="font-size:1.2rem;">🥋</span>
+								<strong id="p2-move-name">Push-ups</strong>
+								<span class="header-pill" id="p2-set-pill">Set 1</span>
+							</div>
+							<div class="live-timer-chip" id="p2-timer-display">
+								⏱ 00:24
+							</div>
+						</div>
+
+						<!-- Giant Tap Target -->
+						<div class="tap-pad-surface" id="p2-tap-pad" onclick="p2TapRep()">
+							<div class="tap-huge-number" id="p2-live-count">18</div>
+							<div class="tap-hint-text">👆 Tap screen or press <kbd style="background:rgba(255,255,255,0.15); padding:2px 8px; border-radius:4px;">Space</kbd> for each rep</div>
+						</div>
+
+						<!-- Rest countdown container (initially hidden) -->
+						<div id="p2-rest-box" style="display:none; background:rgba(229,184,105,0.12); border:1px solid rgba(229,184,105,0.3); border-radius:var(--radius); padding:16px; margin-bottom:20px;">
+							<div style="color:var(--proto-gold); font-weight:700; font-size:0.9rem; text-transform:uppercase;">⏱ Rest Period</div>
+							<div style="font-size:2.2rem; font-weight:900; color:#ffffff;" id="p2-rest-timer">00:30</div>
+							<button class="btn btn-xs btn-ghost" style="margin-top:6px;" onclick="p2SkipRest()">Skip Rest →</button>
+						</div>
+
+						<!-- Bottom Action Controls -->
+						<div class="live-actions-row">
+							<button class="btn btn-sm btn-ghost" style="flex:1;" onclick="p2ResetSet()">
+								↺ Reset
+							</button>
+							<button class="btn btn-sm btn-ghost" style="flex:1.2; border-color:var(--proto-gold); color:var(--proto-gold);" onclick="p2FinishSet()">
+								☕ Complete Set & Rest
+							</button>
+							<button class="btn btn-sm btn-primary" style="flex:1.5;" onclick="p2CompleteWorkout()">
+								✓ Finish & Save Log
+							</button>
+						</div>
+
+						<!-- Completed sets summary pill row -->
+						<div style="margin-top:16px; display:flex; justify-content:center; gap:8px;" id="p2-completed-sets">
+							<!-- Populated via JS -->
+						</div>
+					</div>
+				</div>
+
+				<!-- Stage Right: Inspector -->
+				<div class="stage-inspector">
+					<div class="inspector-header">
+						<span class="inspector-title">📊 Multi-Set Session Structure</span>
+						<span class="header-pill">Accurate Duration</span>
+					</div>
+
+					<p style="margin:0; font-size:0.88rem; color:var(--proto-muted);">
+						Option 2 captures <strong>actual elapsed workout time</strong>, individual set counts, and rest periods. Here is how it feeds your personal records:
+					</p>
+
+					<div class="stats-wire-metric-grid">
+						<div class="wire-metric-tile">
+							<div class="wire-metric-label">Total Volume</div>
+							<div class="wire-metric-value" id="p2-wire-vol">18 <small>reps</small></div>
+						</div>
+						<div class="wire-metric-tile">
+							<div class="wire-metric-label">Best Set (PR candidate)</div>
+							<div class="wire-metric-value" id="p2-wire-best" style="color:var(--proto-gold);">18 <small>reps</small></div>
+						</div>
+						<div class="wire-metric-tile">
+							<div class="wire-metric-label">Active Time</div>
+							<div class="wire-metric-value" id="p2-wire-time">0:24 <small>min</small></div>
+						</div>
+						<div class="wire-metric-tile">
+							<div class="wire-metric-label">Muscles Worked</div>
+							<div class="wire-metric-value" style="font-size:0.95rem;">Chest · Triceps</div>
+						</div>
+					</div>
+
+					<div>
+						<div class="wire-metric-label">Live Session Payload Snapshot</div>
+						<div class="wire-json-box" id="p2-wire-json"></div>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<!-- ══════════════════════════════════════════════════════════════ -->
+		<!-- ── OPTION 3: EXPRESS MULTI-MOVEMENT TABLE ─────────────────── -->
+		<!-- ══════════════════════════════════════════════════════════════ -->
+		<section id="proto-3" class="prototype-view">
+			<div class="view-hero-card">
+				<div class="view-hero-top">
+					<div>
+						<h2 class="view-title">Option 3: Express Multi-Movement Table</h2>
+						<p class="view-desc">
+							Designed for quick multi-exercise circuits (e.g. <em>Pushups + Pullups + Squats</em>) without needing to create a formal workout routine first. Add sets with 1 tap, adjust reps inline, and see instant total volume and muscle group distribution.
+						</p>
+					</div>
+					<span class="header-pill">Express Circuit Builder</span>
+				</div>
+			</div>
+
+			<div class="interactive-stage-grid">
+				<!-- Stage Left: Express Table -->
+				<div class="stage-canvas">
+					<div class="express-table-card">
+						<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+							<h3 style="margin:0; font-size:1.15rem; font-weight:700;">Express Circuit Log</h3>
+							<button class="btn btn-xs btn-primary" onclick="p3AddMovement()">+ Add Movement</button>
+						</div>
+
+						<div id="p3-rows-container">
+							<!-- Row 1: Pushups -->
+							<div class="express-row" data-move="Push-ups" data-cat="strength">
+								<div class="express-row-header">
+									<div style="display:flex; align-items:center; gap:8px;">
+										<strong>💪 Push-ups</strong>
+										<span class="header-pill" style="font-size:0.7rem; padding:2px 8px;">Calisthenics</span>
+									</div>
+									<button class="btn btn-xs btn-ghost" onclick="p3AddSet(this)">+ Add Set</button>
+								</div>
+								<div class="express-sets-wrap">
+									<div class="set-pill-box"><span>Set 1:</span> <input type="number" value="25" oninput="p3Recalc()"> <span>reps</span></div>
+									<div class="set-pill-box"><span>Set 2:</span> <input type="number" value="20" oninput="p3Recalc()"> <span>reps</span></div>
+									<div class="set-pill-box"><span>Set 3:</span> <input type="number" value="15" oninput="p3Recalc()"> <span>reps</span></div>
+								</div>
+							</div>
+
+							<!-- Row 2: Pull-ups -->
+							<div class="express-row" data-move="Pull-ups" data-cat="strength">
+								<div class="express-row-header">
+									<div style="display:flex; align-items:center; gap:8px;">
+										<strong>🧗 Pull-ups</strong>
+										<span class="header-pill" style="font-size:0.7rem; padding:2px 8px;">Back</span>
+									</div>
+									<button class="btn btn-xs btn-ghost" onclick="p3AddSet(this)">+ Add Set</button>
+								</div>
+								<div class="express-sets-wrap">
+									<div class="set-pill-box"><span>Set 1:</span> <input type="number" value="10" oninput="p3Recalc()"> <span>reps</span></div>
+									<div class="set-pill-box"><span>Set 2:</span> <input type="number" value="8" oninput="p3Recalc()"> <span>reps</span></div>
+								</div>
+							</div>
+						</div>
+
+						<!-- Circuit Summary Box -->
+						<div style="background:rgba(0,0,0,0.3); border-radius:var(--radius); padding:16px; margin:20px 0; display:flex; justify-content:space-between; align-items:center;">
+							<div>
+								<div style="font-size:0.8rem; color:var(--proto-muted); text-transform:uppercase; font-weight:700;">Total Circuit Volume</div>
+								<div style="font-size:1.6rem; font-weight:900; color:#ffffff;" id="p3-total-vol">78 reps · 5 sets</div>
+							</div>
+							<div style="text-align:right;">
+								<div style="font-size:0.8rem; color:var(--proto-muted); text-transform:uppercase; font-weight:700;">Target Anatomy</div>
+								<div style="font-size:0.9rem; color:var(--proto-accent-bright); font-weight:600;">Chest (77%) · Lats (23%)</div>
+							</div>
+						</div>
+
+						<!-- Option to save as routine template -->
+						<div style="margin-bottom:16px;">
+							<label style="display:flex; align-items:center; gap:8px; font-size:0.9rem; color:var(--proto-muted); cursor:pointer;">
+								<input type="checkbox" id="p3-save-routine">
+								<span>Also save this combination as a new routine in sidebar</span>
+							</label>
+						</div>
+
+						<button class="speed-log-btn" onclick="p3Submit()">
+							<span>💾 Save Circuit to History & Streak</span>
+						</button>
+					</div>
+				</div>
+
+				<!-- Stage Right: Inspector -->
+				<div class="stage-inspector">
+					<div class="inspector-header">
+						<span class="inspector-title">📊 Granular Multi-Movement Sync</span>
+						<span class="header-pill">Complete Anatomy Map</span>
+					</div>
+
+					<p style="margin:0; font-size:0.88rem; color:var(--proto-muted);">
+						Because each exercise has its own item in <code>exercises_json</code>, the stats engine independently updates:
+					</p>
+
+					<div class="stats-wire-metric-grid">
+						<div class="wire-metric-tile">
+							<div class="wire-metric-label">Pushup Total</div>
+							<div class="wire-metric-value">60 <small>reps</small></div>
+						</div>
+						<div class="wire-metric-tile">
+							<div class="wire-metric-label">Pullup Total</div>
+							<div class="wire-metric-value">18 <small>reps</small></div>
+						</div>
+						<div class="wire-metric-tile">
+							<div class="wire-metric-label">Strength Category</div>
+							<div class="wire-metric-value" style="color:var(--proto-accent-bright);">+5 <small>sets</small></div>
+						</div>
+						<div class="wire-metric-tile">
+							<div class="wire-metric-label">Session Streak</div>
+							<div class="wire-metric-value">🔥 +1 <small>day</small></div>
+						</div>
+					</div>
+
+					<div>
+						<div class="wire-metric-label">Generated Session JSON Payload</div>
+						<div class="wire-json-box" id="p3-wire-json"></div>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<!-- ══════════════════════════════════════════════════════════════ -->
+		<!-- ── OPTION 4: DAILY TARGET RING & 1-TAP WIDGET ─────────────── -->
+		<!-- ══════════════════════════════════════════════════════════════ -->
+		<section id="proto-4" class="prototype-view">
+			<div class="view-hero-card">
+				<div class="view-hero-top">
+					<div>
+						<h2 class="view-title">Option 4: Daily Target Ring & 1-Tap Widget</h2>
+						<p class="view-desc">
+							A persistent micro-widget embedded in the top of the <strong>Workouts</strong> or <strong>Stats</strong> view. Perfect for daily habit challenges (e.g. <em>100 pushups a day</em>). One tap on <code>+20</code> immediately logs reps and advances the ring without opening any modal dialog!
+						</p>
+					</div>
+					<span class="header-pill">Zero-Modal Habit Tracker</span>
+				</div>
+			</div>
+
+			<div class="interactive-stage-grid">
+				<!-- Stage Left: Habit Widget -->
+				<div class="stage-canvas">
+					<div class="quota-widget-card">
+						<div class="quota-ring-row">
+							<!-- Circular Progress Ring SVG -->
+							<svg class="quota-ring-svg" viewBox="0 0 100 100">
+								<circle class="quota-ring-bg" cx="50" cy="50" r="45" />
+								<circle id="p4-ring-circle" class="quota-ring-fill" cx="50" cy="50" r="45" />
+							</svg>
+
+							<div class="quota-details">
+								<h3 class="quota-title">Daily Pushup Target</h3>
+								<div class="quota-progress-text" id="p4-progress-text">65 / 100</div>
+								<div class="quota-streak-pill">
+									<span>🔥 7 Day Streak Active</span>
+									<span>·</span>
+									<span id="p4-percent-text">65% complete</span>
+								</div>
+							</div>
+						</div>
+
+						<!-- 1-Tap Quick Increment Chips -->
+						<div>
+							<div style="font-size:0.8rem; font-weight:700; text-transform:uppercase; color:var(--proto-muted); margin-bottom:8px;">
+								⚡ 1-Tap Fast Log (Click to test):
+							</div>
+							<div class="quota-fast-actions">
+								<button class="quota-tap-chip" onclick="p4AddQuick(10)">+10 reps</button>
+								<button class="quota-tap-chip" onclick="p4AddQuick(20)">+20 reps</button>
+								<button class="quota-tap-chip" onclick="p4AddQuick(35)">+35 reps</button>
+								<button class="quota-tap-chip" onclick="p4Reset()" style="flex:0.6; color:var(--proto-muted); font-size:0.85rem;">Reset</button>
+							</div>
+						</div>
+
+						<!-- Today's Micro-Log History Timeline -->
+						<div style="background:rgba(0,0,0,0.3); border-radius:var(--radius); padding:16px; margin-top:8px;">
+							<div style="font-size:0.82rem; font-weight:700; color:var(--proto-muted); text-transform:uppercase; margin-bottom:10px;">
+								Today's Logged Sets:
+							</div>
+							<div id="p4-timeline-list" style="display:flex; flex-direction:column; gap:8px; font-size:0.88rem;">
+								<div style="display:flex; justify-content:space-between; color:var(--proto-text);">
+									<span>09:15 AM · Push-ups</span>
+									<strong>25 reps</strong>
+								</div>
+								<div style="display:flex; justify-content:space-between; color:var(--proto-text);">
+									<span>11:40 AM · Push-ups</span>
+									<strong>20 reps</strong>
+								</div>
+								<div style="display:flex; justify-content:space-between; color:var(--proto-text);">
+									<span>01:10 PM · Push-ups</span>
+									<strong>20 reps</strong>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Stage Right: Inspector -->
+				<div class="stage-inspector">
+					<div class="inspector-header">
+						<span class="inspector-title">📊 Aggregation & Heatmap Effect</span>
+						<span class="header-pill">Daily Cumulative</span>
+					</div>
+
+					<p style="margin:0; font-size:0.88rem; color:var(--proto-muted);">
+						Each quick tap writes a mini completed session timestamped to the minute. The backend dynamically merges them into the daily calendar heatmap:
+					</p>
+
+					<div class="stats-wire-metric-grid">
+						<div class="wire-metric-tile">
+							<div class="wire-metric-label">Today's Cumulative</div>
+							<div class="wire-metric-value" id="p4-wire-cum">65 <small>reps</small></div>
+						</div>
+						<div class="wire-metric-tile">
+							<div class="wire-metric-label">Remaining to Target</div>
+							<div class="wire-metric-value" id="p4-wire-rem" style="color:var(--proto-gold);">35 <small>reps</small></div>
+						</div>
+						<div class="wire-metric-tile">
+							<div class="wire-metric-label">Calendar Heatmap Day</div>
+							<div class="wire-metric-value" style="color:var(--proto-accent-bright);">🟩 Level 3</div>
+						</div>
+						<div class="wire-metric-tile">
+							<div class="wire-metric-label">Milestone Target</div>
+							<div class="wire-metric-value" style="font-size:0.95rem;">Century Club (100)</div>
+						</div>
+					</div>
+
+					<div>
+						<div class="wire-metric-label">Merged Session Records for Today</div>
+						<div class="wire-json-box" id="p4-wire-json"></div>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<!-- ══════════════════════════════════════════════════════════════ -->
+		<!-- ── OPTION COMPARISON & TRADE-OFF MATRIX ───────────────────── -->
+		<!-- ══════════════════════════════════════════════════════════════ -->
+		<section id="proto-compare" class="prototype-view">
+			<div class="view-hero-card">
+				<h2 class="view-title">Side-by-Side Trade-off Matrix</h2>
+				<p class="view-desc">
+					Compare each approach across speed, stats fidelity, effort, and typical use cases:
+				</p>
+
+				<table class="compare-table">
+					<thead>
+						<tr>
+							<th>Option</th>
+							<th>Logging Speed</th>
+							<th>Stats & Streaks Quality</th>
+							<th>Best For</th>
+							<th>Implementation Location</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<td><strong>Option 1: Speed Numpad</strong></td>
+							<td>⚡ <strong>Fastest (~3 sec)</strong></td>
+							<td>⭐⭐⭐⭐⭐ Full PRs & Milestones</td>
+							<td>Spontaneous desk pushups, quick set logging</td>
+							<td>Top-bar <code>+ Quick Log</code> button or modal</td>
+						</tr>
+						<tr>
+							<td><strong>Option 2: Live Tap HUD</strong></td>
+							<td>⏱️ Active (~1-3 min)</td>
+							<td>⭐⭐⭐⭐⭐ Real timer, rest tracking & PRs</td>
+							<td>AMRAP pushup tests, hands-free phone tapping</td>
+							<td>Full-screen micro player overlay</td>
+						</tr>
+						<tr>
+							<td><strong>Option 3: Express Table</strong></td>
+							<td>📋 Moderate (~15 sec)</td>
+							<td>⭐⭐⭐⭐⭐ Multi-movement anatomy map</td>
+							<td>Casual 3-movement circuits without saved routines</td>
+							<td>Inline editor card or drawer</td>
+						</tr>
+						<tr>
+							<td><strong>Option 4: Daily Target Ring</strong></td>
+							<td>🎯 <strong>1-Tap Instant</strong></td>
+							<td>⭐⭐⭐⭐⭐ Daily habit tracking & streak heatmaps</td>
+							<td>100-pushup daily challenges & habit building</td>
+							<td>Sticky widget in Workouts/Stats tab header</td>
+						</tr>
+					</tbody>
+				</table>
+
+				<div style="margin-top:24px; padding:18px; background:rgba(95,167,120,0.12); border:1px solid var(--proto-border); border-radius:var(--radius);">
+					<strong style="color:var(--proto-accent-bright); font-size:1.05rem;">💡 Recommended Combination:</strong>
+					<p style="margin:8px 0 0; color:var(--proto-text); font-size:0.95rem; line-height:1.5;">
+						Implement <strong>Option 1 (Speed Numpad Modal)</strong> as the primary universal logger accessible from anywhere via the topbar, paired with <strong>Option 4's 1-tap quick buttons</strong> directly on the Workouts tab for daily pushup consistency!
+					</p>
+				</div>
+			</div>
+		</section>
+
+	</div>
+
+	<!-- Floating Feedback Toast -->
+	<div id="toast-pill" class="toast-pill">
+		<span style="font-size:1.3rem;">🎉</span>
+		<div id="toast-text">Quick Workout Logged!</div>
+	</div>
+
+	<!-- ── Interactive JavaScript Logic ────────────────────────────── -->
+	<script>
+		// Switch Prototype Tabs
+		function switchProto(id) {
+			document.querySelectorAll('.prototype-view').forEach(p => p.classList.remove('active'));
+			document.querySelectorAll('.proto-tab-btn').forEach(b => b.classList.remove('active'));
+			const target = document.getElementById(id);
+			if (target) target.classList.add('active');
+			event.currentTarget.classList.add('active');
+		}
+
+		// Toast Utility
+		function showToast(msg) {
+			const toast = document.getElementById('toast-pill');
+			const text = document.getElementById('toast-text');
+			text.innerHTML = msg;
+			toast.classList.add('show');
+			setTimeout(() => {
+				toast.classList.remove('show');
+			}, 3200);
+		}
+
+		// ── OPTION 1 LOGIC ───────────────────────────────────────────
+		let p1State = {
+			reps: 30,
+			name: 'Push-ups',
+			category: 'strength',
+			discipline: 'calisthenics',
+			isMultiSet: false
+		};
+
+		function p1SelectMove(name, cat, disc, btn) {
+			p1State.name = name;
+			p1State.category = cat;
+			p1State.discipline = disc;
+			document.querySelectorAll('#p1-move-pills .move-pill').forEach(b => b.classList.remove('active'));
+			btn.classList.add('active');
+			document.getElementById('p1-unit-label').textContent = (name.toUpperCase()) + ' REPS';
+			p1UpdateWire();
+		}
+
+		function p1AdjustReps(delta) {
+			p1State.reps = Math.max(0, p1State.reps + delta);
+			document.getElementById('p1-rep-count').textContent = p1State.reps;
+			p1UpdateWire();
+		}
+
+		function p1SetReps(val) {
+			p1State.reps = val;
+			document.getElementById('p1-rep-count').textContent = p1State.reps;
+			p1UpdateWire();
+		}
+
+		function p1ToggleMultiSet(chk) {
+			p1State.isMultiSet = chk.checked;
+			document.getElementById('p1-time-est').textContent = chk.checked ? '⏱ ~4 mins (3 sets)' : '⏱ ~1 min (1 burst)';
+			p1UpdateWire();
+		}
+
+		function p1UpdateWire() {
+			const totalReps = p1State.reps;
+			const isMulti = p1State.isMultiSet;
+			const sessionExercises = isMulti ? [
+				{ id: 'ex-1', name: p1State.name, category: p1State.category, discipline: p1State.discipline, reps: Math.round(totalReps / 3) },
+				{ id: 'ex-2', name: p1State.name, category: p1State.category, discipline: p1State.discipline, reps: Math.round(totalReps / 3) },
+				{ id: 'ex-3', name: p1State.name, category: p1State.category, discipline: p1State.discipline, reps: totalReps - 2 * Math.round(totalReps / 3) }
+			] : [
+				{ id: 'ex-1', name: p1State.name, category: p1State.category, discipline: p1State.discipline, reps: totalReps }
+			];
+
+			const payload = {
+				id: 'quick_' + Date.now().toString(36),
+				routine_title: 'Quick ' + p1State.name,
+				started_at: new Date().toISOString(),
+				completed_at: new Date().toISOString(),
+				duration_seconds: isMulti ? 240 : 60,
+				completed_steps: sessionExercises.length,
+				total_steps: sessionExercises.length,
+				status: 'completed',
+				is_preview: 0,
+				exercises: sessionExercises
+			};
+
+			document.getElementById('p1-wire-json').textContent = JSON.stringify(payload, null, 2);
+			document.getElementById('p1-wire-total').innerHTML = `${45 + totalReps} <small>total</small>`;
+			if (totalReps > 45) {
+				document.getElementById('p1-wire-pr').innerHTML = `🏆 ${totalReps} <small>NEW PR!</small>`;
+			}
+		}
+
+		function p1Submit() {
+			showToast(`<strong>Logged!</strong> 🔥 +${p1State.reps} ${p1State.name} counted toward today's streak!`);
+		}
+
+		// ── OPTION 2 LOGIC ───────────────────────────────────────────
+		let p2State = {
+			currentSetCount: 18,
+			setIndex: 1,
+			timerSeconds: 24,
+			timerInterval: null,
+			completedSets: []
+		};
+
+		function p2TapRep() {
+			p2State.currentSetCount++;
+			document.getElementById('p2-live-count').textContent = p2State.currentSetCount;
+			document.getElementById('p2-wire-vol').innerHTML = `${p2State.currentSetCount} <small>reps</small>`;
+			document.getElementById('p2-wire-best').innerHTML = `${p2State.currentSetCount} <small>reps</small>`;
+			p2UpdateWire();
+		}
+
+		function p2FinishSet() {
+			p2State.completedSets.push(p2State.currentSetCount);
+			const setBadge = `<span class="header-pill" style="font-size:0.75rem;">Set ${p2State.setIndex}: ${p2State.currentSetCount} reps</span>`;
+			document.getElementById('p2-completed-sets').innerHTML += setBadge;
+
+			p2State.setIndex++;
+			p2State.currentSetCount = 0;
+			document.getElementById('p2-live-count').textContent = 0;
+			document.getElementById('p2-set-pill').textContent = `Set ${p2State.setIndex}`;
+
+			// Show rest box
+			document.getElementById('p2-rest-box').style.display = 'block';
+			let restSec = 30;
+			const rTimer = document.getElementById('p2-rest-timer');
+			const interval = setInterval(() => {
+				restSec--;
+				rTimer.textContent = `00:${restSec < 10 ? '0' : ''}${restSec}`;
+				if (restSec <= 0) {
+					clearInterval(interval);
+					p2SkipRest();
+				}
+			}, 1000);
+			p2State.restInterval = interval;
+			p2UpdateWire();
+		}
+
+		function p2SkipRest() {
+			if (p2State.restInterval) clearInterval(p2State.restInterval);
+			document.getElementById('p2-rest-box').style.display = 'none';
+		}
+
+		function p2ResetSet() {
+			p2State.currentSetCount = 0;
+			document.getElementById('p2-live-count').textContent = 0;
+			p2UpdateWire();
+		}
+
+		function p2CompleteWorkout() {
+			const total = p2State.completedSets.reduce((a, b) => a + b, 0) + p2State.currentSetCount;
+			showToast(`<strong>Micro-session completed!</strong> 🔥 Total: ${total} Push-ups saved.`);
+		}
+
+		function p2UpdateWire() {
+			const allReps = [...p2State.completedSets];
+			if (p2State.currentSetCount > 0) allReps.push(p2State.currentSetCount);
+
+			const payload = {
+				id: 'live_' + Date.now().toString(36),
+				routine_title: 'Live Pushups Workout',
+				started_at: new Date(Date.now() - 36000).toISOString(),
+				completed_at: new Date().toISOString(),
+				duration_seconds: 36,
+				status: 'completed',
+				exercises: allReps.map((r, i) => ({
+					id: 'pushup-step-' + (i + 1),
+					name: 'Push-ups',
+					category: 'strength',
+					discipline: 'calisthenics',
+					reps: r
+				}))
+			};
+			document.getElementById('p2-wire-json').textContent = JSON.stringify(payload, null, 2);
+		}
+
+		// Keyboard spacebar listener for Option 2
+		window.addEventListener('keydown', (e) => {
+			if (e.code === 'Space' && document.getElementById('proto-2').classList.contains('active')) {
+				e.preventDefault();
+				p2TapRep();
+			}
+		});
+
+		// ── OPTION 3 LOGIC ───────────────────────────────────────────
+		function p3AddSet(btn) {
+			const wrap = btn.closest('.express-row').querySelector('.express-sets-wrap');
+			const setNum = wrap.querySelectorAll('.set-pill-box').length + 1;
+			const div = document.createElement('div');
+			div.className = 'set-pill-box';
+			div.innerHTML = `<span>Set ${setNum}:</span> <input type="number" value="12" oninput="p3Recalc()"> <span>reps</span>`;
+			wrap.appendChild(div);
+			p3Recalc();
+		}
+
+		function p3AddMovement() {
+			const container = document.getElementById('p3-rows-container');
+			const row = document.createElement('div');
+			row.className = 'express-row';
+			row.dataset.move = 'Air Squats';
+			row.dataset.cat = 'legs';
+			row.innerHTML = `
+				<div class="express-row-header">
+					<div style="display:flex; align-items:center; gap:8px;">
+						<strong>🦵 Air Squats</strong>
+						<span class="header-pill" style="font-size:0.7rem; padding:2px 8px;">Legs</span>
+					</div>
+					<button class="btn btn-xs btn-ghost" onclick="p3AddSet(this)">+ Add Set</button>
+				</div>
+				<div class="express-sets-wrap">
+					<div class="set-pill-box"><span>Set 1:</span> <input type="number" value="20" oninput="p3Recalc()"> <span>reps</span></div>
+				</div>
+			`;
+			container.appendChild(row);
+			p3Recalc();
+		}
+
+		function p3Recalc() {
+			let totalReps = 0;
+			let totalSets = 0;
+			const exercisesPayload = [];
+
+			document.querySelectorAll('.express-row').forEach(row => {
+				const name = row.dataset.move;
+				const cat = row.dataset.cat;
+				row.querySelectorAll('.set-pill-box input').forEach((inp, idx) => {
+					const reps = parseInt(inp.value) || 0;
+					totalReps += reps;
+					totalSets++;
+					exercisesPayload.push({
+						id: `step-${name.toLowerCase()}-${idx+1}`,
+						name: name,
+						category: cat,
+						discipline: 'calisthenics',
+						reps: reps
+					});
+				});
+			});
+
+			document.getElementById('p3-total-vol').textContent = `${totalReps} reps · ${totalSets} sets`;
+			const payload = {
+				id: 'circuit_' + Date.now().toString(36),
+				routine_title: 'Express Circuit',
+				started_at: new Date(Date.now() - 300000).toISOString(),
+				completed_at: new Date().toISOString(),
+				duration_seconds: 300,
+				exercises: exercisesPayload
+			};
+			document.getElementById('p3-wire-json').textContent = JSON.stringify(payload, null, 2);
+		}
+
+		function p3Submit() {
+			showToast('<strong>Saved!</strong> Circuit saved to history, PRs updated!');
+		}
+
+		// ── OPTION 4 LOGIC ───────────────────────────────────────────
+		let p4Total = 65;
+		const p4Target = 100;
+
+		function p4AddQuick(val) {
+			p4Total += val;
+			p4Render();
+			showToast(`<strong>+${val} Pushups Logged!</strong> Today's total: ${p4Total} reps.`);
+		}
+
+		function p4Reset() {
+			p4Total = 0;
+			p4Render();
+		}
+
+		function p4Render() {
+			document.getElementById('p4-progress-text').textContent = `${p4Total} / ${p4Target}`;
+			const pct = Math.min(100, Math.round((p4Total / p4Target) * 100));
+			document.getElementById('p4-percent-text').textContent = `${pct}% complete`;
+			document.getElementById('p4-wire-cum').innerHTML = `${p4Total} <small>reps</small>`;
+			document.getElementById('p4-wire-rem').innerHTML = `${Math.max(0, p4Target - p4Total)} <small>reps</small>`;
+
+			// Update SVG circle stroke-dashoffset (perimeter ~ 283)
+			const ring = document.getElementById('p4-ring-circle');
+			const maxOffset = 283;
+			const newOffset = maxOffset - (maxOffset * (Math.min(100, pct) / 100));
+			ring.style.strokeDashoffset = newOffset;
+
+			// Add entry to timeline
+			const timeline = document.getElementById('p4-timeline-list');
+			const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+			const row = document.createElement('div');
+			row.style.display = 'flex';
+			row.style.justifyContent = 'space-between';
+			row.style.color = 'var(--proto-accent-bright)';
+			row.innerHTML = `<span>${timeStr} · Push-ups</span><strong>+${p4Total > 65 ? 'Added' : ''}</strong>`;
+			timeline.prepend(row);
+
+			const payload = {
+				date: new Date().toISOString().split('T')[0],
+				daily_cumulative_pushups: p4Total,
+				status: p4Total >= p4Target ? 'TARGET REACHED 🎯' : 'IN PROGRESS'
+			};
+			document.getElementById('p4-wire-json').textContent = JSON.stringify(payload, null, 2);
+		}
+
+		// Init on load
+		p1UpdateWire();
+		p2UpdateWire();
+		p3Recalc();
+		p4Render();
+	</script>
+</body>
+</html>

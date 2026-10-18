@@ -44,6 +44,7 @@ import { loadCombos, renderCombosCatalog } from './combos.js';
 import { renderAnatomyExplorer } from './body_map.js';
 import { initTheme } from './theme.js';
 import { showRoutinePickerPopover } from './routine_picker.js';
+import { showQuickLogModal } from './quick_log.js';
 
 let routines = [];
 let selectedRoutineId = null;
@@ -203,6 +204,7 @@ async function init() {
 function cacheDom() {
 	dom.routineList = document.getElementById('routine-list');
 	dom.addWorkoutBtn = document.getElementById('add-workout-btn');
+	dom.quickLogBtn = document.getElementById('quick-log-btn');
 	dom.syncStatus = document.getElementById('sync-status');
 	dom.emptyView = document.getElementById('empty-view');
 	dom.routineView = document.getElementById('routine-view');
@@ -706,6 +708,17 @@ function toggleSidebar(hide) {
  */
 function bindEvents() {
 	dom.addWorkoutBtn.addEventListener('click', handleAddWorkout);
+	if (dom.quickLogBtn) {
+		dom.quickLogBtn.addEventListener('click', () => {
+			showQuickLogModal({
+				onLogged: () => {
+					if (currentTab === 'stats' && dom.statsView) {
+						renderStatsDashboard(dom.statsView);
+					}
+				}
+			});
+		});
+	}
 	const mainContent = document.querySelector('.main-content');
 	if (mainContent) {
 		mainContent.addEventListener('wheel', (event) => {

@@ -14,6 +14,14 @@ import {
 let cachedStats = null;
 
 /**
+ * Reset cached stats so the next Stats tab view pulls fresh data after a workout is logged.
+ * Preserves full SWR caching speed during normal navigation.
+ */
+export function invalidateStatsCache() {
+	cachedStats = null;
+}
+
+/**
  * Render the stats dashboard inside container.
  * @param {HTMLElement} container
  */
