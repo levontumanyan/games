@@ -1,10 +1,57 @@
 import json
+import re
 import secrets
 import sqlite3
 import string
+import urllib.parse
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
+
+
+def parse_youtube_music_url(url_str: str) -> dict[str, Any]:
+	if not url_str:
+		return {"videoId": None, "playlistId": None, "isPlaylist": False}
+	clean = url_str.strip()
+	if re.match(r"^[A-Za-z0-9_-]{11}$", clean):
+		return {"videoId": clean, "playlistId": None, "isPlaylist": False}
+
+	try:
+		parsed = urllib.parse.urlparse(clean)
+		hostname = parsed.netloc.replace("www.", "").lower()
+		qs = urllib.parse.parse_qs(parsed.query)
+		playlist_id = qs.get("list", [None])[0]
+		video_id = qs.get("v", [None])[0]
+
+		if hostname in ("youtube.com", "music.youtube.com"):
+			if parsed.path == "/watch":
+				return {
+					"videoId": video_id,
+					"playlistId": playlist_id,
+					"isPlaylist": False,
+				}
+			elif parsed.path == "/playlist" and playlist_id:
+				return {
+					"videoId": None,
+					"playlistId": playlist_id,
+					"isPlaylist": True,
+				}
+			elif parsed.path.startswith("/shorts/"):
+				sid = parsed.path.split("/shorts/")[1].split("/")[0].split("?")[0]
+				return {"videoId": sid, "playlistId": None, "isPlaylist": False}
+			elif parsed.path.startswith("/embed/"):
+				eid = parsed.path.split("/embed/")[1].split("/")[0].split("?")[0]
+				return {"videoId": eid, "playlistId": None, "isPlaylist": False}
+		elif hostname == "youtu.be":
+			vid = parsed.path.lstrip("/").split("/")[0].split("?")[0]
+			return {"videoId": vid, "playlistId": playlist_id, "isPlaylist": False}
+
+		if playlist_id:
+			return {"videoId": video_id, "playlistId": playlist_id, "isPlaylist": video_id is None}
+	except Exception:
+		pass
+
+	return {"videoId": None, "playlistId": None, "isPlaylist": False}
 
 
 class Database:
@@ -1127,6 +1174,118 @@ media_assets_json TEXT NOT NULL DEFAULT '[]',
 				return False
 			return True
 
+	def _find_routine_row(
+		self, conn: sqlite3.Connection, clean_user: str, clean_id: str
+	) -> sqlite3.Row | None:
+		row = conn.execute(
+			"SELECT id, title, steps_json, music_tracks_json FROM routines WHERE user_id = ? AND id = ?",
+			(clean_user, clean_id),
+		).fetchone()
+		if not row:
+			rows = conn.execute(
+				"SELECT id, title, steps_json, music_tracks_json FROM routines WHERE user_id = ?",
+				(clean_user,),
+			).fetchall()
+			for r in rows:
+				slug = r["title"].lower().replace(" ", "-").replace("_", "-")
+				if r["title"].lower() == clean_id.lower() or slug == clean_id.lower():
+					return r
+		return row
+
+	def get_routine_music_tracks(
+		self, user_id: str, routine_id: str
+	) -> list[dict[str, Any]] | None:
+		clean_user = user_id.strip().lower()
+		clean_id = routine_id.strip()
+		with self.get_connection() as conn:
+			row = self._find_routine_row(conn, clean_user, clean_id)
+			if not row:
+				return None
+			try:
+				return json.loads(row["music_tracks_json"] or "[]")
+			except Exception:
+				return []
+
+	def add_routine_music_track(
+		self, user_id: str, routine_id: str, track: dict[str, Any]
+	) -> dict[str, Any] | None:
+		clean_user = user_id.strip().lower()
+		clean_id = routine_id.strip()
+		with self.get_connection() as conn:
+			row = self._find_routine_row(conn, clean_user, clean_id)
+			if not row:
+				return None
+			actual_id = row["id"]
+			try:
+				tracks = json.loads(row["music_tracks_json"] or "[]")
+			except Exception:
+				tracks = []
+
+			t_id = (
+				track.get("id") or f"track_{int(datetime.now().timestamp())}_{secrets.token_hex(3)}"
+			)
+			url = track.get("url")
+			video_id = track.get("videoId") or track.get("video_id")
+			playlist_id = track.get("playlistId") or track.get("playlist_id")
+			is_playlist = track.get("isPlaylist")
+			if is_playlist is None:
+				is_playlist = track.get("is_playlist")
+
+			if url and (not video_id and not playlist_id):
+				parsed_yt = parse_youtube_music_url(url)
+				video_id = parsed_yt.get("videoId")
+				playlist_id = parsed_yt.get("playlistId")
+				if is_playlist is None:
+					is_playlist = parsed_yt.get("isPlaylist", False)
+
+			label = track.get("label") or ("YouTube Playlist" if is_playlist else "Music Track")
+			normalized = {
+				"id": t_id,
+				"source": track.get("source", "youtube"),
+				"label": label,
+				"videoId": video_id,
+				"playlistId": playlist_id,
+				"isPlaylist": bool(is_playlist),
+			}
+			if track.get("fileId") or track.get("file_id"):
+				normalized["fileId"] = track.get("fileId") or track.get("file_id")
+			if track.get("fileName") or track.get("file_name"):
+				normalized["fileName"] = track.get("fileName") or track.get("file_name")
+			if url:
+				normalized["url"] = url
+
+			tracks.append(normalized)
+			now = datetime.now().isoformat()
+			conn.execute(
+				"UPDATE routines SET music_tracks_json = ?, updated_at = ? WHERE user_id = ? AND id = ?",
+				(json.dumps(tracks, ensure_ascii=False), now, clean_user, actual_id),
+			)
+			return normalized
+
+	def delete_routine_music_track(self, user_id: str, routine_id: str, track_id: str) -> bool:
+		clean_user = user_id.strip().lower()
+		clean_id = routine_id.strip()
+		clean_track_id = track_id.strip()
+		with self.get_connection() as conn:
+			row = self._find_routine_row(conn, clean_user, clean_id)
+			if not row:
+				return False
+			actual_id = row["id"]
+			try:
+				tracks = json.loads(row["music_tracks_json"] or "[]")
+			except Exception:
+				tracks = []
+			initial_len = len(tracks)
+			tracks = [t for t in tracks if str(t.get("id")) != clean_track_id]
+			if len(tracks) == initial_len:
+				return False
+			now = datetime.now().isoformat()
+			conn.execute(
+				"UPDATE routines SET music_tracks_json = ?, updated_at = ? WHERE user_id = ? AND id = ?",
+				(json.dumps(tracks, ensure_ascii=False), now, clean_user, actual_id),
+			)
+			return True
+
 	# ── Combos ───────────────────────────────────────────────────────────────
 
 	def list_combos(
@@ -1739,16 +1898,19 @@ media_assets_json TEXT NOT NULL DEFAULT '[]',
 		for k in keys_to_del:
 			self._stats_cache.pop(k, None)
 
-	def get_sessions(self, user_id: str, limit: int = 50) -> list[dict[str, Any]]:
+	def get_sessions(
+		self, user_id: str, limit: int = 50, order: str = "desc"
+	) -> list[dict[str, Any]]:
+		direction = "ASC" if str(order).strip().lower() == "asc" else "DESC"
 		with self.get_connection() as conn:
 			rows = conn.execute(
-				"""
+				f"""
 				SELECT
 					id, user_id, routine_id, routine_title, started_at, completed_at,
 					duration_seconds, completed_steps, total_steps, status, is_preview, exercises_json
 				FROM sessions
 				WHERE user_id = ? AND is_preview = 0
-				ORDER BY started_at DESC
+				ORDER BY started_at {direction}
 				LIMIT ?
 				""",
 				(user_id, limit),

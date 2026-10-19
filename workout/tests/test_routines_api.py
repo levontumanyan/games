@@ -547,3 +547,100 @@ def test_granular_step_reorder_graceful_trailing(client: TestClient):
 	routine = reorder_res.json()["routine"]
 	step_ids = [s["id"] for s in routine["steps"]]
 	assert step_ids == ["s-3", "s-1", "s-2", "s-4"]
+
+
+def test_routine_music_endpoints_and_url_parsing(client: TestClient):
+	# Create routine without music
+	client.put(
+		"/api/routines/r-music-test",
+		json={
+			"title": "Music Routine Test",
+			"steps": [{"label": "Step 1", "durationSeconds": 30}],
+		},
+		headers={"X-User-Id": "levon"},
+	)
+
+	# 1. GET music (should be empty list)
+	res = client.get("/api/routines/r-music-test/music", headers={"X-User-Id": "levon"})
+	assert res.status_code == 200
+	assert res.json() == []
+
+	# 2. POST music with YouTube Music Playlist URL (auto-parsing test)
+	add_pl_res = client.post(
+		"/api/routines/r-music-test/music",
+		json={
+			"url": "https://music.youtube.com/playlist?list=OLAK5uy_lIHIK_DkEwWuvS6ibD_HcGpOqxfdK5XZI&si=qZlBHAQsUyUlt2QX",
+			"label": "San Lorenzo Butteler",
+		},
+		headers={"X-User-Id": "levon"},
+	)
+	assert add_pl_res.status_code == 200
+	track1 = add_pl_res.json()["track"]
+	assert track1["playlistId"] == "OLAK5uy_lIHIK_DkEwWuvS6ibD_HcGpOqxfdK5XZI"
+	assert track1["isPlaylist"] is True
+	assert track1["label"] == "San Lorenzo Butteler"
+
+	# 3. POST music with standard YouTube Video URL (auto-parsing test)
+	add_vid_res = client.post(
+		"/api/routines/r-music-test/music",
+		json={
+			"url": "https://www.youtube.com/watch?v=0qJpElfT9EI",
+			"label": "House Beat",
+		},
+		headers={"X-User-Id": "levon"},
+	)
+	assert add_vid_res.status_code == 200
+	track2 = add_vid_res.json()["track"]
+	assert track2["videoId"] == "0qJpElfT9EI"
+	assert track2["isPlaylist"] is False
+
+	# 4. GET music (should have 2 tracks)
+	get_music_res = client.get("/api/routines/r-music-test/music", headers={"X-User-Id": "levon"})
+	assert get_music_res.status_code == 200
+	tracks = get_music_res.json()
+	assert len(tracks) == 2
+
+	# 5. DELETE music track
+	del_res = client.delete(
+		f"/api/routines/r-music-test/music/{track1['id']}",
+		headers={"X-User-Id": "levon"},
+	)
+	assert del_res.status_code == 200
+	assert del_res.json()["deleted_track_id"] == track1["id"]
+
+	# Verify 1 track remains
+	get_music_after = client.get("/api/routines/r-music-test/music", headers={"X-User-Id": "levon"})
+	assert len(get_music_after.json()) == 1
+	assert get_music_after.json()[0]["id"] == track2["id"]
+
+
+def test_session_ordering_asc_and_desc(client: TestClient):
+	# Create two sessions with distinct started_at timestamps
+	s1 = {
+		"id": "s-older",
+		"started_at": "2026-10-01T10:00:00Z",
+		"duration_seconds": 60,
+		"status": "completed",
+	}
+	s2 = {
+		"id": "s-newer",
+		"started_at": "2026-10-18T10:00:00Z",
+		"duration_seconds": 60,
+		"status": "completed",
+	}
+	client.post("/api/sessions", json=s1, headers={"X-User-Id": "levon"})
+	client.post("/api/sessions", json=s2, headers={"X-User-Id": "levon"})
+
+	# Test default / desc order (newest first)
+	res_desc = client.get("/api/sessions?order=desc", headers={"X-User-Id": "levon"})
+	assert res_desc.status_code == 200
+	sessions_desc = res_desc.json()
+	assert sessions_desc[0]["id"] == "s-newer"
+	assert sessions_desc[1]["id"] == "s-older"
+
+	# Test asc order (oldest first)
+	res_asc = client.get("/api/sessions?order=asc", headers={"X-User-Id": "levon"})
+	assert res_asc.status_code == 200
+	sessions_asc = res_asc.json()
+	assert sessions_asc[0]["id"] == "s-older"
+	assert sessions_asc[1]["id"] == "s-newer"

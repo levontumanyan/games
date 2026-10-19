@@ -122,6 +122,74 @@ class ComboCreate(BaseSchema):
 	)
 
 
+class MusicTrack(BaseSchema):
+	id: str = Field(..., description="Unique track identifier")
+	source: str = Field(
+		default="youtube",
+		description="Audio source: youtube (video or playlist) or file (uploaded audio)",
+	)
+	label: str = Field(default="Music Track", description="Track display name or label")
+	videoId: str | None = Field(
+		default=None,
+		validation_alias=AliasChoices("videoId", "video_id"),
+		description="YouTube video ID if track is a single video",
+	)
+	playlistId: str | None = Field(
+		default=None,
+		validation_alias=AliasChoices("playlistId", "playlist_id"),
+		description="YouTube playlist ID if track is a playlist or album",
+	)
+	isPlaylist: bool = Field(
+		default=False,
+		validation_alias=AliasChoices("isPlaylist", "is_playlist"),
+		description="True if track is a YouTube playlist or album",
+	)
+	fileId: str | None = Field(
+		default=None,
+		validation_alias=AliasChoices("fileId", "file_id"),
+		description="Uploaded audio file ID",
+	)
+	fileName: str | None = Field(
+		default=None,
+		validation_alias=AliasChoices("fileName", "file_name"),
+		description="Original uploaded audio filename",
+	)
+	url: str | None = Field(
+		default=None,
+		description="Source URL (YouTube, YouTube Music, or direct audio link)",
+	)
+
+
+class MusicTrackAdd(BaseSchema):
+	url: str | None = Field(
+		default=None,
+		description="Direct YouTube, YouTube Music, or audio URL (auto-parsed by backend if provided)",
+	)
+	source: str = Field(
+		default="youtube",
+		description="Audio source: youtube or file",
+	)
+	label: str | None = Field(
+		default=None,
+		description="Optional custom display title or label (falls back to playlist/track name)",
+	)
+	videoId: str | None = Field(
+		default=None,
+		validation_alias=AliasChoices("videoId", "video_id"),
+		description="Optional YouTube video ID if known",
+	)
+	playlistId: str | None = Field(
+		default=None,
+		validation_alias=AliasChoices("playlistId", "playlist_id"),
+		description="Optional YouTube playlist ID if known",
+	)
+	isPlaylist: bool | None = Field(
+		default=None,
+		validation_alias=AliasChoices("isPlaylist", "is_playlist"),
+		description="Optional flag indicating whether target is a playlist",
+	)
+
+
 class RoutineStep(BaseSchema):
 	id: str | None = Field(default=None, description="Step identifier")
 	type: str = Field(
@@ -174,7 +242,9 @@ class RoutineStep(BaseSchema):
 	startSeconds: float | None = Field(default=None, description="Video clip start time in seconds")
 	endSeconds: float | None = Field(default=None, description="Video clip end time in seconds")
 	speed: float | None = Field(default=None, description="Playback speed multiplier")
-	musicTracks: list[Any] = Field(default_factory=list, description="Background music tracks")
+	musicTracks: list[MusicTrack | dict[str, Any]] = Field(
+		default_factory=list, description="Background music tracks"
+	)
 	combo_id: str | None = Field(
 		default=None, description="Associated combo ID if linked to a combo"
 	)
@@ -232,7 +302,7 @@ class RoutineUpsert(BaseSchema):
 	steps: list[RoutineStep | dict[str, Any]] = Field(
 		default_factory=list, description="Ordered routine steps"
 	)
-	musicTracks: list[Any] = Field(
+	musicTracks: list[MusicTrack | dict[str, Any]] = Field(
 		default_factory=list,
 		validation_alias=AliasChoices("musicTracks", "music_tracks"),
 		description="Soundtrack / music items",

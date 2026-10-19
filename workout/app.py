@@ -24,6 +24,8 @@ from schemas import (
 	ExerciseCreate,
 	ExerciseMediaAdd,
 	ExerciseUpdate,
+	MusicTrack,
+	MusicTrackAdd,
 	RoutineStep,
 	RoutineUpsert,
 	SessionUpsert,
@@ -187,6 +189,41 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 			raise HTTPException(status_code=404, detail="Routine not found")
 		return JSONResponse(content={"status": "ok", "routine": routine})
 
+	@api_router.get("/routines/{routine_id}/music")
+	async def get_routine_music(
+		routine_id: str,
+		user_id: str | None = Query(default=None, description="Optional user ID override"),
+		active_user: str = Depends(get_user_id),
+	):
+		effective_user = (user_id or active_user).strip().lower()
+		tracks = db.get_routine_music_tracks(effective_user, routine_id)
+		if tracks is None:
+			raise HTTPException(status_code=404, detail="Routine not found")
+		return JSONResponse(content=tracks)
+
+	@api_router.post("/routines/{routine_id}/music")
+	async def add_routine_music(
+		routine_id: str,
+		payload: MusicTrackAdd | MusicTrack | dict[str, Any],
+		user_id: str = Depends(get_user_id),
+	):
+		data = payload.model_dump(by_alias=True) if hasattr(payload, "model_dump") else payload
+		track = db.add_routine_music_track(user_id, routine_id, data)
+		if not track:
+			raise HTTPException(status_code=404, detail="Routine not found")
+		return JSONResponse(content={"status": "ok", "track": track})
+
+	@api_router.delete("/routines/{routine_id}/music/{track_id}")
+	async def delete_routine_music(
+		routine_id: str,
+		track_id: str,
+		user_id: str = Depends(get_user_id),
+	):
+		success = db.delete_routine_music_track(user_id, routine_id, track_id)
+		if not success:
+			raise HTTPException(status_code=404, detail="Routine or music track not found")
+		return JSONResponse(content={"status": "ok", "deleted_track_id": track_id})
+
 	# ── Sessions API ──────────────────────────────────────────────────────────
 
 	@api_router.post("/sessions")
@@ -201,9 +238,13 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 	@api_router.get("/sessions")
 	async def get_sessions(
 		limit: int = Query(default=50, description="Max number of sessions to return"),
+		order: str = Query(
+			default="desc",
+			description="Sort order by started_at: 'desc' (newest first) or 'asc' (oldest first)",
+		),
 		user_id: str = Depends(get_user_id),
 	):
-		return JSONResponse(content=db.get_sessions(user_id, limit=limit))
+		return JSONResponse(content=db.get_sessions(user_id, limit=limit, order=order))
 
 	@api_router.delete("/sessions/{session_id}")
 	async def delete_session(session_id: str, user_id: str = Depends(get_user_id)):
