@@ -104,6 +104,27 @@ def test_workout_frontend_loads_with_zero_console_errors(live_server):
 		page.click("#tab-routines-btn")
 		page.wait_for_selector("#app-sidebar", timeout=3000)
 
+		# 7. Player Smoke Test: Launch routine player, test countdown & player view, then exit
+		routine_card = page.locator("#routine-list .routine-item").first
+		if routine_card.count() > 0:
+			routine_card.click()
+			page.wait_for_selector(".btn-hero-play", timeout=5000)
+
+			# Click start workout
+			page.click(".btn-hero-play")
+			page.wait_for_selector("#player-view:not(.hidden)", timeout=4000)
+			page.wait_for_selector("#countdown-stage:not(.hidden)", timeout=3000)
+
+			# Skip countdown or wait for HUD to mount
+			skip_btn = page.locator("#countdown-skip-btn")
+			if skip_btn.count() > 0:
+				skip_btn.click()
+				page.wait_for_selector("#timer-overlay:not(.hidden)", timeout=4000)
+
+			# Stop player and verify return to view
+			page.click("#stop-btn")
+			page.wait_for_selector("#player-view.hidden", timeout=3000)
+
 		browser.close()
 
 	assert not errors, "Browser encountered JavaScript errors during smoke test:\n" + "\n".join(
