@@ -1558,6 +1558,27 @@ html, body {
 	border: 1px solid var(--accent);
 }
 
+.view-tag-cue,
+.step-cue-pill {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	font-size: 0.72rem;
+	font-weight: 600;
+	padding: 2px 8px;
+	border-radius: 12px;
+	background: rgba(245, 158, 11, 0.12);
+	color: #f59e0b;
+	border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.player-hud-cue-tag {
+	font-size: 0.75rem;
+	font-weight: 600;
+	color: #f59e0b;
+	margin-left: 4px;
+}
+
 .view-tag-anim {
 	background: var(--clip-subtle);
 	color: var(--clip-color);

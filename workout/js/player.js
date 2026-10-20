@@ -1287,15 +1287,15 @@ function executeTimerStep(step) {
 		if (stepHasSubSteps) {
 			const flowIcon = step.flow_type === 'alternating' ? '⮀' : (step.flow_type === 'sequence' ? '➔' : '⚡');
 			const flowLabel = step.flow_type === 'alternating' ? 'Alternating' : (step.flow_type === 'sequence' ? 'Flow' : 'Superset');
-			dom.currentStepLabel.textContent = `${activeSubEx.name || 'Exercise'} (${dispName})`;
+			dom.currentStepLabel.textContent = `${activeSubEx.name || 'Exercise'} (${dispName})${step.cue ? ` · ${step.cue}` : ''}`;
 			dom.currentStepType.innerHTML = `<span class="player-hud-substep-badge">${flowIcon} ${flowLabel} · Move ${currentSubStepIndex + 1}/${totalSubSteps}</span> ${getRepsIcon(14)} ${targetReps} Reps${muscleTagHtml}`;
 		} else {
-			dom.currentStepLabel.textContent = `${dispName} (${targetReps} reps)`;
+			dom.currentStepLabel.textContent = `${dispName}${step.cue ? ` (${step.cue})` : ''} (${targetReps} reps)`;
 			if (step.exercises && step.exercises.length > 0) {
 				const joiner = step.flow_type === 'alternating' ? ' ⮀ ' : ' + ';
-				dom.currentStepType.innerHTML = `${getRepsIcon(14)} ` + step.exercises.map(e => (getExerciseById(e.id || e)?.name || e.name || 'Exercise')).join(joiner) + muscleTagHtml;
+				dom.currentStepType.innerHTML = `${getRepsIcon(14)} ` + step.exercises.map(e => (getExerciseById(e.id || e)?.name || e.name || 'Exercise')).join(joiner) + (step.cue ? ` <span class="player-hud-cue-tag">💡 ${escapeHtml(step.cue)}</span>` : '') + muscleTagHtml;
 			} else {
-				dom.currentStepType.innerHTML = `${getRepsIcon(14)} ${targetReps} Reps` + muscleTagHtml;
+				dom.currentStepType.innerHTML = `${getRepsIcon(14)} ${targetReps} Reps` + (step.cue ? ` <span class="player-hud-cue-tag">💡 ${escapeHtml(step.cue)}</span>` : '') + muscleTagHtml;
 			}
 		}
 
@@ -1334,7 +1334,7 @@ function executeTimerStep(step) {
 					stageBadge.innerHTML = muscleTagHtml ? `${getTimerIcon(12)} TIMED INTERVAL ${muscleTagHtml}` : `${getTimerIcon(12)} TIMED INTERVAL`;
 				}
 				if (stageTitle) {
-					stageTitle.textContent = stepHasSubSteps ? (activeSubEx.name || dispName) : dispName;
+					stageTitle.textContent = (stepHasSubSteps ? (activeSubEx.name || dispName) : dispName) + (step.cue ? ` (${step.cue})` : '');
 				}
 			}
 			if (dom.timerLabel) {
@@ -1348,15 +1348,15 @@ function executeTimerStep(step) {
 		if (stepHasSubSteps) {
 			const flowIcon = step.flow_type === 'alternating' ? '⮀' : (step.flow_type === 'sequence' ? '➔' : '⚡');
 			const flowLabel = step.flow_type === 'alternating' ? 'Alternating' : (step.flow_type === 'sequence' ? 'Flow' : 'Superset');
-			dom.currentStepLabel.textContent = `${activeSubEx.name || 'Exercise'} (${dispName})`;
+			dom.currentStepLabel.textContent = `${activeSubEx.name || 'Exercise'} (${dispName})${step.cue ? ` · ${step.cue}` : ''}`;
 			dom.currentStepType.innerHTML = `<span class="player-hud-substep-badge">${flowIcon} ${flowLabel} · Move ${currentSubStepIndex + 1}/${totalSubSteps}</span> ${getTimerIcon(14)} ${formatTime(timerRemaining)}${muscleTagHtml}`;
 		} else {
-			dom.currentStepLabel.textContent = dispName;
+			dom.currentStepLabel.textContent = dispName + (step.cue ? ` (${step.cue})` : '');
 			if (step.exercises && step.exercises.length > 0) {
 				const joiner = step.flow_type === 'alternating' ? ' ⮀ ' : ' + ';
-				dom.currentStepType.innerHTML = isBreak ? `${getBreakIcon(14)} Rest` : (getTimerIcon(14) + ' ' + step.exercises.map(e => (getExerciseById(e.id || e)?.name || e.name || 'Exercise')).join(joiner) + muscleTagHtml);
+				dom.currentStepType.innerHTML = isBreak ? `${getBreakIcon(14)} Rest` : (getTimerIcon(14) + ' ' + step.exercises.map(e => (getExerciseById(e.id || e)?.name || e.name || 'Exercise')).join(joiner) + (step.cue ? ` <span class="player-hud-cue-tag">💡 ${escapeHtml(step.cue)}</span>` : '') + muscleTagHtml);
 			} else {
-				dom.currentStepType.innerHTML = isBreak ? `${getBreakIcon(14)} Rest` : `${getTimerIcon(14)} Timer${muscleTagHtml}`;
+				dom.currentStepType.innerHTML = isBreak ? `${getBreakIcon(14)} Rest` : `${getTimerIcon(14)} Timer${step.cue ? ` <span class="player-hud-cue-tag">💡 ${escapeHtml(step.cue)}</span>` : ''}${muscleTagHtml}`;
 			}
 		}
 

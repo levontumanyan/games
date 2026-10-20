@@ -23,6 +23,7 @@ When given a workout link (`https://levon.ajwest.ca/workout/#u=<user>&r=<id>` or
 
 # Routine Authoring & Mutations
 - **Concise Step Ingestion**: Prefer minimal step descriptors (e.g. `{"exercise_id": "...", "reps": 10}` or `{"rest": 20}`); the backend automatically inflates metadata, IDs, and modes.
+- **Step Cues**: Optional `cue` string (e.g. `{"cue": "Left Leg"}`) is strictly reserved for unilateral side or critical tempo notes; never overuse it or add generic commentary.
 - **Step & Music Mutations**: Use sub-resource endpoints (`/steps`, `/music`) for partial updates and appends, or atomic `PUT /routines/{id}` for multi-step insertions. Detailed payload schemas are available in OpenAPI.
 
 # Development & UI Verification

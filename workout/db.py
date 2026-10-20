@@ -260,18 +260,16 @@ media_assets_json TEXT NOT NULL DEFAULT '[]',
 						continue
 					needs_update = False
 					for st in r_steps:
-						if st.get("customLabel"):
-							continue
 						st_exs = st.get("exercises", [])
 						for ex_item in st_exs:
 							if isinstance(ex_item, dict):
 								eid = ex_item.get("id")
 								ename = ex_item.get("name")
 								canonical_name = ex_map.get(eid)
-								if canonical_name and ename != canonical_name:
-									cur_lbl = (st.get("label") or "").strip()
-									if ename and cur_lbl.lower() == ename.lower():
-										st["label"] = canonical_name
+								if canonical_name and (
+									ename != canonical_name or st.get("label") != canonical_name
+								):
+									st["label"] = canonical_name
 									ex_item["name"] = canonical_name
 									needs_update = True
 					if needs_update:
@@ -491,6 +489,9 @@ media_assets_json TEXT NOT NULL DEFAULT '[]',
 			if combo:
 				s["combo_id"] = combo["id"]
 				s["flow_type"] = combo["flow_type"]
+				s["label"] = combo["name"]
+				if s.get("cue"):
+					s["cue"] = str(s["cue"]).strip()
 				if not s.get("mediaUrl") and combo.get("media_url"):
 					s["mediaUrl"] = combo["media_url"]
 				hydrated_exs = []
@@ -546,7 +547,6 @@ media_assets_json TEXT NOT NULL DEFAULT '[]',
 				first_ex_row = None
 				for ex_ref in ref_list:
 					eid = ex_ref if isinstance(ex_ref, str) else ex_ref.get("id")
-					stored_name = ex_ref.get("name") if isinstance(ex_ref, dict) else None
 					if eid in ex_map:
 						ex_row = ex_map[eid]
 						if first_ex_row is None:
@@ -562,18 +562,15 @@ media_assets_json TEXT NOT NULL DEFAULT '[]',
 						if ex_row.get("default_quantity"):
 							ex_item["default_quantity"] = ex_row["default_quantity"]
 						hydrated_exs.append(ex_item)
-						if not s.get("customLabel"):
-							cur_lbl = (s.get("label") or "").strip()
-							if stored_name and cur_lbl.lower() == stored_name.lower():
-								s["label"] = ex_row["name"]
-							elif cur_lbl in ("", "Exercise", "Video Clip", "Timer"):
-								s["label"] = ex_row["name"]
 					elif isinstance(ex_ref, dict):
 						hydrated_exs.append(ex_ref)
 					else:
 						hydrated_exs.append({"id": eid})
 				s["exercises"] = hydrated_exs
 				if first_ex_row:
+					s["label"] = first_ex_row["name"]
+					if s.get("cue"):
+						s["cue"] = str(s["cue"]).strip()
 					if not s.get("mediaUrl") and first_ex_row.get("media_url"):
 						s["mediaUrl"] = first_ex_row["media_url"]
 					if not s.get("stepMode"):
@@ -641,6 +638,13 @@ media_assets_json TEXT NOT NULL DEFAULT '[]',
 				s["musicTracks"] = []
 			return s
 
+		if s.get("cue"):
+			s["cue"] = str(s["cue"]).strip() or None
+			if not s["cue"]:
+				del s["cue"]
+		elif "cue" in s and not s["cue"]:
+			del s["cue"]
+
 		# Reps / duration mapping
 		if s.get("reps") is not None and s.get("targetReps") is None:
 			s["targetReps"] = s["reps"]
@@ -663,12 +667,7 @@ media_assets_json TEXT NOT NULL DEFAULT '[]',
 			).fetchone()
 			if row:
 				ex_dict = dict(row)
-				if not (s.get("label") or "").strip() or s.get("label") in (
-					"Exercise",
-					"Timer",
-					"Video Clip",
-				):
-					s["label"] = ex_dict["name"]
+				s["label"] = ex_dict["name"]
 				if not s.get("mediaUrl") and ex_dict.get("media_url"):
 					s["mediaUrl"] = ex_dict["media_url"]
 
@@ -713,8 +712,7 @@ media_assets_json TEXT NOT NULL DEFAULT '[]',
 			).fetchone()
 			if row:
 				c_dict = dict(row)
-				if not (s.get("label") or "").strip():
-					s["label"] = c_dict["name"]
+				s["label"] = c_dict["name"]
 				if not s.get("flow_type"):
 					s["flow_type"] = c_dict["flow_type"]
 				if not s.get("mediaUrl") and c_dict.get("media_url"):
@@ -1653,9 +1651,6 @@ media_assets_json TEXT NOT NULL DEFAULT '[]',
 		now = datetime.now().isoformat()
 
 		with self.get_connection() as conn:
-			old_row = conn.execute("SELECT name FROM exercises WHERE id = ?", (ex_id,)).fetchone()
-			old_name = old_row["name"] if old_row else None
-
 			conn.execute(
 				"""
 				INSERT INTO exercises (
@@ -1718,17 +1713,7 @@ media_assets_json TEXT NOT NULL DEFAULT '[]',
 
 					if matched:
 						needs_update = True
-						if not st.get("customLabel"):
-							cur_lbl = (st.get("label") or "").strip()
-							if old_name and cur_lbl.lower() == old_name.lower():
-								st["label"] = name
-							elif cur_lbl in ("", "Exercise", "Video Clip", "Timer"):
-								st["label"] = name
-							elif old_name and old_name.lower() in cur_lbl.lower():
-								import re
-
-								pattern = re.compile(re.escape(old_name), re.IGNORECASE)
-								st["label"] = pattern.sub(name, cur_lbl)
+						st["label"] = name
 				if needs_update:
 					conn.execute(
 						"UPDATE routines SET steps_json = ?, updated_at = ? WHERE id = ? AND user_id = ?",

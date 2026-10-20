@@ -444,15 +444,21 @@ def test_step_creation_from_exercise_and_combo():
 		throw new Error('resolveStepVideoAsset failed for legacy timer step: ' + JSON.stringify(resolvedVid));
 	}}
 
-	// 5. Test getStepDisplayName fallback logic
+	// 5. Test getStepDisplayName logic: exercise steps always derive from exercise; break steps use label
 	if (getStepDisplayName({{ exercises: [{{ name: 'Plank Shoulder Taps' }}] }}) !== 'Plank Shoulder Taps') {{
 		throw new Error('getStepDisplayName failed for step without label');
 	}}
 	if (getStepDisplayName({{ label: 'Exercise', exercises: [{{ name: 'Push-Ups' }}] }}) !== 'Push-Ups') {{
 		throw new Error('getStepDisplayName failed for generic Exercise label');
 	}}
-	if (getStepDisplayName({{ label: 'Custom Workout Round', exercises: [{{ name: 'Push-Ups' }}] }}) !== 'Custom Workout Round') {{
-		throw new Error('getStepDisplayName failed for explicit custom label');
+	if (getStepDisplayName({{ label: 'Custom Workout Round', exercises: [{{ name: 'Push-Ups' }}] }}) !== 'Push-Ups') {{
+		throw new Error('getStepDisplayName should derive directly from exercise even if label differs');
+	}}
+	if (getStepDisplayName({{ isBreak: true, label: 'Custom Water Break' }}) !== 'Custom Water Break') {{
+		throw new Error('getStepDisplayName failed for custom break label');
+	}}
+	if (getStepDisplayName({{ isBreak: true }}) !== 'Rest') {{
+		throw new Error('getStepDisplayName failed for default break label');
 	}}
 	"""
 

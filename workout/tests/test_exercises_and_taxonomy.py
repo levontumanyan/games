@@ -840,8 +840,8 @@ def test_exercise_rename_cascades_to_routines(client: TestClient):
 	ex_id = ex["id"]
 
 	# 2. Create routine with 2 steps:
-	#    - Step 1: derived label (same as exercise name)
-	#    - Step 2: explicit custom label
+	#    - Step 1: standard step without cue
+	#    - Step 2: step with explicit cue
 	routine_payload = [
 		{
 			"id": "r-cascade-test",
@@ -857,8 +857,7 @@ def test_exercise_rename_cascades_to_routines(client: TestClient):
 				{
 					"id": "step-custom",
 					"type": "timer",
-					"label": "Custom Slow Squats",
-					"customLabel": True,
+					"cue": "Slow tempo 3s",
 					"durationSeconds": 30,
 					"exercises": [{"id": ex_id, "name": "Original Squat Name"}],
 				},
@@ -884,8 +883,8 @@ def test_exercise_rename_cascades_to_routines(client: TestClient):
 	# 4. Fetch routine and verify:
 	#    - step-auto label updated to "Renamed Squat Movement"
 	#    - step-auto exercises[0].name updated to "Renamed Squat Movement"
-	#    - step-custom label preserved as "Custom Slow Squats"
-	#    - step-custom exercises[0].name updated to "Renamed Squat Movement"
+	#    - step-custom label updated to canonical name "Renamed Squat Movement"
+	#    - step-custom cue preserved as "Slow tempo 3s"
 	get_res = client.get("/api/routines", headers={"X-User-Id": "levon"})
 	assert get_res.status_code == 200
 	routines = get_res.json()
@@ -897,7 +896,8 @@ def test_exercise_rename_cascades_to_routines(client: TestClient):
 	assert step_auto["exercises"][0]["name"] == "Renamed Squat Movement"
 
 	step_custom = r["steps"][1]
-	assert step_custom["label"] == "Custom Slow Squats"
+	assert step_custom["label"] == "Renamed Squat Movement"
+	assert step_custom["cue"] == "Slow tempo 3s"
 	assert step_custom["exercises"][0]["name"] == "Renamed Squat Movement"
 
 

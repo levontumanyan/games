@@ -205,6 +205,10 @@ class RoutineStep(BaseSchema):
 		description="Execution mode: reps or time",
 	)
 	label: str | None = Field(default="", description="Step display label / title")
+	cue: str | None = Field(
+		default=None,
+		description="Optional concise step execution cue or note (e.g. 'Left Leg', 'Tempo 3s')",
+	)
 	durationSeconds: int | None = Field(
 		default=None,
 		validation_alias=AliasChoices("durationSeconds", "duration", "duration_seconds"),
@@ -254,6 +258,10 @@ class RoutineStep(BaseSchema):
 
 class StepPatch(BaseSchema):
 	label: str | None = Field(default=None, description="Step display label / title")
+	cue: str | None = Field(
+		default=None,
+		description="Optional concise step execution cue or note (e.g. 'Left Leg', 'Tempo 3s')",
+	)
 	durationSeconds: int | None = Field(
 		default=None,
 		validation_alias=AliasChoices("durationSeconds", "duration", "duration_seconds"),

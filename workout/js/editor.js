@@ -573,56 +573,110 @@ function createStepElement(step, index, routine, onUpdate, onTestStep) {
 	const derivedTitle = getStepDisplayName(step);
 	headerTitle.textContent = derivedTitle;
 
+	const cueBadge = document.createElement('span');
+	cueBadge.className = 'step-cue-pill';
+	if (step.cue && step.cue.trim()) {
+		cueBadge.textContent = `💡 ${step.cue.trim()}`;
+	} else {
+		cueBadge.style.display = 'none';
+	}
+
 	const editTitleBtn = document.createElement('button');
 	editTitleBtn.type = 'button';
 	editTitleBtn.className = 'btn-edit-title-pencil';
-	editTitleBtn.title = 'Edit custom step title';
+	editTitleBtn.title = isBreak ? 'Edit break label' : 'Edit execution cue (e.g. Left Leg)';
 	editTitleBtn.innerHTML = '✏️';
 	editTitleBtn.addEventListener('click', (e) => {
 		e.stopPropagation();
-		const currentVal = step.label || derivedTitle;
-		const input = document.createElement('input');
-		input.type = 'text';
-		input.className = 'input input-inline-title-edit clean-input';
-		input.value = currentVal;
-		input.placeholder = derivedTitle;
-		input.autocomplete = 'off';
-		input.autocorrect = 'off';
-		input.autocapitalize = 'off';
-		input.spellcheck = false;
+		if (isBreak) {
+			const currentVal = step.label || 'Rest';
+			const input = document.createElement('input');
+			input.type = 'text';
+			input.className = 'input input-inline-title-edit clean-input';
+			input.value = currentVal;
+			input.placeholder = 'Rest';
+			input.autocomplete = 'off';
+			input.autocorrect = 'off';
+			input.autocapitalize = 'off';
+			input.spellcheck = false;
 
-		const commit = () => {
-			const val = input.value.trim();
-			if (val && val !== (step.exercises && step.exercises.length > 0 ? step.exercises.map(ex => ex.name).join(' + ') : (isBreak ? 'Rest' : 'Exercise'))) {
-				step.label = val;
-				step.customLabel = true;
-			} else {
-				delete step.label;
-				delete step.customLabel;
-			}
-			headerTitle.textContent = getStepDisplayName(step);
-			if (input.parentNode) {
-				input.replaceWith(headerTitle);
-				editTitleBtn.style.display = '';
-			}
-			onUpdate();
-		};
+			const commit = () => {
+				const val = input.value.trim();
+				if (val && val !== 'Rest') {
+					step.label = val;
+				} else {
+					step.label = 'Rest';
+				}
+				headerTitle.textContent = getStepDisplayName(step);
+				if (input.parentNode) {
+					input.replaceWith(headerTitle);
+					editTitleBtn.style.display = '';
+				}
+				onUpdate();
+			};
 
-		input.addEventListener('blur', commit);
-		input.addEventListener('keydown', (evt) => {
-			if (evt.key === 'Enter') {
-				evt.preventDefault();
-				input.blur();
-			} else if (evt.key === 'Escape') {
-				input.value = currentVal;
-				input.blur();
-			}
-		});
+			input.addEventListener('blur', commit);
+			input.addEventListener('keydown', (evt) => {
+				if (evt.key === 'Enter') {
+					evt.preventDefault();
+					input.blur();
+				} else if (evt.key === 'Escape') {
+					input.value = currentVal;
+					input.blur();
+				}
+			});
 
-		headerTitle.replaceWith(input);
-		editTitleBtn.style.display = 'none';
-		input.focus();
-		input.select();
+			headerTitle.replaceWith(input);
+			editTitleBtn.style.display = 'none';
+			input.focus();
+			input.select();
+		} else {
+			const currentCue = step.cue || '';
+			const input = document.createElement('input');
+			input.type = 'text';
+			input.className = 'input input-inline-title-edit clean-input';
+			input.value = currentCue;
+			input.placeholder = 'Cue (e.g. Left Leg, Tempo 3s)';
+			input.autocomplete = 'off';
+			input.autocorrect = 'off';
+			input.autocapitalize = 'off';
+			input.spellcheck = false;
+
+			const commit = () => {
+				const val = input.value.trim();
+				if (val) {
+					step.cue = val;
+					cueBadge.textContent = `💡 ${val}`;
+					cueBadge.style.display = '';
+				} else {
+					delete step.cue;
+					cueBadge.textContent = '';
+					cueBadge.style.display = 'none';
+				}
+				if (input.parentNode) {
+					input.replaceWith(cueBadge);
+					editTitleBtn.style.display = '';
+				}
+				onUpdate();
+			};
+
+			input.addEventListener('blur', commit);
+			input.addEventListener('keydown', (evt) => {
+				if (evt.key === 'Enter') {
+					evt.preventDefault();
+					input.blur();
+				} else if (evt.key === 'Escape') {
+					input.value = currentCue;
+					input.blur();
+				}
+			});
+
+			cueBadge.replaceWith(input);
+			cueBadge.style.display = '';
+			editTitleBtn.style.display = 'none';
+			input.focus();
+			input.select();
+		}
 	});
 
 	const headerMeta = document.createElement('span');
@@ -637,7 +691,7 @@ function createStepElement(step, index, routine, onUpdate, onTestStep) {
 		headerMeta.textContent = formatFriendlyDuration(cls.targetDuration || 30);
 	}
 
-	headerInfo.append(headerTitle, editTitleBtn, headerMeta);
+	headerInfo.append(headerTitle, cueBadge, editTitleBtn, headerMeta);
 
 	if (step.musicTracks && step.musicTracks.length > 0) {
 		const musicBadge = document.createElement('span');
@@ -770,9 +824,9 @@ function createStepElement(step, index, routine, onUpdate, onTestStep) {
  */
 export function getStepDisplayName(step) {
 	if (!step) return 'Exercise';
-	const rawLabel = typeof step.label === 'string' ? step.label.trim() : '';
-	if (step.customLabel && rawLabel) {
-		return rawLabel;
+	if (isBreakStep(step)) {
+		const rawLabel = typeof step.label === 'string' ? step.label.trim() : '';
+		return rawLabel || 'Rest';
 	}
 	if (Array.isArray(step.exercises) && step.exercises.length > 0) {
 		const names = step.exercises
@@ -782,36 +836,22 @@ export function getStepDisplayName(step) {
 				return fullEx?.name || (typeof e === 'object' ? (e.name || e.id) : e);
 			})
 			.filter(Boolean);
-
-		if (!step.customLabel) {
-			const matchesCurrent = names.length > 0 && (
-				rawLabel.toLowerCase() === names.join(' + ').toLowerCase() ||
-				rawLabel.toLowerCase() === names.join(' ⮀ ').toLowerCase()
-			);
-			const matchesSaved = step.exercises.some(e => {
-				const savedName = typeof e === 'object' ? e.name : null;
-				return savedName && rawLabel.toLowerCase() === savedName.toLowerCase();
-			});
-
-			if (matchesCurrent || matchesSaved || !rawLabel || rawLabel === 'Exercise' || rawLabel === 'Video Clip' || rawLabel === 'Timer') {
-				if (names.length > 0) {
-					return names.join(step.flow_type === 'alternating' ? ' ⮀ ' : ' + ');
-				}
-			}
-		}
-
-		if (rawLabel && rawLabel !== 'Exercise' && rawLabel !== 'Video Clip' && rawLabel !== 'Timer') {
-			return rawLabel;
-		}
-
 		if (names.length > 0) {
 			return names.join(step.flow_type === 'alternating' ? ' ⮀ ' : ' + ');
 		}
 	}
+	if (step.exercise_id) {
+		const fullEx = getExerciseById(step.exercise_id);
+		if (fullEx?.name) return fullEx.name;
+	}
+	if (step.combo_id) {
+		const combo = typeof getComboById === 'function' ? getComboById(step.combo_id) : null;
+		if (combo?.name) return combo.name;
+	}
+	const rawLabel = typeof step.label === 'string' ? step.label.trim() : '';
 	if (rawLabel && rawLabel !== 'Exercise' && rawLabel !== 'Video Clip' && rawLabel !== 'Timer') {
 		return rawLabel;
 	}
-	if (isBreakStep(step)) return 'Rest';
 	if (step.type === 'clip') return 'Video Clip';
 	return 'Exercise';
 }
@@ -1053,9 +1093,7 @@ function createExercisePicker(step, onUpdate) {
 					category: created.category,
 					discipline: created.discipline
 				});
-				if (!step.customLabel && (!step.label || step.label === 'Exercise' || step.label === 'Video Clip')) {
-					step.label = step.exercises.map(ex => ex.name).join(' + ');
-				}
+				step.label = step.exercises.map(ex => ex.name).join(' + ');
 				input.value = '';
 				dropdown.classList.add('hidden');
 				renderChips();
@@ -1086,9 +1124,7 @@ function createExercisePicker(step, onUpdate) {
 							category: item.category,
 							discipline: item.discipline
 						});
-						if (!step.customLabel && (!step.label || step.label === 'Exercise' || step.label === 'Video Clip')) {
-							step.label = step.exercises.map(ex => ex.name).join(' + ');
-						}
+						step.label = step.exercises.map(ex => ex.name).join(' + ');
 						if (item.media_url && !step.gifUrl && !step.mediaUrl) {
 							step.gifUrl = item.media_url;
 						}

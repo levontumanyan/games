@@ -450,6 +450,13 @@ const isReps = stepCls.mode === 'reps';
 	const tagsRow = document.createElement('div');
 	tagsRow.className = 'view-step-tags';
 
+	if (step.cue && step.cue.trim()) {
+		const cueTag = document.createElement('span');
+		cueTag.className = 'view-tag view-tag-cue';
+		cueTag.textContent = `💡 ${step.cue.trim()}`;
+		tagsRow.appendChild(cueTag);
+	}
+
 	if (isClip) {
 		const start = (videoAsset && typeof videoAsset.startSeconds === 'number') ? videoAsset.startSeconds : (step.startSeconds || 0);
 		const end = (videoAsset && typeof videoAsset.endSeconds === 'number') ? videoAsset.endSeconds : (step.endSeconds || (start + 60));
