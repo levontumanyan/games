@@ -6,7 +6,8 @@ import {
 import { resolveStepMediaUrl, getStepDisplayName } from './editor.js';
 import {
 	getClipIcon, getTimerIcon, getBreakIcon, getStepsIcon, getShareIcon, getSaveIcon,
-	getRepsIcon, getAnatomyIcon, getExerciseIcon, getMuscleIcon, getMusicIcon, getMediaKindIcon
+	getRepsIcon, getAnatomyIcon, getExerciseIcon, getMuscleIcon, getMusicIcon, getMediaKindIcon,
+	getCalendarIcon
 } from './icons.js';
 import { getCategoryBadgeHtml, getDisciplineBadgeHtml, getMuscleBadgeHtml, MUSCLE_DEFINITIONS } from './taxonomy.js';
 import {
@@ -145,6 +146,13 @@ export function renderRoutineOverview(routine, container, actions = {}) {
 		}
 	});
 
+	const scheduleBtn = document.createElement('button');
+	scheduleBtn.className = 'btn btn-ghost btn-icon-only btn-schedule-action';
+	scheduleBtn.innerHTML = getCalendarIcon(17);
+	scheduleBtn.title = 'Schedule Workout';
+	scheduleBtn.setAttribute('aria-label', 'Schedule Workout');
+	scheduleBtn.addEventListener('click', () => actions.onSchedule?.());
+
 	const editBtn = document.createElement('button');
 	editBtn.className = 'btn btn-ghost btn-icon-only';
 	editBtn.innerHTML = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
@@ -168,9 +176,9 @@ export function renderRoutineOverview(routine, container, actions = {}) {
 		headerSaveBtn.setAttribute('aria-label', 'Save to My Workouts');
 		headerSaveBtn.addEventListener('click', () => actions.onSaveToLibrary?.());
 
-		actionsGroup.append(shareBtn, headerSaveBtn, playBtn);
+		actionsGroup.append(shareBtn, scheduleBtn, headerSaveBtn, playBtn);
 	} else {
-		actionsGroup.append(shareBtn, editBtn, playBtn);
+		actionsGroup.append(shareBtn, scheduleBtn, editBtn, playBtn);
 	}
 
 	header.append(titleInfo, actionsGroup);

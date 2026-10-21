@@ -4,6 +4,7 @@ import secrets
 import sqlite3
 import string
 import urllib.parse
+import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -139,6 +140,22 @@ media_assets_json TEXT NOT NULL DEFAULT '[]',
 				CREATE INDEX IF NOT EXISTS idx_sessions_user_started ON sessions(user_id, started_at);
 				CREATE INDEX IF NOT EXISTS idx_exercises_user ON exercises(user_id, category, discipline);
 				CREATE INDEX IF NOT EXISTS idx_combos_user ON combos(user_id, category, discipline);
+
+				CREATE TABLE IF NOT EXISTS scheduled_workouts (
+					id TEXT PRIMARY KEY,
+					user_id TEXT NOT NULL,
+					routine_id TEXT,
+					routine_title TEXT NOT NULL,
+					scheduled_date TEXT NOT NULL,
+					scheduled_time TEXT,
+					status TEXT NOT NULL DEFAULT 'scheduled',
+					session_id TEXT,
+					notes TEXT DEFAULT '',
+					created_at TEXT NOT NULL,
+					FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+				);
+
+				CREATE INDEX IF NOT EXISTS idx_scheduled_user_date ON scheduled_workouts(user_id, scheduled_date);
 				"""
 			)
 
@@ -1920,6 +1937,140 @@ media_assets_json TEXT NOT NULL DEFAULT '[]',
 				self.invalidate_stats_cache(user_id)
 				return True
 			return False
+
+	# ── Scheduled Workouts (Calendar) ────────────────────────────────────────
+
+	def create_scheduled_workout(self, user_id: str, data: dict[str, Any]) -> dict[str, Any]:
+		item_id = data.get("id") or str(uuid.uuid4())
+		now = datetime.now(timezone.utc).isoformat()
+		scheduled_date = str(data["scheduled_date"]).strip()
+		scheduled_time = data.get("scheduled_time")
+		if scheduled_time is not None:
+			scheduled_time = str(scheduled_time).strip() or None
+		routine_id = data.get("routine_id")
+		routine_title = str(data.get("routine_title") or "Workout").strip()
+		status = str(data.get("status") or "scheduled").strip()
+		notes = str(data.get("notes") or "").strip()
+		session_id = data.get("session_id")
+
+		with self.get_connection() as conn:
+			conn.execute(
+				"""
+				INSERT INTO scheduled_workouts (
+					id, user_id, routine_id, routine_title,
+					scheduled_date, scheduled_time, status,
+					session_id, notes, created_at
+				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+				""",
+				(
+					item_id,
+					user_id,
+					routine_id,
+					routine_title,
+					scheduled_date,
+					scheduled_time,
+					status,
+					session_id,
+					notes,
+					now,
+				),
+			)
+		return {
+			"id": item_id,
+			"user_id": user_id,
+			"routine_id": routine_id,
+			"routine_title": routine_title,
+			"scheduled_date": scheduled_date,
+			"scheduled_time": scheduled_time,
+			"status": status,
+			"session_id": session_id,
+			"notes": notes,
+			"created_at": now,
+		}
+
+	def get_scheduled_workouts(
+		self,
+		user_id: str,
+		start_date: str | None = None,
+		end_date: str | None = None,
+		status: str | None = None,
+	) -> list[dict[str, Any]]:
+		query = "SELECT * FROM scheduled_workouts WHERE user_id = ?"
+		params: list[Any] = [user_id]
+		if start_date:
+			query += " AND scheduled_date >= ?"
+			params.append(start_date)
+		if end_date:
+			query += " AND scheduled_date <= ?"
+			params.append(end_date)
+		if status:
+			query += " AND status = ?"
+			params.append(status)
+		query += (
+			" ORDER BY scheduled_date ASC, COALESCE(scheduled_time, '99:99') ASC, created_at ASC"
+		)
+
+		with self.get_connection() as conn:
+			rows = conn.execute(query, params).fetchall()
+			return [dict(row) for row in rows]
+
+	def get_scheduled_workout(self, user_id: str, schedule_id: str) -> dict[str, Any] | None:
+		with self.get_connection() as conn:
+			row = conn.execute(
+				"SELECT * FROM scheduled_workouts WHERE id = ? AND user_id = ?",
+				(schedule_id, user_id),
+			).fetchone()
+			return dict(row) if row else None
+
+	def update_scheduled_workout(
+		self, user_id: str, schedule_id: str, updates: dict[str, Any]
+	) -> dict[str, Any] | None:
+		current = self.get_scheduled_workout(user_id, schedule_id)
+		if not current:
+			return None
+
+		allowed_keys = {
+			"routine_id",
+			"routine_title",
+			"scheduled_date",
+			"scheduled_time",
+			"status",
+			"session_id",
+			"notes",
+		}
+		fields = []
+		params: list[Any] = []
+		for k, v in updates.items():
+			if k in allowed_keys:
+				fields.append(f"{k} = ?")
+				params.append(v)
+
+		if not fields:
+			return current
+
+		params.extend([schedule_id, user_id])
+		with self.get_connection() as conn:
+			conn.execute(
+				f"UPDATE scheduled_workouts SET {', '.join(fields)} WHERE id = ? AND user_id = ?",
+				params,
+			)
+		return self.get_scheduled_workout(user_id, schedule_id)
+
+	def delete_scheduled_workout(self, user_id: str, schedule_id: str) -> bool:
+		with self.get_connection() as conn:
+			cursor = conn.execute(
+				"DELETE FROM scheduled_workouts WHERE id = ? AND user_id = ?",
+				(schedule_id, user_id),
+			)
+			return cursor.rowcount > 0
+
+	def complete_scheduled_workout(
+		self, user_id: str, schedule_id: str, session_id: str | None = None
+	) -> dict[str, Any] | None:
+		updates: dict[str, Any] = {"status": "completed"}
+		if session_id:
+			updates["session_id"] = session_id
+		return self.update_scheduled_workout(user_id, schedule_id, updates)
 
 	# ── Stats & Streaks Computation ──────────────────────────────────────────
 

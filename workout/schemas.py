@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
@@ -335,3 +335,45 @@ class SessionUpsert(BaseSchema):
 	exercises: list[Any] = Field(
 		default_factory=list, description="Exercise log / metrics snapshot"
 	)
+
+
+class ScheduledWorkoutCreate(BaseSchema):
+	routine_id: str | None = Field(default=None, description="Optional referenced routine ID")
+	routine_title: str = Field(
+		default="Workout", description="Routine title or scheduled activity name"
+	)
+	scheduled_date: str = Field(
+		..., description="Target date in ISO format YYYY-MM-DD", pattern=r"^\d{4}-\d{2}-\d{2}$"
+	)
+	scheduled_time: str | None = Field(default=None, description="Optional scheduled time HH:MM")
+	status: Literal["scheduled", "completed", "skipped"] = Field(
+		default="scheduled", description="Status: scheduled, completed, skipped"
+	)
+	notes: str = Field(default="", description="Optional workout cues or schedule notes")
+
+
+class ScheduledWorkoutUpdate(BaseSchema):
+	routine_id: str | None = Field(default=None, description="Updated routine ID")
+	routine_title: str | None = Field(default=None, description="Updated routine title")
+	scheduled_date: str | None = Field(
+		default=None, description="Updated target date YYYY-MM-DD", pattern=r"^\d{4}-\d{2}-\d{2}$"
+	)
+	scheduled_time: str | None = Field(default=None, description="Updated target time HH:MM")
+	status: Literal["scheduled", "completed", "skipped"] | None = Field(
+		default=None, description="Status: scheduled, completed, skipped"
+	)
+	notes: str | None = Field(default=None, description="Updated schedule notes")
+	session_id: str | None = Field(default=None, description="Linked session ID if completed")
+
+
+class ScheduledWorkoutOut(BaseSchema):
+	id: str = Field(..., description="Unique schedule entry identifier")
+	user_id: str = Field(..., description="Owner user ID")
+	routine_id: str | None = Field(default=None, description="Referenced routine ID")
+	routine_title: str = Field(..., description="Routine title")
+	scheduled_date: str = Field(..., description="Target date YYYY-MM-DD")
+	scheduled_time: str | None = Field(default=None, description="Target time HH:MM")
+	status: str = Field(default="scheduled", description="Status: scheduled, completed, skipped")
+	session_id: str | None = Field(default=None, description="Linked session ID")
+	notes: str = Field(default="", description="Schedule notes")
+	created_at: str = Field(..., description="ISO creation timestamp")

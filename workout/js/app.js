@@ -38,6 +38,7 @@ import {
 	fetchUsers, createUser
 } from './user.js';
 import { renderStatsDashboard } from './stats.js';
+import { renderScheduleDashboard, openScheduleModal, invalidateScheduleCache } from './schedule.js';
 import { loadExercises, getExerciseById, getExerciseFollowAlongMedia, classifyStep } from './exercises.js';
 import { renderExercisesCatalog, showExerciseVariationsModal, highlightExerciseCard } from './exercises_view.js';
 import { loadCombos, renderCombosCatalog } from './combos.js';
@@ -214,6 +215,7 @@ function cacheDom() {
 	dom.exercisesView = document.getElementById('exercises-view');
 	dom.anatomyView = document.getElementById('anatomy-view');
 	dom.statsView = document.getElementById('stats-view');
+	dom.scheduleView = document.getElementById('schedule-view');
 	dom.playerView = document.getElementById('player-view');
 	dom.playerStage = document.querySelector('.player-stage');
 	dom.routineTitle = document.getElementById('routine-title');
@@ -242,6 +244,10 @@ function cacheDom() {
 	dom.dropdownNewProfileInput = document.getElementById('dropdown-new-profile-input');
 	dom.dropdownCreateProfileBtn = document.getElementById('dropdown-create-profile-btn');
 	dom.tabRoutinesBtn = document.getElementById('tab-routines-btn');
+	dom.tabScheduleBtn = document.getElementById('tab-schedule-btn');
+	dom.tabLibraryBtn = document.getElementById('tab-library-btn');
+	dom.libraryNavGroup = document.getElementById('library-nav-group');
+	dom.librarySubnavDropdown = document.getElementById('library-subnav-dropdown');
 	dom.tabCombosBtn = document.getElementById('tab-combos-btn');
 	dom.tabExercisesBtn = document.getElementById('tab-exercises-btn');
 	dom.tabAnatomyBtn = document.getElementById('tab-anatomy-btn');
@@ -258,10 +264,16 @@ function cacheDom() {
 
 	// Mobile Navigation Elements
 	dom.mTabRoutinesBtn = document.getElementById('m-tab-routines-btn');
+	dom.mTabScheduleBtn = document.getElementById('m-tab-schedule-btn');
+	dom.mTabLibraryBtn = document.getElementById('m-tab-library-btn');
 	dom.mTabCombosBtn = document.getElementById('m-tab-combos-btn');
 	dom.mTabExercisesBtn = document.getElementById('m-tab-exercises-btn');
 	dom.mTabAnatomyBtn = document.getElementById('m-tab-anatomy-btn');
 	dom.mTabStatsBtn = document.getElementById('m-tab-stats-btn');
+	dom.mobileLibrarySubnav = document.getElementById('mobile-library-subnav');
+	dom.mSubnavExercisesBtn = document.getElementById('m-subnav-exercises-btn');
+	dom.mSubnavCombosBtn = document.getElementById('m-subnav-combos-btn');
+	dom.mSubnavAnatomyBtn = document.getElementById('m-subnav-anatomy-btn');
 
 	// Player top bar & buttons
 	dom.playerBackBtn = document.getElementById('player-back-btn');
@@ -549,28 +561,43 @@ function playPreview(item, asset = null, { isCombo = false } = {}) {
 }
 
 function switchTab(tab) {
+	if (tab === 'library') {
+		tab = 'exercises';
+	}
 	currentTab = tab;
 
-	if (dom.tabRoutinesBtn) dom.tabRoutinesBtn.classList.toggle('active', tab === 'routines');
-	if (dom.tabCombosBtn) dom.tabCombosBtn.classList.toggle('active', tab === 'combos');
-	if (dom.tabExercisesBtn) dom.tabExercisesBtn.classList.toggle('active', tab === 'exercises');
-	if (dom.tabAnatomyBtn) dom.tabAnatomyBtn.classList.toggle('active', tab === 'anatomy');
-	if (dom.tabStatsBtn) dom.tabStatsBtn.classList.toggle('active', tab === 'stats');
+	const isRoutines = tab === 'routines';
+	const isSchedule = tab === 'schedule';
+	const isCombos = tab === 'combos';
+	const isExercises = tab === 'exercises';
+	const isAnatomy = tab === 'anatomy';
+	const isLibrary = isCombos || isExercises || isAnatomy;
+	const isStats = tab === 'stats';
+
+	if (dom.tabRoutinesBtn) dom.tabRoutinesBtn.classList.toggle('active', isRoutines);
+	if (dom.tabScheduleBtn) dom.tabScheduleBtn.classList.toggle('active', isSchedule);
+	if (dom.tabLibraryBtn) dom.tabLibraryBtn.classList.toggle('active', isLibrary);
+	if (dom.tabCombosBtn) dom.tabCombosBtn.classList.toggle('active', isCombos);
+	if (dom.tabExercisesBtn) dom.tabExercisesBtn.classList.toggle('active', isExercises);
+	if (dom.tabAnatomyBtn) dom.tabAnatomyBtn.classList.toggle('active', isAnatomy);
+	if (dom.tabStatsBtn) dom.tabStatsBtn.classList.toggle('active', isStats);
 
 	// Sync mobile bottom navigation bar active state
-	if (dom.mTabRoutinesBtn) dom.mTabRoutinesBtn.classList.toggle('active', tab === 'routines');
-	if (dom.mTabCombosBtn) dom.mTabCombosBtn.classList.toggle('active', tab === 'combos');
-	if (dom.mTabExercisesBtn) dom.mTabExercisesBtn.classList.toggle('active', tab === 'exercises');
-	if (dom.mTabAnatomyBtn) dom.mTabAnatomyBtn.classList.toggle('active', tab === 'anatomy');
-	if (dom.mTabStatsBtn) dom.mTabStatsBtn.classList.toggle('active', tab === 'stats');
+	if (dom.mTabRoutinesBtn) dom.mTabRoutinesBtn.classList.toggle('active', isRoutines);
+	if (dom.mTabScheduleBtn) dom.mTabScheduleBtn.classList.toggle('active', isSchedule);
+	if (dom.mTabLibraryBtn) dom.mTabLibraryBtn.classList.toggle('active', isLibrary);
+	if (dom.mTabCombosBtn) dom.mTabCombosBtn.classList.toggle('active', isCombos);
+	if (dom.mTabExercisesBtn) dom.mTabExercisesBtn.classList.toggle('active', isExercises);
+	if (dom.mTabAnatomyBtn) dom.mTabAnatomyBtn.classList.toggle('active', isAnatomy);
+	if (dom.mTabStatsBtn) dom.mTabStatsBtn.classList.toggle('active', isStats);
 
 	// Manage sidebar visibility for routines tab vs full-width catalogs
-	const isRoutines = tab === 'routines';
+	const isRoutinesTab = tab === 'routines';
 	if (dom.appContainer) {
-		dom.appContainer.classList.toggle('non-routines-tab', !isRoutines);
+		dom.appContainer.classList.toggle('non-routines-tab', !isRoutinesTab);
 	}
 	if (dom.sidebarExpandBtn) {
-		if (!isRoutines) {
+		if (!isRoutinesTab) {
 			dom.sidebarExpandBtn.classList.add('hidden');
 		} else {
 			const isManuallyHidden = dom.appContainer && dom.appContainer.classList.contains('sidebar-hidden');
@@ -578,16 +605,35 @@ function switchTab(tab) {
 		}
 	}
 
+	if (dom.mobileLibrarySubnav) {
+		dom.mobileLibrarySubnav.classList.toggle('hidden', !isLibrary);
+		if (dom.mSubnavExercisesBtn) dom.mSubnavExercisesBtn.classList.toggle('active', isExercises);
+		if (dom.mSubnavCombosBtn) dom.mSubnavCombosBtn.classList.toggle('active', isCombos);
+		if (dom.mSubnavAnatomyBtn) dom.mSubnavAnatomyBtn.classList.toggle('active', isAnatomy);
+	}
+
 	if (dom.routineView) dom.routineView.classList.add('hidden');
 	if (dom.editorView) dom.editorView.classList.add('hidden');
 	if (dom.emptyView) dom.emptyView.classList.add('hidden');
+	if (dom.scheduleView) dom.scheduleView.classList.add('hidden');
 	if (dom.combosView) dom.combosView.classList.add('hidden');
 	if (dom.exercisesView) dom.exercisesView.classList.add('hidden');
 	if (dom.anatomyView) dom.anatomyView.classList.add('hidden');
 	if (dom.statsView) dom.statsView.classList.add('hidden');
 	if (dom.playerView) dom.playerView.classList.add('hidden');
 
-	if (tab === 'anatomy') {
+	if (tab === 'schedule') {
+		if (dom.scheduleView) {
+			dom.scheduleView.classList.remove('hidden');
+			renderScheduleDashboard(dom.scheduleView, {
+				onPlayRoutine: (routine, opts) => {
+					unlockAudio();
+					startRoutine(routine, 0);
+				},
+				routines
+			});
+		}
+	} else if (tab === 'anatomy') {
 		if (dom.anatomyView) {
 			dom.anatomyView.classList.remove('hidden');
 			renderAnatomyExplorer(dom.anatomyView, {
@@ -774,6 +820,8 @@ function bindEvents() {
 
 	// Tab switcher
 	if (dom.tabRoutinesBtn) dom.tabRoutinesBtn.addEventListener('click', () => switchTab('routines'));
+	if (dom.tabScheduleBtn) dom.tabScheduleBtn.addEventListener('click', () => switchTab('schedule'));
+	if (dom.tabLibraryBtn) dom.tabLibraryBtn.addEventListener('click', () => switchTab('library'));
 	if (dom.tabCombosBtn) dom.tabCombosBtn.addEventListener('click', () => switchTab('combos'));
 	if (dom.tabExercisesBtn) dom.tabExercisesBtn.addEventListener('click', () => switchTab('exercises'));
 	if (dom.tabAnatomyBtn) dom.tabAnatomyBtn.addEventListener('click', () => switchTab('anatomy'));
@@ -781,10 +829,17 @@ function bindEvents() {
 
 	// Mobile Navigation tab buttons
 	if (dom.mTabRoutinesBtn) dom.mTabRoutinesBtn.addEventListener('click', () => switchTab('routines'));
+	if (dom.mTabScheduleBtn) dom.mTabScheduleBtn.addEventListener('click', () => switchTab('schedule'));
+	if (dom.mTabLibraryBtn) dom.mTabLibraryBtn.addEventListener('click', () => switchTab('library'));
 	if (dom.mTabCombosBtn) dom.mTabCombosBtn.addEventListener('click', () => switchTab('combos'));
 	if (dom.mTabExercisesBtn) dom.mTabExercisesBtn.addEventListener('click', () => switchTab('exercises'));
 	if (dom.mTabAnatomyBtn) dom.mTabAnatomyBtn.addEventListener('click', () => switchTab('anatomy'));
 	if (dom.mTabStatsBtn) dom.mTabStatsBtn.addEventListener('click', () => switchTab('stats'));
+
+	// Mobile Library subnav buttons
+	if (dom.mSubnavExercisesBtn) dom.mSubnavExercisesBtn.addEventListener('click', () => switchTab('exercises'));
+	if (dom.mSubnavCombosBtn) dom.mSubnavCombosBtn.addEventListener('click', () => switchTab('combos'));
+	if (dom.mSubnavAnatomyBtn) dom.mSubnavAnatomyBtn.addEventListener('click', () => switchTab('anatomy'));
 
 	// Empty state create button
 	if (dom.emptyCreateBtn) dom.emptyCreateBtn.addEventListener('click', handleAddWorkout);
@@ -1340,6 +1395,16 @@ function renderSelectedRoutine() {
 				await copyToClipboard(shareUrl);
 				showToast('📋 Live routine link copied to clipboard!');
 				return true;
+			},
+			onSchedule: () => {
+				openScheduleModal({
+					routine,
+					routines,
+					onSaved: () => {
+						invalidateScheduleCache();
+						showToast(`📅 Scheduled "${routine.title}"!`);
+					}
+				});
 			},
 			onSaveToLibrary: () => {
 				handleSaveSharedToLibrary(true);

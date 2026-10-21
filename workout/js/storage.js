@@ -168,6 +168,115 @@ export async function deleteSession(sessionId) {
 	return true;
 }
 
+// ── Schedule / Calendar API ────────────────────────────────────────────────
+
+/**
+ * Fetch scheduled workouts within an optional date range.
+ * @param {string|null} [startDate] 'YYYY-MM-DD'
+ * @param {string|null} [endDate] 'YYYY-MM-DD'
+ * @param {string|null} [status] 'scheduled', 'completed', 'skipped'
+ * @returns {Promise<Array>}
+ */
+export async function fetchSchedule(startDate = null, endDate = null, status = null) {
+	const params = new URLSearchParams();
+	if (startDate) params.set('start_date', startDate);
+	if (endDate) params.set('end_date', endDate);
+	if (status) params.set('status', status);
+
+	const qs = params.toString() ? `?${params.toString()}` : '';
+	const res = await fetch(`${getApiBase()}/schedule${qs}`, {
+		headers: getHeaders({ 'Accept': 'application/json' })
+	});
+	if (!res.ok) {
+		throw new Error(`Failed to fetch schedule: HTTP ${res.status}`);
+	}
+	return await res.json();
+}
+
+/**
+ * Get a single scheduled workout by ID.
+ * @param {string} scheduleId
+ * @returns {Promise<Object>}
+ */
+export async function fetchScheduleItem(scheduleId) {
+	const res = await fetch(`${getApiBase()}/schedule/${encodeURIComponent(scheduleId)}`, {
+		headers: getHeaders({ 'Accept': 'application/json' })
+	});
+	if (!res.ok) {
+		throw new Error(`Failed to fetch schedule item: HTTP ${res.status}`);
+	}
+	return await res.json();
+}
+
+/**
+ * Create a new scheduled workout.
+ * @param {Object} data
+ * @returns {Promise<Object>}
+ */
+export async function createScheduleItem(data) {
+	const res = await fetch(`${getApiBase()}/schedule`, {
+		method: 'POST',
+		headers: getHeaders({ 'Content-Type': 'application/json' }),
+		body: JSON.stringify(data)
+	});
+	if (!res.ok) {
+		throw new Error(`Failed to schedule workout: HTTP ${res.status}`);
+	}
+	return await res.json();
+}
+
+/**
+ * Update an existing scheduled workout.
+ * @param {string} scheduleId
+ * @param {Object} data
+ * @returns {Promise<Object>}
+ */
+export async function updateScheduleItem(scheduleId, data) {
+	const res = await fetch(`${getApiBase()}/schedule/${encodeURIComponent(scheduleId)}`, {
+		method: 'PUT',
+		headers: getHeaders({ 'Content-Type': 'application/json' }),
+		body: JSON.stringify(data)
+	});
+	if (!res.ok) {
+		throw new Error(`Failed to update schedule: HTTP ${res.status}`);
+	}
+	return await res.json();
+}
+
+/**
+ * Delete a scheduled workout.
+ * @param {string} scheduleId
+ * @returns {Promise<boolean>}
+ */
+export async function deleteScheduleItem(scheduleId) {
+	const res = await fetch(`${getApiBase()}/schedule/${encodeURIComponent(scheduleId)}`, {
+		method: 'DELETE',
+		headers: getHeaders({ 'Accept': 'application/json' })
+	});
+	if (!res.ok) {
+		throw new Error(`Failed to delete schedule item: HTTP ${res.status}`);
+	}
+	return true;
+}
+
+/**
+ * Mark a scheduled workout as completed.
+ * @param {string} scheduleId
+ * @param {string|null} [sessionId]
+ * @returns {Promise<Object>}
+ */
+export async function completeScheduleItem(scheduleId, sessionId = null) {
+	const qs = sessionId ? `?session_id=${encodeURIComponent(sessionId)}` : '';
+	const res = await fetch(`${getApiBase()}/schedule/${encodeURIComponent(scheduleId)}/complete${qs}`, {
+		method: 'POST',
+		headers: getHeaders({ 'Accept': 'application/json' })
+	});
+	if (!res.ok) {
+		throw new Error(`Failed to complete schedule: HTTP ${res.status}`);
+	}
+	return await res.json();
+}
+
 // ── Exercises API ───────────────────────────────────────────────────────────
 
 /**

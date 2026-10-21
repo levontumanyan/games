@@ -28,6 +28,9 @@ from schemas import (
 	MusicTrackAdd,
 	RoutineStep,
 	RoutineUpsert,
+	ScheduledWorkoutCreate,
+	ScheduledWorkoutOut,
+	ScheduledWorkoutUpdate,
 	SessionUpsert,
 	StepPatch,
 	StepReorder,
@@ -252,6 +255,73 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 		if not success:
 			raise HTTPException(status_code=404, detail="Session not found")
 		return {"status": "ok"}
+
+	# ── Schedule / Calendar API ───────────────────────────────────────────────
+
+	@api_router.get("/schedule", response_model=list[ScheduledWorkoutOut])
+	async def get_schedule(
+		start_date: str | None = Query(default=None, description="Start date (YYYY-MM-DD)"),
+		end_date: str | None = Query(default=None, description="End date (YYYY-MM-DD)"),
+		status: str | None = Query(
+			default=None, description="Status filter: scheduled, completed, skipped"
+		),
+		user_id: str = Depends(get_user_id),
+	):
+		items = db.get_scheduled_workouts(
+			user_id, start_date=start_date, end_date=end_date, status=status
+		)
+		return JSONResponse(content=items)
+
+	@api_router.post("/schedule", response_model=ScheduledWorkoutOut)
+	async def create_schedule(
+		payload: ScheduledWorkoutCreate,
+		user_id: str = Depends(get_user_id),
+	):
+		created = db.create_scheduled_workout(user_id, payload.model_dump())
+		return JSONResponse(content=created, status_code=201)
+
+	@api_router.get("/schedule/{schedule_id}", response_model=ScheduledWorkoutOut)
+	async def get_schedule_item(
+		schedule_id: str,
+		user_id: str = Depends(get_user_id),
+	):
+		item = db.get_scheduled_workout(user_id, schedule_id)
+		if not item:
+			raise HTTPException(status_code=404, detail="Scheduled workout not found")
+		return JSONResponse(content=item)
+
+	@api_router.put("/schedule/{schedule_id}", response_model=ScheduledWorkoutOut)
+	async def update_schedule_item(
+		schedule_id: str,
+		payload: ScheduledWorkoutUpdate,
+		user_id: str = Depends(get_user_id),
+	):
+		updates = payload.model_dump(exclude_unset=True)
+		updated = db.update_scheduled_workout(user_id, schedule_id, updates)
+		if not updated:
+			raise HTTPException(status_code=404, detail="Scheduled workout not found")
+		return JSONResponse(content=updated)
+
+	@api_router.delete("/schedule/{schedule_id}")
+	async def delete_schedule_item(
+		schedule_id: str,
+		user_id: str = Depends(get_user_id),
+	):
+		success = db.delete_scheduled_workout(user_id, schedule_id)
+		if not success:
+			raise HTTPException(status_code=404, detail="Scheduled workout not found")
+		return {"status": "ok"}
+
+	@api_router.post("/schedule/{schedule_id}/complete", response_model=ScheduledWorkoutOut)
+	async def complete_schedule_item(
+		schedule_id: str,
+		session_id: str | None = Query(default=None, description="Optional linked session ID"),
+		user_id: str = Depends(get_user_id),
+	):
+		completed = db.complete_scheduled_workout(user_id, schedule_id, session_id=session_id)
+		if not completed:
+			raise HTTPException(status_code=404, detail="Scheduled workout not found")
+		return JSONResponse(content=completed)
 
 	# ── Stats API ─────────────────────────────────────────────────────────────
 

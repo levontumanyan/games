@@ -594,6 +594,138 @@ html, body {
 	border-radius: 2px;
 }
 
+/* ── Topbar Dropdown (Library) ───────────────────────── */
+
+.topbar-dropdown-group {
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	height: 100%;
+}
+
+.topbar-subnav-caret {
+	font-size: 0.65rem;
+	opacity: 0.6;
+	margin-left: 2px;
+	transition: transform var(--transition-fast);
+}
+
+.topbar-dropdown-group:hover .topbar-subnav-caret,
+.topbar-dropdown-group:focus-within .topbar-subnav-caret {
+	transform: rotate(180deg);
+}
+
+.topbar-subnav-dropdown {
+	position: absolute;
+	top: calc(100% - 4px);
+	left: 50%;
+	transform: translateX(-50%) translateY(4px);
+	background: var(--bg-card);
+	border: 1px solid var(--border);
+	border-radius: var(--radius-md);
+	box-shadow: var(--shadow-lg);
+	padding: 6px;
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 145px;
+	z-index: 100;
+	opacity: 0;
+	visibility: hidden;
+	pointer-events: none;
+	transition: opacity var(--transition-fast), transform var(--transition-fast), visibility var(--transition-fast);
+	backdrop-filter: blur(12px);
+}
+
+.topbar-dropdown-group:hover .topbar-subnav-dropdown,
+.topbar-dropdown-group:focus-within .topbar-subnav-dropdown {
+	opacity: 1;
+	visibility: visible;
+	pointer-events: auto;
+	transform: translateX(-50%) translateY(0);
+}
+
+.subnav-dropdown-item {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 7px 12px;
+	border: none;
+	background: transparent;
+	color: var(--text-secondary);
+	font-size: 0.82rem;
+	font-weight: 500;
+	border-radius: var(--radius-sm);
+	cursor: pointer;
+	text-align: left;
+	width: 100%;
+	white-space: nowrap;
+	transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.subnav-dropdown-item:hover {
+	background: var(--bg-hover);
+	color: var(--text-primary);
+}
+
+.subnav-dropdown-item.active {
+	background: var(--accent-subtle);
+	color: var(--accent);
+	font-weight: 600;
+}
+
+.subnav-icon {
+	font-size: 0.95rem;
+}
+
+/* ── Mobile Movement Library Subnav ──────────────────── */
+
+.library-mobile-subnav {
+	display: none;
+}
+
+@media (max-width: 768px) {
+	.library-mobile-subnav:not(.hidden) {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 6px;
+		padding: 10px 14px 8px;
+		background: var(--bg-primary);
+		border-bottom: 1px solid var(--border-subtle);
+		position: sticky;
+		top: 0;
+		z-index: 10;
+	}
+
+	.library-mobile-subtab {
+		flex: 1;
+		max-width: 140px;
+		padding: 6px 12px;
+		border-radius: 999px;
+		border: 1px solid var(--border);
+		background: var(--bg-secondary);
+		color: var(--text-secondary);
+		font-size: 0.78rem;
+		font-weight: 600;
+		text-align: center;
+		cursor: pointer;
+		transition: all var(--transition-fast);
+	}
+
+	.library-mobile-subtab:hover {
+		background: var(--bg-hover);
+		color: var(--text-primary);
+	}
+
+	.library-mobile-subtab.active {
+		background: var(--accent);
+		color: #fff;
+		border-color: var(--accent);
+		box-shadow: 0 2px 8px var(--accent-glow);
+	}
+}
+
 .topbar-right {
 	grid-column: 3;
 	display: flex;
@@ -10898,4 +11030,391 @@ textarea.input {
 .quick-log-submit-btn {
 	flex: 1;
 	box-shadow: 0 4px 14px var(--accent-glow);
+}
+
+/* ── Schedule / Calendar Dashboard ────────────────────────────────────────── */
+
+.schedule-dashboard-wrapper {
+	max-width: 1200px;
+	margin: 0 auto;
+	padding: 24px 28px 48px;
+	display: flex;
+	flex-direction: column;
+	gap: 20px;
+}
+
+.schedule-top-banner {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+	flex-wrap: wrap;
+	padding-bottom: 4px;
+}
+
+.schedule-banner-title h2 {
+	margin: 0;
+	font-size: 1.45rem;
+	font-weight: 800;
+	color: var(--text-primary);
+	letter-spacing: -0.02em;
+}
+
+.schedule-banner-title p {
+	margin: 4px 0 0;
+	font-size: 0.85rem;
+}
+
+.schedule-layout-grid {
+	display: grid;
+	grid-template-columns: 1.35fr 1fr;
+	gap: 22px;
+	align-items: start;
+}
+
+@media (max-width: 900px) {
+	.schedule-layout-grid {
+		grid-template-columns: 1fr;
+	}
+}
+
+/* ── Calendar Card & Month Nav ────────────────────────────────────────────── */
+
+.schedule-calendar-card {
+	background: var(--bg-card);
+	border: 1px solid var(--border);
+	border-radius: var(--radius-lg);
+	box-shadow: var(--shadow-sm);
+	padding: 20px;
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+}
+
+.schedule-month-nav {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 0 4px 6px;
+}
+
+.month-title {
+	margin: 0;
+	font-size: 1.15rem;
+	font-weight: 700;
+	color: var(--text-primary);
+	letter-spacing: -0.01em;
+}
+
+.month-nav-right {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.modern-schedule-grid {
+	display: grid;
+	grid-template-columns: repeat(7, 1fr);
+	gap: 6px;
+	user-select: none;
+}
+
+.cal-header-cell {
+	text-align: center;
+	font-size: 0.72rem;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: var(--text-muted);
+	padding: 6px 0;
+}
+
+.cal-day-cell {
+	min-height: 84px;
+	background: var(--bg-secondary);
+	border: 1px solid var(--border-subtle);
+	border-radius: var(--radius-md);
+	padding: 7px 8px;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	cursor: pointer;
+	transition: border-color var(--transition-fast), background var(--transition-fast), transform var(--transition-fast);
+}
+
+.cal-day-cell:hover {
+	border-color: var(--border-hover);
+	background: var(--bg-hover);
+}
+
+.cal-cell-empty {
+	background: transparent;
+	border-color: transparent;
+	cursor: default;
+	pointer-events: none;
+}
+
+.cell-day-top {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	font-size: 0.82rem;
+	font-weight: 600;
+	color: var(--text-secondary);
+}
+
+.cal-day-cell.is-today .cell-day-num {
+	color: var(--accent);
+	font-weight: 800;
+	position: relative;
+}
+
+.cal-day-cell.is-today {
+	border-color: var(--accent-subtle);
+	background: var(--bg-card);
+}
+
+.cal-day-cell.is-selected {
+	border-color: var(--accent);
+	box-shadow: 0 0 0 2px var(--accent-subtle);
+	background: var(--bg-card);
+}
+
+.cell-badge-done {
+	font-size: 0.7rem;
+	color: var(--color-success, #10b981);
+	font-weight: 800;
+}
+
+.cell-day-content {
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+	overflow: hidden;
+}
+
+.cell-workout-chips {
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+}
+
+.cell-mini-chip {
+	font-size: 0.68rem;
+	font-weight: 600;
+	padding: 2px 6px;
+	border-radius: var(--radius-sm);
+	background: var(--accent-subtle);
+	color: var(--accent);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	border: 1px solid transparent;
+}
+
+.cell-mini-chip.chip-completed {
+	background: rgba(16, 185, 129, 0.12);
+	color: var(--color-success, #10b981);
+}
+
+.cell-more-badge {
+	font-size: 0.65rem;
+	color: var(--text-muted);
+	font-weight: 600;
+	padding-left: 2px;
+}
+
+/* ── Selected Day Agenda Pane ─────────────────────────────────────────────── */
+
+.schedule-agenda-card {
+	background: var(--bg-card);
+	border: 1px solid var(--border);
+	border-radius: var(--radius-lg);
+	box-shadow: var(--shadow-sm);
+	padding: 20px;
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	min-height: 380px;
+}
+
+.agenda-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding-bottom: 12px;
+	border-bottom: 1px solid var(--border-subtle);
+}
+
+.agenda-title {
+	margin: 0;
+	font-size: 1.15rem;
+	font-weight: 700;
+	color: var(--text-primary);
+	letter-spacing: -0.01em;
+}
+
+.agenda-subtitle {
+	font-size: 0.78rem;
+	display: block;
+	margin-top: 2px;
+}
+
+.agenda-items-list {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.agenda-item-card {
+	background: var(--bg-secondary);
+	border: 1px solid var(--border-subtle);
+	border-radius: var(--radius-md);
+	padding: 12px 14px;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.agenda-item-card:hover {
+	border-color: var(--border-hover);
+	background: var(--bg-hover);
+}
+
+.agenda-item-left {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	min-width: 0;
+}
+
+.agenda-check-btn {
+	width: 22px;
+	height: 22px;
+	border-radius: 50%;
+	border: 2px solid var(--border-hover);
+	background: transparent;
+	color: var(--bg-primary);
+	font-size: 0.75rem;
+	font-weight: 900;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	flex-shrink: 0;
+	transition: all var(--transition-fast);
+}
+
+.agenda-check-btn:hover {
+	border-color: var(--accent);
+}
+
+.agenda-check-btn.checked {
+	background: var(--color-success, #10b981);
+	border-color: var(--color-success, #10b981);
+	color: #fff;
+}
+
+.agenda-item-info {
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+	min-width: 0;
+}
+
+.agenda-item-title-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+.agenda-item-title {
+	font-size: 0.88rem;
+	font-weight: 600;
+	color: var(--text-primary);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.agenda-time-pill {
+	font-size: 0.7rem;
+	font-weight: 600;
+	color: var(--text-muted);
+	background: var(--bg-tertiary);
+	padding: 1px 6px;
+	border-radius: 999px;
+}
+
+.agenda-item-notes {
+	font-size: 0.76rem;
+	color: var(--text-secondary);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.agenda-item-actions {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	flex-shrink: 0;
+}
+
+.btn-start-scheduled {
+	gap: 4px;
+	font-weight: 700;
+}
+
+.agenda-item-card.agenda-completed .agenda-item-title {
+	text-decoration: line-through;
+	color: var(--text-muted);
+}
+
+/* ── Agenda Empty State ───────────────────────────────────────────────────── */
+
+.agenda-empty-state {
+	padding: 36px 16px;
+	text-align: center;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 10px;
+}
+
+.agenda-empty-icon {
+	font-size: 2.2rem;
+	opacity: 0.8;
+}
+
+.agenda-empty-text {
+	margin: 0;
+	font-size: 0.86rem;
+	color: var(--text-muted);
+}
+
+/* ── Schedule Modal Form ──────────────────────────────────────────────────── */
+
+.schedule-modal-form {
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+	padding: 4px 0;
+}
+
+.form-row-2col {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 12px;
+}
+
+.modal-form-actions {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 10px;
+	margin-top: 10px;
 }

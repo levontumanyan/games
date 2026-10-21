@@ -81,17 +81,22 @@ def test_workout_frontend_loads_with_zero_console_errors(live_server):
 		# Assert top navigation and brand bar exist
 		page.wait_for_selector("#app-topbar", timeout=5000)
 		assert page.is_visible("#tab-routines-btn")
+		assert page.is_visible("#tab-schedule-btn")
+		assert page.is_visible("#tab-library-btn")
 
-		# 2. Navigate to Combos tab
+		# 2. Navigate to Combos tab via Library dropdown
+		page.hover("#tab-library-btn")
 		page.click("#tab-combos-btn")
 		page.wait_for_selector("#combos-view:not(.hidden)", timeout=3000)
 
-		# 3. Navigate to Exercises tab
+		# 3. Navigate to Exercises tab via Library dropdown
+		page.hover("#tab-library-btn")
 		page.click("#tab-exercises-btn")
 		page.wait_for_selector("#exercises-view:not(.hidden)", timeout=3000)
 		page.wait_for_selector(".exercises-filter-bar", timeout=3000)
 
-		# 4. Navigate to Anatomy tab
+		# 4. Navigate to Anatomy tab via Library dropdown
+		page.hover("#tab-library-btn")
 		page.click("#tab-anatomy-btn")
 		page.wait_for_selector("#anatomy-view:not(.hidden)", timeout=3000)
 		page.wait_for_selector(".body-svg", timeout=3000)
@@ -100,7 +105,12 @@ def test_workout_frontend_loads_with_zero_console_errors(live_server):
 		page.click("#tab-stats-btn")
 		page.wait_for_selector("#stats-view:not(.hidden)", timeout=3000)
 
-		# 6. Navigate back to Workouts tab
+		# 6. Navigate to Schedule tab
+		page.click("#tab-schedule-btn")
+		page.wait_for_selector("#schedule-view:not(.hidden)", timeout=3000)
+		page.wait_for_selector(".schedule-dashboard-wrapper", timeout=3000)
+
+		# 7. Navigate back to Workouts tab
 		page.click("#tab-routines-btn")
 		page.wait_for_selector("#app-sidebar", timeout=3000)
 

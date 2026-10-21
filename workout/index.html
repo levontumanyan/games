@@ -31,18 +31,31 @@
 					<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
 					<span>Workouts</span>
 				</button>
-				<button id="tab-combos-btn" class="topbar-tab" title="Combos">
-					<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-					<span>Combos</span>
+				<button id="tab-schedule-btn" class="topbar-tab" title="Schedule">
+					<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+					<span>Schedule</span>
 				</button>
-				<button id="tab-exercises-btn" class="topbar-tab" title="Exercises">
-					<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6.5 6.5 11 11"/><path d="m21 21-1-1a5 5 0 0 0-7.07 0l-.93.93a5 5 0 0 1-7.07 0l-1.86-1.86a5 5 0 0 1 0-7.07l.93-.93a5 5 0 0 0 0-7.07l-1-1"/><path d="m3 3 1 1a5 5 0 0 0 7.07 0l.93-.93a5 5 0 0 1 7.07 0l1.86 1.86a5 5 0 0 1 0 7.07l-.93.93a5 5 0 0 0 0 7.07l1 1"/></svg>
-					<span>Exercises</span>
-				</button>
-				<button id="tab-anatomy-btn" class="topbar-tab" title="Anatomy">
-					<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a4 4 0 0 0-4 4c0 1.5.8 2.8 2 3.5V14l-3 4v4h2v-3.5l2-3.5 2 3.5V22h2v-4l-3-4V9.5c1.2-.7 2-2 2-3.5a4 4 0 0 0-4-4Z"/><path d="M8 8H5a2 2 0 0 0-2 2v2"/><path d="M16 8h3a2 2 0 0 1 2 2v2"/></svg>
-					<span>Anatomy</span>
-				</button>
+				<div class="topbar-dropdown-group" id="library-nav-group">
+					<button id="tab-library-btn" class="topbar-tab" title="Movement Library">
+						<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6.5 6.5 11 11"/><path d="m21 21-1-1a5 5 0 0 0-7.07 0l-.93.93a5 5 0 0 1-7.07 0l-1.86-1.86a5 5 0 0 1 0-7.07l.93-.93a5 5 0 0 0 0-7.07l-1-1"/><path d="m3 3 1 1a5 5 0 0 0 7.07 0l.93-.93a5 5 0 0 1 7.07 0l1.86 1.86a5 5 0 0 1 0 7.07l-.93.93a5 5 0 0 0 0 7.07l1 1"/></svg>
+						<span>Library</span>
+						<span class="topbar-subnav-caret">▾</span>
+					</button>
+					<div class="topbar-subnav-dropdown" id="library-subnav-dropdown">
+						<button id="tab-exercises-btn" class="subnav-dropdown-item active" title="Exercises">
+							<span class="subnav-icon">🏋️</span>
+							<span>Exercises</span>
+						</button>
+						<button id="tab-combos-btn" class="subnav-dropdown-item" title="Combos">
+							<span class="subnav-icon">🥊</span>
+							<span>Combos</span>
+						</button>
+						<button id="tab-anatomy-btn" class="subnav-dropdown-item" title="Anatomy">
+							<span class="subnav-icon">🫀</span>
+							<span>Anatomy</span>
+						</button>
+					</div>
+				</div>
 				<button id="tab-stats-btn" class="topbar-tab" title="Stats">
 					<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
 					<span>Stats</span>
@@ -112,6 +125,16 @@
 
 		<!-- ── Main Content ──────────────────────────────────────────── -->
 		<main class="main-content">
+
+			<!-- ── Schedule / Calendar Dashboard View ────────────────── -->
+			<div id="schedule-view" class="hidden main-scroll-surface"></div>
+
+			<!-- ── Mobile Movement Library Subnav ────────────────────── -->
+			<div id="mobile-library-subnav" class="library-mobile-subnav hidden">
+				<button id="m-subnav-exercises-btn" class="library-mobile-subtab active" data-subtab="exercises">Exercises</button>
+				<button id="m-subnav-combos-btn" class="library-mobile-subtab" data-subtab="combos">Combos</button>
+				<button id="m-subnav-anatomy-btn" class="library-mobile-subtab" data-subtab="anatomy">Anatomy</button>
+			</div>
 
 			<!-- ── Combos & Flows Library Catalog View ───────────────── -->
 			<div id="combos-view" class="hidden main-scroll-surface"></div>
@@ -380,22 +403,22 @@
 				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
 				<span>Workouts</span>
 			</button>
-			<button id="m-tab-combos-btn" class="mobile-nav-btn">
-				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-				<span>Combos</span>
+			<button id="m-tab-schedule-btn" class="mobile-nav-btn">
+				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+				<span>Schedule</span>
 			</button>
-			<button id="m-tab-exercises-btn" class="mobile-nav-btn">
+			<button id="m-tab-library-btn" class="mobile-nav-btn">
 				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6.5 6.5 11 11"/><path d="m21 21-1-1a5 5 0 0 0-7.07 0l-.93.93a5 5 0 0 1-7.07 0l-1.86-1.86a5 5 0 0 1 0-7.07l.93-.93a5 5 0 0 0 0-7.07l-1-1"/><path d="m3 3 1 1a5 5 0 0 0 7.07 0l.93-.93a5 5 0 0 1 7.07 0l1.86 1.86a5 5 0 0 1 0 7.07l-.93.93a5 5 0 0 0 0 7.07l1 1"/></svg>
-				<span>Exercises</span>
-			</button>
-			<button id="m-tab-anatomy-btn" class="mobile-nav-btn">
-				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a4 4 0 0 0-4 4c0 1.5.8 2.8 2 3.5V14l-3 4v4h2v-3.5l2-3.5 2 3.5V22h2v-4l-3-4V9.5c1.2-.7 2-2 2-3.5a4 4 0 0 0-4-4Z"/><path d="M8 8H5a2 2 0 0 0-2 2v2"/><path d="M16 8h3a2 2 0 0 1 2 2v2"/></svg>
-				<span>Anatomy</span>
+				<span>Library</span>
 			</button>
 			<button id="m-tab-stats-btn" class="mobile-nav-btn">
 				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
 				<span>Stats</span>
 			</button>
+			<!-- Compatibility aliases for automated tests & scripts -->
+			<button id="m-tab-combos-btn" class="hidden"></button>
+			<button id="m-tab-exercises-btn" class="hidden"></button>
+			<button id="m-tab-anatomy-btn" class="hidden"></button>
 		</nav>
 	</div>
 

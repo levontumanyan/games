@@ -28,19 +28,27 @@ async def capture_views(base_url: str, output_dir: str):
 			await page.screenshot(path=os.path.join(output_dir, "view_workouts_selected.png"))
 
 		# 2. Combos view
+		await page.hover("#tab-library-btn")
 		await page.click("#tab-combos-btn")
 		await page.wait_for_timeout(1000)
 		await page.screenshot(path=os.path.join(output_dir, "view_combos.png"))
 
 		# 3. Exercises view
+		await page.hover("#tab-library-btn")
 		await page.click("#tab-exercises-btn")
 		await page.wait_for_timeout(1000)
 		await page.screenshot(path=os.path.join(output_dir, "view_exercises.png"))
 
 		# 4. Anatomy view
+		await page.hover("#tab-library-btn")
 		await page.click("#tab-anatomy-btn")
 		await page.wait_for_timeout(1000)
 		await page.screenshot(path=os.path.join(output_dir, "view_anatomy.png"))
+
+		# 5. Schedule view
+		await page.click("#tab-schedule-btn")
+		await page.wait_for_timeout(1000)
+		await page.screenshot(path=os.path.join(output_dir, "view_schedule.png"))
 
 		# Click a muscle chip in Anatomy if available
 		chest_chip = page.locator("button.anatomy-quick-chip:has-text('Chest')").first
