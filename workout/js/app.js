@@ -46,10 +46,11 @@ import { renderAnatomyExplorer } from './body_map.js';
 import { initTheme } from './theme.js';
 import { showRoutinePickerPopover } from './routine_picker.js';
 import { showQuickLogModal } from './quick_log.js';
+import { renderWorkoutsCatalog } from './workouts_view.js';
 
 let routines = [];
 let selectedRoutineId = null;
-let currentMode = 'view'; // 'view' | 'edit'
+let currentMode = 'catalog'; // 'catalog' | 'view' | 'edit'
 let currentTab = 'routines'; // 'routines' | 'combos' | 'exercises' | 'stats'
 let syncTimeout = null;
 let localStorageTimeout = null;
@@ -84,11 +85,17 @@ async function init() {
 	if (urlTarget) {
 		if (urlTarget.isOwner) {
 			const found = routines.find(r => r.id === urlTarget.routineId || r.title.toLowerCase().replace(/ /g, '-') === urlTarget.routineId.toLowerCase());
-			if (found) selectedRoutineId = found.id;
+			if (found) {
+				selectedRoutineId = found.id;
+				currentMode = 'view';
+			}
 		} else if (urlTarget.routine) {
 			sharedRoutine = urlTarget.routine;
 			isViewingShared = true;
+			currentMode = 'view';
 		}
+	} else {
+		currentMode = 'catalog';
 	}
 
 	renderRoutineList();
@@ -205,6 +212,7 @@ async function init() {
 function cacheDom() {
 	dom.routineList = document.getElementById('routine-list');
 	dom.addWorkoutBtn = document.getElementById('add-workout-btn');
+	dom.workoutsCatalogView = document.getElementById('workouts-catalog-view');
 	dom.quickLogBtn = document.getElementById('quick-log-btn');
 	dom.syncStatus = document.getElementById('sync-status');
 	dom.emptyView = document.getElementById('empty-view');
@@ -564,7 +572,12 @@ function switchTab(tab) {
 	if (tab === 'library') {
 		tab = 'exercises';
 	}
+	const isSameTab = currentTab === tab;
 	currentTab = tab;
+
+	if (isSameTab && tab === 'routines') {
+		currentMode = 'catalog';
+	}
 
 	const isRoutines = tab === 'routines';
 	const isSchedule = tab === 'schedule';
@@ -591,18 +604,12 @@ function switchTab(tab) {
 	if (dom.mTabAnatomyBtn) dom.mTabAnatomyBtn.classList.toggle('active', isAnatomy);
 	if (dom.mTabStatsBtn) dom.mTabStatsBtn.classList.toggle('active', isStats);
 
-	// Manage sidebar visibility for routines tab vs full-width catalogs
-	const isRoutinesTab = tab === 'routines';
+	// Reclaim full width across all views
 	if (dom.appContainer) {
-		dom.appContainer.classList.toggle('non-routines-tab', !isRoutinesTab);
+		dom.appContainer.classList.add('non-routines-tab');
 	}
 	if (dom.sidebarExpandBtn) {
-		if (!isRoutinesTab) {
-			dom.sidebarExpandBtn.classList.add('hidden');
-		} else {
-			const isManuallyHidden = dom.appContainer && dom.appContainer.classList.contains('sidebar-hidden');
-			dom.sidebarExpandBtn.classList.toggle('hidden', !isManuallyHidden);
-		}
+		dom.sidebarExpandBtn.classList.add('hidden');
 	}
 
 	if (dom.mobileLibrarySubnav) {
@@ -612,6 +619,7 @@ function switchTab(tab) {
 		if (dom.mSubnavAnatomyBtn) dom.mSubnavAnatomyBtn.classList.toggle('active', isAnatomy);
 	}
 
+	if (dom.workoutsCatalogView) dom.workoutsCatalogView.classList.add('hidden');
 	if (dom.routineView) dom.routineView.classList.add('hidden');
 	if (dom.editorView) dom.editorView.classList.add('hidden');
 	if (dom.emptyView) dom.emptyView.classList.add('hidden');
@@ -1307,6 +1315,40 @@ function renderRoutineList() {
 
 		dom.routineList.appendChild(li);
 	});
+
+	if (currentTab === 'routines' && currentMode === 'catalog' && dom.workoutsCatalogView) {
+		renderWorkoutsCatalog(dom.workoutsCatalogView, {
+			routines,
+			onSelectRoutine: (routine) => {
+				selectedRoutineId = routine.id;
+				currentMode = 'view';
+				renderSelectedRoutine();
+			},
+			onPlayRoutine: (routine) => {
+				selectedRoutineId = routine.id;
+				unlockAudio();
+				startRoutine(routine, 0);
+			},
+			onScheduleRoutine: (routine) => {
+				openScheduleModal({
+					routine,
+					routines,
+					onSaved: () => {
+						invalidateScheduleCache();
+						showToast(`📅 Scheduled "${routine.title}"!`);
+					}
+				});
+			},
+			onEditRoutine: (routine) => {
+				selectedRoutineId = routine.id;
+				currentMode = 'edit';
+				renderSelectedRoutine();
+			},
+			onCreateRoutine: () => {
+				handleAddWorkout();
+			}
+		});
+	}
 }
 
 /**
@@ -1356,13 +1398,57 @@ function goToExercise(exerciseOrId) {
 function renderSelectedRoutine() {
 	if (currentTab !== 'routines') return;
 
+	if (currentMode === 'catalog') {
+		if (dom.workoutsCatalogView) {
+			dom.workoutsCatalogView.classList.remove('hidden');
+			renderWorkoutsCatalog(dom.workoutsCatalogView, {
+				routines,
+				onSelectRoutine: (routine) => {
+					selectedRoutineId = routine.id;
+					currentMode = 'view';
+					renderSelectedRoutine();
+				},
+				onPlayRoutine: (routine) => {
+					selectedRoutineId = routine.id;
+					unlockAudio();
+					startRoutine(routine, 0);
+				},
+				onScheduleRoutine: (routine) => {
+					openScheduleModal({
+						routine,
+						routines,
+						onSaved: () => {
+							invalidateScheduleCache();
+							showToast(`📅 Scheduled "${routine.title}"!`);
+						}
+					});
+				},
+				onEditRoutine: (routine) => {
+					selectedRoutineId = routine.id;
+					currentMode = 'edit';
+					renderSelectedRoutine();
+				},
+				onCreateRoutine: () => {
+					handleAddWorkout();
+				}
+			});
+		}
+		if (dom.routineView) dom.routineView.classList.add('hidden');
+		if (dom.editorView) dom.editorView.classList.add('hidden');
+		if (dom.emptyView) dom.emptyView.classList.add('hidden');
+		if (dom.playerView) dom.playerView.classList.add('hidden');
+		return;
+	}
+
+	if (dom.workoutsCatalogView) {
+		dom.workoutsCatalogView.classList.add('hidden');
+	}
+
 	const routine = getSelectedRoutine();
 
 	if (!routine) {
-		dom.emptyView.classList.remove('hidden');
-		dom.routineView.classList.add('hidden');
-		dom.editorView.classList.add('hidden');
-		dom.playerView.classList.add('hidden');
+		currentMode = 'catalog';
+		renderSelectedRoutine();
 		return;
 	}
 
@@ -1375,6 +1461,10 @@ function renderSelectedRoutine() {
 
 		renderRoutineOverview(routine, dom.routineOverviewContainer, {
 			isShared: isViewingShared,
+			onBackToCatalog: () => {
+				currentMode = 'catalog';
+				renderSelectedRoutine();
+			},
 			onEdit: () => {
 				if (isViewingShared) {
 					handleSaveSharedToLibrary(false);
