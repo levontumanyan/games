@@ -110,12 +110,12 @@ def test_workout_frontend_loads_with_zero_console_errors(live_server):
 		page.wait_for_selector("#schedule-view:not(.hidden)", timeout=3000)
 		page.wait_for_selector(".schedule-dashboard-wrapper", timeout=3000)
 
-		# 7. Navigate back to Workouts tab (Full-width catalog view)
+		# 7. Navigate back to Workouts tab
 		page.click("#tab-routines-btn")
-		page.wait_for_selector("#workouts-catalog-view:not(.hidden)", timeout=3000)
+		page.wait_for_selector("#app-sidebar", timeout=3000)
 
 		# 7. Player Smoke Test: Launch routine player, test countdown & player view, then exit
-		routine_card = page.locator(".workout-catalog-card").first
+		routine_card = page.locator("#routine-list .routine-item").first
 		if routine_card.count() > 0:
 			routine_card.click()
 			page.wait_for_selector(".btn-hero-play", timeout=5000)

@@ -1058,6 +1058,9 @@ function executeVideoStep(step, targetDuration, videoAsset) {
 
 		if (isAlreadyCued && isVideoWarmed) {
 			console.log(`[Workout Player] Instant start: playing pre-warmed video ${vidId} at ${startSec}s`);
+			clipHasStartedPlaying = true;
+			clearVideoFallback();
+			startClipMonitor(step, videoAsset, targetDuration);
 			try {
 				ytPlayer.seekTo(startSec, true);
 				ytPlayer.playVideo();
@@ -1071,6 +1074,9 @@ function executeVideoStep(step, targetDuration, videoAsset) {
 			}
 		} else if (isAlreadyCued) {
 			console.log(`[Workout Player] Playing already cued video: ${vidId} at ${startSec}s`);
+			clipHasStartedPlaying = true;
+			clearVideoFallback();
+			startClipMonitor(step, videoAsset, targetDuration);
 			try {
 				ytPlayer.seekTo(startSec, true);
 				ytPlayer.playVideo();
@@ -1110,9 +1116,26 @@ function executeVideoStep(step, targetDuration, videoAsset) {
 
 	// 10-second safety fallback: if YouTube fails to play (ad-block, offline, error), fall back to standard timer step
 	videoSafetyFallbackTimeout = setTimeout(() => {
-		if (!clipHasStartedPlaying && isPlaying && !isPaused) {
-			console.warn('[Workout Player] Video playback failed to start within 10s, falling back to timer step');
-			executeTimerStep(step);
+		if (isPlaying && !isPaused) {
+			// Check if YouTube player is already actively rendering or playing
+			if (ytPlayer && typeof ytPlayer.getPlayerState === 'function') {
+				const state = ytPlayer.getPlayerState();
+				if (state === 1 || state === 3) {
+					clipHasStartedPlaying = true;
+					clearVideoFallback();
+					return;
+				}
+				const curTime = ytPlayer.getCurrentTime();
+				if (typeof curTime === 'number' && curTime > (startSec || 0)) {
+					clipHasStartedPlaying = true;
+					clearVideoFallback();
+					return;
+				}
+			}
+			if (!clipHasStartedPlaying) {
+				console.warn('[Workout Player] Video playback failed to start within 10s, falling back to timer step');
+				executeTimerStep(step);
+			}
 		}
 	}, 10000);
 

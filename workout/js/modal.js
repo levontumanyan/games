@@ -14,6 +14,7 @@ let modalConfirmBtn = null;
 let modalCancelBtn = null;
 let modalCloseBtn = null;
 let currentResolve = null;
+let dynamicActionContainer = null;
 
 function initModalElements() {
 	if (modalBackdrop) return;
@@ -59,6 +60,12 @@ function close(result) {
 	modalBackdrop.classList.add('hidden');
 	if (modalInput) {
 		modalInput.readOnly = false;
+	}
+	if (dynamicActionContainer) {
+		dynamicActionContainer.remove();
+		dynamicActionContainer = null;
+		if (modalConfirmBtn) modalConfirmBtn.classList.remove('hidden');
+		if (modalCancelBtn) modalCancelBtn.classList.remove('hidden');
 	}
 	if (currentResolve) {
 		const res = currentResolve;
@@ -155,6 +162,65 @@ export function showConfirm({
 		setTimeout(() => {
 			modalConfirmBtn.focus();
 		}, 50);
+	});
+}
+
+/**
+ * Show a modal with custom action buttons (e.g. Archive, Delete Permanently, Cancel).
+ * @param {Object} options
+ * @param {string} options.title
+ * @param {string} options.message
+ * @param {Array<{label: string, value: string, className?: string}>} [options.actions]
+ * @returns {Promise<string|null>}
+ */
+export function showActionChoice({
+	title = 'Choose Action',
+	message = '',
+	actions = [
+		{ label: 'Archive Workout', value: 'archive', className: 'btn btn-primary' },
+		{ label: 'Delete Permanently', value: 'delete', className: 'btn btn-danger-solid' },
+		{ label: 'Cancel', value: 'cancel', className: 'btn btn-ghost' },
+	],
+} = {}) {
+	initModalElements();
+	return new Promise((resolve) => {
+		currentResolve = resolve;
+
+		modalTitle.textContent = title;
+		modalMessage.textContent = message;
+		modalMessage.style.display = message ? 'block' : 'none';
+
+		modalInputGroup.classList.add('hidden');
+		modalConfirmBtn.classList.add('hidden');
+		modalCancelBtn.classList.add('hidden');
+
+		if (dynamicActionContainer) {
+			dynamicActionContainer.remove();
+			dynamicActionContainer = null;
+		}
+
+		const footer = modalConfirmBtn.parentElement;
+		dynamicActionContainer = document.createElement('div');
+		dynamicActionContainer.className = 'modal-dynamic-actions';
+		dynamicActionContainer.style.display = 'flex';
+		dynamicActionContainer.style.gap = '8px';
+		dynamicActionContainer.style.flexWrap = 'wrap';
+		dynamicActionContainer.style.justifyContent = 'flex-end';
+		dynamicActionContainer.style.width = '100%';
+
+		actions.forEach((action) => {
+			const btn = document.createElement('button');
+			btn.className = action.className || 'btn btn-ghost';
+			btn.textContent = action.label;
+			btn.addEventListener('click', (e) => {
+				e.stopPropagation();
+				close(action.value);
+			});
+			dynamicActionContainer.appendChild(btn);
+		});
+
+		footer.appendChild(dynamicActionContainer);
+		modalBackdrop.classList.remove('hidden');
 	});
 }
 

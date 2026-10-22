@@ -71,15 +71,17 @@ def test_save_and_fetch_routines(client: TestClient, tmp_path: Path):
 	assert get_subpath_res.json()[0]["id"] == "routine-1"
 
 
-def test_invalid_payload_rejected_without_data_corruption(client: TestClient, tmp_path: Path):
-	valid_routines = [{"id": "r-1", "title": "Core Workout", "steps": []}]
-	client.post("/api/routines", json=valid_routines)
+def test_single_routine_post_and_invalid_payload_rejected(client: TestClient, tmp_path: Path):
+	valid_routine = {"id": "r-1", "title": "Core Workout", "steps": []}
+	single_res = client.post("/api/routines", json=valid_routine)
+	assert single_res.status_code == 200
+	assert single_res.json()["routine"]["id"] == "r-1"
 
-	# Try posting an object instead of a list
-	invalid_res = client.post("/api/routines", json={"title": "Invalid Object"})
-	assert invalid_res.status_code == 400
+	# Try posting an invalid payload
+	invalid_res = client.post("/api/routines", json="invalid-string-payload")
+	assert invalid_res.status_code in (400, 422)
 
-	# Ensure previous valid routines were not overwritten
+	# Ensure previous valid routine was not overwritten or corrupted
 	get_res = client.get("/api/routines")
 	assert get_res.status_code == 200
 	assert len(get_res.json()) == 1
@@ -87,17 +89,22 @@ def test_invalid_payload_rejected_without_data_corruption(client: TestClient, tm
 	assert get_res.json()[0]["title"] == "Core Workout"
 
 
-def test_delete_all_routines(client: TestClient, tmp_path: Path):
+def test_routines_cannot_be_accidentally_bulk_deleted(client: TestClient, tmp_path: Path):
 	initial_routines = [{"id": "r-1", "title": "Morning Routine", "steps": []}]
 	client.post("/workout/api/routines", json=initial_routines)
 	assert len(client.get("/workout/api/routines").json()) == 1
 
-	# Empty list (all workouts deleted)
+	# Posting an empty list must NEVER wipe existing routines
 	res = client.post("/workout/api/routines", json=[])
 	assert res.status_code == 200
 	assert res.json() == {"status": "ok", "count": 0}
 
-	# Ensure persisted state is empty list
+	# Ensure initial routine remains safe and untouched
+	assert len(client.get("/api/routines").json()) == 1
+
+	# Only explicit DELETE can remove a routine
+	del_res = client.delete("/workout/api/routines/r-1")
+	assert del_res.status_code == 200
 	assert client.get("/api/routines").json() == []
 
 
@@ -644,3 +651,50 @@ def test_session_ordering_asc_and_desc(client: TestClient):
 	sessions_asc = res_asc.json()
 	assert sessions_asc[0]["id"] == "s-older"
 	assert sessions_asc[1]["id"] == "s-newer"
+
+
+def test_routine_archive_unarchive(client: TestClient):
+	routine = {
+		"id": "archived-test-routine",
+		"title": "Archived Test Workout",
+		"steps": [
+			{
+				"id": "step-1",
+				"type": "timer",
+				"durationSeconds": 45,
+				"label": "Cat-Cow",
+			}
+		],
+		"is_archived": False,
+	}
+
+	# Create routine
+	res = client.post("/api/routines", json=routine, headers={"X-User-Id": "levon"})
+	assert res.status_code == 200
+
+	# Get routine - verify is_archived is False
+	get_res = client.get("/api/routines/archived-test-routine", headers={"X-User-Id": "levon"})
+	assert get_res.status_code == 200
+	assert get_res.json()["is_archived"] is False
+
+	# Archive it
+	arch_res = client.post(
+		"/api/routines/archived-test-routine/archive",
+		headers={"X-User-Id": "levon"},
+	)
+	assert arch_res.status_code == 200
+	assert arch_res.json()["routine"]["is_archived"] is True
+
+	# Verify in get_routines list
+	list_res = client.get("/api/routines", headers={"X-User-Id": "levon"})
+	assert list_res.status_code == 200
+	target = next(r for r in list_res.json() if r["id"] == "archived-test-routine")
+	assert target["is_archived"] is True
+
+	# Unarchive it
+	unarch_res = client.post(
+		"/api/routines/archived-test-routine/unarchive",
+		headers={"X-User-Id": "levon"},
+	)
+	assert unarch_res.status_code == 200
+	assert unarch_res.json()["routine"]["is_archived"] is False

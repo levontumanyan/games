@@ -26,6 +26,7 @@ from schemas import (
 	ExerciseUpdate,
 	MusicTrack,
 	MusicTrackAdd,
+	RoutineArchiveUpdate,
 	RoutineStep,
 	RoutineUpsert,
 	ScheduledWorkoutCreate,
@@ -96,10 +97,17 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 		return JSONResponse(content=db.get_routines(user_id))
 
 	@api_router.post("/routines")
-	async def save_routines(payload: list[RoutineUpsert], user_id: str = Depends(get_user_id)):
-		data = [r.model_dump(by_alias=True) for r in payload]
-		db.save_routines(user_id, data)
-		return {"status": "ok", "count": len(data)}
+	async def create_routine(
+		payload: RoutineUpsert | list[RoutineUpsert],
+		user_id: str = Depends(get_user_id),
+	):
+		if isinstance(payload, list):
+			data = [r.model_dump(by_alias=True) for r in payload]
+			saved_list = [db.upsert_routine(user_id, item) for item in data]
+			return JSONResponse(content={"status": "ok", "count": len(saved_list)})
+		data = payload.model_dump(by_alias=True)
+		saved = db.upsert_routine(user_id, data)
+		return JSONResponse(content={"status": "ok", "routine": saved})
 
 	@api_router.get("/routines/{routine_id}")
 	async def get_single_routine(
@@ -132,6 +140,28 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 		if not success:
 			raise HTTPException(status_code=404, detail="Routine not found")
 		return {"status": "ok"}
+
+	@api_router.post("/routines/{routine_id}/archive")
+	async def archive_routine(
+		routine_id: str,
+		payload: RoutineArchiveUpdate | None = None,
+		user_id: str = Depends(get_user_id),
+	):
+		is_arch = True if payload is None else payload.is_archived
+		routine = db.archive_routine(user_id, routine_id, is_archived=is_arch)
+		if not routine:
+			raise HTTPException(status_code=404, detail="Routine not found")
+		return JSONResponse(content={"status": "ok", "routine": routine})
+
+	@api_router.post("/routines/{routine_id}/unarchive")
+	async def unarchive_routine(
+		routine_id: str,
+		user_id: str = Depends(get_user_id),
+	):
+		routine = db.archive_routine(user_id, routine_id, is_archived=False)
+		if not routine:
+			raise HTTPException(status_code=404, detail="Routine not found")
+		return JSONResponse(content={"status": "ok", "routine": routine})
 
 	@api_router.post("/routines/{routine_id}/steps")
 	async def add_routine_step(

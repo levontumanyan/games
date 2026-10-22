@@ -58,6 +58,49 @@ export async function saveServerRoutines(routines) {
 }
 
 /**
+ * Delete a single routine permanently on the server.
+ * @param {string} routineId
+ * @returns {Promise<boolean>}
+ */
+export async function deleteServerRoutine(routineId) {
+	if (!routineId) return false;
+	const res = await fetch(`${getApiBase()}/routines/${encodeURIComponent(routineId)}`, {
+		method: 'DELETE',
+		headers: getHeaders({ 'Accept': 'application/json' }),
+	});
+	if (!res.ok && res.status !== 404) {
+		throw new Error(`Failed to delete routine on server: HTTP ${res.status}`);
+	}
+	return true;
+}
+
+/**
+ * Archive or unarchive a routine on the server.
+ * @param {string} routineId
+ * @param {boolean} [isArchived=true]
+ * @returns {Promise<Object>}
+ */
+export async function archiveServerRoutine(routineId, isArchived = true) {
+	if (!routineId) return null;
+	const endpoint = isArchived ? 'archive' : 'unarchive';
+	const res = await fetch(
+		`${getApiBase()}/routines/${encodeURIComponent(routineId)}/${endpoint}`,
+		{
+			method: 'POST',
+			headers: getHeaders({
+				'Content-Type': 'application/json',
+				'Accept': 'application/json',
+			}),
+			body: JSON.stringify({ is_archived: isArchived }),
+		}
+	);
+	if (!res.ok) {
+		throw new Error(`Failed to update archive status: HTTP ${res.status}`);
+	}
+	return await res.json();
+}
+
+/**
  * Load all routines from localStorage for the active user.
  * @returns {Array} Array of Routine objects
  */

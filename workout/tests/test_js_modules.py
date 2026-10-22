@@ -206,7 +206,7 @@ def test_workout_js_has_no_undeclared_or_unbound_identifiers():
 
 	try:
 		res = subprocess.run(
-			["npx", "--yes", "oxlint", "-c", cfg_path, str(js_dir)],
+			["npx", "--prefer-offline", "--yes", "oxlint", "-c", cfg_path, str(js_dir)],
 			capture_output=True,
 			text=True,
 		)

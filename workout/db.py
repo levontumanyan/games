@@ -84,6 +84,7 @@ class Database:
 					title TEXT NOT NULL,
 					steps_json TEXT NOT NULL,
 					music_tracks_json TEXT NOT NULL DEFAULT '[]',
+					is_archived INTEGER NOT NULL DEFAULT 0,
 					updated_at TEXT NOT NULL,
 					PRIMARY KEY (id, user_id),
 					FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -182,6 +183,23 @@ media_assets_json TEXT NOT NULL DEFAULT '[]',
 						CREATE INDEX IF NOT EXISTS idx_routines_user ON routines(user_id);
 						"""
 					)
+
+			# Auto-migrate routines table to include is_archived
+			routine_info = conn.execute("PRAGMA table_info(routines)").fetchall()
+			routine_cols = [row["name"] for row in routine_info]
+			if "is_archived" not in routine_cols:
+				try:
+					conn.execute(
+						"ALTER TABLE routines ADD COLUMN is_archived INTEGER NOT NULL DEFAULT 0"
+					)
+				except Exception:
+					pass
+			try:
+				conn.execute(
+					"CREATE INDEX IF NOT EXISTS idx_routines_user_archived ON routines(user_id, is_archived)"
+				)
+			except Exception:
+				pass
 
 			# Auto-migrate sessions table to include is_preview and exercises_json
 			sess_info = conn.execute("PRAGMA table_info(sessions)").fetchall()
@@ -757,7 +775,7 @@ media_assets_json TEXT NOT NULL DEFAULT '[]',
 	def get_routines(self, user_id: str) -> list[dict[str, Any]]:
 		with self.get_connection() as conn:
 			rows = conn.execute(
-				"SELECT id, title, steps_json, music_tracks_json FROM routines WHERE user_id = ? ORDER BY rowid ASC",
+				"SELECT id, title, steps_json, music_tracks_json, is_archived FROM routines WHERE user_id = ? ORDER BY rowid ASC",
 				(user_id,),
 			).fetchall()
 			result = []
@@ -771,51 +789,37 @@ media_assets_json TEXT NOT NULL DEFAULT '[]',
 					music = json.loads(row["music_tracks_json"])
 				except Exception:
 					music = []
+				is_archived = bool(row["is_archived"]) if "is_archived" in row.keys() else False
 				result.append(
 					{
 						"id": row["id"],
 						"title": row["title"],
 						"steps": steps,
 						"musicTracks": music,
+						"is_archived": is_archived,
+						"isArchived": is_archived,
 					}
 				)
 			return result
 
 	def save_routines(self, user_id: str, routines: list[dict[str, Any]]) -> None:
-		self.get_or_create_user(user_id)
-		with self.get_connection() as conn:
-			# Replace all routines for this user
-			conn.execute("DELETE FROM routines WHERE user_id = ?", (user_id,))
-			now = datetime.now().isoformat()
-			for routine in routines:
-				r_id = str(routine.get("id", ""))
-				if not r_id:
-					continue
-				title = routine.get("title", "Untitled Workout")
-				raw_steps = routine.get("steps", [])
-				norm_steps = [self.normalize_step(conn, st) for st in raw_steps]
-				steps_json = json.dumps(norm_steps, ensure_ascii=False)
-				music_json = json.dumps(routine.get("musicTracks", []), ensure_ascii=False)
-				conn.execute(
-					"""
-					INSERT INTO routines (id, user_id, title, steps_json, music_tracks_json, updated_at)
-					VALUES (?, ?, ?, ?, ?, ?)
-					""",
-					(r_id, user_id, title, steps_json, music_json, now),
-				)
+		clean_user = user_id.strip().lower()
+		self.get_or_create_user(clean_user)
+		for routine in routines:
+			self.upsert_routine(clean_user, routine)
 
 	def get_routine(self, user_id: str, routine_id: str) -> dict[str, Any] | None:
 		clean_user = user_id.strip().lower()
 		clean_id = routine_id.strip()
 		with self.get_connection() as conn:
 			row = conn.execute(
-				"SELECT id, title, steps_json, music_tracks_json FROM routines WHERE user_id = ? AND id = ?",
+				"SELECT id, title, steps_json, music_tracks_json, is_archived FROM routines WHERE user_id = ? AND id = ?",
 				(clean_user, clean_id),
 			).fetchone()
 			if not row:
 				# Also check title match or slug match (case insensitive)
 				rows = conn.execute(
-					"SELECT id, title, steps_json, music_tracks_json FROM routines WHERE user_id = ?",
+					"SELECT id, title, steps_json, music_tracks_json, is_archived FROM routines WHERE user_id = ?",
 					(clean_user,),
 				).fetchall()
 				for r in rows:
@@ -834,11 +838,14 @@ media_assets_json TEXT NOT NULL DEFAULT '[]',
 				music = json.loads(row["music_tracks_json"])
 			except Exception:
 				music = []
+			is_archived = bool(row["is_archived"]) if "is_archived" in row.keys() else False
 			return {
 				"id": row["id"],
 				"title": row["title"],
 				"steps": steps,
 				"musicTracks": music,
+				"is_archived": is_archived,
+				"isArchived": is_archived,
 			}
 
 	def upsert_routine(self, user_id: str, routine: dict[str, Any]) -> dict[str, Any]:
@@ -852,21 +859,41 @@ media_assets_json TEXT NOT NULL DEFAULT '[]',
 		raw_steps = routine.get("steps", [])
 		music = routine.get("musicTracks", [])
 		now = datetime.now().isoformat()
+
+		arch_val = routine.get("is_archived")
+		if arch_val is None:
+			arch_val = routine.get("isArchived")
+		if arch_val is None:
+			arch_val = routine.get("archived")
+		is_archived_bool = bool(arch_val) if arch_val is not None else None
+
 		with self.get_connection() as conn:
+			if is_archived_bool is None:
+				existing = conn.execute(
+					"SELECT is_archived FROM routines WHERE user_id = ? AND id = ?",
+					(clean_user, r_id),
+				).fetchone()
+				is_archived = (
+					existing["is_archived"] if existing and "is_archived" in existing.keys() else 0
+				)
+			else:
+				is_archived = 1 if is_archived_bool else 0
+
 			norm_steps = [self.normalize_step(conn, st) for st in raw_steps]
 			steps_json = json.dumps(norm_steps, ensure_ascii=False)
 			music_json = json.dumps(music, ensure_ascii=False)
 			conn.execute(
 				"""
-				INSERT INTO routines (id, user_id, title, steps_json, music_tracks_json, updated_at)
-				VALUES (?, ?, ?, ?, ?, ?)
+				INSERT INTO routines (id, user_id, title, steps_json, music_tracks_json, is_archived, updated_at)
+				VALUES (?, ?, ?, ?, ?, ?, ?)
 				ON CONFLICT(id, user_id) DO UPDATE SET
 					title=excluded.title,
 					steps_json=excluded.steps_json,
 					music_tracks_json=excluded.music_tracks_json,
+					is_archived=excluded.is_archived,
 					updated_at=excluded.updated_at
 				""",
-				(r_id, clean_user, title, steps_json, music_json, now),
+				(r_id, clean_user, title, steps_json, music_json, is_archived, now),
 			)
 			hydrated_steps = self._hydrate_routine_steps(conn, norm_steps, clean_user)
 		return {
@@ -874,7 +901,25 @@ media_assets_json TEXT NOT NULL DEFAULT '[]',
 			"title": title,
 			"steps": hydrated_steps,
 			"musicTracks": music,
+			"is_archived": bool(is_archived),
+			"isArchived": bool(is_archived),
 		}
+
+	def archive_routine(
+		self, user_id: str, routine_id: str, is_archived: bool = True
+	) -> dict[str, Any] | None:
+		clean_user = user_id.strip().lower()
+		clean_id = routine_id.strip()
+		now = datetime.now().isoformat()
+		val = 1 if is_archived else 0
+		with self.get_connection() as conn:
+			res = conn.execute(
+				"UPDATE routines SET is_archived = ?, updated_at = ? WHERE user_id = ? AND id = ?",
+				(val, now, clean_user, clean_id),
+			)
+			if res.rowcount == 0:
+				return None
+		return self.get_routine(clean_user, clean_id)
 
 	def add_routine_step(
 		self, user_id: str, routine_id: str, step: dict[str, Any], index: int | None = None

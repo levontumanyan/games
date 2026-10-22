@@ -102,6 +102,13 @@ export function renderRoutineOverview(routine, container, actions = {}) {
 	title.className = 'view-routine-title';
 	title.textContent = routine.title || 'Untitled Workout';
 
+	if (routine.is_archived || routine.isArchived) {
+		const badge = document.createElement('span');
+		badge.className = 'routine-archived-badge';
+		badge.textContent = '📁 Archived';
+		title.appendChild(badge);
+	}
+
 	const statsRow = document.createElement('div');
 	statsRow.className = 'view-stats-row';
 
@@ -178,23 +185,19 @@ export function renderRoutineOverview(routine, container, actions = {}) {
 
 		actionsGroup.append(shareBtn, scheduleBtn, headerSaveBtn, playBtn);
 	} else {
-		actionsGroup.append(shareBtn, scheduleBtn, editBtn, playBtn);
+		if (routine.is_archived || routine.isArchived) {
+			const unarchiveBtn = document.createElement('button');
+			unarchiveBtn.className = 'btn btn-secondary btn-sm btn-unarchive-action';
+			unarchiveBtn.innerHTML = `📥 Restore`;
+			unarchiveBtn.title = 'Restore workout to active library';
+			unarchiveBtn.addEventListener('click', () => actions.onUnarchive?.());
+			actionsGroup.append(unarchiveBtn, shareBtn, scheduleBtn, editBtn, playBtn);
+		} else {
+			actionsGroup.append(shareBtn, scheduleBtn, editBtn, playBtn);
+		}
 	}
 
 	header.append(titleInfo, actionsGroup);
-
-	if (actions.onBackToCatalog) {
-		const navBar = document.createElement('div');
-		navBar.className = 'view-breadcrumb-bar';
-		const backBtn = document.createElement('button');
-		backBtn.type = 'button';
-		backBtn.className = 'btn btn-ghost btn-sm btn-back-to-catalog';
-		backBtn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg> <span>All Workouts</span>`;
-		backBtn.addEventListener('click', actions.onBackToCatalog);
-		navBar.appendChild(backBtn);
-		container.appendChild(navBar);
-	}
-
 	container.appendChild(header);
 
 	// ── Empty State ──────────────────────────────────────────────────────────

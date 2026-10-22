@@ -315,6 +315,19 @@ class RoutineUpsert(BaseSchema):
 		validation_alias=AliasChoices("musicTracks", "music_tracks"),
 		description="Soundtrack / music items",
 	)
+	is_archived: bool = Field(
+		default=False,
+		validation_alias=AliasChoices("is_archived", "isArchived", "archived"),
+		description="Whether the routine is archived",
+	)
+
+
+class RoutineArchiveUpdate(BaseSchema):
+	is_archived: bool = Field(
+		default=True,
+		validation_alias=AliasChoices("is_archived", "isArchived", "archived"),
+		description="Whether the routine is archived",
+	)
 
 
 class SessionUpsert(BaseSchema):

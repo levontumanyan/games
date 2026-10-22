@@ -40,10 +40,12 @@ def test_create_and_switch_users(client: TestClient):
 
 	# Verify isolation
 	res_levon = client.get("/api/routines", headers={"X-User-Id": "levon"})
-	assert res_levon.json() == levon_routine
+	assert res_levon.json()[0]["id"] == "r-levon"
+	assert res_levon.json()[0]["title"] == "Levon Routine"
 
 	res_alex = client.get("/api/routines", headers={"X-User-Id": "alex"})
-	assert res_alex.json() == alex_routine
+	assert res_alex.json()[0]["id"] == "r-alex"
+	assert res_alex.json()[0]["title"] == "Alex Routine"
 
 
 def test_identical_routine_id_across_users_does_not_collide(client: TestClient):

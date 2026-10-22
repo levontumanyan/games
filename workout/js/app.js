@@ -4,8 +4,8 @@
 
 import {
 	loadRoutines, saveRoutines, fetchServerRoutines,
-	saveServerRoutines, exportSingleRoutine,
-	buildRoutineUrl, getRoutineTargetFromUrl,
+	saveServerRoutines, archiveServerRoutine, deleteServerRoutine,
+	exportSingleRoutine, buildRoutineUrl, getRoutineTargetFromUrl,
 	fetchStats
 } from './storage.js';
 import {
@@ -32,7 +32,7 @@ import {
 	getClipIcon, getTimerIcon, getBreakIcon,
 	getMusicPlayIcon, getMusicPauseIcon
 } from './icons.js';
-import { showPrompt, showConfirm, showAlert } from './modal.js';
+import { showPrompt, showConfirm, showAlert, showActionChoice } from './modal.js';
 import {
 	getActiveUserId, getActiveDisplayName, setActiveUser,
 	fetchUsers, createUser
@@ -46,11 +46,10 @@ import { renderAnatomyExplorer } from './body_map.js';
 import { initTheme } from './theme.js';
 import { showRoutinePickerPopover } from './routine_picker.js';
 import { showQuickLogModal } from './quick_log.js';
-import { renderWorkoutsCatalog } from './workouts_view.js';
 
 let routines = [];
 let selectedRoutineId = null;
-let currentMode = 'catalog'; // 'catalog' | 'view' | 'edit'
+let currentMode = 'view'; // 'view' | 'edit'
 let currentTab = 'routines'; // 'routines' | 'combos' | 'exercises' | 'stats'
 let syncTimeout = null;
 let localStorageTimeout = null;
@@ -58,6 +57,7 @@ let sharedRoutine = null;
 let isViewingShared = false;
 let editingRoutineSnapshot = null;
 let isNewRoutineEditing = false;
+let isArchivedSectionExpanded = false;
 
 // DOM references
 const dom = {};
@@ -74,7 +74,8 @@ async function init() {
 	// Fast initial render from localStorage cache
 	routines = loadRoutines();
 	if (routines.length > 0) {
-		selectedRoutineId = routines[0].id;
+		const firstActive = routines.find(r => !r.is_archived && !r.isArchived);
+		selectedRoutineId = firstActive ? firstActive.id : routines[0].id;
 	}
 
 	// Warm up exercise and combos taxonomy caches from server
@@ -85,17 +86,11 @@ async function init() {
 	if (urlTarget) {
 		if (urlTarget.isOwner) {
 			const found = routines.find(r => r.id === urlTarget.routineId || r.title.toLowerCase().replace(/ /g, '-') === urlTarget.routineId.toLowerCase());
-			if (found) {
-				selectedRoutineId = found.id;
-				currentMode = 'view';
-			}
+			if (found) selectedRoutineId = found.id;
 		} else if (urlTarget.routine) {
 			sharedRoutine = urlTarget.routine;
 			isViewingShared = true;
-			currentMode = 'view';
 		}
-	} else {
-		currentMode = 'catalog';
 	}
 
 	renderRoutineList();
@@ -212,7 +207,6 @@ async function init() {
 function cacheDom() {
 	dom.routineList = document.getElementById('routine-list');
 	dom.addWorkoutBtn = document.getElementById('add-workout-btn');
-	dom.workoutsCatalogView = document.getElementById('workouts-catalog-view');
 	dom.quickLogBtn = document.getElementById('quick-log-btn');
 	dom.syncStatus = document.getElementById('sync-status');
 	dom.emptyView = document.getElementById('empty-view');
@@ -419,7 +413,8 @@ async function syncWithServerOnStartup() {
 		saveRoutines(routines);
 		if (routines.length > 0) {
 			if (!routines.some(r => r.id === selectedRoutineId)) {
-				selectedRoutineId = routines[0].id;
+				const firstActive = routines.find(r => !r.is_archived && !r.isArchived);
+				selectedRoutineId = firstActive ? firstActive.id : routines[0].id;
 			}
 		} else {
 			selectedRoutineId = null;
@@ -572,12 +567,7 @@ function switchTab(tab) {
 	if (tab === 'library') {
 		tab = 'exercises';
 	}
-	const isSameTab = currentTab === tab;
 	currentTab = tab;
-
-	if (isSameTab && tab === 'routines') {
-		currentMode = 'catalog';
-	}
 
 	const isRoutines = tab === 'routines';
 	const isSchedule = tab === 'schedule';
@@ -604,12 +594,18 @@ function switchTab(tab) {
 	if (dom.mTabAnatomyBtn) dom.mTabAnatomyBtn.classList.toggle('active', isAnatomy);
 	if (dom.mTabStatsBtn) dom.mTabStatsBtn.classList.toggle('active', isStats);
 
-	// Reclaim full width across all views
+	// Manage sidebar visibility for routines tab vs full-width catalogs
+	const isRoutinesTab = tab === 'routines';
 	if (dom.appContainer) {
-		dom.appContainer.classList.add('non-routines-tab');
+		dom.appContainer.classList.toggle('non-routines-tab', !isRoutinesTab);
 	}
 	if (dom.sidebarExpandBtn) {
-		dom.sidebarExpandBtn.classList.add('hidden');
+		if (!isRoutinesTab) {
+			dom.sidebarExpandBtn.classList.add('hidden');
+		} else {
+			const isManuallyHidden = dom.appContainer && dom.appContainer.classList.contains('sidebar-hidden');
+			dom.sidebarExpandBtn.classList.toggle('hidden', !isManuallyHidden);
+		}
 	}
 
 	if (dom.mobileLibrarySubnav) {
@@ -619,7 +615,6 @@ function switchTab(tab) {
 		if (dom.mSubnavAnatomyBtn) dom.mSubnavAnatomyBtn.classList.toggle('active', isAnatomy);
 	}
 
-	if (dom.workoutsCatalogView) dom.workoutsCatalogView.classList.add('hidden');
 	if (dom.routineView) dom.routineView.classList.add('hidden');
 	if (dom.editorView) dom.editorView.classList.add('hidden');
 	if (dom.emptyView) dom.emptyView.classList.add('hidden');
@@ -1224,6 +1219,70 @@ window.addEventListener('beforeunload', () => {
 });
 
 /**
+ * Helper to build a sidebar routine list item.
+ */
+function createRoutineListItem(routine, isArchived = false) {
+	const li = document.createElement('li');
+	li.className = 'routine-item';
+	if (isArchived) {
+		li.classList.add('archived-item');
+	}
+	if (!isViewingShared && routine.id === selectedRoutineId) {
+		li.classList.add('active');
+	}
+
+	const info = document.createElement('div');
+	info.className = 'routine-info';
+
+	const title = document.createElement('span');
+	title.className = 'routine-title-text';
+	title.textContent = isArchived ? `📁 ${routine.title}` : routine.title;
+
+	const meta = document.createElement('span');
+	meta.className = 'routine-meta';
+	const routineSteps = routine.steps || [];
+	let timeCount = 0;
+	let repsCount = 0;
+	let breakCount = 0;
+	routineSteps.forEach(s => {
+		const cls = classifyStep(s);
+		if (cls.mode === 'break') breakCount++;
+		else if (cls.mode === 'reps') repsCount++;
+		else timeCount++;
+	});
+	const parts = [`${routineSteps.length} steps`];
+	if (timeCount) parts.push(`${timeCount} timed`);
+	if (repsCount) parts.push(`${repsCount} reps`);
+	if (breakCount) parts.push(`${breakCount} rest`);
+	meta.textContent = routineSteps.length === 0 ? '' : parts.join(' · ');
+
+	info.append(title, meta);
+	li.appendChild(info);
+
+	li.addEventListener('click', () => {
+		if (currentMode === 'edit' && editingRoutineSnapshot) {
+			handleCancelEditing();
+		}
+		if (isViewingShared) {
+			isViewingShared = false;
+			sharedRoutine = null;
+		}
+		if (window.location.hash || window.location.search) {
+			history.replaceState(null, '', window.location.pathname);
+		}
+		if (currentTab !== 'routines') {
+			switchTab('routines');
+		}
+		selectedRoutineId = routine.id;
+		currentMode = 'view';
+		renderRoutineList();
+		renderSelectedRoutine();
+	});
+
+	return li;
+}
+
+/**
  * Render the sidebar routine list.
  */
 function renderRoutineList() {
@@ -1258,96 +1317,41 @@ function renderRoutineList() {
 		dom.routineList.appendChild(sharedLi);
 	}
 
-	routines.forEach((routine) => {
-		const li = document.createElement('li');
-		li.className = 'routine-item';
-		if (!isViewingShared && routine.id === selectedRoutineId) {
-			li.classList.add('active');
-		}
+	const activeRoutines = routines.filter(r => !r.is_archived && !r.isArchived);
+	const archivedRoutines = routines.filter(r => r.is_archived || r.isArchived);
 
-		const info = document.createElement('div');
-		info.className = 'routine-info';
-
-		const title = document.createElement('span');
-		title.className = 'routine-title-text';
-		title.textContent = routine.title;
-
-		const meta = document.createElement('span');
-		meta.className = 'routine-meta';
-		const routineSteps = routine.steps || [];
-		let timeCount = 0;
-		let repsCount = 0;
-		let breakCount = 0;
-		routineSteps.forEach(s => {
-			const cls = classifyStep(s);
-			if (cls.mode === 'break') breakCount++;
-			else if (cls.mode === 'reps') repsCount++;
-			else timeCount++;
-		});
-		const parts = [`${routineSteps.length} steps`];
-		if (timeCount) parts.push(`${timeCount} timed`);
-		if (repsCount) parts.push(`${repsCount} reps`);
-		if (breakCount) parts.push(`${breakCount} rest`);
-		meta.textContent = routineSteps.length === 0 ? '' : parts.join(' · ');
-
-		info.append(title, meta);
-		li.appendChild(info);
-
-		li.addEventListener('click', () => {
-			if (currentMode === 'edit' && editingRoutineSnapshot) {
-				handleCancelEditing();
-			}
-			if (isViewingShared) {
-				isViewingShared = false;
-				sharedRoutine = null;
-			}
-			if (window.location.hash || window.location.search) {
-				history.replaceState(null, '', window.location.pathname);
-			}
-			if (currentTab !== 'routines') {
-				switchTab('routines');
-			}
-			selectedRoutineId = routine.id;
-			currentMode = 'view';
-			renderRoutineList();
-			renderSelectedRoutine();
-		});
-
-		dom.routineList.appendChild(li);
+	activeRoutines.forEach((routine) => {
+		dom.routineList.appendChild(createRoutineListItem(routine, false));
 	});
 
-	if (currentTab === 'routines' && currentMode === 'catalog' && dom.workoutsCatalogView) {
-		renderWorkoutsCatalog(dom.workoutsCatalogView, {
-			routines,
-			onSelectRoutine: (routine) => {
-				selectedRoutineId = routine.id;
-				currentMode = 'view';
-				renderSelectedRoutine();
-			},
-			onPlayRoutine: (routine) => {
-				selectedRoutineId = routine.id;
-				unlockAudio();
-				startRoutine(routine, 0);
-			},
-			onScheduleRoutine: (routine) => {
-				openScheduleModal({
-					routine,
-					routines,
-					onSaved: () => {
-						invalidateScheduleCache();
-						showToast(`📅 Scheduled "${routine.title}"!`);
-					}
-				});
-			},
-			onEditRoutine: (routine) => {
-				selectedRoutineId = routine.id;
-				currentMode = 'edit';
-				renderSelectedRoutine();
-			},
-			onCreateRoutine: () => {
-				handleAddWorkout();
-			}
+	if (archivedRoutines.length > 0) {
+		const archiveSection = document.createElement('div');
+		archiveSection.className = 'archived-routines-section';
+
+		const isSelectedArchived = archivedRoutines.some(r => r.id === selectedRoutineId);
+		const isExpanded = isArchivedSectionExpanded || isSelectedArchived;
+
+		const toggleBtn = document.createElement('button');
+		toggleBtn.className = 'archived-routines-toggle btn-ghost';
+		toggleBtn.innerHTML = `<span>📁 Archived Workouts (${archivedRoutines.length})</span><span class="toggle-arrow">${isExpanded ? '▲' : '▼'}</span>`;
+		toggleBtn.addEventListener('click', (e) => {
+			e.stopPropagation();
+			isArchivedSectionExpanded = !isExpanded;
+			renderRoutineList();
 		});
+
+		archiveSection.appendChild(toggleBtn);
+
+		if (isExpanded) {
+			const archivedList = document.createElement('ul');
+			archivedList.className = 'archived-routines-list';
+			archivedRoutines.forEach((routine) => {
+				archivedList.appendChild(createRoutineListItem(routine, true));
+			});
+			archiveSection.appendChild(archivedList);
+		}
+
+		dom.routineList.appendChild(archiveSection);
 	}
 }
 
@@ -1398,57 +1402,13 @@ function goToExercise(exerciseOrId) {
 function renderSelectedRoutine() {
 	if (currentTab !== 'routines') return;
 
-	if (currentMode === 'catalog') {
-		if (dom.workoutsCatalogView) {
-			dom.workoutsCatalogView.classList.remove('hidden');
-			renderWorkoutsCatalog(dom.workoutsCatalogView, {
-				routines,
-				onSelectRoutine: (routine) => {
-					selectedRoutineId = routine.id;
-					currentMode = 'view';
-					renderSelectedRoutine();
-				},
-				onPlayRoutine: (routine) => {
-					selectedRoutineId = routine.id;
-					unlockAudio();
-					startRoutine(routine, 0);
-				},
-				onScheduleRoutine: (routine) => {
-					openScheduleModal({
-						routine,
-						routines,
-						onSaved: () => {
-							invalidateScheduleCache();
-							showToast(`📅 Scheduled "${routine.title}"!`);
-						}
-					});
-				},
-				onEditRoutine: (routine) => {
-					selectedRoutineId = routine.id;
-					currentMode = 'edit';
-					renderSelectedRoutine();
-				},
-				onCreateRoutine: () => {
-					handleAddWorkout();
-				}
-			});
-		}
-		if (dom.routineView) dom.routineView.classList.add('hidden');
-		if (dom.editorView) dom.editorView.classList.add('hidden');
-		if (dom.emptyView) dom.emptyView.classList.add('hidden');
-		if (dom.playerView) dom.playerView.classList.add('hidden');
-		return;
-	}
-
-	if (dom.workoutsCatalogView) {
-		dom.workoutsCatalogView.classList.add('hidden');
-	}
-
 	const routine = getSelectedRoutine();
 
 	if (!routine) {
-		currentMode = 'catalog';
-		renderSelectedRoutine();
+		dom.emptyView.classList.remove('hidden');
+		dom.routineView.classList.add('hidden');
+		dom.editorView.classList.add('hidden');
+		dom.playerView.classList.add('hidden');
 		return;
 	}
 
@@ -1461,10 +1421,6 @@ function renderSelectedRoutine() {
 
 		renderRoutineOverview(routine, dom.routineOverviewContainer, {
 			isShared: isViewingShared,
-			onBackToCatalog: () => {
-				currentMode = 'catalog';
-				renderSelectedRoutine();
-			},
 			onEdit: () => {
 				if (isViewingShared) {
 					handleSaveSharedToLibrary(false);
@@ -1501,6 +1457,19 @@ function renderSelectedRoutine() {
 			},
 			onGoToExercise: (exercise) => {
 				goToExercise(exercise);
+			},
+			onUnarchive: async () => {
+				routine.is_archived = false;
+				routine.isArchived = false;
+				try {
+					await archiveServerRoutine(routine.id, false);
+				} catch (e) {
+					console.warn('Failed to unarchive on server:', e);
+				}
+				persist(true);
+				renderRoutineList();
+				renderSelectedRoutine();
+				showToast(`📥 Restored "${routine.title}" to active workouts!`);
 			},
 			onOpenAnatomy: (muscleId) => {
 				switchTab('anatomy');
@@ -1640,19 +1609,80 @@ async function handleDeleteRoutine() {
 		return;
 	}
 
-	const confirmed = await showConfirm({
-		title: 'Delete Workout',
-		message: `Are you sure you want to delete "${routine.title}"? This cannot be undone.`,
-		confirmText: 'Delete',
-		danger: true
-	});
-	if (!confirmed) return;
+	const isArchived = Boolean(routine.is_archived || routine.isArchived);
+	const actions = isArchived
+		? [
+			{ label: '📥 Restore to Active', value: 'restore', className: 'btn btn-primary' },
+			{ label: '🗑 Delete Permanently', value: 'delete', className: 'btn btn-danger-solid' },
+			{ label: 'Cancel', value: 'cancel', className: 'btn btn-ghost' },
+		]
+		: [
+			{ label: '📁 Archive Workout', value: 'archive', className: 'btn btn-primary' },
+			{ label: '🗑 Delete Permanently', value: 'delete', className: 'btn btn-danger-solid' },
+			{ label: 'Cancel', value: 'cancel', className: 'btn btn-ghost' },
+		];
 
-	routines = routines.filter(r => r.id !== routine.id);
-	selectedRoutineId = routines.length > 0 ? routines[0].id : null;
-	persist(true);
-	renderRoutineList();
-	renderSelectedRoutine();
+	const message = isArchived
+		? `"${routine.title}" is currently archived. Do you want to restore it to your active workouts or delete it permanently?`
+		: `What would you like to do with "${routine.title}"? Archive it so you can restore it later, or delete it permanently?`;
+
+	const choice = await showActionChoice({
+		title: isArchived ? 'Archived Workout' : 'Manage Workout',
+		message,
+		actions,
+	});
+
+	if (!choice || choice === 'cancel') return;
+
+	if (choice === 'archive') {
+		routine.is_archived = true;
+		routine.isArchived = true;
+		try {
+			await archiveServerRoutine(routine.id, true);
+		} catch (e) {
+			console.warn('Failed to archive on server:', e);
+		}
+		persist(true);
+		const nextActive = routines.find(r => !r.is_archived && !r.isArchived);
+		selectedRoutineId = nextActive ? nextActive.id : (routines[0]?.id || null);
+		currentMode = 'view';
+		renderRoutineList();
+		renderSelectedRoutine();
+		showToast(`📁 Archived "${routine.title}"`);
+		return;
+	}
+
+	if (choice === 'restore') {
+		routine.is_archived = false;
+		routine.isArchived = false;
+		try {
+			await archiveServerRoutine(routine.id, false);
+		} catch (e) {
+			console.warn('Failed to unarchive on server:', e);
+		}
+		persist(true);
+		currentMode = 'view';
+		renderRoutineList();
+		renderSelectedRoutine();
+		showToast(`📥 Restored "${routine.title}" to active workouts!`);
+		return;
+	}
+
+	if (choice === 'delete') {
+		try {
+			await deleteServerRoutine(routine.id);
+		} catch (e) {
+			console.warn('Failed to delete on server:', e);
+		}
+		routines = routines.filter(r => r.id !== routine.id);
+		const nextActive = routines.find(r => !r.is_archived && !r.isArchived);
+		selectedRoutineId = nextActive ? nextActive.id : (routines[0]?.id || null);
+		currentMode = 'view';
+		persist(true);
+		renderRoutineList();
+		renderSelectedRoutine();
+		showToast(`🗑 Deleted "${routine.title}" permanently`);
+	}
 }
 
 function handleAddTimer() {
