@@ -198,6 +198,19 @@ export function renderRoutineOverview(routine, container, actions = {}) {
 	}
 
 	header.append(titleInfo, actionsGroup);
+
+	if (actions.onBackToCatalog) {
+		const navBar = document.createElement('div');
+		navBar.className = 'view-breadcrumb-bar';
+		const backBtn = document.createElement('button');
+		backBtn.type = 'button';
+		backBtn.className = 'btn btn-ghost btn-sm btn-back-to-catalog';
+		backBtn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg> <span>All Workouts</span>`;
+		backBtn.addEventListener('click', actions.onBackToCatalog);
+		navBar.appendChild(backBtn);
+		container.appendChild(navBar);
+	}
+
 	container.appendChild(header);
 
 	// ── Empty State ──────────────────────────────────────────────────────────

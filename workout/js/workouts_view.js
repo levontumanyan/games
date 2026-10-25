@@ -193,14 +193,22 @@ export function renderWorkoutsCatalog(container, options = {}) {
 		{ id: 'lower', label: 'Lower Body' },
 		{ id: 'mobility', label: 'Mobility' },
 		{ id: 'strength', label: 'Strength' },
+		{ id: 'archived', label: '📁 Archived' },
 	];
 
 	function renderFilterChips() {
 		filterChipsContainer.innerHTML = '';
 		filterCategories.forEach((cat) => {
-			const count = cat.id === 'all'
-				? routines.length
-				: routines.filter((r) => analyzeRoutine(r).domain === cat.id).length;
+			let count = 0;
+			if (cat.id === 'archived') {
+				count = routines.filter((r) => r.is_archived || r.isArchived).length;
+			} else if (cat.id === 'all') {
+				count = routines.filter((r) => !r.is_archived && !r.isArchived).length;
+			} else {
+				count = routines.filter(
+					(r) => (!r.is_archived && !r.isArchived) && analyzeRoutine(r).domain === cat.id
+				).length;
+			}
 
 			const btn = document.createElement('button');
 			btn.type = 'button';
@@ -218,13 +226,20 @@ export function renderWorkoutsCatalog(container, options = {}) {
 	function renderGrid() {
 		gridContainer.innerHTML = '';
 
-		let filtered = routines.map((r) => ({
+		let targetRoutines = routines;
+		if (currentFilter === 'archived') {
+			targetRoutines = routines.filter((r) => r.is_archived || r.isArchived);
+		} else {
+			targetRoutines = routines.filter((r) => !r.is_archived && !r.isArchived);
+		}
+
+		let filtered = targetRoutines.map((r) => ({
 			routine: r,
 			meta: analyzeRoutine(r),
 		}));
 
 		// Filter by domain
-		if (currentFilter !== 'all') {
+		if (currentFilter !== 'all' && currentFilter !== 'archived') {
 			filtered = filtered.filter((item) => item.meta.domain === currentFilter);
 		}
 
@@ -280,11 +295,13 @@ export function renderWorkoutsCatalog(container, options = {}) {
 			card.className = 'workout-catalog-card';
 			card.dataset.routineId = routine.id;
 
+			const isArch = Boolean(routine.is_archived || routine.isArchived);
+
 			card.innerHTML = `
 				<div class="workout-card-top">
-					<span class="workout-domain-tag" style="--dom-color:${meta.domainColor};">
+					<span class="workout-domain-tag ${isArch ? 'workout-archived-tag' : ''}" style="--dom-color:${isArch ? '#eab308' : meta.domainColor};">
 						<span class="domain-dot"></span>
-						<span>${meta.domainLabel}</span>
+						<span>${isArch ? '📁 Archived' : meta.domainLabel}</span>
 					</span>
 					<span class="workout-duration-tag">⏱ ${meta.formattedDuration}</span>
 				</div>
