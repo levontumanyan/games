@@ -474,7 +474,7 @@ media_assets_json TEXT NOT NULL DEFAULT '[]',
 			combos_by_name[c_name] = info
 
 		ex_rows = conn.execute(
-			"SELECT id, name, category, discipline, default_mode, default_quantity, media_url FROM exercises"
+			"SELECT id, name, category, discipline, default_mode, default_quantity, media_url, laterality FROM exercises"
 		).fetchall()
 		ex_map = {row["id"]: dict(row) for row in ex_rows}
 
@@ -538,6 +538,7 @@ media_assets_json TEXT NOT NULL DEFAULT '[]',
 							"name": ex_map[eid]["name"],
 							"category": ex_map[eid]["category"],
 							"discipline": ex_map[eid]["discipline"],
+							"laterality": ex_map[eid].get("laterality", "bilateral"),
 						}
 						if ex_map[eid].get("default_mode"):
 							ex_item["default_mode"] = ex_map[eid]["default_mode"]
@@ -591,6 +592,7 @@ media_assets_json TEXT NOT NULL DEFAULT '[]',
 							"name": ex_row["name"],
 							"category": ex_row["category"],
 							"discipline": ex_row["discipline"],
+							"laterality": ex_row.get("laterality", "bilateral"),
 						}
 						if ex_row.get("default_mode"):
 							ex_item["default_mode"] = ex_row["default_mode"]
@@ -637,6 +639,15 @@ media_assets_json TEXT NOT NULL DEFAULT '[]',
 							s["targetDuration"] = s["durationSeconds"]
 						elif s.get("targetDuration") is None:
 							s["targetDuration"] = s["durationSeconds"]
+					if s.get("switchSides") is None and s.get("switch_sides") is not None:
+						s["switchSides"] = bool(s.get("switch_sides"))
+					if s.get("switchSides") is None and s.get("stepMode") != "reps":
+						is_unilateral = any(
+							isinstance(e, dict) and e.get("laterality") == "unilateral"
+							for e in hydrated_exs
+						) or (first_ex_row and first_ex_row.get("laterality") == "unilateral")
+						if is_unilateral:
+							s["switchSides"] = True
 			hydrated.append(s)
 		return hydrated
 
@@ -697,7 +708,7 @@ media_assets_json TEXT NOT NULL DEFAULT '[]',
 		if ex_id:
 			s["exercise_id"] = ex_id
 			row = conn.execute(
-				"SELECT id, name, category, discipline, default_mode, default_quantity, media_url FROM exercises WHERE id = ?",
+				"SELECT id, name, category, discipline, default_mode, default_quantity, media_url, laterality FROM exercises WHERE id = ?",
 				(ex_id,),
 			).fetchone()
 			if row:
@@ -736,8 +747,14 @@ media_assets_json TEXT NOT NULL DEFAULT '[]',
 						"discipline": ex_dict["discipline"],
 						"default_mode": ex_dict["default_mode"],
 						"default_quantity": ex_dict["default_quantity"],
+						"laterality": ex_dict.get("laterality", "bilateral"),
 					}
 				]
+				if s.get("switchSides") is None and s.get("switch_sides") is not None:
+					s["switchSides"] = bool(s.get("switch_sides"))
+				if s.get("switchSides") is None and s.get("stepMode") != "reps":
+					if ex_dict.get("laterality") == "unilateral":
+						s["switchSides"] = True
 
 		c_id = s.get("combo_id")
 		if c_id:

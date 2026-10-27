@@ -298,6 +298,7 @@ function cacheDom() {
 	dom.timerStageHeader = document.getElementById('timer-stage-header');
 	dom.timerStageBadge = document.getElementById('timer-stage-badge');
 	dom.timerStageTitle = document.getElementById('timer-stage-title');
+	dom.timerStageCue = document.getElementById('timer-stage-cue');
 	dom.timerMediaContainer = document.getElementById('timer-media-container');
 	dom.timerMediaImg = document.getElementById('timer-media-img');
 	dom.timerDisplay = document.getElementById('timer-display');

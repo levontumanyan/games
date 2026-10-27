@@ -253,6 +253,11 @@ class RoutineStep(BaseSchema):
 		default=None, description="Associated combo ID if linked to a combo"
 	)
 	flow_type: str | None = Field(default=None, description="Combo flow type if applicable")
+	switchSides: bool | None = Field(
+		default=None,
+		validation_alias=AliasChoices("switchSides", "switch_sides"),
+		description="Whether timed step requires halfway side switch (unilateral)",
+	)
 	exercises: list[Any] = Field(default_factory=list, description="Referenced exercises in step")
 
 
@@ -279,6 +284,11 @@ class StepPatch(BaseSchema):
 		description="Execution target reps",
 	)
 	duration: int | None = Field(default=None, description="Shorthand for duration")
+	switchSides: bool | None = Field(
+		default=None,
+		validation_alias=AliasChoices("switchSides", "switch_sides"),
+		description="Whether timed step requires halfway side switch (unilateral)",
+	)
 	mode: str | None = Field(default=None, description="Execution mode: time, reps, or break")
 	stepMode: str | None = Field(
 		default=None,

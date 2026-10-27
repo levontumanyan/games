@@ -242,6 +242,7 @@ def test_dynamic_exercise_propagation_to_routines(client: TestClient, tmp_path: 
 			"discipline": "calisthenics",
 			"default_mode": "reps",
 			"default_quantity": 12,
+			"laterality": "bilateral",
 		},
 		headers={"X-User-Id": "levon"},
 	)
@@ -285,6 +286,7 @@ def test_dynamic_exercise_propagation_to_routines(client: TestClient, tmp_path: 
 			"discipline": "general",
 			"default_mode": "time",
 			"default_quantity": 45,
+			"laterality": "bilateral",
 		},
 		headers={"X-User-Id": "levon"},
 	)
@@ -319,6 +321,7 @@ def test_concise_step_ingestion_and_expansion(client: TestClient):
 			"default_mode": "reps",
 			"default_quantity": 15,
 			"media_url": "/workout/media/pushups.svg",
+			"laterality": "bilateral",
 		},
 		headers={"X-User-Id": "levon"},
 	)
@@ -332,6 +335,7 @@ def test_concise_step_ingestion_and_expansion(client: TestClient):
 			"default_mode": "time",
 			"default_quantity": 45,
 			"media_url": "/workout/media/plank.svg",
+			"laterality": "bilateral",
 		},
 		headers={"X-User-Id": "levon"},
 	)

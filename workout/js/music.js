@@ -23,6 +23,9 @@ let musicVolume = 1.0;
 let isMusicPlaying = false;
 let isMusicMuted = false;
 let isUserMusicPaused = false;
+let isDucked = false;
+let duckTimeout = null;
+let savedPreDuckVolume = null;
 let activeSource = null; // 'youtube' | 'file' | null
 let onTrackChangeCallback = null;
 let onPlayStateChangeCallback = null;
@@ -307,6 +310,7 @@ export function startMusic(force = false) {
  * Pause the current music track.
  */
 export function pauseMusic() {
+	restoreDuck();
 	if (!isMusicPlaying) return;
 	if (activeSource === 'youtube' && ytMusicReady && ytMusicPlayer) {
 		try { ytMusicPlayer.pauseVideo(); } catch {}
@@ -370,6 +374,7 @@ export function isMusicPausedByUser() {
  * Stop music entirely and reset to beginning of playlist.
  */
 export function stopMusic() {
+	restoreDuck();
 	stopCurrentSource();
 	isMusicPlaying = false;
 	isUserMusicPaused = false;
@@ -381,6 +386,7 @@ export function stopMusic() {
  * Mute music (used during video clip steps).
  */
 export function muteMusic() {
+	restoreDuck();
 	isMusicMuted = true;
 	if (activeSource === 'youtube' && ytMusicReady && ytMusicPlayer) {
 		ytMusicPlayer.mute();
@@ -408,12 +414,68 @@ export function unmuteMusic() {
 	}
 }
 
+function applyActiveVolume(vol) {
+	const clamped = Math.max(0, Math.min(1, vol));
+	if (activeSource === 'youtube' && ytMusicReady && ytMusicPlayer) {
+		try {
+			ytMusicPlayer.setVolume(clamped * 100);
+		} catch {}
+	}
+	if (activeSource === 'file' && audioElement) {
+		audioElement.volume = clamped;
+	}
+}
+
+/**
+ * Temporarily lower music volume so chimes and cues are clearly audible.
+ * @param {number} [durationMs=2000] - Duration in ms before restoring volume
+ * @param {number} [duckLevel=0.18] - Target volume multiplier (default 18%)
+ */
+export function duckMusic(durationMs = 2000, duckLevel = 0.18) {
+	if (!isMusicPlaying || isMusicMuted) return;
+	if (duckTimeout) {
+		clearTimeout(duckTimeout);
+		duckTimeout = null;
+	}
+	if (!isDucked) {
+		savedPreDuckVolume = musicVolume;
+		isDucked = true;
+	}
+	const targetVol = Math.max(0.05, (savedPreDuckVolume !== null ? savedPreDuckVolume : musicVolume) * duckLevel);
+	applyActiveVolume(targetVol);
+
+	duckTimeout = setTimeout(() => {
+		restoreDuck();
+	}, durationMs);
+}
+
+/**
+ * Restore normal volume if currently ducked.
+ */
+export function restoreDuck() {
+	if (duckTimeout) {
+		clearTimeout(duckTimeout);
+		duckTimeout = null;
+	}
+	if (!isDucked) return;
+	isDucked = false;
+	const restoreVol = savedPreDuckVolume !== null ? savedPreDuckVolume : musicVolume;
+	savedPreDuckVolume = null;
+	if (!isMusicMuted) {
+		applyActiveVolume(restoreVol);
+	}
+}
+
 /**
  * Set music volume.
  * @param {number} vol - Volume from 0.0 to 1.0
  */
 export function setVolume(vol) {
 	musicVolume = Math.max(0, Math.min(1, vol));
+	if (isDucked) {
+		savedPreDuckVolume = musicVolume;
+		return;
+	}
 	if (activeSource === 'youtube' && ytMusicReady && ytMusicPlayer) {
 		try {
 			ytMusicPlayer.setVolume(musicVolume * 100);

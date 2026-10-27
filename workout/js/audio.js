@@ -59,11 +59,58 @@ export function playCountdownBeep(secondsRemaining) {
 }
 
 /**
- * Play a soft, gentle two-tone chime to signal switching sides.
+ * Play a rich, resonant chime with harmonic overtone.
+ * Uses triangle fundamental + subtle octave-and-fifth harmonic with exponential decay.
+ * @param {number} frequency - Fundamental frequency in Hz
+ * @param {number} duration - Duration in seconds
+ * @param {number} [volume=0.85] - Volume
+ */
+function playResonantChime(frequency, duration = 0.35, volume = 0.85) {
+	const ctx = ensureContext();
+	const osc1 = ctx.createOscillator();
+	const osc2 = ctx.createOscillator();
+	const gainNode = ctx.createGain();
+
+	osc1.type = 'triangle';
+	osc1.frequency.setValueAtTime(frequency, ctx.currentTime);
+
+	// Harmonic overtone adds bright metallic ring that pierces through music
+	osc2.type = 'sine';
+	osc2.frequency.setValueAtTime(frequency * 2.75, ctx.currentTime);
+
+	const overtoneGain = ctx.createGain();
+	overtoneGain.gain.setValueAtTime(0.3, ctx.currentTime);
+	osc2.connect(overtoneGain);
+	overtoneGain.connect(gainNode);
+
+	osc1.connect(gainNode);
+	gainNode.connect(ctx.destination);
+
+	gainNode.gain.setValueAtTime(volume, ctx.currentTime);
+	gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+
+	osc1.start(ctx.currentTime);
+	osc2.start(ctx.currentTime);
+	osc1.stop(ctx.currentTime + duration);
+	osc2.stop(ctx.currentTime + duration);
+}
+
+/**
+ * Play a high-clarity dual chime to signal switching sides.
  */
 export function playSwitchCue() {
-	playTone(660, 0.18, 0.4);
-	setTimeout(() => playTone(880, 0.3, 0.4), 180);
+	// Ascending crisp chime: D5 (587 Hz) then A5 (880 Hz)
+	playResonantChime(587, 0.22, 0.85);
+	setTimeout(() => {
+		playResonantChime(880, 0.45, 0.9);
+	}, 150);
+}
+
+/**
+ * Play subtle pre-switch warning tick.
+ */
+export function playPreSwitchTick() {
+	playTone(520, 0.08, 0.35);
 }
 
 /**

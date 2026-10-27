@@ -81,7 +81,11 @@ export function analyzeRoutine(routine) {
 		domain = 'combat';
 		domainLabel = 'Combat';
 		domainColor = '#e74c3c';
-	} else if (lowerScore >= 3 || lowerPct >= 45) {
+	} else if (upperPct >= 40 && upperPct >= lowerPct) {
+		domain = 'upper';
+		domainLabel = 'Upper Body';
+		domainColor = '#3b82f6';
+	} else if (lowerPct >= 40 || (lowerScore >= 3 && lowerPct > upperPct)) {
 		domain = 'lower';
 		domainLabel = 'Lower Body';
 		domainColor = '#27ae60';
@@ -190,6 +194,7 @@ export function renderWorkoutsCatalog(container, options = {}) {
 	const filterCategories = [
 		{ id: 'all', label: 'All' },
 		{ id: 'combat', label: 'Combat' },
+		{ id: 'upper', label: 'Upper Body' },
 		{ id: 'lower', label: 'Lower Body' },
 		{ id: 'mobility', label: 'Mobility' },
 		{ id: 'strength', label: 'Strength' },

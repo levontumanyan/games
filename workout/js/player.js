@@ -8,12 +8,12 @@ import {
 	isBreakStep, isSubStepReps
 } from './utils.js';
 import { resolveStepMediaUrl, getStepDisplayName } from './editor.js';
-import { playCountdownBeep, playSwitchCue } from './audio.js';
+import { playCountdownBeep, playSwitchCue, playPreSwitchTick } from './audio.js';
 import { getClipIcon, getTimerIcon, getBreakIcon, getRepsIcon, getExerciseIcon, getMuscleIcon } from './icons.js';
 import {
 	setPlaylist, startMusic, pauseMusic, resumeMusic,
 	stopMusic, muteMusic, unmuteMusic, hasMusic, getCurrentTrack,
-	toggleMusicPlayback, isMusicPausedByUser
+	toggleMusicPlayback, isMusicPausedByUser, duckMusic
 } from './music.js';
 import {
 	startSession, updateSessionStep, pauseSession,
@@ -54,6 +54,7 @@ let currentRepsValue = 20;
 let timerInterval = null;
 let timerRemaining = 0;
 let switchCueFired = false;
+let preSwitchTickFired = false;
 
 // Clip state
 let clipCheckInterval = null;
@@ -932,6 +933,7 @@ function advanceStepOrSubStep() {
 	if (isRepsMode) {
 		saveCurrentRepsProgress();
 	}
+	clearCountdown();
 	clearClipMonitor();
 	clearTimer();
 
@@ -966,6 +968,7 @@ function executeCurrentStep() {
 		return;
 	}
 
+	clearCountdown();
 	clearClipMonitor();
 	clearTimer();
 	const step = currentRoutine.steps[currentStepIndex];
@@ -1000,7 +1003,7 @@ function executeVideoStep(step, targetDuration, videoAsset) {
 	clearVideoFallback();
 	clipHasStartedPlaying = false;
 	clipLoadedAt = Date.now();
-	switchCueFired = false;
+	resetSwitchCueState();
 	isRepsMode = false;
 	accumulatedVideoTime = 0;
 
@@ -1157,10 +1160,11 @@ function executeVideoStep(step, targetDuration, videoAsset) {
  * Execute a timer/interval step or reps step.
  */
 function executeTimerStep(step) {
+	clearCountdown();
 	clearClipMonitor();
 	clearTimer();
 	clipHasStartedPlaying = false;
-	switchCueFired = false;
+	resetSwitchCueState();
 
 	// Stop YouTube playback and hide
 	if (ytReady && ytPlayer) {
@@ -1296,6 +1300,7 @@ function executeTimerStep(step) {
 		const stageHeader = dom.timerStageHeader || (typeof document !== 'undefined' && document.getElementById('timer-stage-header'));
 		const stageBadge = dom.timerStageBadge || (typeof document !== 'undefined' && document.getElementById('timer-stage-badge'));
 		const stageTitle = dom.timerStageTitle || (typeof document !== 'undefined' && document.getElementById('timer-stage-title'));
+		const stageCue = dom.timerStageCue || (typeof document !== 'undefined' && document.getElementById('timer-stage-cue'));
 
 		if (stageHeader) {
 			stageHeader.classList.remove('hidden');
@@ -1305,21 +1310,25 @@ function executeTimerStep(step) {
 			if (stageTitle) {
 				stageTitle.textContent = stepHasSubSteps ? (activeSubEx.name || dispName) : dispName;
 			}
+			if (stageCue) {
+				if (step.cue) {
+					stageCue.innerHTML = `<span class="timer-stage-cue-pill">💡 ${escapeHtml(step.cue)}</span>`;
+					stageCue.classList.remove('hidden');
+				} else {
+					stageCue.classList.add('hidden');
+					stageCue.innerHTML = '';
+				}
+			}
 		}
 
 		if (stepHasSubSteps) {
 			const flowIcon = step.flow_type === 'alternating' ? '⮀' : (step.flow_type === 'sequence' ? '➔' : '⚡');
 			const flowLabel = step.flow_type === 'alternating' ? 'Alternating' : (step.flow_type === 'sequence' ? 'Flow' : 'Superset');
-			dom.currentStepLabel.textContent = `${activeSubEx.name || 'Exercise'} (${dispName})${step.cue ? ` · ${step.cue}` : ''}`;
-			dom.currentStepType.innerHTML = `<span class="player-hud-substep-badge">${flowIcon} ${flowLabel} · Move ${currentSubStepIndex + 1}/${totalSubSteps}</span> ${getRepsIcon(14)} ${targetReps} Reps${muscleTagHtml}`;
+			dom.currentStepLabel.textContent = `${activeSubEx.name || 'Exercise'} (${dispName})`;
+			dom.currentStepType.innerHTML = `<span class="player-hud-substep-badge">${flowIcon} ${flowLabel} · Move ${currentSubStepIndex + 1}/${totalSubSteps}</span> ${getRepsIcon(14)} ${targetReps} Reps`;
 		} else {
-			dom.currentStepLabel.textContent = `${dispName}${step.cue ? ` (${step.cue})` : ''} (${targetReps} reps)`;
-			if (step.exercises && step.exercises.length > 0) {
-				const joiner = step.flow_type === 'alternating' ? ' ⮀ ' : ' + ';
-				dom.currentStepType.innerHTML = `${getRepsIcon(14)} ` + step.exercises.map(e => (getExerciseById(e.id || e)?.name || e.name || 'Exercise')).join(joiner) + (step.cue ? ` <span class="player-hud-cue-tag">💡 ${escapeHtml(step.cue)}</span>` : '') + muscleTagHtml;
-			} else {
-				dom.currentStepType.innerHTML = `${getRepsIcon(14)} ${targetReps} Reps` + (step.cue ? ` <span class="player-hud-cue-tag">💡 ${escapeHtml(step.cue)}</span>` : '') + muscleTagHtml;
-			}
+			dom.currentStepLabel.textContent = dispName;
+			dom.currentStepType.innerHTML = `${getRepsIcon(14)} ${targetReps} Reps${muscleTagHtml}`;
 		}
 
 		// Update progress ring to full
@@ -1343,21 +1352,35 @@ function executeTimerStep(step) {
 		const stageHeader = dom.timerStageHeader || (typeof document !== 'undefined' && document.getElementById('timer-stage-header'));
 		const stageBadge = dom.timerStageBadge || (typeof document !== 'undefined' && document.getElementById('timer-stage-badge'));
 		const stageTitle = dom.timerStageTitle || (typeof document !== 'undefined' && document.getElementById('timer-stage-title'));
+		const stageCue = dom.timerStageCue || (typeof document !== 'undefined' && document.getElementById('timer-stage-cue'));
 
 		if (isBreak) {
 			if (stageHeader) stageHeader.classList.add('hidden');
+			if (stageCue) stageCue.classList.add('hidden');
 			if (dom.timerLabel) {
-				dom.timerLabel.textContent = 'REST';
+				dom.timerLabel.textContent = (step.label && step.label !== 'Rest') ? step.label.toUpperCase() : 'REST';
 				dom.timerLabel.classList.remove('hidden');
 			}
 		} else {
 			if (stageHeader) {
 				stageHeader.classList.remove('hidden');
 				if (stageBadge) {
-					stageBadge.innerHTML = muscleTagHtml ? `${getTimerIcon(12)} TIMED INTERVAL ${muscleTagHtml}` : `${getTimerIcon(12)} TIMED INTERVAL`;
+					const twoSidedPill = isStepTwoSided(step)
+						? `<span class="side-indicator-pill" id="stage-side-pill"><span class="side-pill-dot"></span> Side 1 of 2</span>`
+						: '';
+					stageBadge.innerHTML = muscleTagHtml ? `${getTimerIcon(12)} TIMED INTERVAL ${muscleTagHtml} ${twoSidedPill}` : `${getTimerIcon(12)} TIMED INTERVAL ${twoSidedPill}`;
 				}
 				if (stageTitle) {
-					stageTitle.textContent = (stepHasSubSteps ? (activeSubEx.name || dispName) : dispName) + (step.cue ? ` (${step.cue})` : '');
+					stageTitle.textContent = stepHasSubSteps ? (activeSubEx.name || dispName) : dispName;
+				}
+				if (stageCue) {
+					if (step.cue) {
+						stageCue.innerHTML = `<span class="timer-stage-cue-pill">💡 ${escapeHtml(step.cue)}</span>`;
+						stageCue.classList.remove('hidden');
+					} else {
+						stageCue.classList.add('hidden');
+						stageCue.innerHTML = '';
+					}
 				}
 			}
 			if (dom.timerLabel) {
@@ -1371,16 +1394,11 @@ function executeTimerStep(step) {
 		if (stepHasSubSteps) {
 			const flowIcon = step.flow_type === 'alternating' ? '⮀' : (step.flow_type === 'sequence' ? '➔' : '⚡');
 			const flowLabel = step.flow_type === 'alternating' ? 'Alternating' : (step.flow_type === 'sequence' ? 'Flow' : 'Superset');
-			dom.currentStepLabel.textContent = `${activeSubEx.name || 'Exercise'} (${dispName})${step.cue ? ` · ${step.cue}` : ''}`;
-			dom.currentStepType.innerHTML = `<span class="player-hud-substep-badge">${flowIcon} ${flowLabel} · Move ${currentSubStepIndex + 1}/${totalSubSteps}</span> ${getTimerIcon(14)} ${formatTime(timerRemaining)}${muscleTagHtml}`;
+			dom.currentStepLabel.textContent = `${activeSubEx.name || 'Exercise'} (${dispName})`;
+			dom.currentStepType.innerHTML = `<span class="player-hud-substep-badge">${flowIcon} ${flowLabel} · Move ${currentSubStepIndex + 1}/${totalSubSteps}</span> ${getTimerIcon(14)} ${formatTime(timerRemaining)}`;
 		} else {
-			dom.currentStepLabel.textContent = dispName + (step.cue ? ` (${step.cue})` : '');
-			if (step.exercises && step.exercises.length > 0) {
-				const joiner = step.flow_type === 'alternating' ? ' ⮀ ' : ' + ';
-				dom.currentStepType.innerHTML = isBreak ? `${getBreakIcon(14)} Rest` : (getTimerIcon(14) + ' ' + step.exercises.map(e => (getExerciseById(e.id || e)?.name || e.name || 'Exercise')).join(joiner) + (step.cue ? ` <span class="player-hud-cue-tag">💡 ${escapeHtml(step.cue)}</span>` : '') + muscleTagHtml);
-			} else {
-				dom.currentStepType.innerHTML = isBreak ? `${getBreakIcon(14)} Rest` : `${getTimerIcon(14)} Timer${step.cue ? ` <span class="player-hud-cue-tag">💡 ${escapeHtml(step.cue)}</span>` : ''}${muscleTagHtml}`;
-			}
+			dom.currentStepLabel.textContent = isBreak ? ((step.label && step.label !== 'Rest') ? step.label : 'Rest') : dispName;
+			dom.currentStepType.innerHTML = isBreak ? `${getBreakIcon(14)} Rest (${formatTime(timerRemaining)})` : `${getTimerIcon(14)} ${formatTime(timerRemaining)}${muscleTagHtml}`;
 		}
 
 		// Update progress ring
@@ -1448,25 +1466,57 @@ function executeTimerStep(step) {
 }
 
 /**
- * Start the countdown timer.
+ * Reset switch-sides state when starting/advancing steps.
  */
+function resetSwitchCueState() {
+	switchCueFired = false;
+	preSwitchTickFired = false;
+	if (typeof document !== 'undefined') {
+		const banner = document.getElementById('player-switch-sides-banner');
+		if (banner) banner.classList.remove('visible');
+	}
+}
+
 /**
- * Trigger a gentle "switch sides" cue at the halfway point of a
- * unilateral timed step.
- * @param {number} totalDuration
- * @param {number} remaining
+ * Detect whether a step is two-sided / unilateral.
+ * @param {Object} step
+ * @returns {boolean}
  */
-function maybeTriggerSwitchCue(totalDuration, remaining) {
-	if (switchCueFired) return;
-	const step = currentRoutine?.steps?.[currentStepIndex];
-	if (!step || !step.switchSides || !totalDuration) return;
-	if (remaining > totalDuration / 2) return;
+export function isStepTwoSided(step) {
+	if (!step) return false;
+	if (step.switchSides === true) return true;
+	if (step.switchSides === false) return false;
 
-	switchCueFired = true;
-	playSwitchCue();
+	// Check attached exercises in step
+	if (step.exercises && Array.isArray(step.exercises)) {
+		for (const exRef of step.exercises) {
+			if (!exRef) continue;
+			if (exRef.laterality === 'unilateral') return true;
+			const eid = typeof exRef === 'string' ? exRef : exRef.id;
+			if (eid) {
+				const fullEx = getExerciseById(eid);
+				if (fullEx?.laterality === 'unilateral') return true;
+			}
+		}
+	}
+	if (step.exercise_id) {
+		const fullEx = getExerciseById(step.exercise_id);
+		if (fullEx?.laterality === 'unilateral') return true;
+	}
 
-	const label = dom.timerLabel || document.getElementById('timer-label');
-	const overlay = dom.timerOverlay || document.getElementById('timer-overlay');
+	// Check cue text for per-side phrasing
+	if (step.cue && /(?:per|each|switch)\s*(?:side|leg|arm)|(?:30s|halfway)\s*per/i.test(step.cue)) {
+		return true;
+	}
+	return false;
+}
+
+/**
+ * Display high-visibility switch sides overlay and HUD banner.
+ */
+function showSwitchSidesBanner() {
+	const label = dom.timerLabel || (typeof document !== 'undefined' && document.getElementById('timer-label'));
+	const overlay = dom.timerOverlay || (typeof document !== 'undefined' && document.getElementById('timer-overlay'));
 	if (label) {
 		label.textContent = 'Switch sides';
 		label.classList.remove('hidden');
@@ -1474,10 +1524,56 @@ function maybeTriggerSwitchCue(totalDuration, remaining) {
 	}
 	if (overlay) overlay.classList.add('switch-sides-pulse');
 
+	let banner = typeof document !== 'undefined' ? document.getElementById('player-switch-sides-banner') : null;
+	if (!banner && typeof document !== 'undefined') {
+		banner = document.createElement('div');
+		banner.id = 'player-switch-sides-banner';
+		banner.className = 'switch-sides-banner';
+		banner.innerHTML = `<span class="switch-sides-icon">⇄</span> <span class="switch-sides-text">SWITCH SIDES</span>`;
+		const targetParent = dom.timerOverlay || document.querySelector('.player-hud') || document.body;
+		targetParent.appendChild(banner);
+	}
+	if (banner) {
+		banner.classList.add('visible');
+	}
+
 	setTimeout(() => {
 		if (label) label.classList.add('hidden');
 		if (overlay) overlay.classList.remove('switch-sides-pulse');
-	}, 2200);
+		if (banner) banner.classList.remove('visible');
+	}, 2800);
+}
+
+/**
+ * Trigger halfway "switch sides" cue with music ducking and chime.
+ * @param {number} totalDuration
+ * @param {number} remaining
+ */
+function maybeTriggerSwitchCue(totalDuration, remaining) {
+	const step = currentRoutine?.steps?.[currentStepIndex];
+	if (!step || !isStepTwoSided(step) || !totalDuration || totalDuration < 10) return;
+
+	const halfway = totalDuration / 2;
+
+	// Pre-switch warning tick 2-3 seconds before halfway
+	if (!preSwitchTickFired && remaining > halfway && remaining <= halfway + 3.05) {
+		const preSec = Math.ceil(remaining - halfway);
+		if (preSec >= 1 && preSec <= 3) {
+			playPreSwitchTick();
+		}
+	}
+
+	if (switchCueFired) return;
+	if (remaining > halfway) return;
+
+	switchCueFired = true;
+	preSwitchTickFired = true;
+
+	// Duck music smoothly so chime is crystal clear
+	duckMusic(2000, 0.18);
+	playSwitchCue();
+
+	showSwitchSidesBanner();
 }
 
 /**
@@ -1516,15 +1612,31 @@ function startTimer(totalDuration) {
 }
 
 /**
- * Update the circular timer progress ring.
+ * Update the circular timer progress ring and side pill badge.
  */
 function updateTimerProgress(total, remaining) {
-	if (!dom.timerRing) return;
-	const fraction = total > 0 ? remaining / total : 0;
-	const circumference = 2 * Math.PI * 140; // r=140
-	const offset = circumference * (1 - fraction);
-	dom.timerRing.style.strokeDasharray = circumference;
-	dom.timerRing.style.strokeDashoffset = offset;
+	if (dom.timerRing) {
+		const fraction = total > 0 ? remaining / total : 0;
+		const circumference = 2 * Math.PI * 140; // r=140
+		const offset = circumference * (1 - fraction);
+		dom.timerRing.style.strokeDasharray = circumference;
+		dom.timerRing.style.strokeDashoffset = offset;
+	}
+
+	// Update side indicator badge if two-sided step
+	if (typeof document !== 'undefined') {
+		const sidePill = document.getElementById('stage-side-pill');
+		if (sidePill) {
+			const isSecond = total > 0 && remaining <= total / 2;
+			if (isSecond) {
+				sidePill.className = 'side-indicator-pill side-2';
+				sidePill.innerHTML = '<span class="side-pill-dot"></span> Side 2 of 2';
+			} else {
+				sidePill.className = 'side-indicator-pill';
+				sidePill.innerHTML = '<span class="side-pill-dot"></span> Side 1 of 2';
+			}
+		}
+	}
 }
 
 /**
@@ -1543,6 +1655,7 @@ function clearTimer() {
  */
 function advanceStep() {
 	if (!currentRoutine) return;
+	clearCountdown();
 	clearClipMonitor();
 	clearTimer();
 
@@ -1574,6 +1687,7 @@ function advanceStep() {
  */
 export function previousStep() {
 	if (!currentRoutine) return;
+	clearCountdown();
 	clearClipMonitor();
 	clearTimer();
 
@@ -1603,6 +1717,10 @@ export function previousStep() {
  */
 export function skipStep() {
 	if (!currentRoutine) return;
+	if (isCountingDown) {
+		skipCountdown();
+		return;
+	}
 	advanceStepOrSubStep();
 }
 
@@ -1792,7 +1910,11 @@ function updateStepIndicator() {
 	currentRoutine.steps.forEach((step, i) => {
 		const indicator = document.createElement('button');
 		indicator.className = 'step-indicator';
-		if (i < currentStepIndex) indicator.classList.add('completed');
+		if (i < currentStepIndex) {
+			indicator.classList.add('completed');
+		} else if (i === currentStepIndex) {
+			indicator.classList.add('active');
+		}
 		const stepCls = classifyStep(step);
 		const durLabel = stepCls.video ? 'Video' : (stepCls.mode === 'reps' ? `${stepCls.targetReps} reps` : formatTime(stepCls.targetDuration || 30));
 		const stepTitle = getStepDisplayName(step);

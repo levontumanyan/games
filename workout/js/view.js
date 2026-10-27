@@ -85,6 +85,7 @@ export function renderRoutineOverview(routine, container, actions = {}) {
 			totalSeconds += cls.targetDuration;
 		} else if (cls.mode === 'reps') {
 			repsCount++;
+			totalSeconds += (s.targetReps || s.reps || 10) * 2.5;
 		} else {
 			if (cls.video) clipCount++;
 			totalSeconds += cls.targetDuration;
