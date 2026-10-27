@@ -717,14 +717,24 @@ media_assets_json TEXT NOT NULL DEFAULT '[]',
 				if not s.get("mediaUrl") and ex_dict.get("media_url"):
 					s["mediaUrl"] = ex_dict["media_url"]
 
-				mode = s.get("mode") or s.get("stepMode")
-				if not mode:
-					if s.get("targetReps") is not None:
-						mode = "reps"
-					elif s.get("durationSeconds") is not None:
-						mode = "time"
-					else:
-						mode = ex_dict.get("default_mode") or "time"
+				ex_default_mode = ex_dict.get("default_mode") or "time"
+				if ex_default_mode == "reps":
+					mode = "reps"
+					s["durationSeconds"] = None
+					s["targetDuration"] = None
+					s["duration"] = None
+					if s.get("targetReps") is None:
+						s["targetReps"] = s.get("reps") or ex_dict.get("default_quantity") or 10
+						s["reps"] = s["targetReps"]
+				else:
+					mode = s.get("mode") or s.get("stepMode")
+					if not mode:
+						if s.get("targetReps") is not None:
+							mode = "reps"
+						elif s.get("durationSeconds") is not None:
+							mode = "time"
+						else:
+							mode = ex_default_mode
 				s["mode"] = mode
 				s["stepMode"] = "reps" if mode == "reps" else "time"
 

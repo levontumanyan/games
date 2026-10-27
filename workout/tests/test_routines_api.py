@@ -702,3 +702,44 @@ def test_routine_archive_unarchive(client: TestClient):
 	)
 	assert unarch_res.status_code == 200
 	assert unarch_res.json()["routine"]["is_archived"] is False
+
+
+def test_rep_based_exercise_cannot_be_converted_to_time_mode(client: TestClient):
+	# Create a rep-based exercise in the catalog
+	ex_payload = {
+		"name": "Strict Pullups",
+		"category": "strength",
+		"discipline": "calisthenics",
+		"laterality": "bilateral",
+		"default_mode": "reps",
+		"default_quantity": 8,
+	}
+	create_ex_res = client.post("/api/exercises", json=ex_payload, headers={"X-User-Id": "levon"})
+	assert create_ex_res.status_code == 200
+	ex_id = create_ex_res.json()["id"]
+
+	# Create a routine step attempting to pass durationSeconds or mode='time'
+	routine = {
+		"id": "routine-rep-lock-test",
+		"title": "Rep Lock Test",
+		"steps": [
+			{
+				"exercise_id": ex_id,
+				"duration": 60,
+				"durationSeconds": 60,
+				"mode": "time",
+				"stepMode": "time",
+			}
+		],
+	}
+	res = client.post("/api/routines", json=routine, headers={"X-User-Id": "levon"})
+	assert res.status_code == 200
+	saved_step = res.json()["routine"]["steps"][0]
+
+	# Must strictly enforce mode='reps' and clear any duration
+	assert saved_step["mode"] == "reps"
+	assert saved_step["stepMode"] == "reps"
+	assert saved_step["durationSeconds"] is None
+	assert saved_step["targetDuration"] is None
+	assert saved_step["reps"] == 8
+	assert saved_step["targetReps"] == 8
