@@ -85,7 +85,7 @@ export function renderRoutineOverview(routine, container, actions = {}) {
 			totalSeconds += cls.targetDuration;
 		} else if (cls.mode === 'reps') {
 			repsCount++;
-			totalSeconds += (s.targetReps || s.reps || 10) * 2.5;
+			totalSeconds += cls.targetDuration;
 		} else {
 			if (cls.video) clipCount++;
 			totalSeconds += cls.targetDuration;
@@ -452,12 +452,14 @@ const isReps = stepCls.mode === 'reps';
 		img.alt = getStepDisplayName(step);
 		img.loading = 'lazy';
 		img.className = 'view-media-thumb';
+		const repsBadgeText = isReps ? (stepCls.isUnilateral ? `${stepCls.targetReps}r/s` : `${stepCls.targetReps}r`) : formatTime(stepCls.targetDuration || 30);
+		const repsBoxText = isReps ? (stepCls.isUnilateral ? `${stepCls.targetReps} reps/side` : `${stepCls.targetReps} reps`) : formatTime(stepCls.targetDuration || 30);
 		img.onerror = () => {
 			img.style.display = 'none';
 			mediaBox.innerHTML = `
 				<div class="timer-visual-box">
 <span class="timer-icon">${isReps ? getRepsIcon(24) : getTimerIcon(24)}</span>
-					<span class="timer-badge-sec">${isReps ? `${stepCls.targetReps}r` : formatTime(stepCls.targetDuration || 30)}</span>
+					<span class="timer-badge-sec">${repsBadgeText}</span>
 				</div>
 			`;
 		};
@@ -469,10 +471,11 @@ const isReps = stepCls.mode === 'reps';
 		mediaBox.appendChild(playOverlay);
 	} else {
 		// Timer / Reps visual box
+		const repsBoxText = isReps ? (stepCls.isUnilateral ? `${stepCls.targetReps} reps/side` : `${stepCls.targetReps} reps`) : formatTime(stepCls.targetDuration || 30);
 		mediaBox.innerHTML = `
 			<div class="timer-visual-box ${isReps ? 'timer-visual-reps' : ''}">
 <span class="timer-icon">${isReps ? getRepsIcon(24) : getTimerIcon(24)}</span>
-				<span class="timer-badge-sec">${isReps ? `${stepCls.targetReps} reps` : formatTime(stepCls.targetDuration || 30)}</span>
+				<span class="timer-badge-sec">${repsBoxText}</span>
 			</div>
 		`;
 	}
@@ -512,7 +515,8 @@ const isReps = stepCls.mode === 'reps';
 	} else if (isReps) {
 		const repsTag = document.createElement('span');
 		repsTag.className = 'view-tag view-tag-reps';
-repsTag.innerHTML = `${getRepsIcon(11)} ${stepCls.targetReps} Reps Total`;
+		const repsSuffix = stepCls.isUnilateral ? 'Reps Each Side' : 'Reps Total';
+		repsTag.innerHTML = `${getRepsIcon(11)} ${stepCls.targetReps} ${repsSuffix}`;
 		tagsRow.appendChild(repsTag);
 
 		if (mediaUrl) {

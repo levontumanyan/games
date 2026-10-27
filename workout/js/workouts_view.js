@@ -33,7 +33,7 @@ export function analyzeRoutine(routine) {
 			totalSeconds += cls.targetDuration || 0;
 		} else if (cls.mode === 'reps') {
 			repsCount++;
-			totalSeconds += (s.targetReps || s.reps || 10) * 2.5;
+			totalSeconds += cls.targetDuration || ((s.targetReps || s.reps || 10) * 2.5);
 		} else {
 			timeCount++;
 			totalSeconds += cls.targetDuration || s.durationSeconds || 30;

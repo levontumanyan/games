@@ -782,17 +782,47 @@ export function resolveStepVisual(step) {
  *   visual: string | null
  * }}
  */
+export function isStepTwoSided(step) {
+	if (!step) return false;
+	if (step.switchSides === true) return true;
+	if (step.switchSides === false) return false;
+
+	if (step.exercises && Array.isArray(step.exercises)) {
+		for (const exRef of step.exercises) {
+			if (!exRef) continue;
+			if (exRef.laterality === 'unilateral') return true;
+			const eid = typeof exRef === 'string' ? exRef : exRef.id;
+			if (eid) {
+				const fullEx = getExerciseById(eid);
+				if (fullEx?.laterality === 'unilateral') return true;
+			}
+		}
+	}
+	if (step.exercise_id) {
+		const fullEx = getExerciseById(step.exercise_id);
+		if (fullEx?.laterality === 'unilateral') return true;
+	}
+
+	if (step.cue && /(?:per|each|switch)\s*(?:side|leg|arm)|(?:30s|halfway)\s*per/i.test(step.cue)) {
+		return true;
+	}
+	return false;
+}
+
 export function classifyStep(step) {
 	const mode = getStepMode(step);
 	const video = mode === 'time' ? resolveStepVideo(step) : null;
 	const visual = mode !== 'break' ? resolveStepVisual(step) : null;
+	const isUnilateral = isStepTwoSided(step);
 
 	if (mode === 'reps') {
 		const reps = Number(step.targetReps) || 20;
+		const mult = isUnilateral ? 2 : 1;
 		return {
 			mode,
 			targetReps: reps,
-			targetDuration: Math.round(reps * 3),
+			targetDuration: Math.round(reps * 2.5 * mult),
+			isUnilateral,
 			video: null,
 			visual,
 		};
@@ -802,6 +832,7 @@ export function classifyStep(step) {
 		mode,
 		targetReps: 0,
 		targetDuration: getStepDuration(step, video),
+		isUnilateral,
 		video,
 		visual,
 	};

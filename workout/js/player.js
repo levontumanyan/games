@@ -22,8 +22,9 @@ import {
 } from './session.js';
 import {
 	inferMusclesForExercise, getExerciseById, getExerciseInstructionMedia, getExerciseFollowAlongMedia,
-	resolveStepVideo, resolveStepVisual, classifyStep, hasSubSteps
+	resolveStepVideo, resolveStepVisual, classifyStep, hasSubSteps, isStepTwoSided
 } from './exercises.js';
+export { isStepTwoSided };
 import { MUSCLE_DEFINITIONS } from './taxonomy.js';
 
 const PLAY_ICON = `<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><polygon points="7,4 19,12 7,20"/></svg>`;
@@ -1321,14 +1322,16 @@ function executeTimerStep(step) {
 			}
 		}
 
+		const isUnilateral = isStepTwoSided(step);
+		const repsSuffix = isUnilateral ? 'Reps / Side' : 'Reps';
 		if (stepHasSubSteps) {
 			const flowIcon = step.flow_type === 'alternating' ? '⮀' : (step.flow_type === 'sequence' ? '➔' : '⚡');
 			const flowLabel = step.flow_type === 'alternating' ? 'Alternating' : (step.flow_type === 'sequence' ? 'Flow' : 'Superset');
 			dom.currentStepLabel.textContent = `${activeSubEx.name || 'Exercise'} (${dispName})`;
-			dom.currentStepType.innerHTML = `<span class="player-hud-substep-badge">${flowIcon} ${flowLabel} · Move ${currentSubStepIndex + 1}/${totalSubSteps}</span> ${getRepsIcon(14)} ${targetReps} Reps`;
+			dom.currentStepType.innerHTML = `<span class="player-hud-substep-badge">${flowIcon} ${flowLabel} · Move ${currentSubStepIndex + 1}/${totalSubSteps}</span> ${getRepsIcon(14)} ${targetReps} ${repsSuffix}`;
 		} else {
 			dom.currentStepLabel.textContent = dispName;
-			dom.currentStepType.innerHTML = `${getRepsIcon(14)} ${targetReps} Reps${muscleTagHtml}`;
+			dom.currentStepType.innerHTML = `${getRepsIcon(14)} ${targetReps} ${repsSuffix}${muscleTagHtml}`;
 		}
 
 		// Update progress ring to full
@@ -1432,7 +1435,9 @@ function executeTimerStep(step) {
 				if (nextIsBreak) {
 					dom.upNextMeta.innerHTML = `${getBreakIcon(12)} Rest (${formatFriendlyDuration(next.durationSeconds || 30)})`;
 				} else if (nextIsReps) {
-					dom.upNextMeta.innerHTML = `${getRepsIcon(12)} ${next.targetReps || 20} reps`;
+					const nextIsUnilateral = isStepTwoSided(next);
+					const nextRepsSuffix = nextIsUnilateral ? 'reps / side' : 'reps';
+					dom.upNextMeta.innerHTML = `${getRepsIcon(12)} ${next.targetReps || 20} ${nextRepsSuffix}`;
 				} else if (nextIsClip) {
 					const start = nextVid.startSeconds || 0;
 					const end = nextVid.endSeconds || (start + 60);
@@ -1477,39 +1482,6 @@ function resetSwitchCueState() {
 	}
 }
 
-/**
- * Detect whether a step is two-sided / unilateral.
- * @param {Object} step
- * @returns {boolean}
- */
-export function isStepTwoSided(step) {
-	if (!step) return false;
-	if (step.switchSides === true) return true;
-	if (step.switchSides === false) return false;
-
-	// Check attached exercises in step
-	if (step.exercises && Array.isArray(step.exercises)) {
-		for (const exRef of step.exercises) {
-			if (!exRef) continue;
-			if (exRef.laterality === 'unilateral') return true;
-			const eid = typeof exRef === 'string' ? exRef : exRef.id;
-			if (eid) {
-				const fullEx = getExerciseById(eid);
-				if (fullEx?.laterality === 'unilateral') return true;
-			}
-		}
-	}
-	if (step.exercise_id) {
-		const fullEx = getExerciseById(step.exercise_id);
-		if (fullEx?.laterality === 'unilateral') return true;
-	}
-
-	// Check cue text for per-side phrasing
-	if (step.cue && /(?:per|each|switch)\s*(?:side|leg|arm)|(?:30s|halfway)\s*per/i.test(step.cue)) {
-		return true;
-	}
-	return false;
-}
 
 /**
  * Display high-visibility switch sides overlay and HUD banner.
