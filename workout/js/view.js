@@ -453,7 +453,6 @@ const isReps = stepCls.mode === 'reps';
 		img.loading = 'lazy';
 		img.className = 'view-media-thumb';
 		const repsBadgeText = isReps ? (stepCls.isUnilateral ? `${stepCls.targetReps}r/s` : `${stepCls.targetReps}r`) : formatTime(stepCls.targetDuration || 30);
-		const repsBoxText = isReps ? (stepCls.isUnilateral ? `${stepCls.targetReps} reps/side` : `${stepCls.targetReps} reps`) : formatTime(stepCls.targetDuration || 30);
 		img.onerror = () => {
 			img.style.display = 'none';
 			mediaBox.innerHTML = `

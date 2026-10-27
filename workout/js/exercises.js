@@ -802,8 +802,9 @@ export function isStepTwoSided(step) {
 		const fullEx = getExerciseById(step.exercise_id);
 		if (fullEx?.laterality === 'unilateral') return true;
 	}
+	if (step.laterality === 'unilateral') return true;
 
-	if (step.cue && /(?:per|each|switch)\s*(?:side|leg|arm)|(?:30s|halfway)\s*per/i.test(step.cue)) {
+	if (step.cue && /\b(?:per|each|switch)\s+(?:side|leg|arm)\b|\b(?:30s|halfway)\s+per\b/i.test(step.cue)) {
 		return true;
 	}
 	return false;
@@ -816,7 +817,8 @@ export function classifyStep(step) {
 	const isUnilateral = isStepTwoSided(step);
 
 	if (mode === 'reps') {
-		const reps = Number(step.targetReps) || 20;
+		const rawReps = step.targetReps ?? step.reps;
+		const reps = (rawReps !== null && rawReps !== undefined && !isNaN(Number(rawReps))) ? Math.max(0, Number(rawReps)) : 10;
 		const mult = isUnilateral ? 2 : 1;
 		return {
 			mode,

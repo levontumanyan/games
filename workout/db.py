@@ -691,9 +691,15 @@ media_assets_json TEXT NOT NULL DEFAULT '[]',
 		elif "cue" in s and not s["cue"]:
 			del s["cue"]
 
-		# Reps / duration mapping
-		if s.get("reps") is not None and s.get("targetReps") is None:
-			s["targetReps"] = s["reps"]
+		# Reps / duration mapping & integer sanitization
+		raw_reps = s.get("targetReps") if s.get("targetReps") is not None else s.get("reps")
+		if raw_reps is not None:
+			try:
+				clean_reps = max(0, int(raw_reps))
+				s["targetReps"] = clean_reps
+				s["reps"] = clean_reps
+			except (ValueError, TypeError):
+				pass
 		if s.get("duration") is not None:
 			if s.get("durationSeconds") is None:
 				s["durationSeconds"] = s["duration"]
@@ -723,9 +729,6 @@ media_assets_json TEXT NOT NULL DEFAULT '[]',
 					s["durationSeconds"] = None
 					s["targetDuration"] = None
 					s["duration"] = None
-					if s.get("targetReps") is None:
-						s["targetReps"] = s.get("reps") or ex_dict.get("default_quantity") or 10
-						s["reps"] = s["targetReps"]
 				else:
 					mode = s.get("mode") or s.get("stepMode")
 					if not mode:
@@ -740,11 +743,14 @@ media_assets_json TEXT NOT NULL DEFAULT '[]',
 
 				if s["stepMode"] == "reps":
 					if s.get("targetReps") is None:
-						s["targetReps"] = ex_dict.get("default_quantity") or 10
-						s["reps"] = s["targetReps"]
+						def_qty = ex_dict.get("default_quantity")
+						clean_def = int(def_qty) if def_qty is not None else 10
+						s["targetReps"] = clean_def
+						s["reps"] = clean_def
 				else:
 					if s.get("durationSeconds") is None:
-						s["durationSeconds"] = ex_dict.get("default_quantity") or 30
+						def_qty = ex_dict.get("default_quantity")
+						s["durationSeconds"] = int(def_qty) if def_qty is not None else 30
 						s["targetDuration"] = s["durationSeconds"]
 					elif s.get("targetDuration") is None:
 						s["targetDuration"] = s["durationSeconds"]

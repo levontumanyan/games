@@ -1385,3 +1385,53 @@ def test_filter_exercises_matches_muscle_tags_with_spaces():
 		timeout=5,
 	)
 	assert res.returncode == 0, f"Muscle filter test failed:\n{res.stderr}"
+
+
+def test_is_step_two_sided_regex_and_classify_step():
+	"""Verify isStepTwoSided avoids false positives like 'upper arm' and classifyStep handles reps."""
+	js_dir = Path(__file__).parent.parent / "js"
+	node_script = f"""
+	globalThis.window = {{ addEventListener() {{}}, removeEventListener() {{}} }};
+	globalThis.document = {{ addEventListener() {{}}, removeEventListener() {{}} }};
+	globalThis.localStorage = {{ getItem() {{ return null; }}, setItem() {{}}, removeItem() {{}} }};
+
+	const {{ isStepTwoSided, classifyStep }} = await import('{js_dir}/exercises.js');
+
+	// Must NOT match 'upper arm' or 'proper side'
+	if (isStepTwoSided({{ cue: 'Keep upper arm stationary' }})) {{
+		throw new Error('False positive: upper arm must NOT be detected as two-sided!');
+	}}
+	if (isStepTwoSided({{ cue: 'Ensure proper side alignment' }})) {{
+		throw new Error('False positive: proper side must NOT be detected as two-sided!');
+	}}
+
+	// MUST match valid per-side cues
+	if (!isStepTwoSided({{ cue: '10 reps each leg' }})) {{
+		throw new Error('False negative: each leg should be two-sided');
+	}}
+	if (!isStepTwoSided({{ cue: 'Perform 15 pulses per side' }})) {{
+		throw new Error('False negative: per side should be two-sided');
+	}}
+	if (!isStepTwoSided({{ cue: 'Switch arm halfway' }})) {{
+		throw new Error('False negative: switch arm should be two-sided');
+	}}
+
+	// classifyStep unilateral duration doubling
+	const bilateral = classifyStep({{ mode: 'reps', targetReps: 10, cue: 'Keep upper arm still' }});
+	if (bilateral.isUnilateral || bilateral.targetDuration !== 25) {{
+		throw new Error('Expected bilateral 10 reps to be 25s, got: ' + JSON.stringify(bilateral));
+	}}
+
+	const unilateral = classifyStep({{ mode: 'reps', targetReps: 10, cue: '10 reps each leg' }});
+	if (!unilateral.isUnilateral || unilateral.targetDuration !== 50) {{
+		throw new Error('Expected unilateral 10 reps to be 50s, got: ' + JSON.stringify(unilateral));
+	}}
+	"""
+
+	res = subprocess.run(
+		["node", "--input-type=module", "-e", node_script],
+		capture_output=True,
+		text=True,
+		timeout=5,
+	)
+	assert res.returncode == 0, f"isStepTwoSided test failed:\n{res.stderr}"

@@ -24,7 +24,6 @@ import {
 	inferMusclesForExercise, getExerciseById, getExerciseInstructionMedia, getExerciseFollowAlongMedia,
 	resolveStepVideo, resolveStepVisual, classifyStep, hasSubSteps, isStepTwoSided
 } from './exercises.js';
-export { isStepTwoSided };
 import { MUSCLE_DEFINITIONS } from './taxonomy.js';
 
 const PLAY_ICON = `<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><polygon points="7,4 19,12 7,20"/></svg>`;
@@ -1322,7 +1321,7 @@ function executeTimerStep(step) {
 			}
 		}
 
-		const isUnilateral = isStepTwoSided(step);
+		const isUnilateral = stepHasSubSteps ? isStepTwoSided(activeSubEx) : isStepTwoSided(step);
 		const repsSuffix = isUnilateral ? 'Reps / Side' : 'Reps';
 		if (stepHasSubSteps) {
 			const flowIcon = step.flow_type === 'alternating' ? '⮀' : (step.flow_type === 'sequence' ? '➔' : '⚡');
