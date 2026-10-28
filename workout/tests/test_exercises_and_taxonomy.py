@@ -1049,3 +1049,20 @@ def test_patch_exercise_and_add_media(client: TestClient):
 	assert sec_data["media_url"] == "https://example.com/video.mp4"
 	sec_asset = next(a for a in sec_data["media_assets"] if "secondary.jpg" in a["url"])
 	assert sec_asset["type"] == "image"
+
+	# Test atomic multipart file upload & attach via /media and /upload
+	dummy_gif = b"GIF89a\x01\x00\x01\x00\x80\x00\x00\xff\xff\xff\x00\x00\x00!\xf9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;"
+	upload_res = client.post(
+		"/api/exercises/ex-patch-test/upload",
+		files={"file": ("demo.gif", dummy_gif, "image/gif")},
+		data={"kind": "animation", "set_as_primary": "true"},
+		headers={"X-User-Id": "levon"},
+	)
+	assert upload_res.status_code == 200
+	uploaded_data = upload_res.json()
+	assert uploaded_data["media_url"].startswith("/workout/uploads/img_")
+	assert uploaded_data["media_url"].endswith(".gif")
+	assert any(
+		a["url"] == uploaded_data["media_url"] and a["kind"] == "animation"
+		for a in uploaded_data["media_assets"]
+	)

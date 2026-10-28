@@ -656,3 +656,43 @@ export async function uploadImageFile(file) {
 	return await res.json();
 }
 
+/**
+ * Upload an image file directly to an exercise and attach it in a single atomic request.
+ * @param {string} exerciseId
+ * @param {File|Blob} file
+ * @param {Object} [options]
+ * @param {string} [options.kind] - "demonstration", "drill", "breakdown", "photo", "animation"
+ * @param {string} [options.title]
+ * @param {boolean} [options.set_as_primary=true]
+ * @returns {Promise<Object>} Updated exercise model
+ */
+export async function uploadExerciseMedia(exerciseId, file, options = {}) {
+	const formData = new FormData();
+	const filename = file.name || `media_${Date.now()}.png`;
+	formData.append('file', file, filename);
+	if (options.kind) formData.append('kind', options.kind);
+	if (options.title) formData.append('title', options.title);
+	if (options.set_as_primary !== undefined) {
+		formData.append('set_as_primary', String(options.set_as_primary));
+	}
+
+	const res = await fetch(`${getApiBase()}/exercises/${encodeURIComponent(exerciseId)}/upload`, {
+		method: 'POST',
+		headers: {
+			'X-User-Id': getActiveUserId(),
+		},
+		body: formData
+	});
+
+	if (!res.ok) {
+		let errMsg = `Upload failed (HTTP ${res.status})`;
+		try {
+			const errData = await res.json();
+			if (errData && errData.detail) errMsg = errData.detail;
+		} catch (_) {}
+		throw new Error(errMsg);
+	}
+
+	return await res.json();
+}
+

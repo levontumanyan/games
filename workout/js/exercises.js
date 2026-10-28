@@ -137,6 +137,27 @@ export function getExerciseFollowAlongMedia(exerciseOrId) {
 }
 
 /**
+ * Retrieve the best non-video visual asset (GIF, animation, photo) for an exercise.
+ * @param {Object|string} exerciseOrId
+ * @returns {string|null} URL of visual media or null
+ */
+export function getExerciseVisualMedia(exerciseOrId) {
+	if (!exerciseOrId) return null;
+	const assets = getExerciseMediaAssets([exerciseOrId]);
+	// 1. Prefer looping visual animation or photo (or demonstration image)
+	const visual = assets.find(a => (a.kind === 'animation' || a.kind === 'photo' || (a.kind === 'demonstration' && a.type === 'image') || a.type === 'image') && a.url && !parseYouTubeId(a.url));
+	if (visual && visual.url) {
+		return visual.url;
+	}
+	// 2. Check exercise media_url if not a YouTube URL
+	const fullEx = typeof exerciseOrId === 'string' ? getExerciseById(exerciseOrId) : exerciseOrId;
+	if (fullEx && fullEx.media_url && !parseYouTubeId(fullEx.media_url)) {
+		return fullEx.media_url;
+	}
+	return null;
+}
+
+/**
  * Retrieve any instructional tutorial / coaching breakdown asset for an exercise.
  * @param {Object|string} exerciseOrId
  * @returns {Object|null}
@@ -628,9 +649,12 @@ export function resolveStepVideo(step) {
 	}
 
 	// 3. Dynamic exercise inheritance (for single exercise steps)
-	if (Array.isArray(step.exercises) && step.exercises.length > 0) {
+	const exerciseRefs = Array.isArray(step.exercises) && step.exercises.length > 0
+		? step.exercises
+		: (step.exercise_id ? [{ id: step.exercise_id }] : []);
+	if (exerciseRefs.length > 0) {
 		let foundAnyInLibrary = false;
-		for (const exRef of step.exercises) {
+		for (const exRef of exerciseRefs) {
 			const fullEx = exRef && exRef.id ? getExerciseById(exRef.id) : null;
 			const target = fullEx || (typeof exRef === 'object' ? exRef : null);
 			if (target) {
@@ -691,26 +715,19 @@ export function resolveStepVisual(step) {
 	}
 
 	// 2. Dynamic exercise inheritance (unless customMedia is flagged)
-	if (!step.customMedia && Array.isArray(step.exercises) && step.exercises.length > 0) {
+	const visualExRefs = Array.isArray(step.exercises) && step.exercises.length > 0
+		? step.exercises
+		: (step.exercise_id ? [{ id: step.exercise_id }] : []);
+	if (!step.customMedia && visualExRefs.length > 0) {
 		let foundAnyInLibrary = false;
-		for (const exRef of step.exercises) {
+		for (const exRef of visualExRefs) {
 			const fullEx = exRef && exRef.id ? getExerciseById(exRef.id) : null;
-			if (fullEx) {
-				foundAnyInLibrary = true;
-				const visual = getExerciseFollowAlongMedia(fullEx);
-				if (visual && visual.type === 'image' && visual.url && !parseYouTubeId(visual.url)) {
-					return visual.url;
-				}
-				if (fullEx.media_url && !parseYouTubeId(fullEx.media_url)) {
-					return fullEx.media_url;
-				}
-			} else if (exRef && typeof exRef === 'object') {
-				const visual = getExerciseFollowAlongMedia(exRef);
-				if (visual && visual.type === 'image' && visual.url && !parseYouTubeId(visual.url)) {
-					return visual.url;
-				}
-				if (exRef.media_url && !parseYouTubeId(exRef.media_url)) {
-					return exRef.media_url;
+			const target = fullEx || (typeof exRef === 'object' ? exRef : null);
+			if (target) {
+				if (fullEx) foundAnyInLibrary = true;
+				const visual = getExerciseVisualMedia(target);
+				if (visual) {
+					return visual;
 				}
 			}
 		}
@@ -720,7 +737,7 @@ export function resolveStepVisual(step) {
 		}
 	}
 
-	// 2. Direct step media (if not a YouTube URL)
+	// 3. Direct step media (if not a YouTube URL)
 	const direct = step.gifUrl || step.mediaUrl || step.imageUrl;
 	if (direct && typeof direct === 'string' && direct.trim()) {
 		const trimmed = direct.trim();

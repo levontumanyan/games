@@ -1435,3 +1435,80 @@ def test_is_step_two_sided_regex_and_classify_step():
 		timeout=5,
 	)
 	assert res.returncode == 0, f"isStepTwoSided test failed:\n{res.stderr}"
+
+
+def test_dynamic_visual_media_and_step_resolution():
+	"""Verify getExerciseVisualMedia and dynamic resolveStepVisual resolution by exercise_id."""
+	js_dir = (Path(__file__).parent.parent / "js").resolve().as_posix()
+	node_script = f"""
+	globalThis.localStorage = {{ getItem: () => null, setItem: () => {{}}, removeItem: () => {{}} }};
+	globalThis.window = {{ addEventListener: () => {{}}, removeEventListener: () => {{}} }};
+	globalThis.document = {{ addEventListener: () => {{}}, removeEventListener: () => {{}} }};
+	const {{ getExerciseVisualMedia, resolveStepVisual, resolveStepVideo, setExercises }} = await import('{js_dir}/exercises.js');
+
+	// Set up exercise with both a YouTube video demonstration and an animated GIF
+	setExercises([
+		{{
+			id: 'ex-sissy-squat',
+			name: 'Doorframe Sissy Squats',
+			category: 'strength',
+			discipline: 'calisthenics',
+			media_url: '/workout/uploads/sissy.gif',
+			media_assets: [
+				{{
+					id: 'asset-sissy-gif',
+					kind: 'animation',
+					type: 'image',
+					title: 'Demonstration Loop',
+					url: '/workout/uploads/sissy.gif'
+				}},
+				{{
+					id: 'asset-sissy-vid',
+					kind: 'demonstration',
+					type: 'video',
+					title: 'Full Breakdown',
+					url: 'https://www.youtube.com/watch?v=sNHBoMpaoKI'
+				}}
+			]
+		}}
+	]);
+
+	// 1. getExerciseVisualMedia should return the GIF URL
+	const visual = getExerciseVisualMedia('ex-sissy-squat');
+	if (visual !== '/workout/uploads/sissy.gif') {{
+		throw new Error('Expected /workout/uploads/sissy.gif, got: ' + visual);
+	}}
+
+	// 2. A step with only exercise_id (no exercises array and no hardcoded mediaUrl)
+	const minimalStep = {{
+		id: 'step-1',
+		type: 'timer',
+		mode: 'reps',
+		exercise_id: 'ex-sissy-squat'
+	}};
+	const resolvedVisual = resolveStepVisual(minimalStep);
+	if (resolvedVisual !== '/workout/uploads/sissy.gif') {{
+		throw new Error('Expected dynamic visual resolution from exercise_id, got: ' + resolvedVisual);
+	}}
+
+	// 3. A step with an old stale YouTube mediaUrl should dynamically resolve to current library visual
+	const staleStep = {{
+		id: 'step-2',
+		type: 'timer',
+		mode: 'reps',
+		exercise_id: 'ex-sissy-squat',
+		mediaUrl: 'https://www.youtube.com/watch?v=sNHBoMpaoKI'
+	}};
+	const dynamicVisual = resolveStepVisual(staleStep);
+	if (dynamicVisual !== '/workout/uploads/sissy.gif') {{
+		throw new Error('Expected dynamic visual override of stale YouTube URL, got: ' + dynamicVisual);
+	}}
+	"""
+
+	res = subprocess.run(
+		["node", "--input-type=module", "-e", node_script],
+		capture_output=True,
+		text=True,
+		timeout=5,
+	)
+	assert res.returncode == 0, f"dynamic visual media test failed:\n{res.stderr}"

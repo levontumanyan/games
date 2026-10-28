@@ -39,7 +39,7 @@ import {
 	getEffectiveExerciseQuantity,
 } from './exercises.js';
 import { showConfirm, showAlert } from './modal.js';
-import { uploadImageFile } from './storage.js';
+import { uploadImageFile, uploadExerciseMedia } from './storage.js';
 import { escapeHtml, formatTime, parseTime, parseYouTubeId, showToast, formatModeQuantity } from './utils.js';
 import { getFrontBodySvg, getBackBodySvg } from './body_map.js';
 
@@ -1655,9 +1655,20 @@ export function showEditExerciseModal(exercise = null, options = {}) {
 			return;
 		}
 		try {
-			const uploaded = await uploadImageFile(file);
-			mediaInput.value = uploaded.url;
-			if (previewImg) previewImg.src = uploaded.url;
+			let uploadedUrl;
+			if (isEdit && exercise?.id) {
+				const updated = await uploadExerciseMedia(exercise.id, file, {
+					kind: mediaRoleSelect?.value || 'demonstration',
+					set_as_primary: true
+				});
+				uploadedUrl = updated.media_url;
+				Object.assign(exercise, updated);
+			} else {
+				const uploaded = await uploadImageFile(file);
+				uploadedUrl = uploaded.url;
+			}
+			mediaInput.value = uploadedUrl;
+			if (previewImg) previewImg.src = uploadedUrl;
 			if (previewBox) previewBox.classList.remove('hidden');
 			showToast('📷 Photo uploaded successfully!');
 		} catch (err) {

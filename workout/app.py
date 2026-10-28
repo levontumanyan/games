@@ -427,30 +427,102 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 			raise HTTPException(status_code=500, detail=str(e))
 
 	@api_router.post("/exercises/{exercise_id}/media")
+	@api_router.post("/exercises/{exercise_id}/upload")
 	async def add_exercise_media(
 		exercise_id: str,
-		payload: ExerciseMediaAdd,
+		request: Request,
 		user_id: str = Depends(get_user_id),
 	):
-		try:
-			updated = db.add_exercise_media(
-				user_id=user_id,
-				exercise_id=exercise_id,
-				url=payload.url,
-				kind=payload.kind,
-				media_type=payload.type,
-				title=payload.title,
-				set_as_primary=payload.set_as_primary,
+		content_type = (request.headers.get("content-type") or "").lower()
+		if "multipart/form-data" in content_type:
+			form = await request.form()
+			file = form.get("file")
+			if not file or not getattr(file, "filename", None):
+				raise HTTPException(status_code=400, detail="No file uploaded")
+			file_content_type = (getattr(file, "content_type", "") or "").lower()
+			allowed_types = {
+				"image/jpeg": ".jpg",
+				"image/jpg": ".jpg",
+				"image/png": ".png",
+				"image/webp": ".webp",
+				"image/gif": ".gif",
+				"image/svg+xml": ".svg",
+			}
+			ext = Path(file.filename).suffix.lower()
+			if file_content_type not in allowed_types and ext not in [
+				".jpg",
+				".jpeg",
+				".png",
+				".webp",
+				".gif",
+				".svg",
+			]:
+				raise HTTPException(
+					status_code=400,
+					detail="Unsupported file format. Please upload an image (PNG, JPG, WEBP, GIF, SVG).",
+				)
+			target_ext = allowed_types.get(file_content_type, ".jpg" if ext == ".jpeg" else ext)
+			unique_name = (
+				f"img_{int(datetime.now().timestamp())}_{secrets.token_hex(4)}{target_ext}"
 			)
-			if not updated:
-				raise HTTPException(status_code=404, detail="Exercise not found")
-			return JSONResponse(content=updated)
-		except HTTPException:
-			raise
-		except ValueError as e:
-			raise HTTPException(status_code=400, detail=str(e))
-		except Exception as e:
-			raise HTTPException(status_code=500, detail=str(e))
+			dest = uploads_dir / unique_name
+			contents = await file.read()
+			if len(contents) > 25 * 1024 * 1024:
+				raise HTTPException(status_code=400, detail="File too large (maximum size is 25MB)")
+			dest.write_bytes(contents)
+
+			url = f"/workout/uploads/{unique_name}"
+			kind = str(form.get("kind", "animation" if target_ext == ".gif" else "demonstration"))
+			title = str(form.get("title", "")) or (
+				"Demonstration Loop" if target_ext == ".gif" else "Visual Form"
+			)
+			set_as_primary_raw = form.get("set_as_primary", "true")
+			set_as_primary = str(set_as_primary_raw).lower() in ("true", "1", "yes")
+
+			try:
+				updated = db.add_exercise_media(
+					user_id=user_id,
+					exercise_id=exercise_id,
+					url=url,
+					kind=kind,
+					media_type="image",
+					title=title,
+					set_as_primary=set_as_primary,
+				)
+				if not updated:
+					raise HTTPException(status_code=404, detail="Exercise not found")
+				return JSONResponse(content=updated)
+			except HTTPException:
+				raise
+			except ValueError as e:
+				raise HTTPException(status_code=400, detail=str(e))
+			except Exception as e:
+				raise HTTPException(status_code=500, detail=str(e))
+		else:
+			try:
+				body = await request.json()
+			except Exception:
+				raise HTTPException(status_code=400, detail="Invalid JSON or form payload")
+			payload = ExerciseMediaAdd(**body)
+			try:
+				updated = db.add_exercise_media(
+					user_id=user_id,
+					exercise_id=exercise_id,
+					url=payload.url,
+					kind=payload.kind,
+					media_type=payload.type,
+					title=payload.title,
+					set_as_primary=payload.set_as_primary,
+				)
+				if not updated:
+					raise HTTPException(status_code=404, detail="Exercise not found")
+				return JSONResponse(content=updated)
+			except HTTPException:
+				raise
+			except ValueError as e:
+				raise HTTPException(status_code=400, detail=str(e))
+			except Exception as e:
+				raise HTTPException(status_code=500, detail=str(e))
 
 	@api_router.delete("/exercises/{exercise_id}")
 	async def delete_exercise(exercise_id: str, user_id: str = Depends(get_user_id)):
