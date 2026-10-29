@@ -63,8 +63,6 @@ let clipLoadedAt = 0;
 let accumulatedVideoTime = 0;
 let videoSafetyFallbackTimeout = null;
 let cuedVideoAsset = null;
-let isWarmingUpVideo = false;
-let isVideoWarmed = false;
 
 // HUD idle timer
 let hudIdleTimer = null;
@@ -512,38 +510,26 @@ function clearVideoFallback() {
  * @param {Object} videoAsset - { videoId, startSeconds, endSeconds }
  * @param {number} [targetDuration] - Step target duration in seconds
  */
-export function preCueVideo(videoAsset, targetDuration) {
+export function preCueVideo(videoAsset, _targetDuration) {
 	if (!ytReady || !ytPlayer || !videoAsset || !videoAsset.videoId) return;
 	const vidId = videoAsset.videoId;
 	const startSec = typeof videoAsset.startSeconds === 'number' ? videoAsset.startSeconds : 0;
-	const rawEndSec = typeof videoAsset.endSeconds === 'number' ? videoAsset.endSeconds : undefined;
-	const sliceDur = typeof rawEndSec === 'number' ? Math.max(1, rawEndSec - startSec) : undefined;
-	const isLooping = typeof targetDuration === 'number' && sliceDur !== undefined && targetDuration > sliceDur + 1.0;
-	const endSec = (!isLooping && typeof targetDuration === 'number' && targetDuration > 0 && sliceDur !== undefined && targetDuration < sliceDur)
-		? (startSec + targetDuration)
-		: rawEndSec;
+	const endSec = typeof videoAsset.endSeconds === 'number' ? videoAsset.endSeconds : undefined;
 
-	if (cuedVideoAsset && cuedVideoAsset.videoId === vidId && cuedVideoAsset.startSeconds === startSec && cuedVideoAsset.endSeconds === endSec && isVideoWarmed) {
+	if (cuedVideoAsset && cuedVideoAsset.videoId === vidId && cuedVideoAsset.startSeconds === startSec && cuedVideoAsset.endSeconds === endSec) {
 		return;
 	}
 
 	try {
-		console.log(`[Workout Player] Pre-warming upcoming video buffer: ${vidId} (start: ${startSec}s, end: ${endSec !== undefined ? endSec + 's' : 'end'})`);
+		console.log(`[Workout Player] Pre-cueing upcoming video: ${vidId} (start: ${startSec}s, end: ${endSec !== undefined ? endSec + 's' : 'end'})`);
 		cuedVideoAsset = { videoId: vidId, startSeconds: startSec, endSeconds: endSec };
-		isVideoWarmed = false;
-		isWarmingUpVideo = true;
-
-		// Mute before loading so audio never bleeds during countdown or break
-		try { ytPlayer.mute(); } catch {}
-
-		ytPlayer.loadVideoById({
+		ytPlayer.cueVideoById({
 			videoId: vidId,
 			startSeconds: startSec,
 			endSeconds: endSec,
 		});
 	} catch (e) {
-		console.warn('[Workout Player] Pre-warm error:', e);
-		isWarmingUpVideo = false;
+		console.warn('[Workout Player] Pre-cue error:', e);
 	}
 }
 
@@ -573,19 +559,6 @@ function onYTStateChange(event) {
 
 	if (event.data === YT.PlayerState.PLAYING) {
 		disableCaptions();
-		if (isWarmingUpVideo) {
-			isWarmingUpVideo = false;
-			isVideoWarmed = true;
-			console.log('[Workout Player] Video buffer primed and ready in memory. Pausing until step start.');
-			try {
-				ytPlayer.pauseVideo();
-				if (cuedVideoAsset && typeof cuedVideoAsset.startSeconds === 'number') {
-					ytPlayer.seekTo(cuedVideoAsset.startSeconds, true);
-				}
-			} catch {}
-			return;
-		}
-
 		clipHasStartedPlaying = true;
 		clearVideoFallback();
 		if (isPlaying && !isPaused && currentRoutine) {
@@ -1043,43 +1016,18 @@ function executeVideoStep(step, targetDuration, videoAsset) {
 		return;
 	}
 	const startSec = typeof videoAsset.startSeconds === 'number' ? videoAsset.startSeconds : (step.startSeconds || 0);
-	const rawEndSec = typeof videoAsset.endSeconds === 'number' ? videoAsset.endSeconds : (step.endSeconds || undefined);
-	const sliceDur = typeof rawEndSec === 'number' ? Math.max(1, rawEndSec - startSec) : undefined;
-	const isLooping = typeof targetDuration === 'number' && sliceDur !== undefined && targetDuration > sliceDur + 1.0;
-	const endSec = (!isLooping && typeof targetDuration === 'number' && targetDuration > 0 && sliceDur !== undefined && targetDuration < sliceDur)
-		? (startSec + targetDuration)
-		: rawEndSec;
+	const endSec = typeof videoAsset.endSeconds === 'number' ? videoAsset.endSeconds : (step.endSeconds || undefined);
 
 	console.log(`[Workout Player] executeVideoStep [${currentStepIndex}] ("${step.label || 'Step'}"): videoId="${vidId}", start=${startSec}s, end=${endSec !== undefined ? endSec + 's' : 'end'}, ytReady=${ytReady}, ytPlayer=${Boolean(ytPlayer)}`);
 
 	const isAlreadyCued = cuedVideoAsset && cuedVideoAsset.videoId === vidId && cuedVideoAsset.startSeconds === startSec && cuedVideoAsset.endSeconds === endSec;
 
 	if (ytReady && ytPlayer) {
-		isWarmingUpVideo = false;
 		// Unmute player so step video audio plays
 		try { ytPlayer.unMute(); } catch {}
 
-		if (isAlreadyCued && isVideoWarmed) {
-			console.log(`[Workout Player] Instant start: playing pre-warmed video ${vidId} at ${startSec}s`);
-			clipHasStartedPlaying = true;
-			clearVideoFallback();
-			startClipMonitor(step, videoAsset, targetDuration);
-			try {
-				ytPlayer.seekTo(startSec, true);
-				ytPlayer.playVideo();
-			} catch (e) {
-				console.warn('[Workout Player] Failed to play pre-warmed video, falling back to loadVideoById:', e);
-				ytPlayer.loadVideoById({
-					videoId: vidId,
-					startSeconds: startSec,
-					endSeconds: endSec,
-				});
-			}
-		} else if (isAlreadyCued) {
-			console.log(`[Workout Player] Playing already cued video: ${vidId} at ${startSec}s`);
-			clipHasStartedPlaying = true;
-			clearVideoFallback();
-			startClipMonitor(step, videoAsset, targetDuration);
+		if (isAlreadyCued) {
+			console.log(`[Workout Player] Playing cued video: ${vidId} at ${startSec}s`);
 			try {
 				ytPlayer.seekTo(startSec, true);
 				ytPlayer.playVideo();
@@ -1093,12 +1041,19 @@ function executeVideoStep(step, targetDuration, videoAsset) {
 			}
 		} else {
 			cuedVideoAsset = { videoId: vidId, startSeconds: startSec, endSeconds: endSec };
-			isVideoWarmed = false;
 			ytPlayer.loadVideoById({
 				videoId: vidId,
 				startSeconds: startSec,
 				endSeconds: endSec,
 			});
+		}
+
+		// If player is already actively rendering/playing, start clip monitor immediately;
+		// otherwise onYTStateChange(PLAYING) will safely start it once decoding begins.
+		if (typeof ytPlayer.getPlayerState === 'function' && ytPlayer.getPlayerState() === YT.PlayerState.PLAYING) {
+			clipHasStartedPlaying = true;
+			clearVideoFallback();
+			startClipMonitor(step, videoAsset, targetDuration);
 		}
 		disableCaptions();
 	} else {
@@ -1786,8 +1741,6 @@ export function stopPlayback(isCompleted = false) {
 	clipHasStartedPlaying = false;
 	accumulatedVideoTime = 0;
 	cuedVideoAsset = null;
-	isWarmingUpVideo = false;
-	isVideoWarmed = false;
 	currentStepIndex = -1;
 	currentSubStepIndex = 0;
 
