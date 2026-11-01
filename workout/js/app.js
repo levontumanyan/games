@@ -515,8 +515,18 @@ export function buildPreviewStep(item, asset = null, { isCombo = false } = {}) {
 
 	if (isVideo) {
 		const start = chosenAsset?.startSeconds || 0;
-		const dur = isCombo ? targetQty : (chosenAsset?.endSeconds ? chosenAsset.endSeconds - start : (item?.default_quantity || 60));
-		const end = chosenAsset?.endSeconds || (start + dur);
+		const sliceDur = chosenAsset?.endSeconds ? chosenAsset.endSeconds - start : (item?.default_quantity || 60);
+		const end = chosenAsset?.endSeconds || (start + sliceDur);
+		const isUnilateral = item?.laterality === 'unilateral';
+
+		const previewDur = isTutorial ? sliceDur : (
+			isCombo ? targetQty : (
+				isExReps
+					? Math.max(30, targetQty * (isUnilateral ? 2 : 1) * 2.5)
+					: (isUnilateral ? Math.max(60, targetQty) : Math.max(30, targetQty))
+			)
+		);
+
 		const step = {
 			id: isCombo ? 'preview-combo-step' : 'preview-step',
 			type: 'clip',
@@ -525,6 +535,8 @@ export function buildPreviewStep(item, asset = null, { isCombo = false } = {}) {
 			videoId: vidId,
 			startSeconds: start,
 			endSeconds: end,
+			durationSeconds: Math.round(previewDur),
+			targetDuration: Math.round(previewDur),
 			label,
 			exercises: exList
 		};

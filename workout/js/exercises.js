@@ -192,10 +192,10 @@ export async function addMediaAssetToExercise(exerciseId, asset) {
 		media_assets: existingAssets
 	};
 
-	// If timed mode and this asset has video slice timestamps, sync default_quantity
+	// If timed mode and this asset has video slice timestamps, sync default_quantity if not already set
 	if (ex.default_mode === 'time' && asset && typeof asset.startSeconds === 'number' && typeof asset.endSeconds === 'number' && asset.endSeconds > asset.startSeconds) {
 		const snippetDur = asset.endSeconds - asset.startSeconds;
-		if (!ex.default_quantity || ex.default_quantity === 20 || ex.default_quantity === 30 || ex.default_quantity === 60 || existingAssets.length === 1) {
+		if (!ex.default_quantity) {
 			updatedPayload.default_quantity = snippetDur;
 		}
 	}
@@ -236,7 +236,7 @@ export async function updateMediaAssetInExercise(exerciseId, updatedAsset) {
 
 	if (ex.default_mode === 'time' && typeof updatedAsset.startSeconds === 'number' && typeof updatedAsset.endSeconds === 'number' && updatedAsset.endSeconds > updatedAsset.startSeconds) {
 		const snippetDur = updatedAsset.endSeconds - updatedAsset.startSeconds;
-		if (!ex.default_quantity || ex.default_quantity === 20 || ex.default_quantity === 30 || ex.default_quantity === 60 || existingAssets.length === 1) {
+		if (!ex.default_quantity) {
 			updatedPayload.default_quantity = snippetDur;
 		}
 	}

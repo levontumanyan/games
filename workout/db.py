@@ -1728,7 +1728,7 @@ media_assets_json TEXT NOT NULL DEFAULT '[]',
 			]
 
 		if default_mode == "time" and (
-			"default_quantity" not in data or default_quantity in (20, 30, 60)
+			"default_quantity" not in data or data.get("default_quantity") is None
 		):
 			for a in media_assets:
 				if isinstance(a, dict):
