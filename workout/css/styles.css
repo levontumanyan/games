@@ -10192,7 +10192,8 @@ textarea.input {
 	flex-shrink: 0;
 }
 
-.btn-remove-asset-now {
+.btn-remove-asset-now,
+.btn-trim-asset-now {
 	color: var(--text-muted);
 	padding: 4px 8px;
 	border-radius: var(--radius-sm);
@@ -10200,10 +10201,25 @@ textarea.input {
 	transition: all var(--transition-fast);
 }
 
+.btn-trim-asset-now:hover {
+	color: var(--accent-neon, #a8ff53) !important;
+	background: rgba(168, 255, 83, 0.12) !important;
+	border-color: rgba(168, 255, 83, 0.3) !important;
+}
+
 .btn-remove-asset-now:hover {
 	color: #ef4444 !important;
 	background: rgba(239, 68, 68, 0.15) !important;
 	border-color: rgba(239, 68, 68, 0.3) !important;
+}
+
+.modal-trim-asset-backdrop {
+	z-index: 2500 !important;
+}
+
+.modal-trim-asset-backdrop .modal-window {
+	max-width: 680px !important;
+	width: 95vw;
 }
 
 .ex-lib-header-actions {

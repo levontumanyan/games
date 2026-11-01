@@ -206,6 +206,46 @@ export async function addMediaAssetToExercise(exerciseId, asset) {
 }
 
 /**
+ * Update an existing media asset within an exercise and persist to server.
+ * @param {string} exerciseId
+ * @param {Object} updatedAsset
+ * @returns {Promise<Object>}
+ */
+export async function updateMediaAssetInExercise(exerciseId, updatedAsset) {
+	const ex = getExerciseById(exerciseId);
+	if (!ex) throw new Error('Exercise not found');
+
+	const existingAssets = Array.isArray(ex.media_assets) ? [...ex.media_assets] : [];
+	const idx = existingAssets.findIndex(a => (a.id && a.id === updatedAsset.id) || (a.url && a.url === updatedAsset.url));
+	if (idx >= 0) {
+		existingAssets[idx] = { ...existingAssets[idx], ...updatedAsset };
+	} else {
+		existingAssets.push(updatedAsset);
+	}
+
+	let media_url = ex.media_url;
+	if (idx === 0 || media_url === updatedAsset.url) {
+		media_url = updatedAsset.url;
+	}
+
+	const updatedPayload = {
+		...ex,
+		media_url: media_url,
+		media_assets: existingAssets
+	};
+
+	if (ex.default_mode === 'time' && typeof updatedAsset.startSeconds === 'number' && typeof updatedAsset.endSeconds === 'number' && updatedAsset.endSeconds > updatedAsset.startSeconds) {
+		const snippetDur = updatedAsset.endSeconds - updatedAsset.startSeconds;
+		if (!ex.default_quantity || ex.default_quantity === 20 || ex.default_quantity === 30 || ex.default_quantity === 60 || existingAssets.length === 1) {
+			updatedPayload.default_quantity = snippetDur;
+		}
+	}
+
+	const updated = await createCustomExercise(updatedPayload);
+	return updated;
+}
+
+/**
  * Remove a media asset from an exercise and persist to server.
  * @param {string} exerciseId
  * @param {string} assetId

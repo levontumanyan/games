@@ -30,6 +30,7 @@ import {
 	createCustomExercise,
 	deleteCustomExercise,
 	addMediaAssetToExercise,
+	updateMediaAssetInExercise,
 	removeMediaAssetFromExercise,
 	getExerciseMediaAssets,
 	getExerciseFollowAlongMedia,
@@ -38,7 +39,7 @@ import {
 	updateExerciseDescription,
 	getEffectiveExerciseQuantity,
 } from './exercises.js';
-import { showConfirm, showAlert } from './modal.js';
+import { showConfirm, showAlert, createCustomModal } from './modal.js';
 import { uploadImageFile, uploadExerciseMedia } from './storage.js';
 import { escapeHtml, formatTime, parseTime, parseYouTubeId, showToast, formatModeQuantity } from './utils.js';
 import { getFrontBodySvg, getBackBodySvg } from './body_map.js';
@@ -233,6 +234,7 @@ function createModernVideoSlicerDrawer({
 	initialEnd = 60,
 	titleInput = null,
 	onIntervalChange = null,
+	defaultToIntervals = false,
 }) {
 	let isFullVideo = false;
 	let intervals = [];
@@ -246,7 +248,7 @@ function createModernVideoSlicerDrawer({
 			start: Math.max(0, a.startSeconds || 0),
 			end: Math.max((a.startSeconds || 0) + 1, a.endSeconds || ((a.startSeconds || 0) + 60))
 		}));
-		if (videoAssets[0].startSeconds === 0 && (!videoAssets[0].endSeconds || videoAssets[0].endSeconds <= 0)) {
+		if (!defaultToIntervals && videoAssets[0].startSeconds === 0 && (!videoAssets[0].endSeconds || videoAssets[0].endSeconds <= 0)) {
 			isFullVideo = true;
 		}
 	} else if (typeof initialStart === 'number' && typeof initialEnd === 'number' && initialEnd > initialStart) {
@@ -998,6 +1000,7 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 									</div>
 									<div class="modal-asset-actions">
 										<button class="btn btn-sm btn-primary btn-play-asset-now" data-idx="${idx}" title="${isVideo ? (a.kind === 'instruction' ? 'Watch technique tutorial' : 'Preview follow-along video') : 'View image reference'}">${actionBtnLabel}</button>
+										${isVideo ? `<button class="btn btn-sm btn-ghost btn-trim-asset-now" data-idx="${idx}" title="Trim video variation start and end times"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg></button>` : ''}
 										<button class="btn btn-sm btn-ghost btn-remove-asset-now" data-idx="${idx}" title="Remove this media variation"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button>
 									</div>
 								</div>
@@ -1167,6 +1170,23 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 					close();
 					onPlayAsset(assets[idx]);
 				}
+			});
+		});
+
+		modal.querySelectorAll('.btn-trim-asset-now').forEach(btn => {
+			btn.addEventListener('click', (e) => {
+				e.stopPropagation();
+				const idx = parseInt(btn.getAttribute('data-idx'), 10);
+				const targetAsset = assets[idx];
+				if (!targetAsset) return;
+
+				showTrimAssetModal(exercise, targetAsset, {
+					onUpdated: (updatedEx) => {
+						Object.assign(exercise, updatedEx);
+						renderModalContent();
+						onUpdated();
+					}
+				});
 			});
 		});
 
@@ -1449,6 +1469,89 @@ export function showExerciseVariationsModal(exercise, options = {}) {
 	renderModalContent();
 	document.body.appendChild(backdrop);
 	return { modal, close, backdrop };
+}
+
+/**
+ * Show a modal to trim or edit the timing of a video variation.
+ * @param {Object} exercise - Parent exercise object
+ * @param {Object} asset - The media asset to trim
+ * @param {Object} options - Callbacks e.g. onUpdated
+ */
+export function showTrimAssetModal(exercise, asset, options = {}) {
+	const onUpdated = options.onUpdated || (() => {});
+	const isVideo = asset.type === 'video' || (asset.url && (asset.url.includes('youtube') || asset.url.includes('youtu.be')));
+	if (!isVideo) return null;
+
+	const { modal, close } = createCustomModal({
+		title: `Trim Video: ${exercise.name}`,
+		className: 'modal-trim-asset-backdrop',
+		maxWidth: '680px',
+		bodyHtml: `
+			<div style="display:flex;flex-direction:column;gap:14px;">
+				<div class="field-group">
+					<label style="font-weight:600;font-size:0.85rem;color:var(--text-muted);text-transform:uppercase;">Variation Label / Title</label>
+					<input type="text" id="trim-asset-title" class="input clean-input" value="${escapeHtml(asset.title || 'Demonstration')}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+				</div>
+				<div id="trim-slicer-container"></div>
+			</div>
+		`,
+		footerHtml: `
+			<div style="display:flex;justify-content:flex-end;gap:10px;width:100%;">
+				<button type="button" class="btn btn-ghost btn-cancel-trim">Cancel</button>
+				<button type="button" class="btn btn-primary btn-save-trim">Save Video Slice</button>
+			</div>
+		`
+	});
+
+	const titleInput = modal.querySelector('#trim-asset-title');
+	const slicerContainer = modal.querySelector('#trim-slicer-container');
+	const assetSlicer = createModernVideoSlicerDrawer({
+		container: slicerContainer,
+		initialUrl: asset.url,
+		initialAssets: [asset],
+		initialStart: typeof asset.startSeconds === 'number' ? asset.startSeconds : 0,
+		initialEnd: typeof asset.endSeconds === 'number' ? asset.endSeconds : 60,
+		titleInput: titleInput,
+		defaultToIntervals: true
+	});
+
+	const cancelBtn = modal.querySelector('.btn-cancel-trim');
+	if (cancelBtn) {
+		cancelBtn.addEventListener('click', () => {
+			close();
+		});
+	}
+
+	const saveBtn = modal.querySelector('.btn-save-trim');
+	if (saveBtn) {
+		saveBtn.addEventListener('click', async () => {
+			const state = assetSlicer.getState();
+			const newTitle = (titleInput.value || '').trim() || asset.title || 'Demonstration';
+			const start = state.isFullVideo ? 0 : state.activeStart;
+			const end = state.isFullVideo ? undefined : state.activeEnd;
+
+			const updatedAsset = {
+				...asset,
+				title: newTitle,
+				startSeconds: start,
+				endSeconds: end
+			};
+
+			try {
+				const updated = await updateMediaAssetInExercise(exercise.id, updatedAsset);
+				close();
+				const timeRange = (typeof start === 'number' && typeof end === 'number')
+					? ` (${formatTime(start)} → ${formatTime(end)})`
+					: '';
+				showToast(`Saved trim for "${newTitle}"${timeRange}!`);
+				onUpdated(updated);
+			} catch (err) {
+				await showAlert({ title: 'Error Saving Trim', message: err.message });
+			}
+		});
+	}
+
+	return { modal, close };
 }
 
 /**

@@ -21,6 +21,9 @@ class MediaAsset(BaseSchema):
 	type: str = Field(..., description="Media type: video or image")
 	title: str = Field(..., description="Asset title or label")
 	url: str = Field(..., description="URL to media resource")
+	videoId: str | None = Field(default=None, description="YouTube video ID if video asset")
+	startSeconds: float | None = Field(default=None, description="Video clip start time in seconds")
+	endSeconds: float | None = Field(default=None, description="Video clip end time in seconds")
 
 
 class ExerciseCreate(BaseSchema):
