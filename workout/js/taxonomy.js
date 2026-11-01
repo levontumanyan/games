@@ -215,10 +215,10 @@ export const MUSCLE_DEFINITIONS = {
 	},
 };
 
-// Backward-compatibility alias for legacy groin data
-MUSCLE_DEFINITIONS.groin = MUSCLE_DEFINITIONS.adductors;
-MUSCLE_DEFINITIONS.foot = MUSCLE_DEFINITIONS.feet;
-MUSCLE_DEFINITIONS.plantar = MUSCLE_DEFINITIONS.feet;
+// Backward-compatibility aliases (non-enumerable so Object.values / Object.keys stay clean)
+Object.defineProperty(MUSCLE_DEFINITIONS, 'groin', { value: MUSCLE_DEFINITIONS.adductors, enumerable: false, writable: true, configurable: true });
+Object.defineProperty(MUSCLE_DEFINITIONS, 'foot', { value: MUSCLE_DEFINITIONS.feet, enumerable: false, writable: true, configurable: true });
+Object.defineProperty(MUSCLE_DEFINITIONS, 'plantar', { value: MUSCLE_DEFINITIONS.feet, enumerable: false, writable: true, configurable: true });
 
 export const MUSCLE_GROUPS = MUSCLE_DEFINITIONS;
 

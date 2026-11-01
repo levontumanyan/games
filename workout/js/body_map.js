@@ -435,7 +435,10 @@ export function renderAnatomyExplorer(container, options = {}) {
 
 	function renderChips() {
 		chipsContainer.innerHTML = '';
+		const seenIds = new Set();
 		Object.values(MUSCLE_DEFINITIONS).forEach(m => {
+			if (!m || !m.id || seenIds.has(m.id)) return;
+			seenIds.add(m.id);
 			const btn = document.createElement('button');
 			btn.type = 'button';
 			btn.className = `anatomy-quick-chip ${currentMuscleFilter === m.id ? 'active' : ''}`;
