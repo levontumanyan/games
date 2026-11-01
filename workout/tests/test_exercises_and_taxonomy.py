@@ -801,17 +801,18 @@ def test_taxonomy_endpoint_and_muscle_normalization(client: TestClient):
 	muscle_ids = [m["id"] for m in tax["muscles"]]
 	assert "adductors" in muscle_ids
 	assert "hip_flexors" in muscle_ids
+	assert "feet" in muscle_ids
 	assert "groin" not in muscle_ids  # groin is an alias, not a canonical id
 
-	# Test that creating an exercise with legacy 'groin' is automatically normalized to 'adductors'
+	# Test that creating an exercise with legacy 'groin' or 'foot' is automatically normalized
 	create_res = client.post(
 		"/api/exercises",
 		json={
 			"name": "Taxonomy Test Copenhagen Plank",
 			"category": "strength",
 			"discipline": "calisthenics",
-			"primary_muscles": ["groin", "hip-flexors"],
-			"secondary_muscles": ["obliques", "adductor"],
+			"primary_muscles": ["groin", "hip-flexors", "foot"],
+			"secondary_muscles": ["obliques", "adductor", "plantar"],
 		},
 		headers={"X-User-Id": "levon"},
 	)
@@ -819,9 +820,17 @@ def test_taxonomy_endpoint_and_muscle_normalization(client: TestClient):
 	created_ex = create_res.json()
 	assert "adductors" in created_ex["primary_muscles"]
 	assert "hip_flexors" in created_ex["primary_muscles"]
+	assert "feet" in created_ex["primary_muscles"]
 	assert "groin" not in created_ex["primary_muscles"]
 	assert "adductors" in created_ex["secondary_muscles"]
+	assert "feet" in created_ex["secondary_muscles"]
 	assert "adductor" not in created_ex["secondary_muscles"]
+
+	# Test filtering by feet muscle
+	filter_res = client.get("/api/exercises?muscle=feet", headers={"X-User-Id": "levon"})
+	assert filter_res.status_code == 200
+	feet_exs = filter_res.json()
+	assert any(ex["id"] == created_ex["id"] for ex in feet_exs)
 
 
 def test_exercise_rename_cascades_to_routines(client: TestClient):

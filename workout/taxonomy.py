@@ -101,9 +101,16 @@ MUSCLE_DEFINITIONS: dict[str, dict[str, Any]] = {
 	"calves": {
 		"id": "calves",
 		"label": "Calves & Ankles",
-		"icon": "🦶",
+		"icon": "🦵",
 		"region": "lower",
 		"color": "#6aa3a9",
+	},
+	"feet": {
+		"id": "feet",
+		"label": "Feet & Arches (Plantar)",
+		"icon": "🦶",
+		"region": "lower",
+		"color": "#78a88a",
 	},
 	"upper_back": {
 		"id": "upper_back",
@@ -141,7 +148,7 @@ ANATOMICAL_REGIONS: list[dict[str, Any]] = [
 		"id": "lower",
 		"label": "Lower Body & Legs",
 		"icon": "🦵",
-		"muscles": ["quads", "hamstrings", "glutes", "calves", "adductors"],
+		"muscles": ["quads", "hamstrings", "glutes", "calves", "feet", "adductors"],
 	},
 	{
 		"id": "core",
@@ -194,6 +201,12 @@ MUSCLE_ALIASES: dict[str, str] = {
 	"hip_flexor": "hip_flexors",
 	"hipflexors": "hip_flexors",
 	"psoas": "hip_flexors",
+	"foot": "feet",
+	"plantar": "feet",
+	"toes": "feet",
+	"toe": "feet",
+	"arch": "feet",
+	"arches": "feet",
 }
 
 

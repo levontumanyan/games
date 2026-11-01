@@ -150,12 +150,23 @@ export const MUSCLE_DEFINITIONS = {
 	calves: {
 		id: 'calves',
 		label: 'Calves & Ankles',
-		icon: '🦶',
+		icon: '🦵',
 		region: 'lower',
 		color: '#6aa3a9',
 		paths: {
 			front: ['path-calf-front-left', 'path-calf-front-right'],
 			back: ['path-calf-back-left', 'path-calf-back-right'],
+		},
+	},
+	feet: {
+		id: 'feet',
+		label: 'Feet & Arches',
+		icon: '🦶',
+		region: 'lower',
+		color: '#78a88a',
+		paths: {
+			front: ['path-foot-front-left', 'path-foot-front-right'],
+			back: ['path-foot-back-left', 'path-foot-back-right'],
 		},
 	},
 	upper_back: {
@@ -206,6 +217,8 @@ export const MUSCLE_DEFINITIONS = {
 
 // Backward-compatibility alias for legacy groin data
 MUSCLE_DEFINITIONS.groin = MUSCLE_DEFINITIONS.adductors;
+MUSCLE_DEFINITIONS.foot = MUSCLE_DEFINITIONS.feet;
+MUSCLE_DEFINITIONS.plantar = MUSCLE_DEFINITIONS.feet;
 
 export const MUSCLE_GROUPS = MUSCLE_DEFINITIONS;
 
@@ -215,7 +228,7 @@ export const MUSCLE_GROUPS = MUSCLE_DEFINITIONS;
  */
 export const ANATOMICAL_REGIONS = [
 	{ id: 'all', label: 'All Movements', icon: '🎯' },
-	{ id: 'lower', label: 'Lower Body & Legs', icon: '🦵', muscles: ['quads', 'hamstrings', 'glutes', 'calves', 'adductors'] },
+	{ id: 'lower', label: 'Lower Body & Legs', icon: '🦵', muscles: ['quads', 'hamstrings', 'glutes', 'calves', 'feet', 'adductors'] },
 	{ id: 'core', label: 'Core & Hip Flexors', icon: '🛡️', muscles: ['abs', 'obliques', 'lower_back', 'hip_flexors', 'pelvic_floor'] },
 	{ id: 'arms', label: 'Arms & Grip', icon: '💪', muscles: ['biceps', 'triceps', 'forearms'] },
 	{ id: 'upper', label: 'Shoulders & Upper', icon: '🥊', muscles: ['shoulders', 'chest', 'traps', 'upper_back', 'lats'] },

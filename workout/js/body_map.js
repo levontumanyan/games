@@ -87,6 +87,10 @@ export function getFrontBodySvg() {
 			<!-- Calves & Shins (Front) -->
 			<path id="path-calf-front-left" data-muscle="calves" class="muscle-group-path" d="M 73 282 C 68 302 70 326 75 345 C 80 345 84 330 84 300 C 84 285 78 280 73 282 Z" />
 			<path id="path-calf-front-right" data-muscle="calves" class="muscle-group-path" d="M 127 282 C 132 302 130 326 125 345 C 120 345 116 330 116 300 C 116 285 122 280 127 282 Z" />
+
+			<!-- Feet & Arches (Front) -->
+			<path id="path-foot-front-left" data-muscle="feet" class="muscle-group-path" d="M 75 346 L 73 365 L 87 365 L 85 346 C 82 348 78 348 75 346 Z" />
+			<path id="path-foot-front-right" data-muscle="feet" class="muscle-group-path" d="M 125 346 L 127 365 L 113 365 L 115 346 C 118 348 122 348 125 346 Z" />
 		</g>
 	</svg>
 	`;
@@ -151,6 +155,10 @@ export function getBackBodySvg() {
 			<!-- Calves (Gastrocnemius & Soleus) -->
 			<path id="path-calf-back-left" data-muscle="calves" class="muscle-group-path" d="M 73 282 C 67 302 70 326 75 345 C 81 345 86 330 86 300 C 86 285 78 280 73 282 Z" />
 			<path id="path-calf-back-right" data-muscle="calves" class="muscle-group-path" d="M 127 282 C 133 302 130 326 125 345 C 119 345 114 330 114 300 C 114 285 122 280 127 282 Z" />
+
+			<!-- Feet, Heels & Plantar Arch (Back) -->
+			<path id="path-foot-back-left" data-muscle="feet" class="muscle-group-path" d="M 75 346 L 73 365 L 87 365 L 85 346 C 82 348 78 348 75 346 Z" />
+			<path id="path-foot-back-right" data-muscle="feet" class="muscle-group-path" d="M 125 346 L 127 365 L 113 365 L 115 346 C 118 348 122 348 125 346 Z" />
 		</g>
 	</svg>
 	`;

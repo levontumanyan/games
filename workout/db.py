@@ -1614,6 +1614,13 @@ media_assets_json TEXT NOT NULL DEFAULT '[]',
 					" OR LOWER(primary_muscles_json) LIKE ? OR LOWER(secondary_muscles_json) LIKE ?)"
 				)
 				params.extend(["%adductor%", "%adductor%", "%groin%", "%groin%"])
+			elif clean_m in ("feet", "foot", "plantar", "toes", "toe", "arches", "arch"):
+				query += (
+					" AND (LOWER(primary_muscles_json) LIKE ? OR LOWER(secondary_muscles_json) LIKE ?"
+					" OR LOWER(primary_muscles_json) LIKE ? OR LOWER(secondary_muscles_json) LIKE ?"
+					" OR LOWER(primary_muscles_json) LIKE ? OR LOWER(secondary_muscles_json) LIKE ?)"
+				)
+				params.extend(["%feet%", "%feet%", "%foot%", "%foot%", "%plantar%", "%plantar%"])
 			else:
 				m = f"%{clean_m}%"
 				query += " AND (LOWER(primary_muscles_json) LIKE ? OR LOWER(secondary_muscles_json) LIKE ?)"

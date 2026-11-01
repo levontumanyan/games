@@ -361,6 +361,9 @@ export function inferMusclesForExercise(ex) {
 	if (/\b(fold|hamstring|hamstrings)\b/.test(combined)) {
 		return { primary: ['hamstrings', 'lower_back'], secondary: ['calves', 'adductors'] };
 	}
+	if (/\b(foot|feet|toe|toes|plantar|hallux|metatarsal|arch|doming)\b/.test(combined)) {
+		return { primary: ['feet'], secondary: ['calves'] };
+	}
 	return { primary: [], secondary: [] };
 }
 
@@ -385,7 +388,7 @@ export function filterExercises(query = '', category = '', discipline = '', musc
 		if (mus && mus !== 'all') {
 			const targetMuscles = inferMusclesForExercise(ex);
 			const allExMuscles = [...(targetMuscles.primary || []), ...(targetMuscles.secondary || [])].map(m => m.toLowerCase());
-			const queryMus = mus === 'groin' ? 'adductors' : mus;
+			const queryMus = mus === 'groin' ? 'adductors' : (mus === 'foot' || mus === 'plantar' ? 'feet' : mus);
 			if (!allExMuscles.includes(queryMus) && !allExMuscles.includes(mus)) return false;
 		}
 		if (q) {
@@ -394,9 +397,10 @@ export function filterExercises(query = '', category = '', discipline = '', musc
 			const catMatch = (ex.category || '').toLowerCase().includes(q);
 			const discMatch = (ex.discipline || '').toLowerCase().includes(q);
 			const targetMuscles = inferMusclesForExercise(ex);
+			const qNorm = (q === 'foot' || q === 'toes' || q === 'toe' || q === 'plantar') ? 'feet' : q;
 			const musMatch = [...(targetMuscles.primary || []), ...(targetMuscles.secondary || [])].some(m => {
 				const lower = m.toLowerCase();
-				return lower.includes(q) || lower.replace(/_/g, ' ').includes(q);
+				return lower.includes(q) || lower.includes(qNorm) || lower.replace(/_/g, ' ').includes(q);
 			});
 			return nameMatch || descMatch || catMatch || discMatch || musMatch;
 		}

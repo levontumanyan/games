@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -132,7 +132,7 @@ def test_streak_calculation_and_weekly_monthly_stats(client: TestClient, tmp_pat
 	db_path = tmp_path / "workout.db"
 	db = Database(db_path)
 
-	today = datetime.now().date()
+	today = datetime.now(timezone.utc).date()
 	yesterday = today - timedelta(days=1)
 	two_days_ago = today - timedelta(days=2)
 

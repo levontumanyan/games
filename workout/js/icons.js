@@ -97,6 +97,7 @@ export const MUSCLE_SVGS = {
 	hamstrings: (s = 16) => `<svg class="muscle-svg muscle-svg-hamstrings" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4c2 4 2 10 0 16m10-16c-2 4-2 10 0 16"/><path d="M10 8h4m-5 4h6m-5 4h4"/></svg>`,
 	glutes: (s = 16) => `<svg class="muscle-svg muscle-svg-glutes" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5c-3.5-3-8-.5-8 4.5 0 6 5 9.5 8 10.5 3-1 8-4.5 8-10.5 0-5-4.5-7.5-8-4.5Z"/><path d="M12 6v13"/></svg>`,
 	calves: (s = 16) => `<svg class="muscle-svg muscle-svg-calves" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3c-3 4-3 9 0 13l1 5h4l1-5c3-4 3-9 0-13H9Z"/><path d="M10 8c1.3 1 2.7 1 4 0m-4 5c1.3 1 2.7 1 4 0"/></svg>`,
+	feet: (s = 16) => `<svg class="muscle-svg muscle-svg-feet" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16v-2a4 4 0 0 1 4-4h2l2 4 4-2a2 2 0 0 1 2 2v2a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3Z"/><circle cx="18" cy="9" r="1.2"/><circle cx="15" cy="7" r="1.2"/><circle cx="12" cy="7" r="1.2"/></svg>`,
 	upper_back: (s = 16) => `<svg class="muscle-svg muscle-svg-upper-back" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 7v6c0 5 4 8 8 9 4-1 8-4 8-9V7l-8-4Z"/><path d="M8 11h8M12 7v10"/></svg>`,
 	lats: (s = 16) => `<svg class="muscle-svg muscle-svg-lats" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v16"/><path d="M12 5C8 5 4 8 3 13c3 0 6 2 9 6 3-4 6-6 9-6-1-5-5-8-9-9Z"/></svg>`,
 	lower_back: (s = 16) => `<svg class="muscle-svg muscle-svg-lower-back" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h8v16H8z"/><line x1="12" y1="4" x2="12" y2="20"/><path d="M8 8h8M8 12h8M8 16h8"/></svg>`,
@@ -129,7 +130,7 @@ export const MEDIA_KIND_SVGS = {
 
 export function getMuscleIcon(muscleKey, size = 16) {
 	const key = (muscleKey || '').toLowerCase();
-	const norm = key === 'groin' ? 'adductors' : key;
+	const norm = key === 'groin' ? 'adductors' : (key === 'foot' || key === 'plantar' ? 'feet' : key);
 	if (MUSCLE_SVGS[norm]) {
 		return MUSCLE_SVGS[norm](size);
 	}

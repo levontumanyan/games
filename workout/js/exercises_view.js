@@ -97,6 +97,7 @@ export function renderExercisesCatalog(container, options = {}) {
 
 	const filterOptions = [
 		{ id: 'all', label: 'All Movements' },
+		{ id: 'muscle:feet', label: '🦶 Feet & Arches' },
 		...Object.entries(DISCIPLINES).map(([k, d]) => ({ id: `disc:${k}`, label: d.label })),
 		...Object.entries(CATEGORIES).map(([k, c]) => ({ id: `cat:${k}`, label: c.label.split(' / ')[0].split(' & ')[0] })),
 	];
@@ -136,13 +137,16 @@ export function renderExercisesCatalog(container, options = {}) {
 	function renderGrid() {
 		let cat = '';
 		let disc = '';
+		let effectiveMuscle = currentMuscleFilter;
 		if (currentFilter.startsWith('cat:')) {
 			cat = currentFilter.replace('cat:', '');
 		} else if (currentFilter.startsWith('disc:')) {
 			disc = currentFilter.replace('disc:', '');
+		} else if (currentFilter.startsWith('muscle:')) {
+			effectiveMuscle = currentFilter.replace('muscle:', '');
 		}
 
-		const list = filterExercises(currentSearch, cat, disc, currentMuscleFilter);
+		const list = filterExercises(currentSearch, cat, disc, effectiveMuscle);
 
 		if (list.length === 0) {
 			gridContainer.innerHTML = `
