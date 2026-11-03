@@ -50,6 +50,12 @@ ffmpeg -y -ss <start> -to <end> -i /tmp/raw_clip.mp4 \
 	/tmp/exercise_demo.gif
 ```
 
+3. **Lossy Compression with `gifsicle`** (installed via Homebrew):
+```bash
+gifsicle -O3 --lossy=80 -o /tmp/exercise_demo_opt.gif /tmp/exercise_demo.gif
+```
+*(Note: `ingest_exercise.py` automatically runs `gifsicle` optimization if installed).*
+
 ---
 
 ## 3. Routine Architecture & Biomechanical Guardrails

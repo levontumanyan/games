@@ -4,6 +4,8 @@
 import argparse
 import json
 import mimetypes
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -67,9 +69,27 @@ def main() -> None:
 			if not gif_path.exists():
 				sys.stderr.write(f"Error: File not found: {gif_path}\n")
 				sys.exit(1)
-			mime = mimetypes.guess_type(str(gif_path))[0] or "image/gif"
-			with open(gif_path, "rb") as f:
-				files = {"file": (gif_path.name, f, mime)}
+
+			upload_path = gif_path
+			if shutil.which("gifsicle") and gif_path.suffix.lower() == ".gif":
+				opt_path = gif_path.with_name(f"{gif_path.stem}_opt.gif")
+				try:
+					subprocess.run(
+						["gifsicle", "-O3", "--lossy=80", "-o", str(opt_path), str(gif_path)],
+						check=True,
+						capture_output=True,
+					)
+					if opt_path.exists() and opt_path.stat().st_size < gif_path.stat().st_size:
+						upload_path = opt_path
+						print(
+							f"Optimized with gifsicle: {gif_path.stat().st_size} -> {opt_path.stat().st_size} bytes"
+						)
+				except Exception:
+					pass
+
+			mime = mimetypes.guess_type(str(upload_path))[0] or "image/gif"
+			with open(upload_path, "rb") as f:
+				files = {"file": (upload_path.name, f, mime)}
 				resp = client.post("/api/upload", files=files)
 				if resp.status_code >= 400:
 					sys.stderr.write(f"Upload failed ({resp.status_code}): {resp.text}\n")
