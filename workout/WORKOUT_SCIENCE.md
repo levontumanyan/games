@@ -26,7 +26,8 @@ Any AI agent, subagent, or coach authoring or modifying routines in this app mus
 ## 1. Mechanical Tension & Proximity to Failure (RIR)
 * **Effective Reps Model**: Muscle growth occurs predominantly during the final 4–5 reps before failure, where high-threshold motor units are involuntarily recruited.
 * **Target Intensity**: Sets must be executed at **1 to 3 Reps in Reserve (RIR)** (RPE 7.5–9). Junk volume (sets ending 5+ reps away from failure) adds systemic fatigue with minimal hypertrophic stimulus.
-* **Rep Range Spectrum**: Any rep range between **6 and 30 reps** induces comparable hypertrophy if taken close to failure. When working at home without heavy weights, use biomechanical leverage (unilateral limbs, paused eccentrics, deficits, 1.5-reps) to keep working sets within this 6–30 rep threshold.
+* **Double Progression (8–14 Rep Sweet Spot)**: Calibrate working sets between 8 and 14 reps. When completing 14 reps at 2 RIR across initial sets, increase mechanical leverage (elevate feet higher, add a 1s bottom stretch pause, or add backpack load) rather than drifting into endurance reps (>20).
+* **Rep Range Spectrum**: Any rep range between **6 and 30 reps** induces comparable hypertrophy if taken close to failure. When working at home without heavy weights, use biomechanical leverage (unilateral limbs, 2s eccentric descent, deficits, 1.5-reps) to keep working sets within this threshold.
 
 ## 2. Weekly Set Volume & Session Caps
 * **Weekly Volume per Muscle Group**: **10 to 18 hard working sets per week** distributed across 2 sessions (2x/week frequency to maximize the 24–48 hour Muscle Protein Synthesis window).
@@ -42,6 +43,7 @@ Rest periods must balance mechanical tension with flow, session pacing, and time
 * **Transition into Cooldown / Stretching**: **10 seconds strictly**—no long breaks needed between the final working set and the start of cooldown stretches.
 * **Mobility & Stretch Transitions**: **5 seconds strictly** between individual stretches or mobility poses—just enough time to reposition the body without dead time or losing warmth.
 * **Antagonist / Alternating Flow**: When possible, alternate sides or opposing movements with 45–60s intervals to maintain an engaging, 35–45 minute flow.
+* **Inter-Set Autonomic Recovery**: Take 2–3 physiological sighs (nasal double-inhale, slow mouth exhale) during the first 15s to reset vagal tone; walk slowly (skeletal muscle pump) rather than sitting to avoid venous pooling; avoid cognitive screen fatigue (doomscrolling) to protect motor drive.
 
 # Biomechanical Guardrails & Injury Prevention
 
@@ -66,9 +68,9 @@ Rest periods must balance mechanical tension with flow, session pacing, and time
 
 This 7-day schedule balances natural hypertrophy, combat skills, swimming, and joint preservation while fitting a stable base:
 
-## Monday: Upper Body Hypertrophy (Chest, Lateral Delts, Biceps, Grip)
-* **Focus**: Sternal/clavicular chest pressing, strict lateral raises, elbow flexion, forearm grip.
-* **Duration**: ~45–50 minutes.
+## Monday: Upper Body Hypertrophy (Chest, Horizontal Pull, Biceps, Delts, Grip)
+* **Focus**: Sternal/clavicular chest pressing (decline pushups), scapular stabilizers (prone Y-T-W), vertical push (pike pushups), balanced with a 1:1 push-pull tri-set (horizontal bedsheet door rows, triceps, loaded towel backpack curls).
+* **Duration**: ~40–45 minutes.
 
 ## Tuesday: Lower Body Hypertrophy (Quads, Thighs, Adductors, Calves)
 * **Focus**: Unilateral quad mechanical tension (Bulgarian split squats), knee extension (sissy squats / elevated squats), adductors, calves.
@@ -101,9 +103,9 @@ When tailoring any session, adapt dynamically to the environment:
 ## Home & Zero-Equipment Mode
 * **Quads & Thighs**: Bulgarian split squats (rear foot on bed/chair/luggage), bodyweight sissy squats (holding doorframe for balance), skater squats, tempo 1.5-rep squats.
 * **Chest & Triceps**: Deficit pushups on books/blocks/handles for deep chest stretch, feet-elevated decline pushups, diamond pushups, chair dips.
-* **Pull & Biceps**: Doorframe rows, towel-around-door rows, under-table inverted rows, chin-ups/pull-ups on outdoor park bars.
+* **Pull & Biceps**: Bedsheet door rows, towel backpack curls, doorframe rows, towel-around-door rows, under-table inverted rows, chin-ups/pull-ups on outdoor park bars.
 * **Shoulders**: Feet-elevated pike pushups, prone floor Y-T-W raises, wall handstand holds.
-* **Forearms**: Towel-door grip holds, reverse-grip doorframe rows, fingertip pushup holds, outdoor bar dead hangs.
+* **Forearms**: Towel backpack suitcase holds, towel-door grip holds, reverse-grip doorframe rows, fingertip pushup holds, outdoor bar dead hangs.
 
 ## Gym Mode
 * **Quads**: Barbell/safety-bar squats, leg press (feet low on platform for quad emphasis), leg extensions.

@@ -6,7 +6,7 @@ When given a workout link (`https://levon.ajwest.ca/workout/#u=<user>&r=<id>` or
 
 ## YouTube Video Searching
 - Use [`scripts/search_youtube.py`](file:///Users/levontumanyan/repos/games/workout/scripts/search_youtube.py) to search verified YouTube videos:
-	`uv run python scripts/search_youtube.py "<query>" [--max 5]`
+	`uv run --directory workout --group dev python scripts/search_youtube.py "<query>" [--max 5]`
 
 ## Exercise Creation CLI
 - Use [`scripts/create_exercise.py`](file:///Users/levontumanyan/repos/games/workout/scripts/create_exercise.py) to create exercises against the live API (enforces explicit `--laterality` with no default):
