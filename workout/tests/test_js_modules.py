@@ -1512,3 +1512,127 @@ def test_dynamic_visual_media_and_step_resolution():
 		timeout=5,
 	)
 	assert res.returncode == 0, f"dynamic visual media test failed:\n{res.stderr}"
+
+
+def test_active_workouts_filtering_in_schedule_and_catalog():
+	"""Verify schedule modal and workouts catalog header only include active routines."""
+	import shutil
+
+	if not shutil.which("node"):
+		return
+
+	js_dir = (Path(__file__).parent.parent / "js").resolve().as_posix()
+
+	node_script = f"""
+	globalThis.localStorage = {{ getItem: () => null, setItem: () => {{}}, removeItem: () => {{}} }};
+	let capturedHtmlSnippets = [];
+	globalThis.document = {{
+		createElement: () => {{
+			let _html = '';
+			const el = {{
+				className: '',
+				style: {{}},
+				dataset: {{}},
+				classList: {{ add: () => {{}}, remove: () => {{}}, toggle: () => {{}} }},
+				addEventListener: () => {{}},
+				removeEventListener: () => {{}},
+				appendChild: () => {{}},
+				remove: () => {{}},
+				set textContent(val) {{
+					_html = String(val);
+				}},
+				get textContent() {{ return _html; }},
+				set innerHTML(val) {{
+					_html = val;
+					capturedHtmlSnippets.push(val);
+				}},
+				get innerHTML() {{ return _html; }},
+				querySelector: () => el,
+				querySelectorAll: () => []
+			}};
+			return el;
+		}},
+		body: {{ appendChild: () => {{}} }},
+		addEventListener: () => {{}},
+		removeEventListener: () => {{}}
+	}};
+	globalThis.window = {{ addEventListener: () => {{}}, removeEventListener: () => {{}} }};
+
+	const {{ openScheduleModal }} = await import('{js_dir}/schedule.js');
+	const {{ renderWorkoutsCatalog }} = await import('{js_dir}/workouts_view.js');
+
+	const mockRoutines = [
+		{{ id: 'r-active-1', title: 'Muay Thai Combat Flow', is_archived: false, steps: [] }},
+		{{ id: 'r-active-2', title: 'Pushup Protocol', is_archived: false, steps: [] }},
+		{{ id: 'r-archived-1', title: 'cuervo! mi alegria', is_archived: true, steps: [] }},
+		{{ id: 'r-archived-2', title: 'damas gratis', isArchived: true, steps: [] }}
+	];
+
+	// 1. Verify Workouts Catalog header badge displays only active count (2 workouts, not 4)
+	let innerHtmlCapture = '';
+	const fakeEl = () => ({{
+		addEventListener: () => {{}},
+		appendChild: () => {{}},
+		classList: {{ add: () => {{}}, remove: () => {{}} }},
+		value: ''
+	}});
+	const fakeContainer = {{
+		set innerHTML(val) {{ innerHtmlCapture = val; }},
+		get innerHTML() {{ return innerHtmlCapture; }},
+		querySelector: () => fakeEl()
+	}};
+	renderWorkoutsCatalog(fakeContainer, {{ routines: mockRoutines }});
+	if (!innerHtmlCapture.includes('2 workouts')) {{
+		throw new Error('Workouts catalog header did not count active workouts only. Captured: ' + innerHtmlCapture);
+	}}
+	if (innerHtmlCapture.includes('4 workouts')) {{
+		throw new Error('Workouts catalog header incorrectly included archived routines in total count badge!');
+	}}
+
+	// 2. Open schedule modal to inspect schedule routine options
+	capturedHtmlSnippets = [];
+	openScheduleModal({{ routines: mockRoutines }});
+
+	const addModalHtml = capturedHtmlSnippets.join(' ');
+	if (!addModalHtml.includes('r-active-1') || !addModalHtml.includes('r-active-2')) {{
+		throw new Error('Schedule modal missing active routines: ' + addModalHtml);
+	}}
+	if (addModalHtml.includes('r-archived-1') || addModalHtml.includes('r-archived-2')) {{
+		throw new Error('Schedule modal contains archived routines! ' + addModalHtml);
+	}}
+
+	// 3. When editing an item referencing an archived routine, that specific routine is preserved
+	capturedHtmlSnippets = [];
+	openScheduleModal({{
+		scheduleItem: {{
+			id: 'item-1',
+			routine_id: 'r-archived-1',
+			routine_title: 'cuervo! mi alegria',
+			scheduled_date: '2026-11-08'
+		}},
+		routines: mockRoutines
+	}});
+	const editModalHtml = capturedHtmlSnippets.join(' ');
+	if (!editModalHtml.includes('r-archived-1')) {{
+		throw new Error('Expected schedule item routine to be preserved when editing: ' + editModalHtml);
+	}}
+	// But other archived routine should still NOT be present
+	if (editModalHtml.includes('r-archived-2')) {{
+		throw new Error('Unrelated archived routine should not appear even when editing: ' + editModalHtml);
+	}}
+
+	// 4. Verify centralized isRoutineArchived utility
+	const {{ isRoutineArchived }} = await import('{js_dir}/utils.js');
+	if (!isRoutineArchived({{ is_archived: true }})) throw new Error('isRoutineArchived failed on snake_case');
+	if (!isRoutineArchived({{ isArchived: true }})) throw new Error('isRoutineArchived failed on camelCase');
+	if (isRoutineArchived({{ is_archived: false, isArchived: false }})) throw new Error('isRoutineArchived failed on false');
+	if (isRoutineArchived(null)) throw new Error('isRoutineArchived failed on null');
+	"""
+
+	res = subprocess.run(
+		["node", "--input-type=module", "-e", node_script],
+		capture_output=True,
+		text=True,
+		timeout=5,
+	)
+	assert res.returncode == 0, f"Active workouts filtering test failed:\n{res.stderr}"

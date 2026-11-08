@@ -3,7 +3,7 @@
  * Replaces the legacy 280px left sidebar with a clean, calm, and responsive grid.
  */
 
-import { escapeHtml } from './utils.js';
+import { escapeHtml, isRoutineArchived } from './utils.js';
 import { getSearchIcon, getCalendarIcon, getEditIcon } from './icons.js';
 import { MUSCLE_DEFINITIONS } from './taxonomy.js';
 import { inferMusclesForExercise, getExerciseById, classifyStep } from './exercises.js';
@@ -129,12 +129,22 @@ export function renderWorkoutsCatalog(container, options = {}) {
 	const onEditRoutine = options.onEditRoutine || (() => {});
 	const onCreateRoutine = options.onCreateRoutine || (() => {});
 
+	// Pre-analyze and normalize routines once upfront so searching and filtering are O(1) lookups
+	const analyzedCatalog = routines.map((r) => ({
+		routine: r,
+		isArchived: isRoutineArchived(r),
+		meta: analyzeRoutine(r),
+	}));
+
+	const activeCatalog = analyzedCatalog.filter((item) => !item.isArchived);
+	const initialCount = activeCatalog.length;
+
 	container.innerHTML = `
 		<div class="workouts-catalog-container">
 			<div class="workouts-catalog-header">
 				<div class="workouts-header-left">
 					<h2 class="workouts-title">Workouts</h2>
-					<span class="workouts-count-badge" id="workouts-count-badge">${routines.length} workouts</span>
+					<span class="workouts-count-badge" id="workouts-count-badge">${initialCount} workout${initialCount === 1 ? '' : 's'}</span>
 				</div>
 				<div class="workouts-header-actions">
 					<button id="btn-create-workout-top" class="btn btn-primary btn-sm">+ New Workout</button>
@@ -183,6 +193,7 @@ export function renderWorkoutsCatalog(container, options = {}) {
 	const filterChipsContainer = container.querySelector('#workouts-filter-chips');
 	const sortSelect = container.querySelector('#workouts-sort-select');
 	const gridContainer = container.querySelector('#workouts-cards-grid');
+	const countBadge = container.querySelector('#workouts-count-badge');
 	const createBtn = container.querySelector('#btn-create-workout-top');
 
 	createBtn.addEventListener('click', onCreateRoutine);
@@ -206,13 +217,11 @@ export function renderWorkoutsCatalog(container, options = {}) {
 		filterCategories.forEach((cat) => {
 			let count = 0;
 			if (cat.id === 'archived') {
-				count = routines.filter((r) => r.is_archived || r.isArchived).length;
+				count = analyzedCatalog.filter((item) => item.isArchived).length;
 			} else if (cat.id === 'all') {
-				count = routines.filter((r) => !r.is_archived && !r.isArchived).length;
+				count = activeCatalog.length;
 			} else {
-				count = routines.filter(
-					(r) => (!r.is_archived && !r.isArchived) && analyzeRoutine(r).domain === cat.id
-				).length;
+				count = activeCatalog.filter((item) => item.meta.domain === cat.id).length;
 			}
 
 			const btn = document.createElement('button');
@@ -231,17 +240,9 @@ export function renderWorkoutsCatalog(container, options = {}) {
 	function renderGrid() {
 		gridContainer.innerHTML = '';
 
-		let targetRoutines = routines;
-		if (currentFilter === 'archived') {
-			targetRoutines = routines.filter((r) => r.is_archived || r.isArchived);
-		} else {
-			targetRoutines = routines.filter((r) => !r.is_archived && !r.isArchived);
-		}
-
-		let filtered = targetRoutines.map((r) => ({
-			routine: r,
-			meta: analyzeRoutine(r),
-		}));
+		let filtered = currentFilter === 'archived'
+			? analyzedCatalog.filter((item) => item.isArchived)
+			: activeCatalog;
 
 		// Filter by domain
 		if (currentFilter !== 'all' && currentFilter !== 'archived') {
@@ -272,6 +273,18 @@ export function renderWorkoutsCatalog(container, options = {}) {
 			filtered.sort((a, b) => b.meta.stepCount - a.meta.stepCount);
 		} else if (currentSort === 'name-asc') {
 			filtered.sort((a, b) => (a.routine.title || '').localeCompare(b.routine.title || ''));
+		}
+
+		if (countBadge) {
+			if (currentFilter === 'archived') {
+				const count = currentSearch ? filtered.length : analyzedCatalog.filter((item) => item.isArchived).length;
+				countBadge.textContent = `${count} archived workout${count === 1 ? '' : 's'}`;
+			} else if (currentFilter === 'all' && !currentSearch) {
+				const count = activeCatalog.length;
+				countBadge.textContent = `${count} workout${count === 1 ? '' : 's'}`;
+			} else {
+				countBadge.textContent = `${filtered.length} workout${filtered.length === 1 ? '' : 's'}`;
+			}
 		}
 
 		if (filtered.length === 0) {

@@ -548,3 +548,13 @@ export function formatModeQuantity(mode, quantity, { repsFallback = 20, secsFall
 	return formatTime(Number(quantity) || secsFallback);
 }
 
+/**
+ * Check if a routine is archived, supporting both snake_case (API/DB) and camelCase properties.
+ * @param {Object} routine
+ * @returns {boolean}
+ */
+export function isRoutineArchived(routine) {
+	return Boolean(routine && (routine.is_archived || routine.isArchived));
+}
+
+

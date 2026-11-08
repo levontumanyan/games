@@ -2,7 +2,7 @@
  * Routine Picker Popover module - Quick target selector for adding movements to workouts without leaving catalog.
  */
 
-import { escapeHtml } from './utils.js';
+import { escapeHtml, isRoutineArchived } from './utils.js';
 import { createStepFromExercise, createStepFromCombo, createRoutine, appendStepWithBreak } from './editor.js';
 
 let activePopover = null;
@@ -61,11 +61,20 @@ export function showRoutinePickerPopover(triggerBtn, item, type = 'exercise', op
 
 	// Build items
 	let itemsHtml = '';
-	if (routines.length > 0) {
-		itemsHtml = routines.map(r => {
+	const activeRoutines = routines.filter(r => !isRoutineArchived(r) || r.id === selectedRoutineId);
+	if (activeRoutines.length > 0) {
+		itemsHtml = activeRoutines.map(r => {
 			const isActive = r.id === selectedRoutineId;
+			const isArchived = isRoutineArchived(r);
 			const stepCount = Array.isArray(r.steps) ? r.steps.length : 0;
-			const activeBadge = isActive ? `<span class="popover-badge">Active</span>` : '';
+			let activeBadge = '';
+			if (isActive) {
+				activeBadge = isArchived
+					? `<span class="popover-badge">Selected (Archived)</span>`
+					: `<span class="popover-badge">Active</span>`;
+			} else if (isArchived) {
+				activeBadge = `<span class="popover-badge" style="opacity:0.75;">Archived</span>`;
+			}
 			return `
 				<div class="popover-item" data-routine-id="${escapeHtml(r.id)}">
 					<div class="popover-item-title">${escapeHtml(r.title || 'Untitled Workout')}</div>
@@ -74,7 +83,7 @@ export function showRoutinePickerPopover(triggerBtn, item, type = 'exercise', op
 			`;
 		}).join('');
 	} else {
-		itemsHtml = `<div style="padding:10px 14px;font-size:0.85rem;color:var(--text-muted);">No workouts created yet.</div>`;
+		itemsHtml = `<div style="padding:10px 14px;font-size:0.85rem;color:var(--text-muted);">${routines.length > 0 ? 'No active workouts found.' : 'No workouts created yet.'}</div>`;
 	}
 
 	popover.innerHTML = `

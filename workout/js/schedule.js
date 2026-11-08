@@ -11,13 +11,17 @@ import {
 	completeScheduleItem,
 	loadRoutines
 } from './storage.js';
-import { escapeHtml } from './utils.js';
+import { escapeHtml, isRoutineArchived } from './utils.js';
 import { createCustomModal, showConfirm, showAlert } from './modal.js';
 
 let cachedSchedule = [];
 let currentYear = new Date().getFullYear();
 let currentMonth = new Date().getMonth() + 1; // 1-12
 let selectedDateStr = getTodayDateStr();
+
+function resolveRoutines(options) {
+	return options?.routines || loadRoutines();
+}
 
 function getTodayDateStr() {
 	const now = new Date();
@@ -96,7 +100,7 @@ export async function renderScheduleDashboard(container, options = {}) {
 		addBtn.addEventListener('click', () => {
 			openScheduleModal({
 				date: selectedDateStr,
-				routines: options.routines || loadRoutines(),
+				routines: resolveRoutines(options),
 				onSaved: () => refreshSchedule(container, options)
 			});
 		});
@@ -107,7 +111,7 @@ export async function renderScheduleDashboard(container, options = {}) {
 		quickAddBtn.addEventListener('click', () => {
 			openScheduleModal({
 				date: selectedDateStr,
-				routines: options.routines || loadRoutines(),
+				routines: resolveRoutines(options),
 				onSaved: () => refreshSchedule(container, options)
 			});
 		});
@@ -302,7 +306,7 @@ function renderAgenda(mainContainer, options) {
 			btn.addEventListener('click', () => {
 				openScheduleModal({
 					date: selectedDateStr,
-					routines: options.routines || loadRoutines(),
+					routines: resolveRoutines(options),
 					onSaved: () => refreshSchedule(mainContainer, options)
 				});
 			});
@@ -365,7 +369,7 @@ function renderAgenda(mainContainer, options) {
 		const startBtn = card.querySelector('[data-action="start"]');
 		if (startBtn) {
 			startBtn.addEventListener('click', () => {
-				const routines = options.routines || loadRoutines();
+				const routines = resolveRoutines(options);
 				const matchedRoutine = routines.find(r => r.id === item.routine_id);
 				if (matchedRoutine && options.onPlayRoutine) {
 					// Launch player with routine
@@ -385,7 +389,7 @@ function renderAgenda(mainContainer, options) {
 				openScheduleModal({
 					scheduleItem: item,
 					date: item.scheduled_date,
-					routines: options.routines || loadRoutines(),
+					routines: resolveRoutines(options),
 					onSaved: () => refreshSchedule(mainContainer, options)
 				});
 			});
@@ -428,11 +432,18 @@ export function openScheduleModal({
 	const activeRoutineId = scheduleItem?.routine_id || routine?.id || '';
 	const activeRoutineTitle = scheduleItem?.routine_title || routine?.title || '';
 
-	const routineOptionsHtml = routines.map(r => `
-		<option value="${r.id}" ${r.id === activeRoutineId ? 'selected' : ''}>
-			${escapeHtml(r.title)}
-		</option>
-	`).join('');
+	// Filter to active routines only.
+	// If editing an existing item that references an archived routine, include it so the selection is preserved.
+	const selectableRoutines = routines.filter(r => {
+		if (activeRoutineId && r.id === activeRoutineId) return true;
+		return !isRoutineArchived(r);
+	});
+
+	const routineOptionsHtml = selectableRoutines.map(r => {
+		const isArchived = isRoutineArchived(r);
+		const label = isArchived ? `${r.title} (Archived)` : r.title;
+		return `<option value="${escapeHtml(r.id)}" ${r.id === activeRoutineId ? 'selected' : ''}>${escapeHtml(label)}</option>`;
+	}).join('');
 
 	const formHtml = `
 		<form id="schedule-form" class="schedule-modal-form">
