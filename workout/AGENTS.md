@@ -1,5 +1,8 @@
 # Workout Player Instructions
 
+## Workout Status & Next Routine Query
+- When asked what workout was done last, what is scheduled, or what is next: run `uv run python scripts/workout_status.py` or fetch `GET https://levon.ajwest.ca/workout/api/schedule/next`.
+
 ## Share & Routine Link Resolution
 When given a workout link (`https://levon.ajwest.ca/workout/#u=<user>&r=<id>` or `#r=<id>`):
 - Fetch the routine JSON via the routine endpoint using query param `?user_id=<user>` (fallback user: `levon`).

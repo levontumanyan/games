@@ -10,6 +10,7 @@ A collection of self-hosted, real-time web games and apps built with FastAPI and
 
 ## Sub-App Instructions
 Each sub-app directory maintains its own domain-specific `AGENTS.md` (e.g. `workout/AGENTS.md`). When working on, querying, or parsing links for a specific app, inspect its local `AGENTS.md` first for share link resolution rules, DB schema, and API contracts.
+- **Workout Status & Next Routine**: When asked what workout was done last or what's next, run `uv run --directory workout python scripts/workout_status.py` or fetch `GET https://levon.ajwest.ca/workout/api/schedule/next`.
 
 ## Code Standards
 - **Indentation**: Use **tabs** exclusively for all code (Python, Shell scripts, Makefiles, JS, CSS, HTML). Never use spaces except in YAML.

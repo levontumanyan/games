@@ -1,8 +1,8 @@
 ---
 name: workout-author
 description: >-
-  Author, mutate, or audit workout routines, exercises, demonstration media, and check workout status or next routine recommendations for Workout Player.
-  Use when adding exercises, converting videos to looping GIFs, checking workout status, querying what workout is next, or balancing routine structures.
+  Author, mutate, or audit workout routines, exercises, and demonstration media for Workout Player.
+  Use when adding exercises, converting videos to looping GIFs, tagging taxonomy, or balancing routine structures.
 ---
 
 # Workout Authoring & Ingestion Runbook
@@ -67,17 +67,3 @@ When assembling or editing routines, enforce the standards in [`WORKOUT_SCIENCE.
 - **Proximity to Failure (RIR)**: Prescribe sets at **1 to 2 RIR** in an **8–14 rep calibration range**. If reps exceed 14, increase leverage (elevation, pause, backpack load) rather than rep count.
 - **Step Cues**: Use standardized tempo notation: `2s eccentric + 1s bottom pause`. Never insert redundant per-side or rep notes.
 - **Minimal Step Descriptors**: When calling `PUT /api/routines/{id}`, pass clean descriptors (`{"exercise_id": "...", "reps": 12, "cue": "..."}` or `{"rest": 60}`); backend automatically inflates metadata.
-
----
-
-## 4. Workout Status & Next Routine Recommendation
-
-To check what workout was done last, what is scheduled, and what should be next:
-
-```bash
-uv run python workout/scripts/workout_status.py [--json] [--reconcile]
-```
-
-Or query the live API directly:
-- `GET https://levon.ajwest.ca/workout/api/schedule/next` (alias: `/api/schedule/recommendation`)
-- `POST https://levon.ajwest.ca/workout/api/schedule/reconcile` (auto-links completed sessions with scheduled workouts)
