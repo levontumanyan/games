@@ -12,6 +12,13 @@ When given a workout link (`https://levon.ajwest.ca/workout/#u=<user>&r=<id>` or
 - Use [`scripts/create_exercise.py`](file:///Users/levontumanyan/repos/games/workout/scripts/create_exercise.py) to create exercises against the live API (enforces explicit `--laterality` with no default):
 	`uv run python scripts/create_exercise.py --name "<Name>" --laterality <bilateral|unilateral> [--category <cat>] [--discipline <disc>]`
 
+## Workout Status & Recommendation CLI
+- Use [`scripts/workout_status.py`](file:///Users/levontumanyan/repos/games/workout/scripts/workout_status.py) to check workout status, recent history, schedule sync, and next routine recommendation:
+	`uv run python scripts/workout_status.py [--json] [--reconcile]`
+- Endpoints:
+	- `GET /api/schedule/next` (alias: `/api/schedule/recommendation`): Returns smart next routine recommendation, last completed session, today's schedule status, and missed workouts.
+	- `POST /api/schedule/reconcile`: Retroactively reconciles any uncompleted scheduled workouts matching completed sessions.
+
 # API & Agent Workflows
 
 ## Remote-First Execution & Database Access

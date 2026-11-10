@@ -358,6 +358,9 @@ class SessionUpsert(BaseSchema):
 	is_preview: int | bool = Field(
 		default=0, description="Whether this was a share preview session"
 	)
+	scheduled_id: str | None = Field(
+		default=None, description="Optional schedule ID being completed"
+	)
 	exercises: list[Any] = Field(
 		default_factory=list, description="Exercise log / metrics snapshot"
 	)

@@ -135,3 +135,138 @@ def test_schedule_date_validation(client: TestClient):
 		headers={"X-User-Id": "levon"},
 	)
 	assert res.status_code == 400
+
+
+def test_session_auto_link_scheduled_workout(client: TestClient):
+	# 1. Schedule a routine
+	res = client.post(
+		"/api/schedule",
+		json={
+			"routine_id": "routine-combat-flow",
+			"routine_title": "Muay Thai Combat Flow",
+			"scheduled_date": "2026-11-08",
+		},
+		headers={"X-User-Id": "levon"},
+	)
+	assert res.status_code == 201
+	schedule_id = res.json()["id"]
+
+	# 2. Complete session without explicit schedule_id
+	session_payload = {
+		"id": "sess-combat-1",
+		"routine_id": "routine-combat-flow",
+		"routine_title": "Muay Thai Combat Flow",
+		"started_at": "2026-11-08T18:00:00Z",
+		"completed_at": "2026-11-08T18:45:00Z",
+		"duration_seconds": 2700,
+		"completed_steps": 25,
+		"total_steps": 25,
+		"status": "completed",
+	}
+	res = client.post("/api/sessions", json=session_payload, headers={"X-User-Id": "levon"})
+	assert res.status_code == 200
+
+	# 3. Verify scheduled workout was automatically completed and linked
+	res = client.get(f"/api/schedule/{schedule_id}", headers={"X-User-Id": "levon"})
+	assert res.status_code == 200
+	item = res.json()
+	assert item["status"] == "completed"
+	assert item["session_id"] == "sess-combat-1"
+
+
+def test_session_explicit_schedule_id_link(client: TestClient):
+	# 1. Schedule a routine
+	res = client.post(
+		"/api/schedule",
+		json={
+			"routine_id": "routine-hypertrophy",
+			"routine_title": "Lower Body",
+			"scheduled_date": "2026-11-10",
+		},
+		headers={"X-User-Id": "levon"},
+	)
+	assert res.status_code == 201
+	schedule_id = res.json()["id"]
+
+	# 2. Complete session passing explicit scheduled_id
+	session_payload = {
+		"id": "sess-explicit-1",
+		"routine_id": "routine-hypertrophy",
+		"scheduled_id": schedule_id,
+		"started_at": "2026-11-10T10:00:00Z",
+		"completed_at": "2026-11-10T10:40:00Z",
+		"duration_seconds": 2400,
+		"status": "completed",
+	}
+	res = client.post("/api/sessions", json=session_payload, headers={"X-User-Id": "levon"})
+	assert res.status_code == 200
+
+	# 3. Verify scheduled workout was completed
+	res = client.get(f"/api/schedule/{schedule_id}", headers={"X-User-Id": "levon"})
+	assert res.status_code == 200
+	item = res.json()
+	assert item["status"] == "completed"
+	assert item["session_id"] == "sess-explicit-1"
+
+
+def test_schedule_reconcile_endpoint(client: TestClient):
+	# 1. Schedule an item
+	res = client.post(
+		"/api/schedule",
+		json={
+			"routine_id": "routine-retro",
+			"routine_title": "Retro Flow",
+			"scheduled_date": "2026-11-05",
+		},
+		headers={"X-User-Id": "levon"},
+	)
+	assert res.status_code == 201
+	schedule_id = res.json()["id"]
+
+	# 2. Add a completed session in progress without triggering auto-link
+	session_payload = {
+		"id": "sess-retro-1",
+		"routine_id": "routine-retro",
+		"started_at": "2026-11-05T12:00:00Z",
+		"completed_at": "2026-11-05T12:30:00Z",
+		"duration_seconds": 1800,
+		"status": "in_progress",
+	}
+	client.post("/api/sessions", json=session_payload, headers={"X-User-Id": "levon"})
+
+	# Complete session and reset schedule status to 'scheduled' to test reconcile
+	session_payload["status"] = "completed"
+	client.post("/api/sessions", json=session_payload, headers={"X-User-Id": "levon"})
+	client.put(
+		f"/api/schedule/{schedule_id}",
+		json={"status": "scheduled", "session_id": None},
+		headers={"X-User-Id": "levon"},
+	)
+
+	# 3. Call reconcile endpoint
+	res = client.post("/api/schedule/reconcile", headers={"X-User-Id": "levon"})
+	assert res.status_code == 200
+	assert res.json()["status"] == "ok"
+	assert res.json()["reconciled_count"] >= 1
+
+	# 4. Verify schedule item is now completed
+	res = client.get(f"/api/schedule/{schedule_id}", headers={"X-User-Id": "levon"})
+	assert res.status_code == 200
+	assert res.json()["status"] == "completed"
+
+
+def test_schedule_recommendation_endpoint(client: TestClient):
+	res = client.get("/api/schedule/recommendation", headers={"X-User-Id": "levon"})
+	assert res.status_code == 200
+	data = res.json()
+	assert data["user_id"] == "levon"
+	assert "as_of_date" in data
+	assert "day_of_week" in data
+	assert "recommendation" in data
+	assert "routine_id" in data["recommendation"]
+	assert "launch_url" in data["recommendation"]
+
+	# Test alias /api/schedule/next
+	res_alias = client.get("/api/schedule/next", headers={"X-User-Id": "levon"})
+	assert res_alias.status_code == 200
+	assert res_alias.json()["as_of_date"] == data["as_of_date"]

@@ -310,6 +310,20 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 		created = db.create_scheduled_workout(user_id, payload.model_dump())
 		return JSONResponse(content=created, status_code=201)
 
+	@api_router.get("/schedule/recommendation")
+	@api_router.get("/schedule/next")
+	async def get_schedule_recommendation(
+		tz_offset: int = Query(default=0, description="Timezone offset in minutes"),
+		user_id: str = Depends(get_user_id),
+	):
+		rec = db.get_recommendation(user_id, timezone_offset_minutes=tz_offset)
+		return JSONResponse(content=rec)
+
+	@api_router.post("/schedule/reconcile")
+	async def reconcile_schedule(user_id: str = Depends(get_user_id)):
+		count = db.reconcile_scheduled_workouts(user_id)
+		return {"status": "ok", "reconciled_count": count}
+
 	@api_router.get("/schedule/{schedule_id}", response_model=ScheduledWorkoutOut)
 	async def get_schedule_item(
 		schedule_id: str,

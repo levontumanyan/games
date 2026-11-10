@@ -652,7 +652,7 @@ function switchTab(tab) {
 			renderScheduleDashboard(dom.scheduleView, {
 				onPlayRoutine: (routine, opts) => {
 					unlockAudio();
-					startRoutine(routine, 0);
+					startRoutine(routine, 0, false, opts);
 				},
 				routines
 			});

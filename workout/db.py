@@ -413,6 +413,11 @@ media_assets_json TEXT NOT NULL DEFAULT '[]',
 			except Exception:
 				pass
 
+			try:
+				self.reconcile_scheduled_workouts()
+			except Exception:
+				pass
+
 	# ── Users ────────────────────────────────────────────────────────────────
 
 	def list_users(self) -> list[dict[str, Any]]:
@@ -1978,6 +1983,15 @@ media_assets_json TEXT NOT NULL DEFAULT '[]',
 				),
 			)
 		self.invalidate_stats_cache(user_id)
+		if status == "completed":
+			scheduled_id = session.get("scheduled_id")
+			if scheduled_id:
+				self.complete_scheduled_workout(user_id, str(scheduled_id), session_id=session_id)
+			elif routine_id:
+				date_source = completed_at or started_at
+				if date_source and len(date_source) >= 10:
+					session_date = date_source[:10]
+					self.auto_link_scheduled_workout(user_id, routine_id, session_date, session_id)
 		return session
 
 	def invalidate_stats_cache(self, user_id: str) -> None:
@@ -2156,6 +2170,245 @@ media_assets_json TEXT NOT NULL DEFAULT '[]',
 		if session_id:
 			updates["session_id"] = session_id
 		return self.update_scheduled_workout(user_id, schedule_id, updates)
+
+	def auto_link_scheduled_workout(
+		self, user_id: str, routine_id: str, session_date: str, session_id: str
+	) -> dict[str, Any] | None:
+		"""Auto-link and mark scheduled workout as completed if matching routine on or adjacent to session date."""
+		if not user_id or not routine_id or not session_date:
+			return None
+
+		with self.get_connection() as conn:
+			row = conn.execute(
+				"""
+				SELECT id, scheduled_date FROM scheduled_workouts
+				WHERE user_id = ? AND routine_id = ? AND status = 'scheduled'
+					AND (
+						scheduled_date = ?
+						OR scheduled_date = date(?, '-1 day')
+						OR scheduled_date = date(?, '+1 day')
+					)
+				ORDER BY (CASE WHEN scheduled_date = ? THEN 0 ELSE 1 END), scheduled_date DESC
+				LIMIT 1
+				""",
+				(user_id, routine_id, session_date, session_date, session_date, session_date),
+			).fetchone()
+
+			if not row:
+				return None
+
+			schedule_id = row["id"]
+			conn.execute(
+				"""
+				UPDATE scheduled_workouts
+				SET status = 'completed', session_id = ?
+				WHERE id = ? AND user_id = ?
+				""",
+				(session_id, schedule_id, user_id),
+			)
+			return self.get_scheduled_workout(user_id, schedule_id)
+
+	def reconcile_scheduled_workouts(self, user_id: str | None = None) -> int:
+		"""Retroactively reconcile scheduled workouts with matching completed sessions."""
+		with self.get_connection() as conn:
+			query = """
+				SELECT sw.id AS schedule_id, sw.user_id, s.id AS session_id
+				FROM scheduled_workouts sw
+				JOIN sessions s ON sw.user_id = s.user_id
+					AND sw.routine_id = s.routine_id
+					AND s.status = 'completed'
+					AND s.is_preview = 0
+					AND (
+						sw.scheduled_date = substr(s.started_at, 1, 10)
+						OR sw.scheduled_date = substr(s.completed_at, 1, 10)
+						OR sw.scheduled_date = date(substr(s.started_at, 1, 10), '-1 day')
+						OR sw.scheduled_date = date(substr(s.started_at, 1, 10), '+1 day')
+					)
+				WHERE sw.status = 'scheduled'
+			"""
+			params: list[Any] = []
+			if user_id:
+				query += " AND sw.user_id = ?"
+				params.append(user_id)
+
+			rows = conn.execute(query, params).fetchall()
+			reconciled_count = 0
+			for row in rows:
+				conn.execute(
+					"UPDATE scheduled_workouts SET status = 'completed', session_id = ? WHERE id = ?",
+					(row["session_id"], row["schedule_id"]),
+				)
+				reconciled_count += 1
+			return reconciled_count
+
+	def get_recommendation(self, user_id: str, timezone_offset_minutes: int = 0) -> dict[str, Any]:
+		"""Calculate smart next workout recommendation based on history, scheduled items, and scientific split."""
+		now_utc = datetime.now(timezone.utc)
+		local_now = now_utc - timedelta(minutes=timezone_offset_minutes)
+		date_str = local_now.strftime("%Y-%m-%d")
+		day_name = local_now.strftime("%A")
+		weekday = local_now.weekday()
+
+		canonical_schedule = {
+			0: {
+				"routine_id": "monday-upper-body-hypertrophy",
+				"routine_title": "Upper Body Hypertrophy",
+				"cadence_day": "Monday",
+				"focus": "Sternal/clavicular chest, horizontal bedsheet rows, delts & biceps",
+			},
+			1: {
+				"routine_id": "tuesday-lower-body-hypertrophy",
+				"routine_title": "Lower Body & Hip Hypertrophy",
+				"cadence_day": "Tuesday",
+				"focus": "Unilateral quad mechanical tension, Bulgarian split squats, adductors, calves",
+			},
+			2: {
+				"routine_id": "wednesday-muay-thai-combat-flow",
+				"routine_title": "Muay Thai Skill & High-Velocity Combat Flow",
+				"cadence_day": "Wednesday",
+				"focus": "Fresh central nervous system, shadowboxing combos, teeps, rotational core",
+			},
+			3: {
+				"routine_id": "monday-upper-body-hypertrophy",
+				"routine_title": "Upper Body Hypertrophy (Delts & Pull Focus)",
+				"cadence_day": "Thursday",
+				"focus": "Vertical pushing, inverted rows, scapular stabilizers, arm balance",
+			},
+			4: {
+				"routine_id": "tuesday-lower-body-hypertrophy",
+				"routine_title": "Lower Body Hypertrophy + Technical Flow",
+				"cadence_day": "Friday",
+				"focus": "Walking lunges, hamstring/glute hinge, followed by light flow",
+			},
+			5: {
+				"routine_id": "routine-relaxed-stretching-10min",
+				"routine_title": "Active Recovery / Swimming & Deep Hip Mobility Flush",
+				"cadence_day": "Saturday",
+				"focus": "Swimming or active flush followed by deep 90/90 and pigeon mobility",
+			},
+			6: {
+				"routine_id": "routine-relaxed-stretching-10min",
+				"routine_title": "Rest & Parasympathetic Recovery",
+				"cadence_day": "Sunday",
+				"focus": "Complete rest, nervous system recovery, sleep and caloric restoration",
+			},
+		}
+
+		with self.get_connection() as conn:
+			last_sess_row = conn.execute(
+				"""
+				SELECT id, routine_id, routine_title, started_at, completed_at, duration_seconds, completed_steps, total_steps
+				FROM sessions
+				WHERE user_id = ? AND is_preview = 0 AND status = 'completed'
+				ORDER BY completed_at DESC, started_at DESC
+				LIMIT 1
+				""",
+				(user_id,),
+			).fetchone()
+			last_session = dict(last_sess_row) if last_sess_row else None
+
+			today_sched_rows = conn.execute(
+				"""
+				SELECT id, routine_id, routine_title, scheduled_date, scheduled_time, status, session_id, notes
+				FROM scheduled_workouts
+				WHERE user_id = ? AND scheduled_date = ?
+				ORDER BY created_at ASC
+				""",
+				(user_id, date_str),
+			).fetchall()
+			today_scheduled = [dict(r) for r in today_sched_rows]
+
+			missed_rows = conn.execute(
+				"""
+				SELECT id, routine_id, routine_title, scheduled_date, scheduled_time, status, notes
+				FROM scheduled_workouts
+				WHERE user_id = ? AND status = 'scheduled'
+					AND scheduled_date < ?
+					AND scheduled_date >= date(?, '-7 days')
+				ORDER BY scheduled_date ASC
+				""",
+				(user_id, date_str, date_str),
+			).fetchall()
+			missed_scheduled = [dict(r) for r in missed_rows]
+
+		completed_today = False
+		if last_session and last_session.get("completed_at"):
+			completed_date = str(last_session["completed_at"])[:10]
+			if completed_date == date_str:
+				completed_today = True
+
+		active_today_sched = next((s for s in today_scheduled if s["status"] == "scheduled"), None)
+		split_plan = canonical_schedule.get(weekday, canonical_schedule[0])
+
+		if completed_today:
+			primary = {
+				"routine_id": "routine-relaxed-stretching-10min",
+				"routine_title": "Relaxed Recovery & Mobility Flush",
+				"cadence_day": day_name,
+				"reason": f"You already completed a workout today ({last_session.get('routine_title', 'Workout')})! Focus on hydration and recovery.",
+				"launch_url": "https://levon.ajwest.ca/workout/#r=routine-relaxed-stretching-10min",
+				"status": "already_worked_out_today",
+				"alternative": None,
+			}
+		elif active_today_sched and active_today_sched.get("routine_id"):
+			r_id = active_today_sched["routine_id"]
+			primary = {
+				"routine_id": r_id,
+				"routine_title": active_today_sched["routine_title"],
+				"cadence_day": day_name,
+				"reason": f"Specifically scheduled on your calendar for today ({day_name}).",
+				"launch_url": f"https://levon.ajwest.ca/workout/#r={r_id}",
+				"status": "ready_to_start",
+				"alternative": None,
+			}
+		else:
+			primary_r_id = split_plan["routine_id"]
+			reason = f"Aligned with your {day_name} split ({split_plan['focus']})."
+			alternative = None
+
+			if missed_scheduled:
+				most_recent_missed = missed_scheduled[-1]
+				if (
+					most_recent_missed.get("routine_id")
+					and most_recent_missed["routine_id"] != primary_r_id
+				):
+					alternative = {
+						"routine_id": most_recent_missed["routine_id"],
+						"routine_title": most_recent_missed["routine_title"],
+						"reason": f"Catch-up option for missed scheduled workout from {most_recent_missed['scheduled_date']}.",
+						"launch_url": f"https://levon.ajwest.ca/workout/#r={most_recent_missed['routine_id']}",
+					}
+			elif (
+				last_session
+				and weekday == 1
+				and last_session.get("routine_id") == "wednesday-muay-thai-combat-flow"
+			):
+				alternative = {
+					"routine_id": "monday-upper-body-hypertrophy",
+					"routine_title": "Upper Body Hypertrophy",
+					"reason": "Sequential catch-up for Monday's upper body hypertrophy session.",
+					"launch_url": "https://levon.ajwest.ca/workout/#r=monday-upper-body-hypertrophy",
+				}
+
+			primary = {
+				"routine_id": primary_r_id,
+				"routine_title": split_plan["routine_title"],
+				"cadence_day": day_name,
+				"reason": reason,
+				"launch_url": f"https://levon.ajwest.ca/workout/#r={primary_r_id}",
+				"status": "ready_to_start",
+				"alternative": alternative,
+			}
+
+		return {
+			"user_id": user_id,
+			"as_of_date": date_str,
+			"day_of_week": day_name,
+			"last_session": last_session,
+			"today_scheduled": today_scheduled,
+			"missed_scheduled": missed_scheduled,
+			"recommendation": primary,
+		}
 
 	# ── Stats & Streaks Computation ──────────────────────────────────────────
 

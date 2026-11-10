@@ -22,7 +22,7 @@ export function isSessionActive() {
  * Start tracking a new live workout session.
  * @param {Object} routine
  */
-export function startSession(routine) {
+export function startSession(routine, options = {}) {
 	stopHeartbeat();
 
 	const stepsSnapshot = (routine.steps || []).map((step, idx) => buildStepSnapshot(step, idx));
@@ -31,6 +31,7 @@ export function startSession(routine) {
 		id: generateId(),
 		routine_id: routine.id,
 		routine_title: routine.title,
+		scheduled_id: options.scheduledItemId || options.scheduled_id || null,
 		started_at: nowIso,
 		completed_at: null,
 		duration_seconds: 0,
@@ -248,6 +249,7 @@ function toSessionPayload(session) {
 		id: session.id,
 		routine_id: session.routine_id,
 		routine_title: session.routine_title,
+		scheduled_id: session.scheduled_id || undefined,
 		started_at: session.started_at,
 		completed_at: session.completed_at,
 		duration_seconds: session.duration_seconds,

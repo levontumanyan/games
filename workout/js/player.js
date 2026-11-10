@@ -798,7 +798,7 @@ function startWorkoutCountdown(routine, onComplete) {
  * @param {number} [startIndex=0] - Step index to start from
  * @param {boolean} [isPreview=false] - If true, stats tracking is disabled
  */
-export function startRoutine(routine, startIndex = 0, isPreview = false) {
+export function startRoutine(routine, startIndex = 0, isPreview = false, options = {}) {
 	if (!routine || !routine.steps || routine.steps.length === 0) return;
 
 	currentRoutine = routine;
@@ -814,13 +814,13 @@ export function startRoutine(routine, startIndex = 0, isPreview = false) {
 	if (!isPreviewMode && startIndex === 0) {
 		startWorkoutCountdown(routine, () => {
 			if (!isPreviewMode && !isSessionActive()) {
-				startSession(routine);
+				startSession(routine, options);
 			}
 			executeCurrentStep();
 		});
 	} else {
 		if (!isPreviewMode && !isSessionActive()) {
-			startSession(routine);
+			startSession(routine, options);
 		}
 		clearCountdown();
 		executeCurrentStep();
