@@ -2269,7 +2269,7 @@ media_assets_json TEXT NOT NULL DEFAULT '[]',
 				"focus": "Fresh central nervous system, shadowboxing combos, teeps, rotational core",
 			},
 			3: {
-				"routine_id": "monday-upper-body-hypertrophy",
+				"routine_id": "thursday-upper-body-hypertrophy",
 				"routine_title": "Upper Body Hypertrophy (Delts & Pull Focus)",
 				"cadence_day": "Thursday",
 				"focus": "Vertical pushing, inverted rows, scapular stabilizers, arm balance",
@@ -2294,6 +2294,13 @@ media_assets_json TEXT NOT NULL DEFAULT '[]',
 			},
 		}
 
+		rotation_ids = (
+			"monday-upper-body-hypertrophy",
+			"tuesday-lower-body-hypertrophy",
+			"wednesday-muay-thai-combat-flow",
+			"thursday-upper-body-hypertrophy",
+		)
+
 		with self.get_connection() as conn:
 			last_sess_row = conn.execute(
 				"""
@@ -2306,6 +2313,19 @@ media_assets_json TEXT NOT NULL DEFAULT '[]',
 				(user_id,),
 			).fetchone()
 			last_session = dict(last_sess_row) if last_sess_row else None
+
+			rot_rows = conn.execute(
+				"""
+				SELECT routine_id, routine_title, started_at, completed_at
+				FROM sessions
+				WHERE user_id = ? AND is_preview = 0 AND status = 'completed'
+					AND routine_id IN (?, ?, ?, ?)
+				ORDER BY completed_at DESC, started_at DESC
+				LIMIT 2
+				""",
+				(user_id, *rotation_ids),
+			).fetchall()
+			recent_rotation = [dict(r) for r in rot_rows]
 
 			today_sched_rows = conn.execute(
 				"""
@@ -2362,8 +2382,38 @@ media_assets_json TEXT NOT NULL DEFAULT '[]',
 				"alternative": None,
 			}
 		else:
+			days_since_rot = None
+			if recent_rotation:
+				ts_raw = recent_rotation[0].get("completed_at") or recent_rotation[0].get(
+					"started_at"
+				)
+				if ts_raw:
+					try:
+						last_dt = datetime.fromisoformat(str(ts_raw).replace("Z", "+00:00"))
+						if last_dt.tzinfo is not None:
+							last_dt = last_dt - timedelta(minutes=timezone_offset_minutes)
+						days_since_rot = (local_now.date() - last_dt.date()).days
+					except ValueError:
+						days_since_rot = None
+
+			if recent_rotation and days_since_rot is not None and days_since_rot < 14:
+				last_rot_id = recent_rotation[0]["routine_id"]
+				prev_rot_id = recent_rotation[1]["routine_id"] if len(recent_rotation) > 1 else None
+				next_index_map = {
+					"monday-upper-body-hypertrophy": 1,
+					"tuesday-lower-body-hypertrophy": 0
+					if prev_rot_id == "thursday-upper-body-hypertrophy"
+					else 2,
+					"wednesday-muay-thai-combat-flow": 3,
+					"thursday-upper-body-hypertrophy": 4,
+				}
+				split_plan = canonical_schedule[next_index_map[last_rot_id]]
+				last_title = recent_rotation[0].get("routine_title") or last_rot_id
+				reason = f"Continuing your split rotation after {last_title} ({days_since_rot}d ago): {split_plan['focus']}."
+			else:
+				reason = f"Aligned with your {day_name} split ({split_plan['focus']})."
+
 			primary_r_id = split_plan["routine_id"]
-			reason = f"Aligned with your {day_name} split ({split_plan['focus']})."
 			alternative = None
 
 			if missed_scheduled:

@@ -233,3 +233,79 @@ def test_scenario_f_custom_title_schedule_without_routine_id(client: TestClient)
 	assert res.status_code == 200
 	assert res.json()["status"] == "scheduled"
 	assert res.json()["session_id"] is None
+
+
+def test_scenario_g_sequential_rotation_under_14_days(client: TestClient):
+	"""Within 14 days of last rotation workout, recommendation advances sequentially."""
+	now = datetime.now(timezone.utc)
+	six_days_ago = (now - timedelta(days=6)).strftime("%Y-%m-%d")
+
+	res = client.post(
+		"/api/sessions",
+		json={
+			"id": "sess-seq-1",
+			"routine_id": "thursday-upper-body-hypertrophy",
+			"routine_title": "Upper Body Hypertrophy (Delts & Pull Focus)",
+			"started_at": f"{six_days_ago}T14:00:00Z",
+			"completed_at": f"{six_days_ago}T14:45:00Z",
+			"duration_seconds": 2700,
+			"status": "completed",
+		},
+		headers={"X-User-Id": "levon"},
+	)
+	assert res.status_code == 200
+
+	res = client.get("/api/schedule/next", headers={"X-User-Id": "levon"})
+	assert res.status_code == 200
+	rec = res.json()["recommendation"]
+	assert rec["routine_id"] == "tuesday-lower-body-hypertrophy"
+	assert rec["routine_title"] == "Lower Body Hypertrophy + Technical Flow"
+	assert "Continuing your split rotation" in rec["reason"]
+
+	# Completing Friday's Lower Body after Thursday's Upper Body wraps to Monday Upper Body
+	two_days_ago = (now - timedelta(days=2)).strftime("%Y-%m-%d")
+	res = client.post(
+		"/api/sessions",
+		json={
+			"id": "sess-seq-2",
+			"routine_id": "tuesday-lower-body-hypertrophy",
+			"routine_title": "Lower Body Hypertrophy + Technical Flow",
+			"started_at": f"{two_days_ago}T14:00:00Z",
+			"completed_at": f"{two_days_ago}T14:45:00Z",
+			"duration_seconds": 2700,
+			"status": "completed",
+		},
+		headers={"X-User-Id": "levon"},
+	)
+	assert res.status_code == 200
+
+	res = client.get("/api/schedule/next", headers={"X-User-Id": "levon"})
+	assert res.status_code == 200
+	rec = res.json()["recommendation"]
+	assert rec["routine_id"] == "monday-upper-body-hypertrophy"
+
+
+def test_scenario_h_calendar_reset_after_14_days(client: TestClient):
+	"""After a 14+ day skip, recommendation resets to today's canonical calendar split."""
+	now = datetime.now(timezone.utc)
+	fifteen_days_ago = (now - timedelta(days=15)).strftime("%Y-%m-%d")
+
+	res = client.post(
+		"/api/sessions",
+		json={
+			"id": "sess-old-1",
+			"routine_id": "thursday-upper-body-hypertrophy",
+			"routine_title": "Upper Body Hypertrophy (Delts & Pull Focus)",
+			"started_at": f"{fifteen_days_ago}T14:00:00Z",
+			"completed_at": f"{fifteen_days_ago}T14:45:00Z",
+			"duration_seconds": 2700,
+			"status": "completed",
+		},
+		headers={"X-User-Id": "levon"},
+	)
+	assert res.status_code == 200
+
+	res = client.get("/api/schedule/next", headers={"X-User-Id": "levon"})
+	assert res.status_code == 200
+	rec = res.json()["recommendation"]
+	assert "Aligned with your" in rec["reason"]
