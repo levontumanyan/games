@@ -654,6 +654,11 @@ function switchTab(tab) {
 					unlockAudio();
 					startRoutine(routine, 0, false, opts);
 				},
+				onSelectRoutine: (routine) => {
+					selectedRoutineId = routine.id;
+					currentMode = 'view';
+					switchTab('routines');
+				},
 				routines
 			});
 		}

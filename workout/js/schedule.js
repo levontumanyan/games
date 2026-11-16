@@ -38,7 +38,7 @@ export function invalidateScheduleCache() {
 /**
  * Render the main schedule dashboard.
  * @param {HTMLElement} container
- * @param {Object} options - { onPlayRoutine, routines }
+ * @param {Object} options - { onPlayRoutine, onSelectRoutine, routines }
  */
 export async function renderScheduleDashboard(container, options = {}) {
 	container.innerHTML = `
@@ -327,7 +327,9 @@ function renderAgenda(mainContainer, options) {
 					</button>
 					<div class="agenda-item-info">
 						<div class="agenda-item-title-row">
-							<span class="agenda-item-title">${escapeHtml(item.routine_title)}</span>
+							${item.routine_id
+								? `<a href="#r=${encodeURIComponent(item.routine_id)}" class="agenda-item-title agenda-item-link" data-action="open-routine" title="Open routine">${escapeHtml(item.routine_title)}</a>`
+								: `<span class="agenda-item-title">${escapeHtml(item.routine_title)}</span>`}
 							<span class="agenda-time-pill">${escapeHtml(timeDisplay)}</span>
 						</div>
 						${item.notes ? `<div class="agenda-item-notes">${escapeHtml(item.notes)}</div>` : ''}
@@ -362,6 +364,23 @@ function renderAgenda(mainContainer, options) {
 					refreshSchedule(mainContainer, options);
 				} catch (err) {
 					showAlert({ title: 'Error', message: 'Could not update status: ' + err.message });
+				}
+			});
+		}
+
+		const openRoutineLink = card.querySelector('[data-action="open-routine"]');
+		if (openRoutineLink) {
+			openRoutineLink.addEventListener('click', (e) => {
+				e.preventDefault();
+				const routines = resolveRoutines(options);
+				const matchedRoutine = routines.find(r => r.id === item.routine_id);
+				if (matchedRoutine && options.onSelectRoutine) {
+					options.onSelectRoutine(matchedRoutine);
+				} else {
+					showAlert({
+						title: 'Routine Not Found',
+						message: `The workout "${item.routine_title}" could not be found in your local routines library.`
+					});
 				}
 			});
 		}

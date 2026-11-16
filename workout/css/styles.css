@@ -5125,7 +5125,7 @@ textarea.input {
 
 .calendar-grid {
 	display: grid;
-	grid-template-columns: repeat(7, 1fr);
+	grid-template-columns: repeat(7, minmax(0, 1fr));
 	gap: 6px;
 }
 
@@ -11137,9 +11137,12 @@ textarea.input {
 /* ── Schedule / Calendar Dashboard ────────────────────────────────────────── */
 
 .schedule-dashboard-wrapper {
+	width: 100%;
 	max-width: 1200px;
 	margin: 0 auto;
 	padding: 24px 28px 48px;
+	box-sizing: border-box;
+	min-width: 0;
 	display: flex;
 	flex-direction: column;
 	gap: 20px;
@@ -11169,14 +11172,46 @@ textarea.input {
 
 .schedule-layout-grid {
 	display: grid;
-	grid-template-columns: 1.35fr 1fr;
+	grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
 	gap: 22px;
 	align-items: start;
+	width: 100%;
+	min-width: 0;
+}
+
+.schedule-calendar-pane,
+.schedule-agenda-pane {
+	min-width: 0;
 }
 
 @media (max-width: 900px) {
 	.schedule-layout-grid {
-		grid-template-columns: 1fr;
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
+
+@media (max-width: 640px) {
+	.schedule-dashboard-wrapper {
+		padding: 16px 14px 36px;
+		gap: 14px;
+	}
+
+	.schedule-calendar-card,
+	.schedule-agenda-card {
+		padding: 14px;
+	}
+
+	.modern-schedule-grid {
+		gap: 4px;
+	}
+
+	.cal-day-cell {
+		min-height: 64px;
+		padding: 5px 4px;
+	}
+
+	.agenda-item-card {
+		flex-wrap: wrap;
 	}
 }
 
@@ -11188,6 +11223,8 @@ textarea.input {
 	border-radius: var(--radius-lg);
 	box-shadow: var(--shadow-sm);
 	padding: 20px;
+	box-sizing: border-box;
+	min-width: 0;
 	display: flex;
 	flex-direction: column;
 	gap: 14px;
@@ -11197,6 +11234,8 @@ textarea.input {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
+	gap: 8px;
+	flex-wrap: wrap;
 	padding: 0 4px 6px;
 }
 
@@ -11216,8 +11255,9 @@ textarea.input {
 
 .modern-schedule-grid {
 	display: grid;
-	grid-template-columns: repeat(7, 1fr);
+	grid-template-columns: repeat(7, minmax(0, 1fr));
 	gap: 6px;
+	width: 100%;
 	user-select: none;
 }
 
@@ -11229,10 +11269,13 @@ textarea.input {
 	letter-spacing: 0.05em;
 	color: var(--text-muted);
 	padding: 6px 0;
+	min-width: 0;
 }
 
 .cal-day-cell {
+	min-width: 0;
 	min-height: 84px;
+	overflow: hidden;
 	background: var(--bg-secondary);
 	border: 1px solid var(--border-subtle);
 	border-radius: var(--radius-md);
@@ -11292,6 +11335,8 @@ textarea.input {
 	display: flex;
 	flex-direction: column;
 	gap: 3px;
+	min-width: 0;
+	width: 100%;
 	overflow: hidden;
 }
 
@@ -11299,9 +11344,14 @@ textarea.input {
 	display: flex;
 	flex-direction: column;
 	gap: 3px;
+	min-width: 0;
+	width: 100%;
 }
 
 .cell-mini-chip {
+	display: block;
+	max-width: 100%;
+	box-sizing: border-box;
 	font-size: 0.68rem;
 	font-weight: 600;
 	padding: 2px 6px;
@@ -11334,6 +11384,8 @@ textarea.input {
 	border-radius: var(--radius-lg);
 	box-shadow: var(--shadow-sm);
 	padding: 20px;
+	box-sizing: border-box;
+	min-width: 0;
 	display: flex;
 	flex-direction: column;
 	gap: 16px;
@@ -11373,6 +11425,7 @@ textarea.input {
 	border: 1px solid var(--border-subtle);
 	border-radius: var(--radius-md);
 	padding: 12px 14px;
+	min-width: 0;
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
@@ -11390,6 +11443,7 @@ textarea.input {
 	align-items: center;
 	gap: 12px;
 	min-width: 0;
+	flex: 1;
 }
 
 .agenda-check-btn {
@@ -11424,6 +11478,7 @@ textarea.input {
 	flex-direction: column;
 	gap: 3px;
 	min-width: 0;
+	flex: 1;
 }
 
 .agenda-item-title-row {
@@ -11431,15 +11486,30 @@ textarea.input {
 	align-items: center;
 	gap: 8px;
 	flex-wrap: wrap;
+	min-width: 0;
+	max-width: 100%;
 }
 
 .agenda-item-title {
 	font-size: 0.88rem;
 	font-weight: 600;
 	color: var(--text-primary);
+	min-width: 0;
+	max-width: 100%;
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
+}
+
+.agenda-item-link {
+	text-decoration: none;
+	cursor: pointer;
+	transition: color var(--transition-fast);
+}
+
+.agenda-item-link:hover {
+	color: var(--accent);
+	text-decoration: underline;
 }
 
 .agenda-time-pill {
