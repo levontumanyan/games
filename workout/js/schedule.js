@@ -19,6 +19,16 @@ let currentYear = new Date().getFullYear();
 let currentMonth = new Date().getMonth() + 1; // 1-12
 let selectedDateStr = getTodayDateStr();
 
+const WEEKLY_SPLIT = [
+	{ day: 'Mon', title: 'Upper Body (Delts & Pull)', routineId: 'monday-upper-delts-pull', type: 'upper' },
+	{ day: 'Tue', title: 'Rest', type: 'rest' },
+	{ day: 'Wed', title: 'Muay Thai Skill & Combat Flow', routineId: 'wednesday-muay-thai-combat-flow', type: 'combat' },
+	{ day: 'Thu', title: 'Rest', type: 'rest' },
+	{ day: 'Fri', title: 'Full Body A (Quad-Led)', type: 'lower' },
+	{ day: 'Sat', title: 'Rest', type: 'rest' },
+	{ day: 'Sun', title: 'Full Body C (Hinge-Led)', type: 'lower' }
+];
+
 function resolveRoutines(options) {
 	return options?.routines || loadRoutines();
 }
@@ -53,6 +63,16 @@ export async function renderScheduleDashboard(container, options = {}) {
 						+ Schedule Workout
 					</button>
 				</div>
+			</div>
+
+			<div class="weekly-split-card">
+				<div class="weekly-split-header">
+					<div>
+						<h3 class="weekly-split-title">Weekly Split</h3>
+						<p class="weekly-split-subtitle text-muted">Recurring 4-day plan · 3 strength + 1 Muay Thai</p>
+					</div>
+				</div>
+				<div id="weekly-split-grid" class="weekly-split-grid"></div>
 			</div>
 
 			<div class="schedule-layout-grid">
@@ -154,8 +174,49 @@ export async function renderScheduleDashboard(container, options = {}) {
 		});
 	}
 
+	renderWeeklySplit(container, options);
+
 	// Fetch & render
 	await refreshSchedule(container, options);
+}
+
+/**
+ * Render the recurring weekly split card. Links only to routines that exist.
+ */
+function renderWeeklySplit(container, options = {}) {
+	const mount = container.querySelector('#weekly-split-grid');
+	if (!mount) return;
+
+	const byId = new Map(resolveRoutines(options).map(r => [r.id, r]));
+	const badges = { upper: 'Upper', combat: 'Muay Thai', lower: 'Planned', rest: 'Rest' };
+
+	mount.innerHTML = WEEKLY_SPLIT.map(entry => {
+		const badge = badges[entry.type] || '';
+		if (entry.type === 'rest') {
+			return `
+				<div class="weekly-split-day is-rest">
+					<div class="weekly-split-day-name">${entry.day}</div>
+					<span class="weekly-split-workout">Rest</span>
+					<span class="weekly-split-badge">${badge}</span>
+				</div>
+			`;
+		}
+
+		const routine = byId.get(entry.routineId);
+		const title = routine?.title || entry.title;
+		const classes = `weekly-split-day is-${entry.type}${routine ? '' : ' is-planned'}`;
+		const nameHtml = routine
+			? `<a href="#r=${encodeURIComponent(routine.id)}" class="weekly-split-workout weekly-split-link" title="Open routine">${escapeHtml(title)}</a>`
+			: `<span class="weekly-split-workout">${escapeHtml(title)}</span>`;
+
+		return `
+			<div class="${classes}">
+				<div class="weekly-split-day-name">${entry.day}</div>
+				${nameHtml}
+				<span class="weekly-split-badge">${badge}</span>
+			</div>
+		`;
+	}).join('');
 }
 
 /**
