@@ -364,6 +364,10 @@ class SessionUpsert(BaseSchema):
 	exercises: list[Any] = Field(
 		default_factory=list, description="Exercise log / metrics snapshot"
 	)
+	notes: list[Any] = Field(
+		default_factory=list,
+		description="In-workout notes and feedback captured during exercise breaks",
+	)
 
 
 class ScheduledWorkoutCreate(BaseSchema):

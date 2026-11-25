@@ -296,6 +296,45 @@
 									</div>
 								</div>
 							</div>
+							<!-- In-break session notes -->
+							<div id="break-notes" class="break-notes hidden">
+								<button type="button" id="break-notes-trigger" class="break-notes-trigger">
+									<span aria-hidden="true">✏️</span>
+									<span id="break-notes-trigger-label">Add a note</span>
+									<kbd class="break-notes-kbd">N</kbd>
+								</button>
+								<div id="break-notes-card" class="break-notes-card hidden">
+									<div class="break-notes-header">
+										<span id="break-notes-context" class="break-notes-context">During rest</span>
+										<span class="break-notes-hint">Saves to this session only</span>
+										<button type="button" id="break-notes-close" class="break-notes-close" aria-label="Close note">✕</button>
+									</div>
+									<div class="break-notes-input-row">
+										<input
+											id="break-notes-input"
+											class="break-notes-input"
+											type="text"
+											maxlength="500"
+											aria-label="Workout note"
+											placeholder="How did that feel?"
+											autocomplete="off"
+											autocorrect="off"
+											autocapitalize="sentences"
+											spellcheck="false"
+											enterkeyhint="done"
+										/>
+										<button type="button" id="break-notes-save" class="btn btn-primary btn-sm">Save</button>
+									</div>
+									<div class="break-notes-chips" role="group" aria-label="Quick observations">
+										<button type="button" class="break-notes-chip" data-tag="too-easy">Too easy</button>
+										<button type="button" class="break-notes-chip" data-tag="too-hard">Too hard</button>
+										<button type="button" class="break-notes-chip" data-tag="discomfort">Discomfort</button>
+										<button type="button" class="break-notes-chip" data-tag="form-breakdown">Form broke</button>
+										<button type="button" class="break-notes-chip" data-tag="swap-exercise">Swap exercise</button>
+									</div>
+								</div>
+								<div id="break-notes-saved" class="break-notes-saved hidden" role="status" aria-live="polite"></div>
+							</div>
 						</div>
 					</div>
 

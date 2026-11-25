@@ -1,6 +1,6 @@
 import { fetchStats, fetchSessions, deleteSession } from './storage.js';
-import { formatTime, escapeHtml } from './utils.js';
-import { showConfirm, showAlert } from './modal.js';
+import { formatTime, escapeHtml, copyToClipboard, showToast } from './utils.js';
+import { showConfirm, showAlert, createCustomModal } from './modal.js';
 import {
 	CATEGORIES, DISCIPLINES,
 	getCategoryBadgeHtml, getDisciplineBadgeHtml
@@ -650,9 +650,13 @@ function renderSessionList(sessions) {
 		const dateStr = formatSessionDate(s.started_at);
 		const durationFormatted = formatTime(s.duration_seconds || 0);
 		const stepsStr = s.total_steps > 0 ? `${s.completed_steps}/${s.total_steps} steps` : '';
+		const notes = Array.isArray(s.notes) ? s.notes : [];
+		const notesBadge = notes.length > 0
+			? `<span class="session-notes-badge" title="View workout notes">📝 ${notes.length}</span>`
+			: '';
 
 		return `
-			<div class="session-item" data-session-id="${s.id}">
+			<div class="session-item ${notes.length > 0 ? 'has-notes' : ''}" data-session-id="${s.id}" ${notes.length > 0 ? 'tabindex="0" role="button" aria-label="View notes for ' + escapeHtml(s.routine_title || 'Workout') + '"' : ''}>
 				<div class="session-item-left">
 					<div class="session-icon-badge ${isCompleted ? 'badge-completed' : 'badge-partial'}">
 						${isCompleted ? '✅' : '⏳'}
@@ -662,6 +666,7 @@ function renderSessionList(sessions) {
 						<div class="session-meta">
 							<span>${dateStr}</span>
 							${stepsStr ? `<span>·</span><span>${stepsStr}</span>` : ''}
+							${notesBadge}
 							<span class="session-status-tag ${isCompleted ? 'tag-completed' : 'tag-partial'}">
 								${isCompleted ? 'Completed' : 'Partial'}
 							</span>
@@ -701,7 +706,7 @@ function formatSessionDate(isoString) {
 }
 
 /**
- * Bind delete action on session history items.
+ * Bind session history interactions: delete and note viewing.
  * @param {HTMLElement} container
  */
 function bindHistoryActions(container) {
@@ -780,4 +785,157 @@ function bindHistoryActions(container) {
 				});
 		});
 	});
+
+	container.querySelectorAll('.session-item.has-notes').forEach(item => {
+		if (item.dataset.boundNotes) return;
+		item.dataset.boundNotes = 'true';
+
+		const openNotes = (e) => {
+			if (e.target.closest('button')) return;
+			const sessionId = item.getAttribute('data-session-id');
+			const session = (cachedStats?.recent_sessions || []).find(s => s.id === sessionId);
+			if (session) openSessionNotesModal(session);
+		};
+
+		item.addEventListener('click', openNotes);
+		item.addEventListener('keydown', (e) => {
+			if (e.key === 'Enter' || e.key === ' ') {
+				e.preventDefault();
+				openNotes(e);
+			}
+		});
+	});
+}
+
+const NOTE_TAG_LABELS = {
+	'too-easy': 'Too easy',
+	'too-hard': 'Too hard',
+	'discomfort': 'Discomfort',
+	'form-breakdown': 'Form broke',
+	'swap-exercise': 'Swap exercise',
+};
+
+/**
+ * Human-readable label for a machine-readable note tag.
+ * @param {string} tag
+ * @returns {string}
+ */
+function formatNoteTag(tag) {
+	return NOTE_TAG_LABELS[tag] || tag;
+}
+
+/**
+ * Render the list of notes captured during a session.
+ * @param {Object} session
+ * @returns {string}
+ */
+function renderSessionNotesHtml(session) {
+	const notes = Array.isArray(session.notes) ? session.notes : [];
+	const summary = `
+		<div class="session-notes-summary">
+			<strong>${escapeHtml(session.routine_title || 'Workout')}</strong>
+			<span>${formatSessionDate(session.started_at)} · ${formatTime(session.duration_seconds || 0)} · ${session.completed_steps || 0}/${session.total_steps || 0} steps</span>
+		</div>
+	`;
+
+	if (notes.length === 0) {
+		return `${summary}<p class="session-notes-empty">No notes were recorded for this session.</p>`;
+	}
+
+	const rows = notes.map((note) => {
+		const context = note.context || (note.exercise_name ? `After ${note.exercise_name}` : 'Workout note');
+		const timeLabel = Number.isFinite(note.relative_seconds) ? formatTime(note.relative_seconds) : '';
+		const tags = Array.isArray(note.tags) ? note.tags : [];
+		const tagHtml = tags.length > 0
+			? `<div class="session-note-tags">${tags.map(tag => `<span class="session-note-tag">${escapeHtml(formatNoteTag(tag))}</span>`).join('')}</div>`
+			: '';
+		const text = String(note.text || '').trim();
+
+		return `
+			<div class="session-note-item">
+				<div class="session-note-context">
+					<span>${escapeHtml(context)}</span>
+					${timeLabel ? `<span>${timeLabel}</span>` : ''}
+				</div>
+				${text ? `<p class="session-note-text">${escapeHtml(text)}</p>` : ''}
+				${tagHtml}
+			</div>
+		`;
+	}).join('');
+
+	return `${summary}<div class="session-notes-list">${rows}</div>`;
+}
+
+/**
+ * Build a ready-to-paste prompt for an LLM coach from a session and its notes.
+ * @param {Object} session
+ * @returns {string}
+ */
+function buildAiCoachPrompt(session) {
+	const notes = Array.isArray(session.notes) ? session.notes : [];
+	const noteLines = notes.map((note, index) => {
+		const context = note.context || (note.exercise_name ? `After ${note.exercise_name}` : 'Workout note');
+		const timeLabel = Number.isFinite(note.relative_seconds) ? formatTime(note.relative_seconds) : '';
+		const tags = Array.isArray(note.tags) ? note.tags.map(formatNoteTag) : [];
+		const header = `${index + 1}. ${context}${timeLabel ? ` (${timeLabel} into workout)` : ''}${tags.length ? ` [${tags.join(', ')}]` : ''}`;
+		const text = String(note.text || '').trim();
+		return text ? `${header}\n   ${text}` : header;
+	}).join('\n');
+
+	return [
+		'You are an experienced strength and conditioning coach. Review this workout session and its in-workout notes, then recommend concrete changes to the routine.',
+		'',
+		`Workout: ${session.routine_title || 'Workout'}`,
+		`Date: ${formatSessionDate(session.started_at)}`,
+		`Duration: ${formatTime(session.duration_seconds || 0)}`,
+		`Completed: ${session.completed_steps || 0}/${session.total_steps || 0} steps`,
+		`Status: ${session.status || 'unknown'}`,
+		'',
+		'Session notes:',
+		noteLines || '(no notes)',
+		'',
+		'Please:',
+		'1. Identify which exercises should be progressed, regressed, swapped, or kept as-is.',
+		'2. Suggest specific changes to reps, duration, sets, or rest intervals.',
+		'3. Flag any pain, discomfort, or form-breakdown notes that need an exercise substitution.',
+		'4. Keep the routine balanced and respect recovery between sessions.',
+	].join('\n');
+}
+
+/**
+ * Open a modal showing all notes for a completed session plus an AI-coach export.
+ * @param {Object} session
+ */
+function openSessionNotesModal(session) {
+	if (!session) return;
+	const notes = Array.isArray(session.notes) ? session.notes : [];
+	const hasNotes = notes.length > 0;
+
+	const modal = createCustomModal({
+		title: '📝 Session Notes',
+		bodyHtml: renderSessionNotesHtml(session),
+		footerHtml: hasNotes
+			? '<button type="button" id="copy-ai-coach-btn" class="btn btn-primary btn-sm">🤖 Copy for AI Coach</button>'
+			: '',
+		maxWidth: '600px',
+		className: 'session-notes-modal',
+	});
+
+	const copyBtn = modal.modal.querySelector('#copy-ai-coach-btn');
+	if (copyBtn) {
+		copyBtn.addEventListener('click', async () => {
+			const success = await copyToClipboard(buildAiCoachPrompt(session));
+			if (!success) {
+				showToast('Could not copy notes. Select the text manually.');
+				return;
+			}
+			copyBtn.textContent = '✓ Copied for AI Coach';
+			copyBtn.classList.add('btn-success');
+			showToast('Session notes copied. Paste them into your AI coach.');
+			setTimeout(() => {
+				copyBtn.textContent = '🤖 Copy for AI Coach';
+				copyBtn.classList.remove('btn-success');
+			}, 2400);
+		});
+	}
 }

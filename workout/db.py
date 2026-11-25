@@ -101,6 +101,7 @@ class Database:
 					completed_steps INTEGER NOT NULL DEFAULT 0,
 					total_steps INTEGER NOT NULL DEFAULT 0,
 					status TEXT NOT NULL DEFAULT 'in_progress',
+					notes_json TEXT NOT NULL DEFAULT '[]',
 					FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 				);
 
@@ -215,6 +216,13 @@ media_assets_json TEXT NOT NULL DEFAULT '[]',
 				try:
 					conn.execute(
 						"ALTER TABLE sessions ADD COLUMN exercises_json TEXT NOT NULL DEFAULT '[]'"
+					)
+				except Exception:
+					pass
+			if "notes_json" not in sess_cols:
+				try:
+					conn.execute(
+						"ALTER TABLE sessions ADD COLUMN notes_json TEXT NOT NULL DEFAULT '[]'"
 					)
 				except Exception:
 					pass
@@ -1948,15 +1956,17 @@ media_assets_json TEXT NOT NULL DEFAULT '[]',
 		status = session.get("status", "in_progress")
 		is_preview = 1 if session.get("is_preview") else 0
 		exercises_json = json.dumps(session.get("exercises", []), ensure_ascii=False)
+		notes_json = json.dumps(session.get("notes", []), ensure_ascii=False)
 
 		with self.get_connection() as conn:
 			conn.execute(
 				"""
 				INSERT INTO sessions (
 					id, user_id, routine_id, routine_title, started_at, completed_at,
-					duration_seconds, completed_steps, total_steps, status, is_preview, exercises_json
+					duration_seconds, completed_steps, total_steps, status, is_preview,
+					exercises_json, notes_json
 				)
-				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 				ON CONFLICT(id) DO UPDATE SET
 					routine_title = excluded.routine_title,
 					completed_at = excluded.completed_at,
@@ -1965,7 +1975,8 @@ media_assets_json TEXT NOT NULL DEFAULT '[]',
 					total_steps = excluded.total_steps,
 					status = excluded.status,
 					is_preview = excluded.is_preview,
-					exercises_json = excluded.exercises_json
+					exercises_json = excluded.exercises_json,
+					notes_json = excluded.notes_json
 				""",
 				(
 					session_id,
@@ -1980,6 +1991,7 @@ media_assets_json TEXT NOT NULL DEFAULT '[]',
 					status,
 					is_preview,
 					exercises_json,
+					notes_json,
 				),
 			)
 		self.invalidate_stats_cache(user_id)
@@ -2008,7 +2020,8 @@ media_assets_json TEXT NOT NULL DEFAULT '[]',
 				f"""
 				SELECT
 					id, user_id, routine_id, routine_title, started_at, completed_at,
-					duration_seconds, completed_steps, total_steps, status, is_preview, exercises_json
+					duration_seconds, completed_steps, total_steps, status, is_preview,
+					exercises_json, notes_json
 				FROM sessions
 				WHERE user_id = ? AND is_preview = 0
 				ORDER BY started_at {direction}
@@ -2023,6 +2036,11 @@ media_assets_json TEXT NOT NULL DEFAULT '[]',
 					d["exercises"] = json.loads(d.get("exercises_json") or "[]")
 				except Exception:
 					d["exercises"] = []
+				try:
+					d["notes"] = json.loads(d.get("notes_json") or "[]")
+				except Exception:
+					d["notes"] = []
+				d.pop("notes_json", None)
 				res.append(d)
 			return res
 
@@ -2489,7 +2507,7 @@ media_assets_json TEXT NOT NULL DEFAULT '[]',
 				"""
 				SELECT
 					id, routine_id, routine_title, started_at, completed_at,
-					duration_seconds, completed_steps, total_steps, status
+					duration_seconds, completed_steps, total_steps, status, notes_json
 				FROM sessions
 				WHERE user_id = ? AND is_preview = 0 AND (duration_seconds >= 15 OR status = 'completed')
 				ORDER BY started_at DESC
@@ -2497,7 +2515,15 @@ media_assets_json TEXT NOT NULL DEFAULT '[]',
 				""",
 				(user_id,),
 			).fetchall()
-			recent = [dict(r) for r in recent_rows]
+			recent = []
+			for r in recent_rows:
+				d = dict(r)
+				try:
+					d["notes"] = json.loads(d.get("notes_json") or "[]")
+				except Exception:
+					d["notes"] = []
+				d.pop("notes_json", None)
+				recent.append(d)
 
 			# 3. Fetch qualified sessions for streaks, weekly, monthly, and movement taxonomy
 			rows = conn.execute(

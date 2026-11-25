@@ -40,6 +40,7 @@ export function startSession(routine, options = {}) {
 		status: 'in_progress',
 		is_paused: false,
 		exercises: stepsSnapshot,
+		notes: [],
 	};
 
 	lastActiveTimestamp = Date.now();
@@ -204,6 +205,56 @@ export function recordStepReps(stepIndex, reps, exercise = null) {
 }
 
 /**
+ * Record a contextual note captured during an active workout (e.g. rest break).
+ * Notes belong to this session only; they never touch the routine template.
+ * @param {Object} note
+ * @param {string} [note.text] Freeform feedback
+ * @param {string[]} [note.tags] Quick machine-readable tags
+ * @param {number|null} [note.step_index] Exercise step the note refers to
+ * @param {string} [note.exercise_id]
+ * @param {string} [note.exercise_name]
+ * @param {string} [note.context]
+ * @returns {Object|null}
+ */
+export function addSessionNote(note = {}) {
+	if (!activeSession) return null;
+
+	const text = String(note.text || '').trim();
+	const tags = Array.isArray(note.tags)
+		? note.tags.map(tag => String(tag).trim()).filter(Boolean)
+		: [];
+	if (!text && tags.length === 0) return null;
+
+	updateActiveDuration();
+	if (!Array.isArray(activeSession.notes)) {
+		activeSession.notes = [];
+	}
+
+	const entry = {
+		id: generateId(),
+		step_index: Number.isInteger(note.step_index) ? note.step_index : null,
+		exercise_id: note.exercise_id || null,
+		exercise_name: note.exercise_name || 'Workout',
+		context: note.context || '',
+		text,
+		tags,
+		timestamp: new Date().toISOString(),
+		relative_seconds: activeSession.duration_seconds || 0,
+	};
+	activeSession.notes.push(entry);
+	flushSession();
+	return entry;
+}
+
+/**
+ * Get a snapshot of the current session notes.
+ * @returns {Object[]}
+ */
+export function getSessionNotes() {
+	return Array.isArray(activeSession?.notes) ? activeSession.notes.slice() : [];
+}
+
+/**
  * Build snapshot of a routine step for immutable session history.
  * @param {Object} step
  * @param {number} idx
@@ -257,6 +308,7 @@ function toSessionPayload(session) {
 		total_steps: session.total_steps,
 		status: session.status,
 		exercises: session.exercises || [],
+		notes: session.notes || [],
 	};
 }
 

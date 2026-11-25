@@ -18,7 +18,7 @@ import {
 import {
 	startSession, updateSessionStep, pauseSession,
 	resumeSession, completeSession, stopSession,
-	isSessionActive, recordStepReps
+	isSessionActive, recordStepReps, addSessionNote, getSessionNotes
 } from './session.js';
 import {
 	inferMusclesForExercise, getExerciseById, getExerciseInstructionMedia, getExerciseFollowAlongMedia,
@@ -67,6 +67,13 @@ let cuedVideoAsset = null;
 // HUD idle timer
 let hudIdleTimer = null;
 const HUD_IDLE_DELAY = 3000;
+
+// Break notes state
+let noteAutoPaused = false;
+let breakNoteTarget = null;
+let breakNoteStepIndex = -1;
+const pendingNoteTags = new Set();
+let noteSavedTimeout = null;
 
 // Starting countdown state (5-second intro)
 let isCountingDown = false;
@@ -175,10 +182,12 @@ export async function initPlayer(domRefs, callbacks) {
 		});
 	}
 
+	bindBreakNoteEvents();
+
 	// Click on stage/video to toggle play/pause or done
 	if (dom.playerStage) {
 		dom.playerStage.addEventListener('click', (e) => {
-			if (e.target.closest('button') || e.target.closest('input') || e.target.closest('.step-indicator')) return;
+			if (e.target.closest('button') || e.target.closest('input') || e.target.closest('textarea') || e.target.closest('.break-notes') || e.target.closest('.step-indicator')) return;
 			if (isPlaying) {
 				if (isCountingDown) {
 					skipCountdown();
@@ -236,6 +245,15 @@ export async function initPlayer(domRefs, callbacks) {
 		if (!isPlaying) return;
 
 		resetActivity();
+
+		if ((e.key === 'n' || e.key === 'N') && !isPreviewMode) {
+			const step = currentRoutine?.steps?.[currentStepIndex];
+			if (isBreakStep(step)) {
+				e.preventDefault();
+				openBreakNoteCard();
+			}
+			return;
+		}
 
 		if (e.code === 'Space' || e.key === 'Enter') {
 			e.preventDefault();
@@ -903,6 +921,7 @@ function saveCurrentRepsProgress() {
  */
 function advanceStepOrSubStep() {
 	if (!currentRoutine) return;
+	flushBreakNoteDraft();
 	if (isRepsMode) {
 		saveCurrentRepsProgress();
 	}
@@ -1002,6 +1021,8 @@ function executeVideoStep(step, targetDuration, videoAsset) {
 	if (dom.upNextCard) {
 		dom.upNextCard.classList.add('hidden');
 	}
+	dom.breakNotes?.classList.add('hidden');
+	hideBreakNoteCard();
 
 	// Pause background music during video clips
 	pauseMusic();
@@ -1109,6 +1130,283 @@ function executeVideoStep(step, targetDuration, videoAsset) {
 			dom.currentStepType.innerHTML = `${getClipIcon(14)} Follow-Along Video`;
 		}
 	}
+}
+
+/**
+ * Wire up the break-note composer once during player initialization.
+ */
+function bindBreakNoteEvents() {
+	if (dom.breakNotesTrigger) {
+		dom.breakNotesTrigger.addEventListener('click', (e) => {
+			e.stopPropagation();
+			openBreakNoteCard();
+		});
+	}
+
+	if (dom.breakNotesClose) {
+		dom.breakNotesClose.addEventListener('click', (e) => {
+			e.stopPropagation();
+			closeBreakNoteCard();
+		});
+	}
+
+	if (dom.breakNotesSave) {
+		dom.breakNotesSave.addEventListener('click', (e) => {
+			e.stopPropagation();
+			saveBreakNote();
+		});
+	}
+
+	if (dom.breakNotesInput) {
+		dom.breakNotesInput.addEventListener('focus', () => {
+			// Never let the rest timer run out mid-sentence.
+			if (isPlaying && !isPaused) {
+				noteAutoPaused = true;
+				togglePause();
+			}
+		});
+
+		dom.breakNotesInput.addEventListener('keydown', (e) => {
+			if (e.key === 'Enter') {
+				e.preventDefault();
+				e.stopPropagation();
+				saveBreakNote();
+			} else if (e.key === 'Escape') {
+				e.preventDefault();
+				e.stopPropagation();
+				closeBreakNoteCard();
+			}
+		});
+	}
+
+	dom.breakNotes?.querySelectorAll('.break-notes-chip').forEach((chip) => {
+		chip.addEventListener('click', (e) => {
+			e.stopPropagation();
+			const tag = chip.dataset.tag;
+			if (!tag) return;
+			if (pendingNoteTags.has(tag)) {
+				pendingNoteTags.delete(tag);
+			} else {
+				pendingNoteTags.add(tag);
+			}
+			updateBreakNoteChips();
+			dom.breakNotesInput?.focus();
+		});
+	});
+}
+
+/**
+ * Reflect the selected quick-observation chips.
+ */
+function updateBreakNoteChips() {
+	dom.breakNotes?.querySelectorAll('.break-notes-chip').forEach((chip) => {
+		const isActive = pendingNoteTags.has(chip.dataset.tag);
+		chip.classList.toggle('active', isActive);
+		chip.setAttribute('aria-pressed', String(isActive));
+	});
+}
+
+/**
+ * Resolve the exercise a break note refers to (the most recent non-break step).
+ * @param {number} stepIndex
+ * @returns {{step_index: number|null, exercise_id: string|null, exercise_name: string}}
+ */
+function getBreakNoteTarget(stepIndex) {
+	if (!currentRoutine || stepIndex < 0) {
+		return { step_index: null, exercise_id: null, exercise_name: 'Rest' };
+	}
+	for (let i = stepIndex - 1; i >= 0; i--) {
+		const step = currentRoutine.steps[i];
+		if (!step || isBreakStep(step)) continue;
+		const subExercise = Array.isArray(step.exercises) && step.exercises.length > 0
+			? step.exercises[0]
+			: null;
+		return {
+			step_index: i,
+			exercise_id: subExercise?.id || step.exercise_id || null,
+			exercise_name: getStepDisplayName(step) || step.label || 'Exercise',
+		};
+	}
+	return { step_index: null, exercise_id: null, exercise_name: 'Rest' };
+}
+
+/**
+ * Show the note composer on break steps and hide it everywhere else.
+ * @param {boolean} isBreak
+ */
+function syncBreakNotesForStep(isBreak) {
+	const wrap = dom.breakNotes;
+	if (!wrap) return;
+
+	if (!isBreak || isPreviewMode) {
+		wrap.classList.add('hidden');
+		hideBreakNoteCard();
+		breakNoteTarget = null;
+		breakNoteStepIndex = -1;
+		return;
+	}
+
+	wrap.classList.remove('hidden');
+
+	if (breakNoteStepIndex !== currentStepIndex) {
+		breakNoteStepIndex = currentStepIndex;
+		breakNoteTarget = getBreakNoteTarget(currentStepIndex);
+		resetBreakNoteDraft();
+		hideBreakNoteCard();
+	}
+
+	updateBreakNoteCopy();
+}
+
+/**
+ * Update labels for the current break target.
+ */
+function updateBreakNoteCopy() {
+	const hasExercise = breakNoteTarget?.step_index !== null && breakNoteTarget?.step_index !== undefined;
+	const name = breakNoteTarget?.exercise_name || 'Rest';
+
+	if (dom.breakNotesTriggerLabel) {
+		dom.breakNotesTriggerLabel.textContent = hasExercise ? `Add note on ${name}` : 'Add a rest note';
+	}
+	if (dom.breakNotesContext) {
+		dom.breakNotesContext.textContent = hasExercise ? `After ${name}` : 'During rest';
+	}
+	if (dom.breakNotesInput) {
+		dom.breakNotesInput.placeholder = 'How did that feel? Too easy, wrist pain, swap...';
+	}
+}
+
+/**
+ * Open the note composer and pause the countdown while typing.
+ */
+function openBreakNoteCard() {
+	if (isPreviewMode) return;
+	if (!breakNoteTarget) {
+		breakNoteTarget = getBreakNoteTarget(currentStepIndex);
+	}
+	dom.breakNotesSaved?.classList.add('hidden');
+	dom.breakNotesTrigger?.classList.add('hidden');
+	dom.breakNotesCard?.classList.remove('hidden');
+
+	if (isPlaying && !isPaused) {
+		noteAutoPaused = true;
+		togglePause();
+	}
+	dom.breakNotesInput?.focus();
+}
+
+/**
+ * Close the composer without discarding the draft.
+ */
+function closeBreakNoteCard() {
+	dom.breakNotesCard?.classList.add('hidden');
+	dom.breakNotesTrigger?.classList.remove('hidden');
+	resumeBreakNoteTimer();
+}
+
+/**
+ * Hide the composer without touching playback state (used when the step changes).
+ */
+function hideBreakNoteCard() {
+	dom.breakNotesCard?.classList.add('hidden');
+	dom.breakNotesTrigger?.classList.remove('hidden');
+}
+
+/**
+ * Resume playback only if the note composer was the thing that paused it.
+ */
+function resumeBreakNoteTimer() {
+	if (!noteAutoPaused) return;
+	noteAutoPaused = false;
+	if (isPaused && isPlaying) {
+		togglePause();
+	}
+}
+
+/**
+ * Clear the note input, selected chips, and confirmation message.
+ */
+function resetBreakNoteDraft() {
+	if (dom.breakNotesInput) dom.breakNotesInput.value = '';
+	pendingNoteTags.clear();
+	updateBreakNoteChips();
+	dom.breakNotesSaved?.classList.add('hidden');
+	if (noteSavedTimeout) {
+		clearTimeout(noteSavedTimeout);
+		noteSavedTimeout = null;
+	}
+}
+
+/**
+ * Persist the current note to the active session.
+ * @param {Object} [options]
+ * @param {boolean} [options.silent] Skip the confirmation message
+ * @param {boolean} [options.resumeTimer] Resume playback if auto-paused
+ * @returns {Object|null}
+ */
+function saveBreakNote({ silent = false, resumeTimer = true } = {}) {
+	const text = String(dom.breakNotesInput?.value || '').trim();
+	const tags = Array.from(pendingNoteTags);
+	if (!text && tags.length === 0) {
+		if (!silent) dom.breakNotesInput?.focus();
+		return null;
+	}
+
+	if (!breakNoteTarget) {
+		breakNoteTarget = getBreakNoteTarget(currentStepIndex);
+	}
+	const hasExercise = breakNoteTarget?.step_index !== null && breakNoteTarget?.step_index !== undefined;
+	const note = addSessionNote({
+		text,
+		tags,
+		step_index: breakNoteTarget?.step_index ?? null,
+		exercise_id: breakNoteTarget?.exercise_id || null,
+		exercise_name: breakNoteTarget?.exercise_name || 'Rest',
+		context: hasExercise ? `After ${breakNoteTarget.exercise_name}` : 'During rest',
+	});
+	if (!note) return null;
+
+	if (dom.breakNotesInput) dom.breakNotesInput.value = '';
+	pendingNoteTags.clear();
+	updateBreakNoteChips();
+	hideBreakNoteCard();
+
+	if (!silent) {
+		const count = getSessionNotes().length;
+		showBreakNoteSaved(count);
+	}
+	if (resumeTimer) resumeBreakNoteTimer();
+	return note;
+}
+
+/**
+ * Show an inline note-saved confirmation.
+ * @param {number} count
+ */
+function showBreakNoteSaved(count) {
+	const el = dom.breakNotesSaved;
+	if (!el) return;
+	el.textContent = count > 1 ? `✓ ${count} notes saved this session` : '✓ Note saved to this session';
+	el.classList.remove('hidden');
+	if (noteSavedTimeout) clearTimeout(noteSavedTimeout);
+	noteSavedTimeout = setTimeout(() => {
+		el.classList.add('hidden');
+		noteSavedTimeout = null;
+	}, 2400);
+}
+
+/**
+ * Save an open draft before navigation/stop so nothing is lost.
+ * @param {Object} [options]
+ * @param {boolean} [options.resumeTimer]
+ */
+function flushBreakNoteDraft({ resumeTimer = true } = {}) {
+	const card = dom.breakNotesCard;
+	if (card && !card.classList.contains('hidden')) {
+		saveBreakNote({ silent: true, resumeTimer: false });
+		hideBreakNoteCard();
+	}
+	if (resumeTimer) resumeBreakNoteTimer();
 }
 
 /**
@@ -1422,6 +1720,8 @@ function executeTimerStep(step) {
 			dom.upNextCard.classList.add('hidden');
 		}
 	}
+
+	syncBreakNotesForStep(isBreak);
 }
 
 /**
@@ -1613,6 +1913,7 @@ function advanceStep() {
  */
 export function previousStep() {
 	if (!currentRoutine) return;
+	flushBreakNoteDraft();
 	clearCountdown();
 	clearClipMonitor();
 	clearTimer();
@@ -1714,6 +2015,7 @@ export function togglePause() {
  */
 export function resetPlayback() {
 	if (!currentRoutine) return;
+	flushBreakNoteDraft();
 	currentStepIndex = 0;
 	currentSubStepIndex = 0;
 	isPaused = false;
@@ -1726,6 +2028,7 @@ export function resetPlayback() {
  * @param {boolean} [isCompleted=false]
  */
 export function stopPlayback(isCompleted = false) {
+	flushBreakNoteDraft({ resumeTimer: false });
 	clearCountdown();
 	clearTimer();
 	clearClipMonitor();
@@ -1767,6 +2070,7 @@ export function stopPlayback(isCompleted = false) {
  */
 export function jumpToStep(index) {
 	if (!currentRoutine || index < 0 || index >= currentRoutine.steps.length) return;
+	flushBreakNoteDraft();
 	currentStepIndex = index;
 	currentSubStepIndex = 0;
 	isPaused = false;
@@ -1822,6 +2126,8 @@ function hidePlayerUI() {
 	if (mediaImg) mediaImg.removeAttribute?.('src');
 	dom.timerOverlay?.querySelector?.('.timer-stage-content')?.classList.remove('has-media');
 	if (dom.upNextCard) dom.upNextCard.classList?.add('hidden');
+	if (dom.breakNotes) dom.breakNotes.classList?.add('hidden');
+	hideBreakNoteCard();
 }
 
 /**

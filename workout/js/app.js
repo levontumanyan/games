@@ -171,6 +171,15 @@ async function init() {
 			upNextLabel: dom.upNextLabel,
 			upNextMeta: dom.upNextMeta,
 			upNextMediaThumb: dom.upNextMediaThumb,
+			breakNotes: dom.breakNotes,
+			breakNotesTrigger: dom.breakNotesTrigger,
+			breakNotesTriggerLabel: dom.breakNotesTriggerLabel,
+			breakNotesCard: dom.breakNotesCard,
+			breakNotesContext: dom.breakNotesContext,
+			breakNotesClose: dom.breakNotesClose,
+			breakNotesInput: dom.breakNotesInput,
+			breakNotesSave: dom.breakNotesSave,
+			breakNotesSaved: dom.breakNotesSaved,
 			countdownStage: dom.countdownStage,
 			countdownRoutineTitle: dom.countdownRoutineTitle,
 			countdownNumber: dom.countdownNumber,
@@ -313,6 +322,15 @@ function cacheDom() {
 	dom.upNextLabel = document.getElementById('up-next-label');
 	dom.upNextMeta = document.getElementById('up-next-meta');
 	dom.upNextMediaThumb = document.getElementById('up-next-media-thumb');
+	dom.breakNotes = document.getElementById('break-notes');
+	dom.breakNotesTrigger = document.getElementById('break-notes-trigger');
+	dom.breakNotesTriggerLabel = document.getElementById('break-notes-trigger-label');
+	dom.breakNotesCard = document.getElementById('break-notes-card');
+	dom.breakNotesContext = document.getElementById('break-notes-context');
+	dom.breakNotesClose = document.getElementById('break-notes-close');
+	dom.breakNotesInput = document.getElementById('break-notes-input');
+	dom.breakNotesSave = document.getElementById('break-notes-save');
+	dom.breakNotesSaved = document.getElementById('break-notes-saved');
 
 	// Countdown stage elements
 	dom.countdownStage = document.getElementById('countdown-stage');

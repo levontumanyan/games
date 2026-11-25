@@ -128,6 +128,77 @@ def test_session_recording_live_progress_and_partial_completion(client: TestClie
 	assert res_list2.json()[0]["status"] == "partial"
 
 
+def test_session_notes_are_persisted_and_returned(client: TestClient):
+	session_id = "sess-notes-001"
+	note = {
+		"id": "note-1",
+		"step_index": 2,
+		"exercise_id": "pushup",
+		"exercise_name": "Push-ups",
+		"context": "After Push-ups",
+		"text": "Left wrist felt strained; lower target reps or use neutral grip.",
+		"tags": ["discomfort"],
+		"timestamp": "2026-11-17T10:05:00.000Z",
+		"relative_seconds": 154,
+	}
+	payload = {
+		"id": session_id,
+		"routine_id": "r-notes",
+		"routine_title": "Push Day",
+		"started_at": datetime.now().isoformat(),
+		"completed_at": datetime.now().isoformat(),
+		"duration_seconds": 600,
+		"completed_steps": 4,
+		"total_steps": 6,
+		"status": "completed",
+		"notes": [note],
+	}
+	res = client.post("/api/sessions", json=payload, headers={"X-User-Id": "levon"})
+	assert res.status_code == 200
+
+	sessions = client.get("/api/sessions", headers={"X-User-Id": "levon"}).json()
+	assert len(sessions) == 1
+	assert sessions[0]["notes"] == [note]
+	assert "notes_json" not in sessions[0]
+
+	# A follow-up heartbeat must preserve the notes.
+	second_note = {
+		"id": "note-2",
+		"step_index": 4,
+		"exercise_name": "Diamond Push-ups",
+		"context": "After Diamond Push-ups",
+		"text": "Too easy; add a set or slow the tempo.",
+		"tags": ["too-easy"],
+		"timestamp": "2026-11-17T10:09:00.000Z",
+		"relative_seconds": 420,
+	}
+	payload["notes"] = [note, second_note]
+	res = client.post("/api/sessions", json=payload, headers={"X-User-Id": "levon"})
+	assert res.status_code == 200
+
+	sessions = client.get("/api/sessions", headers={"X-User-Id": "levon"}).json()
+	assert [n["id"] for n in sessions[0]["notes"]] == ["note-1", "note-2"]
+
+	stats = client.get("/api/stats", headers={"X-User-Id": "levon"}).json()
+	recent = next(s for s in stats["recent_sessions"] if s["id"] == session_id)
+	assert len(recent["notes"]) == 2
+	assert recent["notes"][0]["exercise_name"] == "Push-ups"
+
+
+def test_session_notes_default_to_empty_list(client: TestClient):
+	payload = {
+		"id": "sess-notes-default",
+		"routine_title": "No Notes Yet",
+		"started_at": datetime.now().isoformat(),
+		"duration_seconds": 60,
+		"status": "completed",
+	}
+	res = client.post("/api/sessions", json=payload, headers={"X-User-Id": "levon"})
+	assert res.status_code == 200
+	sessions = client.get("/api/sessions", headers={"X-User-Id": "levon"}).json()
+	assert sessions[0]["notes"] == []
+
+
 def test_streak_calculation_and_weekly_monthly_stats(client: TestClient, tmp_path: Path):
 	db_path = tmp_path / "workout.db"
 	db = Database(db_path)
